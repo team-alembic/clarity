@@ -4,15 +4,21 @@
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `ash_atlas` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `ash_atlas` to your list of dependencies
+in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:ash_atlas, "~> 0.1.0"}
+    {:ash_atlas, github: "team-alembic/atlas", branch: "main"}
   ]
 end
+```
+
+Router:
+```elixir
+import AshAtlas.Router
+ash_atlas("/atlas")
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
