@@ -198,7 +198,7 @@ defmodule AshAtlas.PageLive do
   defp markdown(assigns) do
     ~H"""
     <!-- TODO: Style markdown -->
-    <div class="markdown-body p-4">
+    <div class="prose prose-invert p-4">
       <%= case Earmark.as_html(@content) do
         {:ok, html, _} -> raw(html)
         {:error, reason, _} -> "<p>Error rendering markdown: #{reason}</p>"
