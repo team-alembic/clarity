@@ -34,6 +34,8 @@ defmodule AshAtlas.Introspector.Type do
 
         :digraph.add_edge(graph, app_vertex, type_vertex, :type)
 
+        AshAtlas.Introspector.attach_moduledoc_content(type, graph, type_vertex)
+
         {type, type_vertex}
       end)
 

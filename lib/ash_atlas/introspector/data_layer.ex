@@ -30,6 +30,8 @@ defmodule AshAtlas.Introspector.DataLayer do
 
         :digraph.add_edge(graph, app_vertex, data_layer_vertex, :data_layer)
 
+        AshAtlas.Introspector.attach_moduledoc_content(data_layer, graph, data_layer_vertex)
+
         {data_layer, data_layer_vertex}
       end)
 

@@ -13,6 +13,8 @@ defmodule AshAtlas.Introspector.Domain do
       domain_vertex = :digraph.add_vertex(graph, domain_vertex, Vertex.unique_id(domain_vertex))
       :digraph.add_edge(graph, app_vertex, domain_vertex, :domain)
 
+      AshAtlas.Introspector.attach_moduledoc_content(domain, graph, domain_vertex)
+
       for resource <- resources do
         resource_vertex = %Vertex.Resource{resource: resource}
 
@@ -21,22 +23,7 @@ defmodule AshAtlas.Introspector.Domain do
 
         :digraph.add_edge(graph, domain_vertex, resource_vertex, :resource)
 
-        test_content_vertex = %Vertex.Content{
-          id: Vertex.unique_id(resource_vertex) <> "_test",
-          name: "Test Markdown",
-          content:
-            {:markdown,
-             """
-             # Title
-
-             * List
-
-             `code`
-             """}
-        }
-
-        :digraph.add_vertex(graph, test_content_vertex)
-        :digraph.add_edge(graph, resource_vertex, test_content_vertex, :content)
+        AshAtlas.Introspector.attach_moduledoc_content(resource, graph, resource_vertex)
       end
     end
 

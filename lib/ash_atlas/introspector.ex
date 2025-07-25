@@ -66,6 +66,8 @@ defmodule AshAtlas.Introspector do
   ```
   """
 
+  alias AshAtlas.Vertex
+
   @typedoc """
   A module implementing the AshAtlas.Introspector behaviour.
   """
@@ -131,4 +133,29 @@ defmodule AshAtlas.Introspector do
   @spec introspectors() :: [t()]
   def introspectors,
     do: @native_introspectors ++ Application.get_env(:ash_atlas, :introspectors, [])
+
+  @doc """
+  Attaches the moduledoc content of a module to the introspection graph.
+  """
+  @spec attach_moduledoc_content(
+          module :: module(),
+          graph :: :digraph.graph(),
+          vertex :: :digraph.vertex()
+        ) :: :ok
+  def attach_moduledoc_content(module, graph, vertex) do
+    with {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc}, _metadata,
+          _docs} <-
+           Code.fetch_docs(module) do
+      content_vertex = %Vertex.Content{
+        id: inspect(module) <> "_moduledoc",
+        name: "Module Documentation",
+        content: {:markdown, moduledoc}
+      }
+
+      :digraph.add_vertex(graph, content_vertex)
+      :digraph.add_edge(graph, vertex, content_vertex, :content)
+    end
+
+    :ok
+  end
 end
