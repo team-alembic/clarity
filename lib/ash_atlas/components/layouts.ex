@@ -17,7 +17,9 @@ defmodule AshAtlas.Layouts do
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
         <meta name="csrf-token" content={get_csrf_token()} />
-        <title>{assigns[:page_title] || "Ash Atlas"}</title>
+        <.live_title default="Dashboard" suffix=" · Ash Atlas">
+          {assigns[:page_title]}
+        </.live_title>
         <style nonce={csp_nonce(@conn, :style)}>
           <%= raw(app_css()) %>
         </style>

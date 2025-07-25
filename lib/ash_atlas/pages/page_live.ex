@@ -164,11 +164,18 @@ defmodule AshAtlas.PageLive do
     current_content =
       Enum.find(contents, List.first(contents), fn content -> content.id == current_content end)
 
+    page_title =
+      breadcrumbs
+      |> Enum.drop(1)
+      |> Enum.reverse()
+      |> Enum.map_join(" · ", &Vertex.render_name/1)
+
     assign(socket,
       current_vertex: current_vertex,
       breadcrumbs: breadcrumbs,
       contents: contents,
-      current_content: current_content
+      current_content: current_content,
+      page_title: page_title
     )
   end
 end
