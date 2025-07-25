@@ -155,7 +155,7 @@ defmodule AshAtlas.PageLive do
            fn ->
              graph
              |> AshAtlas.GraphUtil.subgraph_within_steps(current_vertex, 2, 1)
-             |> AshAtlas.Graph.to_dot()
+             |> AshAtlas.Graph.to_dot(theme: :dark)
            end}
       }
       | contents

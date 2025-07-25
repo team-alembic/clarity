@@ -6,25 +6,46 @@ defmodule AshAtlas.Graph do
   alias AshAtlas.Vertex
   alias Phoenix.HTML.Safe
 
-  @spec to_dot(graph :: :digraph.graph()) :: iodata()
-  def to_dot(graph) do
+  @type theme :: :light | :dark
+  @type options :: [theme: theme()]
+
+  @default_dot_options [
+    theme: :light
+  ]
+
+  @spec to_dot(graph :: :digraph.graph(), options :: options()) :: iodata()
+  def to_dot(graph, options \\ []) do
+    options = Keyword.merge(@default_dot_options, options)
+
     [
       "digraph {\n",
       "  bgcolor = transparent;\n",
       "  fontname = \"system-ui\";\n",
-      "  color = \"#9ca3af\";\n",
-      "  fontcolor = \"#f0f0f0\";\n",
+      if options[:theme] == :dark do
+        [
+          "  color = \"#9ca3af\";\n",
+          "  fontcolor = \"#f0f0f0\";\n"
+        ]
+      end,
       "  node [\n",
       "    fontname = \"system-ui\";\n",
-      "    fontcolor = \"#fff\";\n",
-      "    style = filled;\n",
-      "    fillcolor = \"#374151\";\n",
-      "    color = \"#9ca3af\";\n",
+      if options[:theme] == :dark do
+        [
+          "    fontcolor = \"#fff\";\n",
+          "    style = filled;\n",
+          "    fillcolor = \"#374151\";\n",
+          "    color = \"#9ca3af\";\n"
+        ]
+      end,
       "  ];\n",
       "  edge [\n",
       "    fontname = \"system-ui\";\n",
-      "    fontcolor = \"#e5e7eb\";\n",
-      "    color = \"#d1d5db\";\n",
+      if options[:theme] == :dark do
+        [
+          "    fontcolor = \"#e5e7eb\";\n",
+          "    color = \"#d1d5db\";\n"
+        ]
+      end,
       "  ];\n",
       "  rankdir = LR;\n",
       graph |> render_graph() |> indent(),
@@ -127,10 +148,13 @@ defmodule AshAtlas.Graph do
 
   @spec indent(content :: iodata()) :: iodata()
   defp indent(content) do
-    content
-    |> IO.iodata_to_binary()
-    |> String.split("\n")
-    |> Enum.map(&["\n  ", &1])
+    [
+      content
+      |> IO.iodata_to_binary()
+      |> String.split("\n", trim: true)
+      |> Enum.map(&["\n  ", &1]),
+      "\n"
+    ]
   end
 
   @spec encode_vertex_id(vertex :: Vertex.t()) :: iodata()
