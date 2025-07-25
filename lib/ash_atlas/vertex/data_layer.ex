@@ -1,4 +1,5 @@
 defmodule AshAtlas.Vertex.DataLayer do
+  @moduledoc false
   @type t() :: %__MODULE__{
           data_layer: Ash.DataLayer.t()
         }
@@ -6,11 +7,22 @@ defmodule AshAtlas.Vertex.DataLayer do
   defstruct [:data_layer]
 
   defimpl AshAtlas.Vertex do
+    @impl AshAtlas.Vertex
     def unique_id(%{data_layer: data_layer}), do: "data_layer:#{inspect(data_layer)}"
+
+    @impl AshAtlas.Vertex
     def graph_id(%{data_layer: data_layer}), do: inspect(data_layer)
+
+    @impl AshAtlas.Vertex
     def graph_group(_vertex), do: []
+
+    @impl AshAtlas.Vertex
     def type_label(_vertex), do: inspect(Ash.DataLayer)
+
+    @impl AshAtlas.Vertex
     def render_name(%{data_layer: data_layer}), do: inspect(data_layer)
+
+    @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "cylinder"
   end
 end

@@ -1,11 +1,12 @@
 defmodule AshAtlas.Graph do
   @moduledoc false
 
-  alias AshAtlas.Vertex
-
   import Phoenix.HTML
 
-  @spec to_dot(graph :: :digraph.t()) :: iodata()
+  alias AshAtlas.Vertex
+  alias Phoenix.HTML.Safe
+
+  @spec to_dot(graph :: :digraph.graph()) :: iodata()
   def to_dot(graph) do
     [
       "digraph {\n",
@@ -26,12 +27,13 @@ defmodule AshAtlas.Graph do
       "    color = \"#d1d5db\";\n",
       "  ];\n",
       "  rankdir = LR;\n",
-      render_graph(graph) |> indent(),
+      graph |> render_graph() |> indent(),
       graph |> render_edges() |> indent(),
       "}\n"
     ]
   end
 
+  @spec render_graph(graph :: :digraph.graph()) :: iodata()
   defp render_graph(graph) do
     graph
     |> :digraph.vertices()
@@ -44,6 +46,7 @@ defmodule AshAtlas.Graph do
     |> render_grouped_vertices()
   end
 
+  @spec render_grouped_vertices(vertices :: [{[String.t()], Vertex.t()}]) :: iodata()
   defp render_grouped_vertices(vertices) do
     {here, nested} =
       vertices
@@ -81,6 +84,7 @@ defmodule AshAtlas.Graph do
     ]
   end
 
+  @spec render_vertices(vertices :: [Vertex.t()]) :: iodata()
   defp render_vertices(vertices) do
     for vertex <- vertices do
       [
@@ -101,6 +105,7 @@ defmodule AshAtlas.Graph do
     end
   end
 
+  @spec render_edges(graph :: :digraph.graph()) :: iodata()
   defp render_edges(graph) do
     for edge <- :digraph.edges(graph),
         {_, from, to, label} = :digraph.edge(graph, edge),
@@ -120,6 +125,7 @@ defmodule AshAtlas.Graph do
     end
   end
 
+  @spec indent(content :: iodata()) :: iodata()
   defp indent(content) do
     content
     |> IO.iodata_to_binary()
@@ -138,8 +144,8 @@ defmodule AshAtlas.Graph do
     [?<, content, ?>]
   end
 
-  @spec escape_html_label(text :: iodata()) :: iodata()
+  @spec escape_html_label(content :: Safe.t()) :: iodata()
   defp escape_html_label(text) do
-    [?<, Phoenix.HTML.Safe.to_iodata(text), ?>]
+    [?<, Safe.to_iodata(text), ?>]
   end
 end

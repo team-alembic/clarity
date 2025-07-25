@@ -1,25 +1,30 @@
 defmodule AshAtlas.Web do
   @moduledoc false
 
+  @spec static_paths :: [Path.t()]
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
 
+  @spec router :: Macro.t()
   def router do
     quote do
       use Phoenix.Router, helpers: false
 
-      # Import common connection and controller functions to use in pipelines
-      import Plug.Conn
       import Phoenix.Controller
       import Phoenix.LiveView.Router
+
+      # Import common connection and controller functions to use in pipelines
+      import Plug.Conn
     end
   end
 
+  @spec channel :: Macro.t()
   def channel do
     quote do
       use Phoenix.Channel
     end
   end
 
+  @spec live_view :: Macro.t()
   def live_view do
     quote do
       use Phoenix.LiveView,
@@ -29,6 +34,7 @@ defmodule AshAtlas.Web do
     end
   end
 
+  @spec live_component :: Macro.t()
   def live_component do
     quote do
       use Phoenix.LiveComponent
@@ -37,6 +43,7 @@ defmodule AshAtlas.Web do
     end
   end
 
+  @spec html :: Macro.t()
   def html do
     quote do
       use Phoenix.Component
@@ -50,14 +57,16 @@ defmodule AshAtlas.Web do
     end
   end
 
+  @spec html_helpers() :: Macro.t()
   defp html_helpers do
     quote do
       # use Gettext, backend: AshAtlas.Gettext
 
+      import AshAtlas.CoreComponents
+
       # HTML escaping functionality
       import Phoenix.HTML
       # Core UI components and translation
-      import AshAtlas.CoreComponents
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS
@@ -67,6 +76,7 @@ defmodule AshAtlas.Web do
     end
   end
 
+  @spec verified_routes() :: Macro.t()
   def verified_routes do
     quote do
       use Phoenix.VerifiedRoutes,

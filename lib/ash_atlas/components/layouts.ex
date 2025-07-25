@@ -4,18 +4,10 @@ defmodule AshAtlas.Layouts do
   use AshAtlas.Web, :html
   use Phoenix.Component
 
-  js_path = Path.join(__DIR__, "../../../priv/static/assets/app.js")
-  css_path = Path.join(__DIR__, "../../../priv/static/assets/app.css")
+  @type nonce_type() :: :script | :style | :img
 
-  @external_resource js_path
-  @external_resource css_path
-
-  @app_js File.read!(js_path)
-  @app_css File.read!(css_path)
-
-  def render("app.js", _), do: @app_js
-  def render("app.css", _), do: @app_css
-
+  @spec render(template :: String.t(), assigns :: Phoenix.LiveView.Socket.assigns()) ::
+          Phoenix.LiveView.Rendered.t()
   def render("root.html", assigns) do
     ~H"""
     <!DOCTYPE html>
@@ -27,14 +19,14 @@ defmodule AshAtlas.Layouts do
         <meta name="csrf-token" content={get_csrf_token()} />
         <title>{assigns[:page_title] || "Ash Atlas"}</title>
         <style nonce={csp_nonce(@conn, :style)}>
-          <%= raw(render("app.css", %{})) %>
+          <%= raw(app_css()) %>
         </style>
       </head>
       <body>
         {@inner_content}
       </body>
       <script nonce={csp_nonce(@conn, :script)}>
-        <%= raw(render("app.js", %{})) %>
+        <%= raw(app_js()) %>
       </script>
     </html>
     """
@@ -46,16 +38,12 @@ defmodule AshAtlas.Layouts do
     """
   end
 
-  def render(assigns) do
-    ~H"""
-    ...
-    """
-  end
-
-  def live_socket_path(conn) do
+  @spec live_socket_path(Plug.Conn.t()) :: iodata()
+  defp live_socket_path(conn) do
     [Enum.map(conn.script_name, &["/" | &1]) | conn.private.live_socket_path]
   end
 
+  @spec csp_nonce(conn :: Plug.Conn.t(), type :: nonce_type()) :: String.t()
   defp csp_nonce(conn, type) when type in [:script, :style, :img] do
     csp_nonce_value = conn.private.ash_atlas_csp_nonce[type]
 
@@ -65,4 +53,16 @@ defmodule AshAtlas.Layouts do
       _ -> raise("Unexpected type of :csp_nonce_assign_key")
     end
   end
+
+  js_path = Path.join(__DIR__, "../../../priv/static/assets/app.js")
+  @external_resource js_path
+  @app_js File.read!(js_path)
+  @spec app_js() :: String.t()
+  defp app_js, do: @app_js
+
+  css_path = Path.join(__DIR__, "../../../priv/static/assets/app.css")
+  @external_resource css_path
+  @app_css File.read!(css_path)
+  @spec app_css() :: String.t()
+  defp app_css, do: @app_css
 end

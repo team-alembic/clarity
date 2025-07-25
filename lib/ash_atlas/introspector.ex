@@ -78,9 +78,9 @@ defmodule AshAtlas.Introspector do
   Each introspector first modifies the graph using `c:introspect/1`, and then may
   apply further changes with `c:post_introspect/1`.
 
-  Returns the final `:digraph.t()` structure.
+  Returns the final `:digraph.graph()` structure.
   """
-  @callback introspect(graph :: :digraph.t()) :: :digraph.t()
+  @callback introspect(graph :: :digraph.graph()) :: :digraph.graph()
 
   @doc """
   Called after the main graph resolution phase.
@@ -89,9 +89,9 @@ defmodule AshAtlas.Introspector do
   can remove vertices that are not used anywhere and therefore are not relevant
   for visualization.
 
-  Must return the modified `:digraph.t()` structure.
+  Must return the modified `:digraph.graph()` structure.
   """
-  @callback post_introspect(graph :: :digraph.t()) :: :digraph.t()
+  @callback post_introspect(graph :: :digraph.graph()) :: :digraph.graph()
 
   @optional_callbacks [
     post_introspect: 1
@@ -101,9 +101,9 @@ defmodule AshAtlas.Introspector do
   Builds and processes the introspection graph using the built-in and configured
   introspectors.
 
-  Returns the final `:digraph.t()` structure.
+  Returns the final `:digraph.graph()` structure.
   """
-  @spec introspect(graph :: :digraph.t(), introspectors :: [t()]) :: :digraph.t()
+  @spec introspect(graph :: :digraph.graph(), introspectors :: [t()]) :: :digraph.graph()
   def introspect(graph, introspectors \\ introspectors()) do
     graph = Enum.reduce(introspectors, graph, & &1.introspect(&2))
 

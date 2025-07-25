@@ -45,7 +45,7 @@ defmodule AshAtlas.Introspector.Type do
       %Vertex.Calculation{} = vertex -> [{vertex, vertex.calculation.type}]
       _ -> []
     end)
-    |> Enum.map(fn {vertex, type} ->
+    |> Enum.each(fn {vertex, type} ->
       case Map.fetch(types, simplify_type(type)) do
         :error -> :ok
         {:ok, type_vertex} -> :digraph.add_edge(graph, vertex, type_vertex, :type)
@@ -55,6 +55,7 @@ defmodule AshAtlas.Introspector.Type do
     graph
   end
 
+  @spec simplify_type(type :: Ash.Type.t()) :: Ash.Type.t()
   defp simplify_type({:array, type}), do: simplify_type(type)
   defp simplify_type(type), do: type
 end

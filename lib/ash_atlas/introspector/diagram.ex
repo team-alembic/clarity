@@ -3,6 +3,8 @@ defmodule AshAtlas.Introspector.Diagram do
 
   @behaviour AshAtlas.Introspector
 
+  alias Ash.Domain.Info.Diagram
+  alias Ash.Policy.Chart.Mermaid, as: PolicyMermaid
   alias AshAtlas.Vertex
 
   @impl AshAtlas.Introspector
@@ -32,7 +34,7 @@ defmodule AshAtlas.Introspector.Diagram do
       content_er_vertex = %Vertex.Content{
         id: "er_diagram_#{domain}",
         name: "ER Diagram",
-        content: {:mermaid, fn -> Ash.Domain.Info.Diagram.mermaid_er_diagram(domain) end}
+        content: {:mermaid, fn -> Diagram.mermaid_er_diagram(domain) end}
       }
 
       :digraph.add_vertex(graph, content_er_vertex)
@@ -41,7 +43,7 @@ defmodule AshAtlas.Introspector.Diagram do
       content_class_vertex = %Vertex.Content{
         id: "class_diagram_#{domain}",
         name: "Class Diagram",
-        content: {:mermaid, fn -> Ash.Domain.Info.Diagram.mermaid_class_diagram(domain) end}
+        content: {:mermaid, fn -> Diagram.mermaid_class_diagram(domain) end}
       }
 
       :digraph.add_vertex(graph, content_class_vertex)
@@ -52,7 +54,7 @@ defmodule AshAtlas.Introspector.Diagram do
       content_policy_vertex = %Vertex.Content{
         id: "policy_diagram_#{resource}",
         name: "Policy Diagram",
-        content: {:mermaid, fn -> Ash.Policy.Chart.Mermaid.chart(resource) end}
+        content: {:mermaid, fn -> PolicyMermaid.chart(resource) end}
       }
 
       :digraph.add_vertex(graph, content_policy_vertex)

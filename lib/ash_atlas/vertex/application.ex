@@ -1,4 +1,5 @@
 defmodule AshAtlas.Vertex.Application do
+  @moduledoc false
   @type t() :: %__MODULE__{
           app: Application.app(),
           description: String.t(),
@@ -25,11 +26,22 @@ defmodule AshAtlas.Vertex.Application do
   end
 
   defimpl AshAtlas.Vertex do
+    @impl AshAtlas.Vertex
     def unique_id(%{app: app}), do: "application:#{app}"
+
+    @impl AshAtlas.Vertex
     def graph_id(%{app: app}), do: Atom.to_string(app)
+
+    @impl AshAtlas.Vertex
     def graph_group(_vertex), do: []
+
+    @impl AshAtlas.Vertex
     def type_label(_vertex), do: inspect(Application)
+
+    @impl AshAtlas.Vertex
     def render_name(%{app: app}), do: Atom.to_string(app)
+
+    @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "house"
   end
 end

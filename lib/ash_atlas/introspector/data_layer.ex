@@ -3,6 +3,7 @@ defmodule AshAtlas.Introspector.DataLayer do
 
   @behaviour AshAtlas.Introspector
 
+  alias Ash.Resource.Info
   alias AshAtlas.Vertex
 
   @impl AshAtlas.Introspector
@@ -18,7 +19,7 @@ defmodule AshAtlas.Introspector.DataLayer do
       |> :digraph.vertices()
       |> Enum.filter(&match?(%Vertex.Resource{}, &1))
       |> Enum.map(& &1.resource)
-      |> Enum.map(&Ash.Resource.Info.data_layer/1)
+      |> Enum.map(&Info.data_layer/1)
       |> Enum.uniq()
       |> Map.new(fn data_layer ->
         data_layer_vertex = %Vertex.DataLayer{data_layer: data_layer}
@@ -33,7 +34,7 @@ defmodule AshAtlas.Introspector.DataLayer do
       end)
 
     for %Vertex.Resource{resource: resource} = resource_vertex <- :digraph.vertices(graph),
-        data_layer = Ash.Resource.Info.data_layer(resource) do
+        data_layer = Info.data_layer(resource) do
       data_layer_vertex = Map.fetch!(data_layer_vertices, data_layer)
       :digraph.add_edge(graph, resource_vertex, data_layer_vertex, :data_layer)
     end

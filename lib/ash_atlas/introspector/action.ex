@@ -3,12 +3,13 @@ defmodule AshAtlas.Introspector.Action do
 
   @behaviour AshAtlas.Introspector
 
+  alias Ash.Resource.Info, as: ResourceInfo
   alias AshAtlas.Vertex
 
   @impl AshAtlas.Introspector
   def introspect(graph) do
     for %Vertex.Resource{resource: resource} = resource_vertex <- :digraph.vertices(graph),
-        action <- Ash.Resource.Info.actions(resource) do
+        action <- ResourceInfo.actions(resource) do
       action_vertex = %Vertex.Action{
         action: action,
         resource: resource

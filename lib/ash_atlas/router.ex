@@ -81,6 +81,7 @@ defmodule AshAtlas.Router do
   defmacro ash_atlas(path, opts \\ []) do
     quote bind_quoted: [path: path, opts: opts] do
       import Phoenix.LiveView.Router
+
       live_socket_path = Keyword.get(opts, :live_socket_path, "/live")
 
       csp_nonce_assign_key =
@@ -139,9 +140,15 @@ defmodule AshAtlas.Router do
   ]
 
   @doc false
+  @spec __session__(conn :: Plug.Conn.t(), [map() | [{module(), atom(), [any()]}]]) :: map()
   def __session__(conn, [session, additional_hooks]),
     do: __session__(conn, session, additional_hooks)
 
+  @spec __session__(
+          conn :: Plug.Conn.t(),
+          session :: map(),
+          additional_hooks :: [{module(), atom(), [any()]}]
+        ) :: map()
   def __session__(conn, session, additional_hooks \\ []) do
     session =
       Enum.reduce(additional_hooks, session, fn {m, f, a}, acc ->

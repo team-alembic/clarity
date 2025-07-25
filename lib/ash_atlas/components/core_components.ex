@@ -6,12 +6,15 @@ defmodule AshAtlas.CoreComponents do
   import Phoenix.HTML
 
   alias AshAtlas.Vertex
+  alias Phoenix.LiveView.Rendered
+  alias Phoenix.LiveView.Socket
 
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
 
+  @spec header(assigns :: Socket.assigns()) :: Rendered.t()
   def header(assigns) do
     ~H"""
     <header class={"flex items-center px-6 py-4 bg-gray-800 shadow-md #{@class}"} {@rest}>
@@ -49,6 +52,7 @@ defmodule AshAtlas.CoreComponents do
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the navigation container"
 
+  @spec navigation(assigns :: Socket.assigns()) :: Rendered.t()
   def navigation(assigns) do
     ~H"""
     <nav {@rest}>
@@ -62,6 +66,7 @@ defmodule AshAtlas.CoreComponents do
   attr :current, :any, required: true, doc: "The currently selected node in the tree"
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
 
+  @spec navigation_tree(assigns :: Socket.assigns()) :: Rendered.t()
   defp navigation_tree(assigns) do
     ~H"""
     <details
@@ -91,6 +96,7 @@ defmodule AshAtlas.CoreComponents do
   attr :current, :any, required: true, doc: "The currently selected node in the tree"
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
 
+  @spec navigation_node(assigns :: Socket.assigns()) :: Rendered.t()
   defp navigation_node(assigns) do
     ~H"""
     <.link
@@ -112,6 +118,7 @@ defmodule AshAtlas.CoreComponents do
 
   attr :vertex, :any, required: true, doc: "The vertex to render"
 
+  @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
   def vertex_name(assigns) do
     ~H"""
     {Vertex.render_name(@vertex)}
@@ -122,6 +129,7 @@ defmodule AshAtlas.CoreComponents do
   attr :graph, :string, required: true, doc: "The graph data in DOT language format"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the graph container"
 
+  @spec viz(assigns :: Socket.assigns()) :: Rendered.t()
   def viz(assigns) do
     ~H"""
     <pre phx-hook="Viz" id={@id} data-graph={@graph} phx-update="ignore" {@rest}></pre>
@@ -132,6 +140,7 @@ defmodule AshAtlas.CoreComponents do
   attr :graph, :string, required: true, doc: "The mermaid graph definition in string format"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the graph container"
 
+  @spec mermaid(assigns :: Socket.assigns()) :: Rendered.t()
   def mermaid(assigns) do
     ~H"""
     <pre phx-hook="Mermaid" id={@id} data-graph={@graph} phx-update="ignore" {@rest}></pre>
@@ -142,6 +151,7 @@ defmodule AshAtlas.CoreComponents do
   attr :class, :string, default: "", doc: "CSS classes to apply to the markdown container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the markdown container"
 
+  @spec markdown(assigns :: Socket.assigns()) :: Rendered.t()
   def markdown(assigns) do
     ~H"""
     <div class={"prose prose-invert #{@class}"} {@rest}>
@@ -156,5 +166,6 @@ defmodule AshAtlas.CoreComponents do
   logo_path = Path.join(__DIR__, "../../../priv/static/images/ash_logo_orange.svg")
   @external_resource logo_path
   @ash_logo "data:image/svg+xml;base64," <> Base.encode64(File.read!(logo_path))
+  @spec ash_logo :: String.t()
   defp ash_logo, do: @ash_logo
 end

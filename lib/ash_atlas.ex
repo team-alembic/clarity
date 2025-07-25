@@ -1,32 +1,57 @@
 defmodule AshAtlas do
-  @spec graph() :: :digraph.t()
-  def graph do
-    graph = :digraph.new()
-    AshAtlas.Introspector.introspect(graph)
+  @moduledoc false
+
+  use Agent
+
+  @type tree() :: %{
+          node: :digraph.vertex(),
+          children: %{
+            optional(:digraph.label()) => [tree()]
+          }
+        }
+
+  @type t() :: %__MODULE__{
+          graph: :digraph.graph(),
+          root: AshAtlas.Vertex.t(),
+          tree: tree(),
+          vertices: %{String.t() => AshAtlas.Vertex.t()}
+        }
+
+  @enforce_keys [:graph, :root, :tree, :vertices]
+  defstruct [:graph, :root, :tree, :vertices]
+
+  @doc false
+  @spec start_link(opts :: GenServer.options()) :: Agent.on_start()
+  def start_link(opts \\ []) do
+    opts = Keyword.put_new(opts, :name, __MODULE__)
+
+    Agent.start_link(&introspect/0, opts)
   end
 
-  @spec vertex_by_unique_id(graph :: :digraph.t(), unique_id :: String.t()) ::
-          AshAtlas.Vertex.t() | nil
-  def vertex_by_unique_id(graph, unique_id) do
-    graph
-    |> :digraph.vertices()
-    |> Enum.find(&(AshAtlas.Vertex.unique_id(&1) == unique_id))
+  @spec get(name :: Agent.agent()) :: t()
+  def get(name \\ __MODULE__), do: Agent.get(name, & &1)
+
+  @spec update(name :: Agent.agent()) :: t()
+  def update(name \\ __MODULE__) do
+    Agent.get_and_update(name, fn _state ->
+      atlas = introspect()
+      {atlas, atlas}
+    end)
   end
 
-  @spec subgraph(
-          graph :: :digraph.t(),
-          vertex :: AshAtlas.Vertex.t(),
-          max_out_distance :: non_neg_integer(),
-          max_in_distance :: non_neg_integer()
-        ) ::
-          :digraph.t()
-  def subgraph(graph, vertex, max_out_distance, max_in_distance) do
-    AshAtlas.GraphUtil.subgraph_within_steps(graph, vertex, max_out_distance, max_in_distance)
-  end
+  @spec introspect() :: t()
+  def introspect do
+    graph = AshAtlas.Introspector.introspect(:digraph.new())
 
-  @spec tree(graph :: :digraph.t()) :: AshAtlas.GraphUtil.tree_vertex()
-  def tree(graph) do
-    root_vertex = vertex_by_unique_id(graph, "root")
-    AshAtlas.GraphUtil.graph_to_tree(graph, root_vertex)
+    vertices =
+      for vertex <- :digraph.vertices(graph),
+          into: %{},
+          do: {AshAtlas.Vertex.unique_id(vertex), vertex}
+
+    root_vertex = Map.fetch!(vertices, "root")
+
+    tree = AshAtlas.GraphUtil.graph_to_tree(graph, root_vertex)
+
+    %__MODULE__{graph: graph, root: root_vertex, tree: tree, vertices: vertices}
   end
 end

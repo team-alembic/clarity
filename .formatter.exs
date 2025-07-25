@@ -6,6 +6,6 @@
     atlas_browser_pipeline: 0,
     atlas_browser_pipeline: 1
   ],
-  plugins: [Phoenix.LiveView.HTMLFormatter],
-  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"]
+  plugins: [Styler, DoctestFormatter, Phoenix.LiveView.HTMLFormatter],
+  inputs: ["{mix,.formatter,.credo}.exs", "{config,lib,test}/**/*.{ex,exs}"]
 ]

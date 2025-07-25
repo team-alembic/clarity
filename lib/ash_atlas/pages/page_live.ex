@@ -4,19 +4,17 @@ defmodule AshAtlas.PageLive do
   use AshAtlas.Web, :live_view
 
   alias AshAtlas.Vertex
+  alias Phoenix.LiveView.Rendered
+  alias Phoenix.LiveView.Socket
 
   @impl Phoenix.LiveView
   def mount(
         %{"vertex" => vertex, "content" => content} = _params,
-        %{
-          "prefix" => prefix
-        } = session,
+        %{"prefix" => prefix} = session,
         socket
       ) do
-    graph = AshAtlas.graph()
-    tree = AshAtlas.tree(graph)
-
-    vertex = AshAtlas.vertex_by_unique_id(graph, vertex)
+    atlas = AshAtlas.get()
+    vertex = Map.fetch!(atlas.vertices, vertex)
 
     prefix =
       case prefix do
@@ -30,7 +28,9 @@ defmodule AshAtlas.PageLive do
       end
 
     {:ok,
-     assign(socket, graph: graph, prefix: prefix, tree: tree) |> update_dynamics(vertex, content)}
+     socket
+     |> assign(prefix: prefix, atlas: atlas)
+     |> update_dynamics(vertex, content)}
   end
 
   def mount(params, %{"prefix" => prefix}, socket) when params == %{} do
@@ -39,7 +39,7 @@ defmodule AshAtlas.PageLive do
 
   @impl Phoenix.LiveView
   def handle_params(%{"vertex" => vertex, "content" => content}, _url, socket) do
-    vertex = AshAtlas.vertex_by_unique_id(socket.assigns.graph, vertex)
+    vertex = Map.fetch!(socket.assigns.atlas.vertices, vertex)
     {:noreply, update_dynamics(socket, vertex, content)}
   end
 
@@ -52,7 +52,7 @@ defmodule AshAtlas.PageLive do
       <div class="flex flex-1">
         <!-- TODO: Make overflow y auto work --->
         <.navigation
-          tree={@tree}
+          tree={@atlas.tree}
           prefix={@prefix}
           current={@current_vertex}
           breadcrumbs={@breadcrumbs}
@@ -78,6 +78,7 @@ defmodule AshAtlas.PageLive do
     {:noreply, push_patch(socket, to: "#{socket.assigns.prefix}/#{id}/graph")}
   end
 
+  @spec tabs(assigns :: Socket.assigns()) :: Rendered.t()
   defp tabs(assigns) do
     ~H"""
     <nav class="border-b border-gray-700 bg-gray-900 px-4">
@@ -100,6 +101,7 @@ defmodule AshAtlas.PageLive do
     """
   end
 
+  @spec render_content(assigns :: Socket.assigns()) :: Rendered.t()
   defp render_content(assigns) do
     ~H"""
     <%= case @content.content do %>
@@ -121,22 +123,26 @@ defmodule AshAtlas.PageLive do
     """
   end
 
+  @spec update_dynamics(
+          socket :: Socket.t(),
+          current_vertex :: Vertex.t(),
+          current_content :: String.t()
+        ) :: Socket.t()
   defp update_dynamics(socket, current_vertex, current_content) do
+    %AshAtlas{graph: graph, root: root} = socket.assigns.atlas
+
     breadcrumbs =
-      socket.assigns.graph
-      |> :digraph.get_short_path(
-        AshAtlas.vertex_by_unique_id(socket.assigns.graph, "root"),
-        current_vertex
-      )
+      graph
+      |> :digraph.get_short_path(root, current_vertex)
       |> case do
         false -> [current_vertex]
         path -> path
       end
 
     contents =
-      socket.assigns.graph
+      graph
       |> :digraph.out_edges(current_vertex)
-      |> Enum.map(&:digraph.edge(socket.assigns.graph, &1))
+      |> Enum.map(&:digraph.edge(graph, &1))
       |> Enum.filter(fn {_, _, _, label} -> label == :content end)
       |> Enum.map(fn {_, _, to, _} -> to end)
 
@@ -147,8 +153,8 @@ defmodule AshAtlas.PageLive do
         content:
           {:viz,
            fn ->
-             socket.assigns.graph
-             |> AshAtlas.subgraph(current_vertex, 2, 1)
+             graph
+             |> AshAtlas.GraphUtil.subgraph_within_steps(current_vertex, 2, 1)
              |> AshAtlas.Graph.to_dot()
            end}
       }
