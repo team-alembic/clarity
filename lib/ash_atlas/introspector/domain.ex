@@ -15,7 +15,10 @@ defmodule AshAtlas.Introspector.Domain do
 
       for resource <- resources do
         resource_vertex = %Vertex.Resource{resource: resource}
-        resource_vertex = :digraph.add_vertex(graph, resource_vertex, Vertex.unique_id(resource_vertex))
+
+        resource_vertex =
+          :digraph.add_vertex(graph, resource_vertex, Vertex.unique_id(resource_vertex))
+
         :digraph.add_edge(graph, domain_vertex, resource_vertex, :resource)
 
         test_content_vertex = %Vertex.Content{

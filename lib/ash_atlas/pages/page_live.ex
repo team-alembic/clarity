@@ -5,10 +5,6 @@ defmodule AshAtlas.PageLive do
 
   alias AshAtlas.Vertex
 
-  logo_path = Path.join(__DIR__, "../../../priv/static/images/ash_logo_orange.svg")
-  @external_resource logo_path
-  @ash_logo "data:image/svg+xml;base64," <> Base.encode64(File.read!(logo_path))
-
   @impl Phoenix.LiveView
   def mount(
         %{"vertex" => vertex, "content" => content} = _params,
@@ -51,58 +47,25 @@ defmodule AshAtlas.PageLive do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
-      <header class="flex items-center px-6 py-4 bg-gray-800 shadow-md z-10">
-        <img src={ash_logo()} alt="Ash Logo" class="h-8 w-8 mr-4" />
-        <h1 class="text-2xl font-bold tracking-tight flex-1 truncate">
-          Ash Atlas
-        </h1>
-
-        <nav id="breadcrumbs">
-          <ol class="flex flex-wrap text-sm text-gray-400 space-x-2">
-            <%= for {breadcrumb, idx} <- Enum.with_index(@breadcrumbs) do %>
-              <li class="flex items-center">
-                <span :if={idx > 0} class="mx-2 text-gray-600">/</span>
-                <.link
-                  patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(breadcrumb)}/graph"}
-                  class="hover:text-ash-400 transition-colors"
-                >
-                  <.vertex_name vertex={breadcrumb} />
-                </.link>
-              </li>
-            <% end %>
-          </ol>
-        </nav>
-      </header>
+      <.header breadcrumbs={@breadcrumbs} prefix={@prefix} class="z-10" />
 
       <div class="flex flex-1">
         <!-- TODO: Make overflow y auto work --->
-        <aside class="w-64 bg-gray-800 border-r border-gray-700 p-4 overflow-auto">
-          <.render_navigation_tree
-            tree={@tree}
-            prefix={@prefix}
-            current={@current_vertex}
-            breadcrumbs={@breadcrumbs}
-          />
-        </aside>
+        <.navigation
+          tree={@tree}
+          prefix={@prefix}
+          current={@current_vertex}
+          breadcrumbs={@breadcrumbs}
+          class="w-64 bg-gray-800 border-r border-gray-700 p-4 overflow-auto"
+        />
 
         <main class="flex-1 flex flex-col overflow-auto">
-            <nav class="border-b border-gray-700 bg-gray-900 px-4">
-            <ul class="flex space-x-2">
-              <li :for={content <- @contents}>
-                <.link
-                  patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(@current_vertex)}/#{content.id}"}
-                  class={
-                  "inline-block px-4 py-2 rounded-t-md font-medium transition-colors " <>
-                  if content.id == @current_content.id,
-                    do: "bg-gray-800 text-ash-400 border-b-2 border-ash-400",
-                    else: "text-gray-400 hover:text-ash-400 hover:bg-gray-800"
-                  }
-                >
-                  {content.name}
-                </.link>
-              </li>
-            </ul>
-            </nav>
+          <.tabs
+            contents={@contents}
+            current_content={@current_content}
+            prefix={@prefix}
+            current_vertex={@current_vertex}
+          />
           <.render_content content={@current_content} socket={@socket} />
         </main>
       </div>
@@ -115,46 +78,25 @@ defmodule AshAtlas.PageLive do
     {:noreply, push_patch(socket, to: "#{socket.assigns.prefix}/#{id}/graph")}
   end
 
-  defp render_navigation_tree(assigns) do
+  defp tabs(assigns) do
     ~H"""
-    <details :for={{label, child_vertices} <- @tree.children} :if={label != :content} open={Enum.any?(@breadcrumbs, &(&1 == @tree.node))}>
-      <summary class="cursor-pointer select-none text-gray-400 hover:text-ash-400 px-2 py-1 rounded-sm group-open:bg-gray-700 transition-colors">
-        <span>{label}</span>
-      </summary>
-      <ul class="border-l border-gray-700 pl-2 space-y-1">
-        <li :for={child <- child_vertices}>
-          <.render_navigation_node
-            tree={child}
-            prefix={@prefix}
-            current={@current}
-            breadcrumbs={@breadcrumbs}
-          />
+    <nav class="border-b border-gray-700 bg-gray-900 px-4">
+      <ul class="flex space-x-2">
+        <li :for={content <- @contents}>
+          <.link
+            patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(@current_vertex)}/#{content.id}"}
+            class={
+            "inline-block px-4 py-2 rounded-t-md font-medium transition-colors " <>
+            if content.id == @current_content.id,
+              do: "bg-gray-800 text-ash-400 border-b-2 border-ash-400",
+              else: "text-gray-400 hover:text-ash-400 hover:bg-gray-800"
+            }
+          >
+            {content.name}
+          </.link>
         </li>
       </ul>
-    </details>
-    """
-  end
-
-  defp render_navigation_node(assigns) do
-    ~H"""
-    <.link
-      patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(@tree.node)}/graph"}
-      class={
-        "block px-2 py-1 rounded-sm hover:bg-gray-700 hover:text-ash-400 transition-colors font-medium" <>
-        if @tree.node == @current, do: " bg-red-700 text-ash-400", else: ""
-      }
-    >
-      <.vertex_name vertex={@tree.node} />
-    </.link>
-    <%= if @tree.children != %{} do %>
-      <div class="ml-4 group">
-        <.render_navigation_tree
-          tree={@tree}
-          prefix={@prefix}
-          current={@current}
-          breadcrumbs={@breadcrumbs} />
-      </div>
-    <% end %>
+    </nav>
     """
   end
 
@@ -202,11 +144,13 @@ defmodule AshAtlas.PageLive do
       %Vertex.Content{
         id: "graph",
         name: "Graph Navigation",
-        content: {:viz, fn ->
-          socket.assigns.graph
-          |> AshAtlas.subgraph(current_vertex, 2, 1)
-          |> AshAtlas.Graph.to_dot()
-        end}
+        content:
+          {:viz,
+           fn ->
+             socket.assigns.graph
+             |> AshAtlas.subgraph(current_vertex, 2, 1)
+             |> AshAtlas.Graph.to_dot()
+           end}
       }
       | contents
     ]
@@ -221,6 +165,4 @@ defmodule AshAtlas.PageLive do
       current_content: current_content
     )
   end
-
-  defp ash_logo, do: @ash_logo
 end
