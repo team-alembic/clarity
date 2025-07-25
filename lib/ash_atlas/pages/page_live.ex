@@ -64,7 +64,7 @@ defmodule AshAtlas.PageLive do
                   patch={"#{@prefix}/#{AshAtlas.Tree.Node.unique_id(breadcrumb)}/graph"}
                   class="hover:text-ash-400 transition-colors"
                 >
-                  <.render_node node={breadcrumb} />
+                  <.node_name node={breadcrumb} />
                 </.link>
               </li>
             <% end %>
@@ -113,12 +113,6 @@ defmodule AshAtlas.PageLive do
     {:noreply, push_patch(socket, to: "#{socket.assigns.prefix}/#{id}/graph")}
   end
 
-  defp render_node(assigns) do
-    ~H"""
-    {Node.render_name(assigns.node)}
-    """
-  end
-
   defp render_navigation_tree(assigns) do
     ~H"""
     <details :for={{label, child_nodes} <- @tree.children} :if={label != :content} open={Enum.any?(@breadcrumbs, &(&1 == @tree.vertex))}>
@@ -148,7 +142,7 @@ defmodule AshAtlas.PageLive do
         if @tree.vertex == @current_node, do: " bg-red-700 text-ash-400", else: ""
       }
     >
-      <.render_node node={@tree.vertex} />
+      <.node_name node={@tree.vertex} />
     </.link>
     <%= if @tree.children != %{} do %>
       <div class="ml-4 group">
@@ -166,44 +160,20 @@ defmodule AshAtlas.PageLive do
     ~H"""
     <%= case @content.content do %>
       <% {:mermaid, content} when is_function(content, 0) -> %>
-        <.mermaid graph={content.()} />
+        <.mermaid graph={content.()} class="flex-1 relative" id="content-view" />
       <% {:mermaid, content} -> %>
-        <.mermaid graph={content} />
+        <.mermaid graph={content} class="flex-1 relative" id="content-view" />
       <% {:viz, content} when is_function(content, 0) -> %>
-        <.viz graph={content.()} />
+        <.viz graph={content.()} class="flex-1 relative" id="content-view" />
       <% {:viz, content} -> %>
-        <.viz graph={content} />
+        <.viz graph={content} class="flex-1 relative" id="content-view" />
       <% {:markdown, content} when is_function(content, 0) -> %>
-        <.markdown content={content.()} />
+        <.markdown content={content.()} class="p-4" />
       <% {:markdown, content} -> %>
-        <.markdown content={content} />
+        <.markdown content={content} class="p-4" />
       <% {:live_view, {module, session}} -> %>
         {live_render(@socket, module, id: "content-view", session: session)}
     <% end %>
-    """
-  end
-
-  defp viz(assigns) do
-    ~H"""
-    <pre phx-hook="Viz" id="explorer" data-graph={@graph} class="flex-1 relative" phx-update="ignore"></pre>
-    """
-  end
-
-  defp mermaid(assigns) do
-    ~H"""
-    <pre phx-hook="Mermaid" id="content-mermaid" data-graph={@graph} class="flex-1 relative" phx-update="ignore"></pre>
-    """
-  end
-
-  defp markdown(assigns) do
-    ~H"""
-    <!-- TODO: Style markdown -->
-    <div class="prose prose-invert p-4">
-      <%= case Earmark.as_html(@content) do
-        {:ok, html, _} -> raw(html)
-        {:error, reason, _} -> "<p>Error rendering markdown: #{reason}</p>"
-      end %>
-    </div>
     """
   end
 

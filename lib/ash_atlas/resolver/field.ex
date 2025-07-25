@@ -43,9 +43,9 @@ defmodule AshAtlas.Resolver.Field do
             ],
        do: %Node.Relationship{relationship: relationship, resource: resource}
 
-  defp edge_label(%Ash.Resource.Attribute{}), do: "attribute"
-  defp edge_label(%Ash.Resource.Aggregate{}), do: "aggregate"
-  defp edge_label(%Ash.Resource.Calculation{}), do: "calculation"
+  defp edge_label(%Ash.Resource.Attribute{}), do: :attribute
+  defp edge_label(%Ash.Resource.Aggregate{}), do: :aggregate
+  defp edge_label(%Ash.Resource.Calculation{}), do: :calculation
 
   defp edge_label(%mod{})
        when mod in [
@@ -54,7 +54,7 @@ defmodule AshAtlas.Resolver.Field do
               Ash.Resource.Relationships.HasMany,
               Ash.Resource.Relationships.ManyToMany
             ],
-       do: "relationship"
+       do: :relationship
 
   defp resolve_field_targets(graph, field_vertex, %mod{destination: target_resource})
        when mod in [
@@ -69,7 +69,7 @@ defmodule AshAtlas.Resolver.Field do
         &match?(%Node.Resource{resource: ^target_resource}, &1)
       )
 
-    :digraph.add_edge(graph, field_vertex, target_resource_vertex, "relationship")
+    :digraph.add_edge(graph, field_vertex, target_resource_vertex, :relationship)
   end
 
   defp resolve_field_targets(_, _, _), do: :ok

@@ -9,12 +9,12 @@ defmodule AshAtlas.Resolver.Domain do
         {domain, resources} <- Ash.Info.domains_and_resources(app) do
       domain_node = %Node.Domain{domain: domain}
       domain_vertex = :digraph.add_vertex(graph, domain_node, Node.unique_id(domain_node))
-      :digraph.add_edge(graph, app_vertex, domain_vertex, "domain")
+      :digraph.add_edge(graph, app_vertex, domain_vertex, :domain)
 
       for resource <- resources do
         resource_node = %Node.Resource{resource: resource}
         resource_vertex = :digraph.add_vertex(graph, resource_node, Node.unique_id(resource_node))
-        :digraph.add_edge(graph, domain_vertex, resource_vertex, "resource")
+        :digraph.add_edge(graph, domain_vertex, resource_vertex, :resource)
 
         test_content_node = %Node.Content{
           id: Node.unique_id(resource_node) <> "_test",

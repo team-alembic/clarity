@@ -21,6 +21,7 @@ defmodule AshAtlas.MixProject do
   defp deps do
     [
       {:ash, "~> 3.5"},
+      {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},
       {:earmark, "~> 1.4"},
       # UI

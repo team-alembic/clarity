@@ -26,7 +26,9 @@ defmodule AshAtlas.Tree.Node.Application do
 
   defimpl AshAtlas.Tree.Node do
     def unique_id(%{app: app}), do: "application:#{app}"
-    def graph_id(%{app: app}), do: "app_#{Atom.to_string(app)}"
+    def graph_id(%{app: app}), do: Atom.to_string(app)
+    def graph_group(_node), do: []
+    def type_label(_node), do: inspect(Application)
     def render_name(%{app: app}), do: Atom.to_string(app)
     def dot_shape(_node), do: "house"
   end

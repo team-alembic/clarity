@@ -56,7 +56,7 @@ defmodule AshAtlas.Web do
       # HTML escaping functionality
       import Phoenix.HTML
       # Core UI components and translation
-      # import AshAtlas.CoreComponents
+      import AshAtlas.CoreComponents
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

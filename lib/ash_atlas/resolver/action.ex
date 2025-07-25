@@ -13,7 +13,7 @@ defmodule AshAtlas.Resolver.Action do
       }
 
       action_vertex = :digraph.add_vertex(graph, action_node, Node.unique_id(action_node))
-      :digraph.add_edge(graph, resource_vertex, action_vertex, "action")
+      :digraph.add_edge(graph, resource_vertex, action_vertex, :action)
 
       action_trigger_content = %Node.Content{
         id: Node.unique_id(action_node) <> "_trigger",

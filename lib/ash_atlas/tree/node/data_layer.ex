@@ -7,12 +7,10 @@ defmodule AshAtlas.Tree.Node.DataLayer do
 
   defimpl AshAtlas.Tree.Node do
     def unique_id(%{data_layer: data_layer}), do: "data_layer:#{inspect(data_layer)}"
-
-    def graph_id(%{data_layer: data_layer}),
-      do: "data_layer_#{data_layer |> Macro.underscore() |> String.replace(~r/[^a-z_]/, "_")}"
-
+    def graph_id(%{data_layer: data_layer}), do: inspect(data_layer)
+    def graph_group(_node), do: []
+    def type_label(_node), do: inspect(Ash.DataLayer)
     def render_name(%{data_layer: data_layer}), do: inspect(data_layer)
-
     def dot_shape(_node), do: "cylinder"
   end
 end

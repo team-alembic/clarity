@@ -10,7 +10,7 @@ defmodule AshAtlas.Tree.Node.Content do
           | content_live_view()
 
   @type t() :: %__MODULE__{
-      id: String.t(),
+          id: iodata(),
           name: String.t(),
           content: content()
         }
@@ -20,7 +20,9 @@ defmodule AshAtlas.Tree.Node.Content do
 
   defimpl AshAtlas.Tree.Node do
     def unique_id(%{id: id}), do: "content:#{id}"
-    def graph_id(%{id: id}), do: "content_#{String.replace(id, ~r/[^a-z_]/, "_")}"
+    def graph_id(%{id: id}), do: id
+    def graph_group(_node), do: []
+    def type_label(_node), do: inspect(AshAtlas.Tree.Node.Content)
     def render_name(%{name: name}), do: name
     def dot_shape(_node), do: "nil"
   end

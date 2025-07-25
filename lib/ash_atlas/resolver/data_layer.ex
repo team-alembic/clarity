@@ -25,7 +25,7 @@ defmodule AshAtlas.Resolver.DataLayer do
         app = Application.get_application(data_layer)
         app_vertex = Map.fetch!(app_vertices, app)
 
-        :digraph.add_edge(graph, app_vertex, data_layer_vertex, "data_layer")
+        :digraph.add_edge(graph, app_vertex, data_layer_vertex, :data_layer)
 
         {data_layer, data_layer_vertex}
       end)
@@ -33,7 +33,7 @@ defmodule AshAtlas.Resolver.DataLayer do
     for %Node.Resource{resource: resource} = resource_vertex <- :digraph.vertices(graph),
         data_layer = Ash.Resource.Info.data_layer(resource) do
       data_layer_vertex = Map.fetch!(data_layer_vertices, data_layer)
-      :digraph.add_edge(graph, resource_vertex, data_layer_vertex, "data_layer")
+      :digraph.add_edge(graph, resource_vertex, data_layer_vertex, :data_layer)
     end
 
     graph

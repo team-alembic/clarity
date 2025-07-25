@@ -30,7 +30,7 @@ defmodule AshAtlas.Resolver.Type do
         app = Application.get_application(type)
         app_vertex = Map.fetch!(app_vertices, app)
 
-        :digraph.add_edge(graph, app_vertex, type_vertex, "type")
+        :digraph.add_edge(graph, app_vertex, type_vertex, :type)
 
         {type, type_vertex}
       end)
@@ -46,7 +46,7 @@ defmodule AshAtlas.Resolver.Type do
     |> Enum.map(fn {vertex, type} ->
       case Map.fetch(types, simplify_type(type)) do
         :error -> :ok
-        {:ok, type_vertex} -> :digraph.add_edge(graph, vertex, type_vertex, "type")
+        {:ok, type_vertex} -> :digraph.add_edge(graph, vertex, type_vertex, :type)
       end
     end)
 

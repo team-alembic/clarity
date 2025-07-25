@@ -9,7 +9,7 @@ defmodule AshAtlas.Resolver.Application do
         %Node.Root{} = root_vertex <- :digraph.vertices(graph) do
       app_node = Node.Application.from_app_tuple(app_tuple)
       app_vertex = :digraph.add_vertex(graph, app_node, Node.unique_id(app_node))
-      :digraph.add_edge(graph, root_vertex, app_vertex, "application")
+      :digraph.add_edge(graph, root_vertex, app_vertex, :application)
     end
 
     graph

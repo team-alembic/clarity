@@ -11,11 +11,11 @@ defmodule AshAtlas.Tree.Node.Relationship do
       do: "relationship:#{inspect(resource)}:#{name}"
 
     def graph_id(%{relationship: %{name: name}, resource: resource}),
-      do:
-        "relationship_#{resource |> Macro.underscore() |> String.replace(~r/[^a-z_]/, "_")}_#{name}"
+      do: [inspect(resource), "_", Atom.to_string(name)]
 
+    def graph_group(%{resource: resource}), do: [inspect(resource), inspect(Ash.Resource.Relationships)]
+    def type_label(%{relationship: %mod{}}), do: inspect(mod)
     def render_name(%{relationship: %{name: name}}), do: Atom.to_string(name)
-
     def dot_shape(_node), do: "rarrow"
   end
 end
