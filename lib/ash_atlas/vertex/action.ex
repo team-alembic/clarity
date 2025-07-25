@@ -1,4 +1,4 @@
-defmodule AshAtlas.Tree.Node.Action do
+defmodule AshAtlas.Vertex.Action do
   @type t() :: %__MODULE__{
           action: Ash.Resource.Actions.action(),
           resource: Ash.Resource.t()
@@ -6,7 +6,7 @@ defmodule AshAtlas.Tree.Node.Action do
   @enforce_keys [:action, :resource]
   defstruct [:action, :resource]
 
-  defimpl AshAtlas.Tree.Node do
+  defimpl AshAtlas.Vertex do
     def unique_id(%{action: %{name: name}, resource: resource}),
       do: "action:#{inspect(resource)}:#{name}"
 
@@ -15,8 +15,8 @@ defmodule AshAtlas.Tree.Node.Action do
 
     def graph_group(%{resource: resource}), do: [inspect(resource), inspect(Ash.Resource.Actions)]
     def type_label(%{action: %mod{}}), do: inspect(mod)
-    @spec render_name(AshAtlas.Tree.Node.Action.t()) :: <<_::24, _::_*8>>
-    def render_name(%{action: %{type: type, name: name}}), do: Atom.to_string(name)
-    def dot_shape(_node), do: "cds"
+    @spec render_name(AshAtlas.Vertex.Action.t()) :: <<_::24, _::_*8>>
+    def render_name(%{action: %{name: name}}), do: Atom.to_string(name)
+    def dot_shape(_vertex), do: "cds"
   end
 end

@@ -1,16 +1,16 @@
-defmodule AshAtlas.Tree.Node.Domain do
+defmodule AshAtlas.Vertex.Domain do
   @type t() :: %__MODULE__{
           domain: Ash.Domain.t()
         }
   @enforce_keys [:domain]
   defstruct [:domain]
 
-  defimpl AshAtlas.Tree.Node do
+  defimpl AshAtlas.Vertex do
     def unique_id(%{domain: domain}), do: "domain:#{inspect(domain)}"
     def graph_id(%{domain: domain}), do: inspect(domain)
-    def graph_group(_node), do: []
-    def type_label(_node), do: inspect(Ash.Domain)
+    def graph_group(_vertex), do: []
+    def type_label(_vertex), do: inspect(Ash.Domain)
     def render_name(%{domain: domain}), do: inspect(domain)
-    def dot_shape(_node), do: "folder"
+    def dot_shape(_vertex), do: "folder"
   end
 end

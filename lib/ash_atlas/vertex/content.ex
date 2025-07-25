@@ -1,4 +1,4 @@
-defmodule AshAtlas.Tree.Node.Content do
+defmodule AshAtlas.Vertex.Content do
   @type content_mermaid() :: {:mermaid, iodata() | (-> iodata())}
   @type content_markdown() :: {:markdown, iodata() | (-> iodata())}
   @type content_viz() :: {:viz, iodata() | (-> iodata())}
@@ -18,12 +18,12 @@ defmodule AshAtlas.Tree.Node.Content do
   @enforce_keys [:id, :name, :content]
   defstruct [:id, :name, :content]
 
-  defimpl AshAtlas.Tree.Node do
+  defimpl AshAtlas.Vertex do
     def unique_id(%{id: id}), do: "content:#{id}"
     def graph_id(%{id: id}), do: id
-    def graph_group(_node), do: []
-    def type_label(_node), do: inspect(AshAtlas.Tree.Node.Content)
+    def graph_group(_vertex), do: []
+    def type_label(_vertex), do: inspect(AshAtlas.Vertex.Content)
     def render_name(%{name: name}), do: name
-    def dot_shape(_node), do: "nil"
+    def dot_shape(_vertex), do: "nil"
   end
 end

@@ -1,5 +1,6 @@
 defmodule AshAtlas.Layouts do
   @moduledoc false
+
   use AshAtlas.Web, :html
   use Phoenix.Component
 

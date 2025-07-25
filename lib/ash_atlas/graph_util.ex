@@ -1,10 +1,8 @@
 defmodule AshAtlas.GraphUtil do
-  @moduledoc """
-  Utilities for working with Erlang `:digraph` structures.
-  """
+  @moduledoc false
 
   @type tree_node() :: %{
-          vertex: :digraph.vertex(),
+          node: :digraph.vertex(),
           children: %{
             optional(:digraph.label()) => [tree_node()]
           }
@@ -84,7 +82,7 @@ defmodule AshAtlas.GraphUtil do
   """
   @spec graph_to_tree(graph :: :digraph.graph(), root_vertex :: :digraph.vertex()) :: tree_node()
   def graph_to_tree(graph, root_vertex) do
-    root_stub = %{vertex: root_vertex, children: %{}}
+    root_stub = %{node: root_vertex, children: %{}}
 
     visited = %{root_vertex => root_stub}
     queue = :queue.in(root_vertex, :queue.new())
@@ -145,7 +143,7 @@ defmodule AshAtlas.GraphUtil do
         {label, Enum.map(id_list, &build_tree(visited_map, &1))}
       end)
 
-    %{vertex: vertex_id, children: concrete_children}
+    %{node: vertex_id, children: concrete_children}
   end
 
   defp bfs_direction(_g, sub, seen, _start, 0, _), do: {sub, seen}

@@ -1,31 +1,33 @@
-defmodule AshAtlas.Resolver.Type do
-  @behaviour AshAtlas.Resolver
+defmodule AshAtlas.Introspector.Type do
+  @moduledoc false
 
-  alias AshAtlas.Tree.Node
+  @behaviour AshAtlas.Introspector
 
-  @impl AshAtlas.Resolver
-  def resolve(graph) do
+  alias AshAtlas.Vertex
+
+  @impl AshAtlas.Introspector
+  def introspect(graph) do
     app_vertices =
       graph
       |> :digraph.vertices()
-      |> Enum.filter(&match?(%Node.Application{}, &1))
+      |> Enum.filter(&match?(%Vertex.Application{}, &1))
       |> Map.new(&{&1.app, &1})
 
     types =
       graph
       |> :digraph.vertices()
       |> Enum.flat_map(fn
-        %Node.Attribute{attribute: %{type: type}} -> [type]
-        %Node.Aggregate{aggregate: %{type: type}} -> [type]
-        %Node.Calculation{calculation: %{type: type}} -> [type]
+        %Vertex.Attribute{attribute: %{type: type}} -> [type]
+        %Vertex.Aggregate{aggregate: %{type: type}} -> [type]
+        %Vertex.Calculation{calculation: %{type: type}} -> [type]
         _ -> []
       end)
       |> Enum.map(&simplify_type/1)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
       |> Map.new(fn type ->
-        type_node = %Node.Type{type: type}
-        type_vertex = :digraph.add_vertex(graph, type_node, Node.unique_id(type_node))
+        type_vertex = %Vertex.Type{type: type}
+        type_vertex = :digraph.add_vertex(graph, type_vertex, Vertex.unique_id(type_vertex))
 
         app = Application.get_application(type)
         app_vertex = Map.fetch!(app_vertices, app)
@@ -38,9 +40,9 @@ defmodule AshAtlas.Resolver.Type do
     graph
     |> :digraph.vertices()
     |> Enum.flat_map(fn
-      %Node.Attribute{} = vertex -> [{vertex, vertex.attribute.type}]
-      %Node.Aggregate{} = vertex -> [{vertex, vertex.aggregate.type}]
-      %Node.Calculation{} = vertex -> [{vertex, vertex.calculation.type}]
+      %Vertex.Attribute{} = vertex -> [{vertex, vertex.attribute.type}]
+      %Vertex.Aggregate{} = vertex -> [{vertex, vertex.aggregate.type}]
+      %Vertex.Calculation{} = vertex -> [{vertex, vertex.calculation.type}]
       _ -> []
     end)
     |> Enum.map(fn {vertex, type} ->
@@ -50,12 +52,6 @@ defmodule AshAtlas.Resolver.Type do
       end
     end)
 
-    graph
-  end
-
-  @impl AshAtlas.Resolver
-  def post_process(graph) do
-    # No post-processing needed for the domain resolver
     graph
   end
 

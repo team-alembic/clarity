@@ -1,8 +1,9 @@
 defmodule AshAtlas.PageLive do
   @moduledoc false
+
   use AshAtlas.Web, :live_view
 
-  alias AshAtlas.Tree.Node
+  alias AshAtlas.Vertex
 
   logo_path = Path.join(__DIR__, "../../../priv/static/images/ash_logo_orange.svg")
   @external_resource logo_path
@@ -10,7 +11,7 @@ defmodule AshAtlas.PageLive do
 
   @impl Phoenix.LiveView
   def mount(
-        %{"node" => node, "content" => content} = _params,
+        %{"vertex" => vertex, "content" => content} = _params,
         %{
           "prefix" => prefix
         } = session,
@@ -19,7 +20,7 @@ defmodule AshAtlas.PageLive do
     graph = AshAtlas.graph()
     tree = AshAtlas.tree(graph)
 
-    node = AshAtlas.node_by_unique_id(graph, node)
+    vertex = AshAtlas.vertex_by_unique_id(graph, vertex)
 
     prefix =
       case prefix do
@@ -32,7 +33,8 @@ defmodule AshAtlas.PageLive do
           scope <> prefix
       end
 
-    {:ok, assign(socket, graph: graph, prefix: prefix, tree: tree) |> update_dynamics(node, content)}
+    {:ok,
+     assign(socket, graph: graph, prefix: prefix, tree: tree) |> update_dynamics(vertex, content)}
   end
 
   def mount(params, %{"prefix" => prefix}, socket) when params == %{} do
@@ -40,9 +42,9 @@ defmodule AshAtlas.PageLive do
   end
 
   @impl Phoenix.LiveView
-  def handle_params(%{"node" => node, "content" => content}, _url, socket) do
-    node = AshAtlas.node_by_unique_id(socket.assigns.graph, node)
-    {:noreply, update_dynamics(socket, node, content)}
+  def handle_params(%{"vertex" => vertex, "content" => content}, _url, socket) do
+    vertex = AshAtlas.vertex_by_unique_id(socket.assigns.graph, vertex)
+    {:noreply, update_dynamics(socket, vertex, content)}
   end
 
   @impl Phoenix.LiveView
@@ -61,10 +63,10 @@ defmodule AshAtlas.PageLive do
               <li class="flex items-center">
                 <span :if={idx > 0} class="mx-2 text-gray-600">/</span>
                 <.link
-                  patch={"#{@prefix}/#{AshAtlas.Tree.Node.unique_id(breadcrumb)}/graph"}
+                  patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(breadcrumb)}/graph"}
                   class="hover:text-ash-400 transition-colors"
                 >
-                  <.node_name node={breadcrumb} />
+                  <.vertex_name vertex={breadcrumb} />
                 </.link>
               </li>
             <% end %>
@@ -78,7 +80,7 @@ defmodule AshAtlas.PageLive do
           <.render_navigation_tree
             tree={@tree}
             prefix={@prefix}
-            current_node={@current_node}
+            current={@current_vertex}
             breadcrumbs={@breadcrumbs}
           />
         </aside>
@@ -88,7 +90,7 @@ defmodule AshAtlas.PageLive do
             <ul class="flex space-x-2">
               <li :for={content <- @contents}>
                 <.link
-                  patch={"#{@prefix}/#{AshAtlas.Tree.Node.unique_id(@current_node)}/#{content.id}"}
+                  patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(@current_vertex)}/#{content.id}"}
                   class={
                   "inline-block px-4 py-2 rounded-t-md font-medium transition-colors " <>
                   if content.id == @current_content.id,
@@ -115,16 +117,16 @@ defmodule AshAtlas.PageLive do
 
   defp render_navigation_tree(assigns) do
     ~H"""
-    <details :for={{label, child_nodes} <- @tree.children} :if={label != :content} open={Enum.any?(@breadcrumbs, &(&1 == @tree.vertex))}>
+    <details :for={{label, child_vertices} <- @tree.children} :if={label != :content} open={Enum.any?(@breadcrumbs, &(&1 == @tree.node))}>
       <summary class="cursor-pointer select-none text-gray-400 hover:text-ash-400 px-2 py-1 rounded-sm group-open:bg-gray-700 transition-colors">
         <span>{label}</span>
       </summary>
       <ul class="border-l border-gray-700 pl-2 space-y-1">
-        <li :for={child <- child_nodes}>
+        <li :for={child <- child_vertices}>
           <.render_navigation_node
             tree={child}
             prefix={@prefix}
-            current_node={@current_node}
+            current={@current}
             breadcrumbs={@breadcrumbs}
           />
         </li>
@@ -136,20 +138,20 @@ defmodule AshAtlas.PageLive do
   defp render_navigation_node(assigns) do
     ~H"""
     <.link
-      patch={"#{@prefix}/#{AshAtlas.Tree.Node.unique_id(@tree.vertex)}/graph"}
+      patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(@tree.node)}/graph"}
       class={
         "block px-2 py-1 rounded-sm hover:bg-gray-700 hover:text-ash-400 transition-colors font-medium" <>
-        if @tree.vertex == @current_node, do: " bg-red-700 text-ash-400", else: ""
+        if @tree.node == @current, do: " bg-red-700 text-ash-400", else: ""
       }
     >
-      <.node_name node={@tree.vertex} />
+      <.vertex_name vertex={@tree.node} />
     </.link>
     <%= if @tree.children != %{} do %>
       <div class="ml-4 group">
         <.render_navigation_tree
           tree={@tree}
           prefix={@prefix}
-          current_node={@current_node}
+          current={@current}
           breadcrumbs={@breadcrumbs} />
       </div>
     <% end %>
@@ -177,37 +179,47 @@ defmodule AshAtlas.PageLive do
     """
   end
 
-  defp update_dynamics(socket, node, current_content) do
-    subgraph = AshAtlas.subgraph(socket.assigns.graph, node, 2, 1)
-
+  defp update_dynamics(socket, current_vertex, current_content) do
     breadcrumbs =
       socket.assigns.graph
       |> :digraph.get_short_path(
-        AshAtlas.node_by_unique_id(socket.assigns.graph, "root"),
-        node
+        AshAtlas.vertex_by_unique_id(socket.assigns.graph, "root"),
+        current_vertex
       )
       |> case do
-        false -> [node]
+        false -> [current_vertex]
         path -> path
       end
 
-    contents = socket.assigns.graph
-    |> :digraph.out_edges(node)
-    |> Enum.map(&:digraph.edge(socket.assigns.graph, &1))
-    |> Enum.filter(fn {_, _, _, label} -> label == :content end)
-    |> Enum.map(fn {_, _, to, _} -> to end)
+    contents =
+      socket.assigns.graph
+      |> :digraph.out_edges(current_vertex)
+      |> Enum.map(&:digraph.edge(socket.assigns.graph, &1))
+      |> Enum.filter(fn {_, _, _, label} -> label == :content end)
+      |> Enum.map(fn {_, _, to, _} -> to end)
 
     contents = [
-      %Node.Content{
+      %Vertex.Content{
         id: "graph",
         name: "Graph Navigation",
-        content: {:viz, fn -> AshAtlas.Graph.to_dot(subgraph) end}
-      } | contents
+        content: {:viz, fn ->
+          socket.assigns.graph
+          |> AshAtlas.subgraph(current_vertex, 2, 1)
+          |> AshAtlas.Graph.to_dot()
+        end}
+      }
+      | contents
     ]
 
-    current_content = Enum.find(contents, List.first(contents), fn content -> content.id == current_content end)
+    current_content =
+      Enum.find(contents, List.first(contents), fn content -> content.id == current_content end)
 
-    assign(socket, current_node: node, subgraph: subgraph, breadcrumbs: breadcrumbs, contents: contents, current_content: current_content)
+    assign(socket,
+      current_vertex: current_vertex,
+      breadcrumbs: breadcrumbs,
+      contents: contents,
+      current_content: current_content
+    )
   end
 
   defp ash_logo, do: @ash_logo

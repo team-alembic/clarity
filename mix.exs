@@ -26,7 +26,7 @@ defmodule AshAtlas.MixProject do
       {:earmark, "~> 1.4"},
       # UI
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.3.1", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.3.1", runtime: Mix.env() == :dev}
     ]
   end
 

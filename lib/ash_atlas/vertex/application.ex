@@ -1,4 +1,4 @@
-defmodule AshAtlas.Tree.Node.Application do
+defmodule AshAtlas.Vertex.Application do
   @type t() :: %__MODULE__{
           app: Application.app(),
           description: String.t(),
@@ -24,12 +24,12 @@ defmodule AshAtlas.Tree.Node.Application do
     %__MODULE__{app: app, description: description, version: version}
   end
 
-  defimpl AshAtlas.Tree.Node do
+  defimpl AshAtlas.Vertex do
     def unique_id(%{app: app}), do: "application:#{app}"
     def graph_id(%{app: app}), do: Atom.to_string(app)
-    def graph_group(_node), do: []
-    def type_label(_node), do: inspect(Application)
+    def graph_group(_vertex), do: []
+    def type_label(_vertex), do: inspect(Application)
     def render_name(%{app: app}), do: Atom.to_string(app)
-    def dot_shape(_node), do: "house"
+    def dot_shape(_vertex), do: "house"
   end
 end

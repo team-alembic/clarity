@@ -1,5 +1,7 @@
 defmodule AshAtlas.Graph do
-  alias AshAtlas.Tree.Node
+  @moduledoc false
+
+  alias AshAtlas.Vertex
 
   import Phoenix.HTML
 
@@ -24,37 +26,38 @@ defmodule AshAtlas.Graph do
       "    color = \"#d1d5db\";\n",
       "  ];\n",
       "  rankdir = LR;\n",
-      render_nodes(graph) |> indent(),
+      render_graph(graph) |> indent(),
       graph |> render_edges() |> indent(),
       "}\n"
     ]
   end
 
-  defp render_nodes(graph) do
+  defp render_graph(graph) do
     graph
     |> :digraph.vertices()
     |> Enum.reject(fn
-      %Node.Root{} -> true
-      %Node.Content{} -> true
+      %Vertex.Root{} -> true
+      %Vertex.Content{} -> true
       _ -> false
     end)
-    |> Enum.map(&{Node.graph_group(&1), &1})
+    |> Enum.map(&{Vertex.graph_group(&1), &1})
     |> render_grouped_vertices()
   end
 
   defp render_grouped_vertices(vertices) do
-    {here, nested} = vertices
-    |> Enum.group_by(
-      fn
-        {[group | _rest], _node} -> group
-        {[], _node} -> nil
-      end,
-      fn
-        {[_group | rest], node} -> {rest, node}
-        {[], node} -> node
-      end
-    )
-    |> Map.split([nil])
+    {here, nested} =
+      vertices
+      |> Enum.group_by(
+        fn
+          {[group | _rest], _vertex} -> group
+          {[], _vertex} -> nil
+        end,
+        fn
+          {[_group | rest], vertex} -> {rest, vertex}
+          {[], vertex} -> vertex
+        end
+      )
+      |> Map.split([nil])
 
     [
       render_vertices(here[nil] || []),
@@ -81,18 +84,18 @@ defmodule AshAtlas.Graph do
   defp render_vertices(vertices) do
     for vertex <- vertices do
       [
-        encode_node_id(vertex),
+        encode_vertex_id(vertex),
         " [label = ",
         escape_html_label([
           raw("<I><FONT POINT-SIZE=\"8\">"),
-          Node.type_label(vertex),
+          Vertex.type_label(vertex),
           raw("</FONT></I><BR />"),
-          Node.render_name(vertex)
+          Vertex.render_name(vertex)
         ]),
         ", shape = ",
-        Node.dot_shape(vertex),
+        Vertex.dot_shape(vertex),
         ", URL = \"#",
-        Node.unique_id(vertex),
+        Vertex.unique_id(vertex),
         "\"];\n"
       ]
     end
@@ -102,12 +105,12 @@ defmodule AshAtlas.Graph do
     for edge <- :digraph.edges(graph),
         {_, from, to, label} = :digraph.edge(graph, edge),
         label != :content,
-        not match?(%Node.Root{}, from),
-        not match?(%Node.Root{}, to) do
+        not match?(%Vertex.Root{}, from),
+        not match?(%Vertex.Root{}, to) do
       [
-        encode_node_id(from),
+        encode_vertex_id(from),
         " -> ",
-        encode_node_id(to),
+        encode_vertex_id(to),
         ";\n"
         # TODO: Show label?
         # " [label = \"",
@@ -121,12 +124,12 @@ defmodule AshAtlas.Graph do
     content
     |> IO.iodata_to_binary()
     |> String.split("\n")
-    |> Enum.map(&(["\n  ", &1]))
+    |> Enum.map(&["\n  ", &1])
   end
 
-  @spec encode_node_id(node :: Node.t()) :: iodata()
-  defp encode_node_id(%node_module{} = node) do
-    encode_id([inspect(node_module), "_", node |> Node.graph_id() |> to_string()])
+  @spec encode_vertex_id(vertex :: Vertex.t()) :: iodata()
+  defp encode_vertex_id(%vertex_module{} = vertex) do
+    encode_id([inspect(vertex_module), "_", vertex |> Vertex.graph_id() |> to_string()])
   end
 
   @spec encode_id(id :: iodata()) :: iodata()

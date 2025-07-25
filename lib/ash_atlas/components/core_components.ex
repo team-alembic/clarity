@@ -1,21 +1,23 @@
 defmodule AshAtlas.CoreComponents do
+  @moduledoc false
+
   use Phoenix.Component
 
   import Phoenix.HTML
 
-  alias AshAtlas.Tree.Node
+  alias AshAtlas.Vertex
 
-  attr :node, :any, required: true, doc: "The node to render"
+  attr(:vertex, :any, required: true, doc: "The vertex to render")
 
-  def node_name(assigns) do
+  def vertex_name(assigns) do
     ~H"""
-    {Node.render_name(@node)}
+    {Vertex.render_name(@vertex)}
     """
   end
 
-  attr :id, :string, required: true, doc: "The unique ID for the visualization element"
-  attr :graph, :string, required: true, doc: "The graph data in DOT language format"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
+  attr(:id, :string, required: true, doc: "The unique ID for the visualization element")
+  attr(:graph, :string, required: true, doc: "The graph data in DOT language format")
+  attr(:rest, :global, doc: "the arbitrary HTML attributes to add to the flash container")
 
   def viz(assigns) do
     ~H"""
@@ -23,9 +25,9 @@ defmodule AshAtlas.CoreComponents do
     """
   end
 
-  attr :id, :string, required: true, doc: "The unique ID for the mermaid visualization"
-  attr :graph, :string, required: true, doc: "The mermaid graph definition in string format"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
+  attr(:id, :string, required: true, doc: "The unique ID for the mermaid visualization")
+  attr(:graph, :string, required: true, doc: "The mermaid graph definition in string format")
+  attr(:rest, :global, doc: "the arbitrary HTML attributes to add to the flash container")
 
   def mermaid(assigns) do
     ~H"""
@@ -33,9 +35,9 @@ defmodule AshAtlas.CoreComponents do
     """
   end
 
-  attr :content, :string, required: true, doc: "The markdown content to render"
-  attr :class, :string, default: "", doc: "CSS classes to apply to the markdown container"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
+  attr(:content, :string, required: true, doc: "The markdown content to render")
+  attr(:class, :string, default: "", doc: "CSS classes to apply to the markdown container")
+  attr(:rest, :global, doc: "the arbitrary HTML attributes to add to the flash container")
 
   def markdown(assigns) do
     ~H"""
