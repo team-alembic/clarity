@@ -14,7 +14,7 @@ defmodule AshAtlas.Vertex.Resource do
     def graph_id(%{resource: resource}), do: inspect(resource)
 
     @impl AshAtlas.Vertex
-    def graph_group(_vertex), do: []
+    def graph_group(%{resource: resource}), do: [inspect(resource)]
 
     @impl AshAtlas.Vertex
     def type_label(_vertex), do: inspect(Ash.Resource)
