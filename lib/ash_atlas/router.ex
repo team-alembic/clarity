@@ -100,17 +100,19 @@ defmodule AshAtlas.Router do
             Map.take(keys, [:img, :style, :script])
         end
 
+      # TODO: Remove internal API usage
+      full_path = "/" <> String.trim(Enum.join(@phoenix_top_scopes.path, "/") <> path, "/")
+
       live_session opts[:live_session_name] || :ash_atlas,
         on_mount: List.wrap(opts[:on_mount]),
         session:
-          {AshAtlas.Router, :__session__, [%{"prefix" => path}, List.wrap(opts[:session])]},
+          {AshAtlas.Router, :__session__, [%{"prefix" => full_path}, List.wrap(opts[:session])]},
         root_layout: {AshAtlas.Layouts, :root} do
         live(
           "#{path}",
           AshAtlas.PageLive,
           :page,
           private: %{
-            # base_path
             live_socket_path: live_socket_path,
             ash_atlas_csp_nonce: csp_nonce_assign_key
           }
@@ -154,8 +156,6 @@ defmodule AshAtlas.Router do
       Enum.reduce(additional_hooks, session, fn {m, f, a}, acc ->
         Map.merge(acc, apply(m, f, [conn | a]) || %{})
       end)
-
-    session = Map.put(session, "request_path", conn.request_path)
 
     Enum.reduce(@cookies_to_replicate, session, fn cookie, session ->
       case conn.req_cookies[cookie] do

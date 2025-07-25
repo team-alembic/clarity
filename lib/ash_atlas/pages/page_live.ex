@@ -10,22 +10,11 @@ defmodule AshAtlas.PageLive do
   @impl Phoenix.LiveView
   def mount(
         %{"vertex" => vertex, "content" => content} = _params,
-        %{"prefix" => prefix} = session,
+        %{"prefix" => prefix} = _session,
         socket
       ) do
     atlas = AshAtlas.get()
     vertex = Map.fetch!(atlas.vertices, vertex)
-
-    prefix =
-      case prefix do
-        "/" ->
-          session["request_path"]
-
-        _ ->
-          request_path = session["request_path"]
-          [scope, _] = String.split(request_path, prefix)
-          scope <> prefix
-      end
 
     {:ok,
      socket
@@ -33,7 +22,7 @@ defmodule AshAtlas.PageLive do
      |> update_dynamics(vertex, content)}
   end
 
-  def mount(params, %{"prefix" => prefix}, socket) when params == %{} do
+  def mount(params, %{"prefix" => prefix} = _session, socket) when params == %{} do
     {:ok, push_navigate(socket, to: prefix <> "/root/graph")}
   end
 

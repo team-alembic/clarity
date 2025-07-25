@@ -4,6 +4,14 @@
 
 ## Installation
 
+### Igniter
+
+```bash
+mix igniter.install ash_atlas@github:team-alembic/atlas
+```
+
+### Manual
+
 The package can be installed by adding `ash_atlas` to your list of dependencies
 in `mix.exs`:
 
