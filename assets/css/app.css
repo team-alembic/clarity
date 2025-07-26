@@ -91,3 +91,55 @@
   text-decoration: none;
   cursor: pointer;
 }
+
+/**
+ * Layout
+ */
+.layout-container {
+  display: grid;
+
+  grid-template-columns: 1fr;
+  /* TODO: Replace minmax(auto, 4rem) with auto once the navigation is build collpasible on mobile */
+  grid-template-rows: auto auto auto 1fr;
+  grid-template-areas:
+    "header"
+    "navigation"
+    "tabs"
+    "main";
+
+  grid-column-gap: 0px;
+  grid-row-gap: 0px;
+  width: 100vw;
+  min-height: 100vh;
+}
+
+@media (min-width: 48rem) {
+  .layout-container {
+    grid-template-columns: minmax(20rem, 25vw) 1fr;
+    grid-template-rows: min-content min-content 1fr;
+    grid-template-areas:
+      "header header"
+      "navigation tabs"
+      "navigation main";
+
+    height: 100vh;
+  }
+}
+
+.layout-container > .header {
+  grid-area: header;
+}
+
+.layout-container > .navigation {
+  grid-area: navigation;
+  overflow: auto;
+}
+
+.layout-container > .tabs {
+  grid-area: tabs;
+}
+
+.layout-container > .content {
+  grid-area: main;
+  overflow: auto;
+}

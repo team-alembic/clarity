@@ -33,7 +33,7 @@ defmodule AshAtlas.CoreComponents do
         </.link>
       </h1>
 
-      <nav id="breadcrumbs">
+      <nav id="breadcrumbs" class="hidden md:block">
         <ol class="flex flex-wrap text-sm text-gray-400 space-x-2">
           <%= for {breadcrumb, idx} <- Enum.with_index(@breadcrumbs), idx > 0 do %>
             <li class="flex items-center">
@@ -48,6 +48,28 @@ defmodule AshAtlas.CoreComponents do
           <% end %>
         </ol>
       </nav>
+
+      <button
+        type="button"
+        class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 md:hidden"
+        phx-click="toggle_navigation"
+        aria-label="Toggle navigation"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          class="size-6"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+          />
+        </svg>
+      </button>
     </header>
     """
   end

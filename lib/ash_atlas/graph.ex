@@ -7,15 +7,19 @@ defmodule AshAtlas.Graph do
   alias Phoenix.HTML.Safe
 
   @type theme :: :light | :dark
-  @type options :: [theme: theme()]
+  @type options :: [theme: theme(), highlight: :digraph.vertex() | [:digraph.vertex()]]
 
   @default_dot_options [
-    theme: :light
+    theme: :light,
+    highlight: []
   ]
 
   @spec to_dot(graph :: :digraph.graph(), options :: options()) :: iodata()
   def to_dot(graph, options \\ []) do
-    options = Keyword.merge(@default_dot_options, options)
+    options =
+      @default_dot_options
+      |> Keyword.merge(options)
+      |> Keyword.update!(:highlight, &List.wrap/1)
 
     [
       "digraph {\n",
@@ -48,14 +52,14 @@ defmodule AshAtlas.Graph do
       end,
       "  ];\n",
       "  rankdir = LR;\n",
-      graph |> render_graph() |> indent(),
+      graph |> render_graph(options) |> indent(),
       graph |> render_edges() |> indent(),
       "}\n"
     ]
   end
 
-  @spec render_graph(graph :: :digraph.graph()) :: iodata()
-  defp render_graph(graph) do
+  @spec render_graph(graph :: :digraph.graph(), options :: options()) :: iodata()
+  defp render_graph(graph, options) do
     graph
     |> :digraph.vertices()
     |> Enum.reject(fn
@@ -64,11 +68,12 @@ defmodule AshAtlas.Graph do
       _ -> false
     end)
     |> Enum.map(&{Vertex.graph_group(&1), &1})
-    |> render_grouped_vertices()
+    |> render_grouped_vertices(options)
   end
 
-  @spec render_grouped_vertices(vertices :: [{[String.t()], Vertex.t()}]) :: iodata()
-  defp render_grouped_vertices(vertices) do
+  @spec render_grouped_vertices(vertices :: [{[String.t()], Vertex.t()}], options :: options()) ::
+          iodata()
+  defp render_grouped_vertices(vertices, options) do
     {here, nested} =
       vertices
       |> Enum.group_by(
@@ -84,7 +89,7 @@ defmodule AshAtlas.Graph do
       |> Map.split([nil])
 
     [
-      render_vertices(here[nil] || []),
+      render_vertices(here[nil] || [], options),
       for {group, vertices} <- nested do
         [
           "subgraph ",
@@ -98,15 +103,15 @@ defmodule AshAtlas.Graph do
           ]),
           ";\n",
           "  style = rounded;\n",
-          vertices |> render_grouped_vertices() |> indent(),
+          vertices |> render_grouped_vertices(options) |> indent(),
           "}\n"
         ]
       end
     ]
   end
 
-  @spec render_vertices(vertices :: [Vertex.t()]) :: iodata()
-  defp render_vertices(vertices) do
+  @spec render_vertices(vertices :: [Vertex.t()], options :: options()) :: iodata()
+  defp render_vertices(vertices, options) do
     for vertex <- vertices do
       [
         encode_vertex_id(vertex),
@@ -121,7 +126,13 @@ defmodule AshAtlas.Graph do
         Vertex.dot_shape(vertex),
         ", URL = \"#",
         Vertex.unique_id(vertex),
-        "\"];\n"
+        "\"",
+        case {vertex in options[:highlight], options[:theme]} do
+          {true, :dark} -> ", style = filled, fillcolor = \"#f87171\", color = \"#f87171\""
+          {true, :light} -> ", style = filled, fillcolor = \"#fca5a5\", color = \"#fca5a5\""
+          _ -> ""
+        end,
+        "];\n"
       ]
     end
   end

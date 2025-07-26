@@ -3,8 +3,6 @@ import svgPanZoom from "svg-pan-zoom";
 
 export default {
   async mounted() {
-    this.width = this.el.clientWidth;
-    this.height = this.el.clientHeight;
     this.viz = await Viz.instance();
     await this.render();
   },
@@ -19,10 +17,9 @@ export default {
 
     const svg = this.viz.renderSVGElement(graph);
 
-    // TODO: Can we remove this and use flexbox somehow?
     svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
-    svg.setAttribute("width", this.width);
-    svg.setAttribute("height", this.height);
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
 
     [...svg.querySelectorAll("a")].forEach((link) => {
       const id = link.getAttribute("xlink:href").replace(/^#/, "");
@@ -39,10 +36,12 @@ export default {
     this.el.appendChild(svg);
     this.oldSvg = svg;
     
-    svgPanZoom(svg, {
+    const zoom = svgPanZoom(svg, {
       controlIconsEnabled: true,
       maxZoom: 100,
       contain: true
     });
+
+    window.addEventListener("resize", () => zoom.resize());
   },
 };

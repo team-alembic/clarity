@@ -14,7 +14,7 @@ defmodule AshAtlas.PageLive do
 
     {:ok,
      socket
-     |> assign(atlas: atlas)
+     |> assign(atlas: atlas, show_navigation: false)
      |> update_dynamics(vertex, content)}
   end
 
@@ -25,36 +25,36 @@ defmodule AshAtlas.PageLive do
   @impl Phoenix.LiveView
   def handle_params(%{"vertex" => vertex, "content" => content}, _url, socket) do
     vertex = Map.fetch!(socket.assigns.atlas.vertices, vertex)
-    {:noreply, update_dynamics(socket, vertex, content)}
+    {:noreply, socket |> assign(show_navigation: false) |> update_dynamics(vertex, content)}
   end
 
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
-      <.header breadcrumbs={@breadcrumbs} prefix={@prefix} asset_path={@asset_path} class="z-10" />
+    <article class="layout-container bg-gray-900 text-gray-100">
+      <.header
+        breadcrumbs={@breadcrumbs}
+        prefix={@prefix}
+        asset_path={@asset_path}
+        class="header z-10"
+      />
 
-      <div class="flex flex-1">
-        <!-- TODO: Make overflow y auto work --->
-        <.navigation
-          tree={@atlas.tree}
-          prefix={@prefix}
-          current={@current_vertex}
-          breadcrumbs={@breadcrumbs}
-          class="w-64 bg-gray-800 border-r border-gray-700 p-4 overflow-auto"
-        />
+      <.navigation
+        tree={@atlas.tree}
+        prefix={@prefix}
+        current={@current_vertex}
+        breadcrumbs={@breadcrumbs}
+        class={"navigation bg-gray-800 border-r border-gray-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
+      />
 
-        <main class="flex-1 flex flex-col overflow-auto">
-          <.tabs
-            contents={@contents}
-            current_content={@current_content}
-            prefix={@prefix}
-            current_vertex={@current_vertex}
-          />
-          <.render_content content={@current_content} socket={@socket} />
-        </main>
-      </div>
-    </div>
+      <.tabs
+        contents={@contents}
+        current_content={@current_content}
+        prefix={@prefix}
+        current_vertex={@current_vertex}
+      />
+      <.render_content content={@current_content} socket={@socket} />
+    </article>
     """
   end
 
@@ -63,10 +63,14 @@ defmodule AshAtlas.PageLive do
     {:noreply, push_patch(socket, to: "#{socket.assigns.prefix}/#{id}/graph")}
   end
 
+  def handle_event("toggle_navigation", _params, socket) do
+    {:noreply, assign(socket, show_navigation: not socket.assigns.show_navigation)}
+  end
+
   @spec tabs(assigns :: Socket.assigns()) :: Rendered.t()
   defp tabs(assigns) do
     ~H"""
-    <nav class="border-b border-gray-700 bg-gray-900 px-4">
+    <nav class="tabs border-b border-gray-700 bg-gray-900 px-4">
       <ul class="flex space-x-2">
         <li :for={content <- @contents}>
           <.link
@@ -91,19 +95,23 @@ defmodule AshAtlas.PageLive do
     ~H"""
     <%= case @content.content do %>
       <% {:mermaid, content} when is_function(content, 0) -> %>
-        <.mermaid graph={content.()} class="flex-1 relative" id="content-view" />
+        <.mermaid graph={content.()} class="content p-4" id="content-view-mermaid" />
       <% {:mermaid, content} -> %>
-        <.mermaid graph={content} class="flex-1 relative" id="content-view" />
+        <.mermaid graph={content} class="content p-4" id="content-view-mermaid" />
       <% {:viz, content} when is_function(content, 0) -> %>
-        <.viz graph={content.()} class="flex-1 relative" id="content-view" />
+        <.viz graph={content.()} class="content p-4" id="content-view-viz" />
       <% {:viz, content} -> %>
-        <.viz graph={content} class="flex-1 relative" id="content-view" />
+        <.viz graph={content} class="content p-4" id="content-view-viz" />
       <% {:markdown, content} when is_function(content, 0) -> %>
-        <.markdown content={content.()} class="p-4" />
+        <.markdown content={content.()} class="content p-4" />
       <% {:markdown, content} -> %>
-        <.markdown content={content} class="p-4" />
+        <.markdown content={content} class="content p-4" />
       <% {:live_view, {module, session}} -> %>
-        {live_render(@socket, module, id: "content-view", session: session)}
+        {live_render(@socket, module,
+          id: "content-view",
+          session: session,
+          container: {:div, class: "content"}
+        )}
     <% end %>
     """
   end
@@ -140,7 +148,7 @@ defmodule AshAtlas.PageLive do
            fn ->
              graph
              |> AshAtlas.GraphUtil.subgraph_within_steps(current_vertex, 2, 1)
-             |> AshAtlas.Graph.to_dot(theme: :dark)
+             |> AshAtlas.Graph.to_dot(theme: :dark, highlight: current_vertex)
            end}
       }
       | contents

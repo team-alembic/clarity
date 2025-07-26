@@ -12,8 +12,6 @@ mermaid.initialize({
 
 export default {
   async mounted() {
-    this.width = this.el.clientWidth;
-    this.height = this.el.clientHeight;
     await this.render();
   },
   async updated() {
@@ -22,19 +20,22 @@ export default {
   async render() {
     const graph = this.el.dataset.graph;
 
-    const { svg } = await mermaid.render(`${this.el.id}_content`, graph);
-    this.el.innerHTML = svg;
+    const { svg: svgRaw } = await mermaid.render(`${this.el.id}_content`, graph);
+    this.el.innerHTML = svgRaw;
 
-    const svgElem = this.el.querySelector("svg");
+    const svg = this.el.querySelector("svg");
 
-    // TODO: Can we remove this and use flexbox somehow?
-    svgElem.setAttribute("width", this.width);
-    svgElem.setAttribute("height", this.height);
-    svgElem.setAttribute("style", "");
-
-    svgPanZoom(svgElem, {
+    svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("style", "");
+    
+    const zoom = svgPanZoom(svg, {
       controlIconsEnabled: true,
       maxZoom: 100,
+      contain: true
     });
+
+    window.addEventListener("resize", () => zoom.resize());
   },
 };
