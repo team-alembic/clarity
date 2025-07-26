@@ -81,33 +81,37 @@ defmodule AshAtlas.Router do
       import Phoenix.LiveView.Router
 
       live_socket_path = Keyword.get(opts, :live_socket_path, "/live")
-
-      # TODO: Remove internal API usage
-      full_path = "/" <> String.trim(Enum.join(@phoenix_top_scopes.path, "/") <> path, "/")
-
+      full_path = Phoenix.Router.scoped_path(__MODULE__, path)
       asset_path = Keyword.get(opts, :asset_path, full_path)
 
-      live_session opts[:live_session_name] || :ash_atlas,
-        on_mount: [AshAtlas.Pages.Setup | List.wrap(opts[:on_mount])],
-        session:
-          {AshAtlas.Router, :__session__,
-           [
-             %{"prefix" => full_path, "asset_path" => asset_path},
-             List.wrap(opts[:session])
-           ]},
+      live_session_name = opts[:live_session_name] || :ash_atlas
+      on_mount = [AshAtlas.Pages.Setup | List.wrap(opts[:on_mount])]
+
+      session =
+        {AshAtlas.Router, :__session__,
+         [
+           %{"prefix" => full_path, "asset_path" => asset_path},
+           List.wrap(opts[:session])
+         ]}
+
+      private = %{live_socket_path: live_socket_path}
+
+      live_session live_session_name,
+        on_mount: on_mount,
+        session: session,
         root_layout: {AshAtlas.Layouts, :root} do
         live(
           "#{path}",
           AshAtlas.PageLive,
           :page,
-          private: %{live_socket_path: live_socket_path}
+          private: private
         )
 
         live(
           "#{path}/:vertex/:content",
           AshAtlas.PageLive,
           :page,
-          private: %{live_socket_path: live_socket_path}
+          private: private
         )
       end
     end
