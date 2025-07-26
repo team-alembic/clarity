@@ -5,7 +5,7 @@ defmodule AshAtlas.MixProject do
     [
       app: :ash_atlas,
       version: "0.1.0",
-      elixir: "~> 1.17",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
@@ -33,6 +33,7 @@ defmodule AshAtlas.MixProject do
       {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.3.1", runtime: Mix.env() == :dev},
       # Development
+      {:phx_new, "~> 1.7", only: [:test]},
       {:ex_doc, "~> 0.38.2", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.5", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

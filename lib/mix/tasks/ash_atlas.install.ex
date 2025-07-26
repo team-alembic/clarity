@@ -31,6 +31,7 @@ if Code.ensure_loaded?(Igniter) do
 
     alias Igniter.Code.Common
     alias Igniter.Code.Function
+    alias Igniter.Code.Keyword
     alias Igniter.Libs.Phoenix
     alias Igniter.Project.Application
     alias Igniter.Project.Formatter
@@ -75,8 +76,12 @@ if Code.ensure_loaded?(Igniter) do
       {igniter, router} =
         Phoenix.select_router(igniter, "Which router should AshAtlas be added to?")
 
+      {igniter, endpoint} =
+        Phoenix.select_endpoint(igniter, router, "Which endpoint should AshAtlas be added to?")
+
       igniter
       |> Formatter.import_dep(:ash_atlas)
+      |> add_to_endpoint(endpoint)
       |> add_to_router(app_name, router)
     end
 
@@ -121,6 +126,90 @@ if Code.ensure_loaded?(Igniter) do
           end
 
         {:ok, zipper}
+      end)
+    end
+
+    @spec add_to_endpoint(igniter :: Igniter.t(), endpoint :: module() | nil) ::
+            Igniter.t()
+    defp add_to_endpoint(igniter, endpoint)
+
+    defp add_to_endpoint(igniter, nil) do
+      Igniter.add_warning(igniter, """
+      No Phoenix endpoint found or selected. Please ensure that Phoenix is set up
+      and then run this installer again with
+
+          mix ash_atlas.install
+      """)
+    end
+
+    defp add_to_endpoint(igniter, endpoint) do
+      Module.find_and_update_module!(igniter, endpoint, fn zipper ->
+        zipper
+        |> endpoint_move_to_plug(fn zipper ->
+          with true <- Common.nodes_equal?(zipper, Plug.Static),
+               {:ok, zipper} <- Common.move_right(zipper, 1),
+               {:ok, zipper} <- Keyword.get_key(zipper, :from) do
+            Common.nodes_equal?(zipper, :ash_atlas)
+          else
+            _ -> false
+          end
+        end)
+        |> case do
+          :error ->
+            endpoint_install_plug(zipper)
+
+          {:ok, _zipper} ->
+            {:ok, zipper}
+        end
+      end)
+    end
+
+    @spec endpoint_install_plug(zipper :: Sourceror.Zipper.t()) ::
+            {:ok, Sourceror.Zipper.t()} | {:warning, String.t()}
+    defp endpoint_install_plug(zipper) do
+      case endpoint_move_to_plug(zipper, &Common.nodes_equal?(&1, Plug.Static)) do
+        {:ok, zipper} ->
+          {:ok,
+           Common.add_code(
+             zipper,
+             """
+             plug Plug.Static,
+               at: "/atlas",
+               from: :ash_atlas,
+               gzip: true,
+               only: AshAtlas.Web.static_paths()
+             """,
+             placement: :after
+           )}
+
+        _ ->
+          {:warning,
+           """
+           The location of the `Plug.Static` plug in your endpoint could not be
+           determined. Please ensure that the preinstalled `Plug.Static` plug
+           is present in your endpoint or add the following code manually:
+
+               plug Plug.Static,
+                 at: "/atlas",
+                 from: :ash_atlas,
+                 gzip: true,
+                 only: AshAtlas.Web.static_paths()
+           """}
+      end
+    end
+
+    @spec endpoint_move_to_plug(
+            zipper :: Sourceror.Zipper.t(),
+            pred :: (Sourceror.Zipper.t() -> boolean())
+          ) :: {:ok, Sourceror.Zipper.t()} | :error
+    defp endpoint_move_to_plug(zipper, pred) do
+      Common.move_to(zipper, fn zipper ->
+        with true <- Function.function_call?(zipper, :plug, 2),
+             {:ok, zipper} <- Function.move_to_nth_argument(zipper, 0) do
+          pred.(zipper)
+        else
+          _ -> false
+        end
       end)
     end
   end

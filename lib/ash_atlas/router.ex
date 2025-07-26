@@ -48,14 +48,13 @@ defmodule AshAtlas.Router do
     * `:live_socket_path` - Optional override for the socket path. it must match
       the `socket "/live", Phoenix.LiveView.Socket` in your endpoint. Defaults to `/live`.
 
+    * `:asset_path` - Optional override for the asset path. It must match
+      the path of the atlas `Plug.Static` in your endpoint. Defaults to the
+      base url of atlas.
+
     * `:on_mount` - Optional list of hooks to attach to the mount lifecycle.
 
     * `:session` - Optional extra session map or MFA tuple to be merged with the session.
-
-    * `:csp_nonce_assign_key` - Optional assign key to find the CSP nonce value used for assets
-      Supports either `atom()` or
-        `%{optional(:img) => atom(), optional(:script) => atom(), optional(:style) => atom()}`
-        Defaults to `ash_atlas-Ed55GFnX` for backwards compatibility.
 
     * `:live_session_name` - Optional atom to name the `live_session`. Defaults to `:ash_atlas`.
 
@@ -73,7 +72,6 @@ defmodule AshAtlas.Router do
       pipe_through [:browser]
 
       ash_atlas "/atlas"
-      ash_atlas "/csp/atlas", live_session_name: :ash_atlas_csp, csp_nonce_assign_key: :csp_nonce_value
     end
   end
   ```
@@ -84,48 +82,32 @@ defmodule AshAtlas.Router do
 
       live_socket_path = Keyword.get(opts, :live_socket_path, "/live")
 
-      csp_nonce_assign_key =
-        case opts[:csp_nonce_assign_key] do
-          nil ->
-            %{
-              img: "ash_atlas-Ed55GFnX",
-              style: "ash_atlas-Ed55GFnX",
-              script: "ash_atlas-Ed55GFnX"
-            }
-
-          key when is_atom(key) ->
-            %{img: key, style: key, script: key}
-
-          %{} = keys ->
-            Map.take(keys, [:img, :style, :script])
-        end
-
       # TODO: Remove internal API usage
       full_path = "/" <> String.trim(Enum.join(@phoenix_top_scopes.path, "/") <> path, "/")
 
+      asset_path = Keyword.get(opts, :asset_path, full_path)
+
       live_session opts[:live_session_name] || :ash_atlas,
-        on_mount: List.wrap(opts[:on_mount]),
+        on_mount: [AshAtlas.Pages.Setup | List.wrap(opts[:on_mount])],
         session:
-          {AshAtlas.Router, :__session__, [%{"prefix" => full_path}, List.wrap(opts[:session])]},
+          {AshAtlas.Router, :__session__,
+           [
+             %{"prefix" => full_path, "asset_path" => asset_path},
+             List.wrap(opts[:session])
+           ]},
         root_layout: {AshAtlas.Layouts, :root} do
         live(
           "#{path}",
           AshAtlas.PageLive,
           :page,
-          private: %{
-            live_socket_path: live_socket_path,
-            ash_atlas_csp_nonce: csp_nonce_assign_key
-          }
+          private: %{live_socket_path: live_socket_path}
         )
 
         live(
           "#{path}/:vertex/:content",
           AshAtlas.PageLive,
           :page,
-          private: %{
-            live_socket_path: live_socket_path,
-            ash_atlas_csp_nonce: csp_nonce_assign_key
-          }
+          private: %{live_socket_path: live_socket_path}
         )
       end
     end
@@ -166,5 +148,28 @@ defmodule AshAtlas.Router do
           Map.put(session, cookie, value)
       end
     end)
+  end
+
+  @doc false
+  @spec __asset_path__(base_path :: Path.t(), filename :: Path.t()) :: Path.t()
+  def __asset_path__(base_path, filename)
+
+  cache_static_manifest_path = Application.app_dir(:ash_atlas, "priv/static/cache_manifest.json")
+  @external_resource cache_static_manifest_path
+  if File.exists?(cache_static_manifest_path) do
+    @cache_static_manifest cache_static_manifest_path
+                           |> File.read!()
+                           |> JSON.decode!()
+                           |> Map.fetch!("latest")
+    def __asset_path__(base_path, filename) do
+      case Map.fetch(@cache_static_manifest, filename) do
+        :error -> Path.join([base_path, filename])
+        {:ok, hashed_filename} -> Path.join([base_path, hashed_filename])
+      end
+    end
+  else
+    def __asset_path__(base_path, filename) do
+      Path.join([base_path, filename])
+    end
   end
 end

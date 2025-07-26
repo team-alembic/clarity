@@ -2,7 +2,7 @@ defmodule AshAtlas.Web do
   @moduledoc false
 
   @spec static_paths :: [Path.t()]
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  def static_paths, do: ~w(assets images)
 
   @spec router :: Macro.t()
   def router do
@@ -48,12 +48,16 @@ defmodule AshAtlas.Web do
     quote do
       use Phoenix.Component
 
+      import AshAtlas.Router, only: [__asset_path__: 2]
+
       # Import convenience functions from controllers
       import Phoenix.Controller,
         only: [get_csrf_token: 0, view_module: 1, view_template: 1]
 
       # Include general helpers for rendering HTML
       unquote(html_helpers())
+
+      # Asset Path Helper
     end
   end
 
@@ -70,18 +74,6 @@ defmodule AshAtlas.Web do
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS
-
-      # Routes generation with the ~p sigil
-      unquote(verified_routes())
-    end
-  end
-
-  @spec verified_routes() :: Macro.t()
-  def verified_routes do
-    quote do
-      use Phoenix.VerifiedRoutes,
-        router: AshAtlas.Router,
-        statics: AshAtlas.Web.static_paths()
     end
   end
 

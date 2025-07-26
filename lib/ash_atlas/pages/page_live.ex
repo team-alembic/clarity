@@ -8,17 +8,13 @@ defmodule AshAtlas.PageLive do
   alias Phoenix.LiveView.Socket
 
   @impl Phoenix.LiveView
-  def mount(
-        %{"vertex" => vertex, "content" => content} = _params,
-        %{"prefix" => prefix} = _session,
-        socket
-      ) do
+  def mount(%{"vertex" => vertex, "content" => content} = _params, _session, socket) do
     atlas = AshAtlas.get()
     vertex = Map.fetch!(atlas.vertices, vertex)
 
     {:ok,
      socket
-     |> assign(prefix: prefix, atlas: atlas)
+     |> assign(atlas: atlas)
      |> update_dynamics(vertex, content)}
   end
 
@@ -36,7 +32,7 @@ defmodule AshAtlas.PageLive do
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
-      <.header breadcrumbs={@breadcrumbs} prefix={@prefix} class="z-10" />
+      <.header breadcrumbs={@breadcrumbs} prefix={@prefix} asset_path={@asset_path} class="z-10" />
 
       <div class="flex flex-1">
         <!-- TODO: Make overflow y auto work --->

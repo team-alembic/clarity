@@ -3,6 +3,7 @@ defmodule AshAtlas.CoreComponents do
 
   use Phoenix.Component
 
+  import AshAtlas.Router, only: [__asset_path__: 2]
   import Phoenix.HTML
 
   alias AshAtlas.Vertex
@@ -11,6 +12,7 @@ defmodule AshAtlas.CoreComponents do
 
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
+  attr :asset_path, :string, default: "/", doc: "The path to static assets"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
 
@@ -19,10 +21,14 @@ defmodule AshAtlas.CoreComponents do
     ~H"""
     <header class={"flex items-center px-6 py-4 bg-gray-800 shadow-md #{@class}"} {@rest}>
       <.link patch={@prefix <> "/root/graph"} class="mr-4">
-        <img src={ash_logo()} alt="Ash Logo" class="h-8 w-8" />
+        <img
+          src={__asset_path__(@asset_path, "images/ash_logo_orange.svg")}
+          alt="Ash Logo"
+          class="h-8 w-8"
+        />
       </.link>
       <h1 class="text-2xl font-bold tracking-tight flex-1 truncate">
-        <.link patch={@prefix <> "/root/graph"} class="mr-4">
+        <.link patch={"#{@prefix}/root/graph"} class="mr-4">
           Ash Atlas
         </.link>
       </h1>
@@ -162,10 +168,4 @@ defmodule AshAtlas.CoreComponents do
     </div>
     """
   end
-
-  logo_path = Path.join(__DIR__, "../../../priv/static/images/ash_logo_orange.svg")
-  @external_resource logo_path
-  @ash_logo "data:image/svg+xml;base64," <> Base.encode64(File.read!(logo_path))
-  @spec ash_logo :: String.t()
-  defp ash_logo, do: @ash_logo
 end

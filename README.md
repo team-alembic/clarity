@@ -23,6 +23,15 @@ def deps do
 end
 ```
 
+Endpoint (just below the existing `Plug.Static`):
+```elixir
+plug Plug.Static,
+  at: "/atlas",
+  from: :ash_atlas,
+  gzip: true,
+  only: AshAtlas.Web.static_paths()
+```
+
 Router:
 ```elixir
 import AshAtlas.Router
