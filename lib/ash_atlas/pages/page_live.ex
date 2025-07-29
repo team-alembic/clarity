@@ -19,7 +19,7 @@ defmodule AshAtlas.PageLive do
   end
 
   def mount(params, %{"prefix" => prefix} = _session, socket) when params == %{} do
-    {:ok, push_navigate(socket, to: prefix <> "/root/graph")}
+    {:ok, push_navigate(socket, to: Path.join([prefix, "root", "graph"]))}
   end
 
   @impl Phoenix.LiveView
@@ -55,12 +55,13 @@ defmodule AshAtlas.PageLive do
       />
       <.render_content content={@current_content} socket={@socket} />
     </article>
+    <.render_tooltips atlas={@atlas} />
     """
   end
 
   @impl Phoenix.LiveView
   def handle_event("viz:click", %{"id" => id}, socket) do
-    {:noreply, push_patch(socket, to: "#{socket.assigns.prefix}/#{id}/graph")}
+    {:noreply, push_patch(socket, to: Path.join([socket.assigns.prefix, id, "graph"]))}
   end
 
   def handle_event("toggle_navigation", _params, socket) do
@@ -74,7 +75,7 @@ defmodule AshAtlas.PageLive do
       <ul class="flex space-x-2">
         <li :for={content <- @contents}>
           <.link
-            patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(@current_vertex)}/#{content.id}"}
+            patch={Path.join([@prefix, AshAtlas.Vertex.unique_id(@current_vertex), content.id])}
             class={
             "inline-block px-4 py-2 rounded-t-md font-medium transition-colors " <>
             if content.id == @current_content.id,
@@ -113,6 +114,21 @@ defmodule AshAtlas.PageLive do
           container: {:div, class: "content"}
         )}
     <% end %>
+    """
+  end
+
+  @spec render_tooltips(assigns :: Socket.assigns()) :: Rendered.t()
+  defp render_tooltips(assigns) do
+    ~H"""
+    <div
+      :for={%mod{} = vertex <- :digraph.vertices(@atlas.graph)}
+      :if={mod != Vertex.Content}
+      id={"tooltip-#{Vertex.unique_id(vertex)}"}
+      phx-hook="Tooltip"
+      class="hidden"
+    >
+      {Vertex.render_name(vertex)}
+    </div>
     """
   end
 

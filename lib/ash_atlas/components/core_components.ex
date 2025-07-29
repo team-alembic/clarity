@@ -20,7 +20,7 @@ defmodule AshAtlas.CoreComponents do
   def header(assigns) do
     ~H"""
     <header class={"flex items-center px-6 py-4 bg-gray-800 shadow-md #{@class}"} {@rest}>
-      <.link patch={@prefix <> "/root/graph"} class="mr-4">
+      <.link patch={Path.join([@prefix, "root", "graph"])} class="mr-4">
         <img
           src={__asset_path__(@asset_path, "images/ash_logo_orange.svg")}
           alt="Ash Logo"
@@ -28,7 +28,7 @@ defmodule AshAtlas.CoreComponents do
         />
       </.link>
       <h1 class="text-2xl font-bold tracking-tight flex-1 truncate">
-        <.link patch={"#{@prefix}/root/graph"} class="mr-4">
+        <.link patch={Path.join([@prefix, "root", "graph"])} class="mr-4">
           Ash Atlas
         </.link>
       </h1>
@@ -39,7 +39,7 @@ defmodule AshAtlas.CoreComponents do
             <li class="flex items-center">
               <span :if={idx > 1} class="mx-2 text-gray-600">/</span>
               <.link
-                patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(breadcrumb)}/graph"}
+                patch={Path.join([@prefix, AshAtlas.Vertex.unique_id(breadcrumb), "graph"])}
                 class="hover:text-ash-400 transition-colors"
               >
                 <.vertex_name vertex={breadcrumb} />
@@ -128,7 +128,7 @@ defmodule AshAtlas.CoreComponents do
   defp navigation_node(assigns) do
     ~H"""
     <.link
-      patch={"#{@prefix}/#{AshAtlas.Vertex.unique_id(@tree.node)}/graph"}
+      patch={Path.join([@prefix, AshAtlas.Vertex.unique_id(@tree.node), "graph"])}
       class={
         "block px-2 py-1 rounded-sm hover:bg-gray-700 hover:text-ash-400 transition-colors font-medium" <>
         if @tree.node == @current, do: " bg-red-700 text-ash-400", else: ""
