@@ -1,0 +1,62 @@
+Application.put_env(:ash_atlas, DemoWeb.Endpoint,
+  url: [host: "localhost"],
+  secret_key_base: "Hu4qQN3iKzTV4fJxhorPQlA/osH9fAMtbtjVS58PFgfw3ja5Z18Q/WSNR9wP4OfW",
+  live_view: [signing_salt: "hMegieSe"],
+  http: [port: System.get_env("PORT", "4000")],
+  debug_errors: true,
+  check_origin: false,
+  pubsub_server: Demo.PubSub
+)
+
+defmodule DemoWeb.Router do
+  use Phoenix.Router
+
+  pipeline :browser do
+    plug :fetch_session
+    plug :fetch_query_params
+  end
+
+  scope "/" do
+    pipe_through :browser
+    import AshAtlas.Router
+
+    ash_atlas("/")
+  end
+end
+
+defmodule DemoWeb.Endpoint do
+  use Phoenix.Endpoint, otp_app: :ash_atlas
+
+  socket "/live", Phoenix.LiveView.Socket
+  socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
+
+  plug Plug.Static,
+    at: "/",
+    from: :ash_atlas,
+    gzip: true,
+    only: AshAtlas.Web.static_paths()
+
+  plug Phoenix.LiveReloader
+  plug Phoenix.CodeReloader
+
+  plug Plug.Session,
+    store: :cookie,
+    key: "_live_view_key",
+    signing_salt: "/VEDsdfsffMnp5"
+
+  plug Plug.RequestId
+  plug DemoWeb.Router
+end
+
+Application.put_env(:phoenix, :serve_endpoints, true)
+  :erlang.system_flag(:backtrace_depth, 100)
+
+Task.start(fn ->
+  children = [
+    DemoWeb.Endpoint,
+    {Phoenix.PubSub, [name: Demo.PubSub, adapter: Phoenix.PubSub.PG2]},
+  ]
+
+  {:ok, _} = Supervisor.start_link(children, strategy: :one_for_one)
+  Process.sleep(:infinity)
+end)

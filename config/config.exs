@@ -19,3 +19,10 @@ config :tailwind,
     ),
     cd: Path.expand("../assets", __DIR__)
   ]
+
+if config_env() == :dev do
+  config :ash_atlas,
+    ash_domains: [Demo.Accounts.Domain]
+
+  config :logger, level: :debug
+end
