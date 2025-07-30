@@ -29,5 +29,49 @@ defmodule AshAtlas.Vertex.Action do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "cds"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(%{action: action, resource: resource}) do
+      [
+        "Action: `",
+        inspect(action.name),
+        "` on Resource: `",
+        inspect(resource),
+        "`\n\n",
+        if action.description do
+          [action.description, "\n\n"]
+        else
+          []
+        end,
+        case action.arguments do
+          [] ->
+            []
+
+          args ->
+            [
+              "## Arguments\n",
+              Enum.map(args, fn arg ->
+                [
+                  "- `",
+                  inspect(arg.name),
+                  "` (`",
+                  inspect(arg.type),
+                  "`)",
+                  if arg.description do
+                    [
+                      ": ",
+                      arg.description
+                    ]
+                  else
+                    []
+                  end,
+                  "\n"
+                ]
+              end),
+              "\n\n"
+            ]
+        end
+      ]
+    end
   end
 end

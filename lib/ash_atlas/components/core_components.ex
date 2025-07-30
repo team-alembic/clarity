@@ -149,7 +149,7 @@ defmodule AshAtlas.CoreComponents do
   @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
   def vertex_name(assigns) do
     ~H"""
-    {Vertex.render_name(@vertex)}
+    <span data-tooltip={"tooltip-#{Vertex.unique_id(@vertex)}"}>{Vertex.render_name(@vertex)}</span>
     """
   end
 

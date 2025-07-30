@@ -24,5 +24,22 @@ defmodule AshAtlas.Vertex.Domain do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "folder"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(vertex) do
+      [
+        "`",
+        inspect(vertex.domain),
+        "`\n\n",
+        case Code.fetch_docs(vertex.domain) do
+          {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
+           _metadata, _docs} ->
+            moduledoc
+
+          _ ->
+            []
+        end
+      ]
+    end
   end
 end

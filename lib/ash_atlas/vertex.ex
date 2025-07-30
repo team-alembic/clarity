@@ -45,4 +45,15 @@ defprotocol AshAtlas.Vertex do
   """
   @spec dot_shape(t) :: String.t()
   def dot_shape(vertex)
+
+  @doc """
+  Returns the overview content for the vertex.
+
+  Used for tooltips and other informational displays in the UI.
+
+  Careful: This component is rendered for every vertex in the graph, so it
+  should be efficient.
+  """
+  @spec markdown_overview(t) :: iodata() | nil
+  def markdown_overview(vertex)
 end

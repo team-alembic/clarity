@@ -32,6 +32,7 @@ defmodule AshAtlas.Graph do
         ]
       end,
       "  node [\n",
+      "    tooltip = \" \";\n",
       "    fontname = \"system-ui\";\n",
       if options[:theme] == :dark do
         [

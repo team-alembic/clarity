@@ -37,5 +37,8 @@ defmodule AshAtlas.Vertex.Content do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "nil"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(_vertex), do: []
   end
 end

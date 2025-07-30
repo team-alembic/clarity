@@ -24,5 +24,22 @@ defmodule AshAtlas.Vertex.Type do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "plain"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(vertex) do
+      [
+        "`",
+        inspect(vertex.type),
+        "`\n\n",
+        case Code.fetch_docs(vertex.type) do
+          {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
+           _metadata, _docs} ->
+            moduledoc
+
+          _ ->
+            []
+        end
+      ]
+    end
   end
 end

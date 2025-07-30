@@ -21,13 +21,14 @@ export default {
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
 
-    [...svg.querySelectorAll("a")].forEach((link) => {
-      const id = link.getAttribute("xlink:href").replace(/^#/, "");
+    [...svg.querySelectorAll('a[*|href]')].forEach((link) => {
+      const id = link.getAttributeNS('http://www.w3.org/1999/xlink', 'href').replace(/^#/, "");
       link.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         this.pushEvent("viz:click", { id });
       });
+      link.setAttribute("data-tooltip", `tooltip-${id}`);
     });
 
     if(this.oldSvg) {

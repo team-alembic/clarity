@@ -29,5 +29,26 @@ defmodule AshAtlas.Vertex.Calculation do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "promoter"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(vertex),
+      do: [
+        "Attribute: `",
+        inspect(vertex.calculation.name),
+        "` on Resource: `",
+        inspect(vertex.resource),
+        "`\n\n",
+        if vertex.calculation.description do
+          [vertex.calculation.description, "\n\n"]
+        else
+          []
+        end,
+        "* Type: `",
+        inspect(vertex.calculation.type),
+        "`\n",
+        " * Public: `",
+        inspect(vertex.calculation.public?),
+        "`\n"
+      ]
   end
 end

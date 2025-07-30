@@ -143,3 +143,12 @@
   grid-area: main;
   overflow: auto;
 }
+
+.tooltip {
+  position: absolute;
+  position-anchor: --tooltip-anchor;
+  position-area: top;
+  position-try-fallbacks: bottom, right, left;
+  z-index: 10000;
+  /* TODO: Fix Positioning with SVG elements */
+}

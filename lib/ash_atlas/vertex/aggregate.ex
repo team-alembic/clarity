@@ -29,5 +29,8 @@ defmodule AshAtlas.Vertex.Aggregate do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "Mdiamond"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(_vertex), do: []
   end
 end

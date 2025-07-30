@@ -29,5 +29,26 @@ defmodule AshAtlas.Vertex.Attribute do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "rectangle"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(vertex),
+      do: [
+        "Attribute: `",
+        inspect(vertex.attribute.name),
+        "` on Resource: `",
+        inspect(vertex.resource),
+        "`\n\n",
+        if vertex.attribute.description do
+          [vertex.attribute.description, "\n\n"]
+        else
+          []
+        end,
+        "* Type: `",
+        inspect(vertex.attribute.type),
+        "`\n",
+        " * Public: `",
+        inspect(vertex.attribute.public?),
+        "`\n"
+      ]
   end
 end

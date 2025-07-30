@@ -21,5 +21,8 @@ defmodule AshAtlas.Vertex.Root do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "point"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(_vertex), do: []
   end
 end

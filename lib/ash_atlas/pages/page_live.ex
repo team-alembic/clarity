@@ -83,7 +83,7 @@ defmodule AshAtlas.PageLive do
               else: "text-gray-400 hover:text-ash-400 hover:bg-gray-800"
             }
           >
-            {content.name}
+            <.vertex_name vertex={content} />
           </.link>
         </li>
       </ul>
@@ -120,15 +120,18 @@ defmodule AshAtlas.PageLive do
   @spec render_tooltips(assigns :: Socket.assigns()) :: Rendered.t()
   defp render_tooltips(assigns) do
     ~H"""
-    <div
-      :for={%mod{} = vertex <- :digraph.vertices(@atlas.graph)}
-      :if={mod != Vertex.Content}
-      id={"tooltip-#{Vertex.unique_id(vertex)}"}
-      phx-hook="Tooltip"
-      class="hidden"
-    >
-      {Vertex.render_name(vertex)}
-    </div>
+    <%= for %mod{} = vertex <- :digraph.vertices(@atlas.graph),
+          mod != Vertex.Content,
+          overview = vertex |> Vertex.markdown_overview() |> IO.iodata_to_binary() |> String.trim(),
+          overview != "" do %>
+      <div
+        id={"tooltip-#{Vertex.unique_id(vertex)}"}
+        phx-hook="Tooltip"
+        class="tooltip hidden border border-gray-700 shadow-lg bg-gray-800 text-gray-100 px-4 py-2 rounded"
+      >
+        <.markdown content={overview} />
+      </div>
+    <% end %>
     """
   end
 

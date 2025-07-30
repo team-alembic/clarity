@@ -43,5 +43,18 @@ defmodule AshAtlas.Vertex.Application do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "house"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(vertex),
+      do: [
+        "`",
+        inspect(vertex.app),
+        "`\n\n",
+        vertex.description,
+        "\n\n",
+        "Version: `",
+        to_string(vertex.version),
+        "`"
+      ]
   end
 end

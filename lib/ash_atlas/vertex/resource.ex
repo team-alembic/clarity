@@ -24,5 +24,25 @@ defmodule AshAtlas.Vertex.Resource do
 
     @impl AshAtlas.Vertex
     def dot_shape(_vertex), do: "component"
+
+    @impl AshAtlas.Vertex
+    def markdown_overview(vertex) do
+      [
+        "`",
+        inspect(vertex.resource),
+        "`\n\n",
+        "Domain: `",
+        inspect(Ash.Resource.Info.domain(vertex.resource)),
+        "`\n\n",
+        case Code.fetch_docs(vertex.resource) do
+          {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
+           _metadata, _docs} ->
+            moduledoc
+
+          _ ->
+            []
+        end
+      ]
+    end
   end
 end

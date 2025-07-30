@@ -19,10 +19,12 @@ import { Socket } from "phoenix";
 import { LiveSocket } from "phoenix_live_view";
 import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
+import Tooltip from "./tooltip.hook";
 
 const Hooks = {
   Mermaid: Mermaid,
   Viz: Viz,
+  Tooltip: Tooltip,
 };
 
 let csrfToken = document
