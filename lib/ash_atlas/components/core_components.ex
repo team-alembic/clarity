@@ -97,14 +97,10 @@ defmodule AshAtlas.CoreComponents do
   @spec navigation_tree(assigns :: Socket.assigns()) :: Rendered.t()
   defp navigation_tree(assigns) do
     ~H"""
-    <details
-      :for={{label, child_vertices} <- @tree.children}
-      :if={label != :content}
-      open={Enum.any?(@breadcrumbs, &(&1 == @tree.node))}
-    >
-      <summary class="cursor-pointer select-none text-gray-400 hover:text-ash-400 px-2 py-1 rounded-sm group-open:bg-gray-700 transition-colors">
-        <span>{label}</span>
-      </summary>
+    <div :for={{label, child_vertices} <- @tree.children} :if={label != :content}>
+      <span class="cursor-pointer select-none text-gray-400 hover:text-ash-400 px-2 py-1 rounded-sm group-open:bg-gray-700 transition-colors">
+        {label}
+      </span>
       <ul class="border-l border-gray-700 pl-2 space-y-1">
         <li :for={child <- child_vertices}>
           <.navigation_node
@@ -115,7 +111,7 @@ defmodule AshAtlas.CoreComponents do
           />
         </li>
       </ul>
-    </details>
+    </div>
     """
   end
 
@@ -127,19 +123,38 @@ defmodule AshAtlas.CoreComponents do
   @spec navigation_node(assigns :: Socket.assigns()) :: Rendered.t()
   defp navigation_node(assigns) do
     ~H"""
-    <.link
-      patch={Path.join([@prefix, AshAtlas.Vertex.unique_id(@tree.node), "graph"])}
-      class={
-        "block px-2 py-1 rounded-sm hover:bg-gray-700 hover:text-ash-400 transition-colors font-medium" <>
-        if @tree.node == @current, do: " bg-red-700 text-ash-400", else: ""
-      }
-    >
-      <.vertex_name vertex={@tree.node} />
-    </.link>
-    <%= if @tree.children != %{} do %>
-      <div class="ml-4 group">
-        <.navigation_tree tree={@tree} prefix={@prefix} current={@current} breadcrumbs={@breadcrumbs} />
-      </div>
+    <%= if Enum.any?(@tree.children, &(elem(&1, 0) != :content)) do %>
+      <details open={Enum.any?(@breadcrumbs, &(&1 == @tree.node))}>
+        <summary>
+          <.link
+            patch={Path.join([@prefix, AshAtlas.Vertex.unique_id(@tree.node), "graph"])}
+            class={
+              "inline px-2 py-1 rounded-sm hover:bg-gray-700 hover:text-ash-400 transition-colors font-medium" <>
+              if @tree.node == @current, do: " bg-red-700 text-ash-400", else: ""
+            }
+          >
+            <.vertex_name vertex={@tree.node} />
+          </.link>
+        </summary>
+        <div class="ml-4 group">
+          <.navigation_tree
+            tree={@tree}
+            prefix={@prefix}
+            current={@current}
+            breadcrumbs={@breadcrumbs}
+          />
+        </div>
+      </details>
+    <% else %>
+      <.link
+        patch={Path.join([@prefix, AshAtlas.Vertex.unique_id(@tree.node), "graph"])}
+        class={
+              "inline px-2 py-1 rounded-sm hover:bg-gray-700 hover:text-ash-400 transition-colors font-medium" <>
+              if @tree.node == @current, do: " bg-red-700 text-ash-400", else: ""
+            }
+      >
+        <.vertex_name vertex={@tree.node} />
+      </.link>
     <% end %>
     """
   end
