@@ -1,9 +1,9 @@
-defmodule AshAtlas.MixProject do
+defmodule Atlas.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :ash_atlas,
+      app: :atlas,
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
@@ -24,7 +24,7 @@ defmodule AshAtlas.MixProject do
   def application do
     [
       extra_applications: [],
-      mod: {AshAtlas.Application, []}
+      mod: {Atlas.Application, []}
     ]
   end
 

@@ -1,8 +1,8 @@
 [
   import_deps: [:ash, :phoenix],
   locals_without_parens: [
-    ash_atlas: 1,
-    ash_atlas: 2,
+    atlas: 1,
+    atlas: 2,
     atlas_browser_pipeline: 0,
     atlas_browser_pipeline: 1
   ],

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" phx-socket={live_socket_path(@conn)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="Dashboard" suffix=" · Ash Atlas">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={__asset_path__(@asset_path, "assets/app.css")} />
+    <meta name="theme-color" content="#b91c1c" />
+    <meta name="background-color" content="#111827" />
+    <link rel="shortcut icon" href={__asset_path__(@asset_path, "images/ash_logo_orange.svg")} />
+  </head>
+  <body>
+    {@inner_content}
+  </body>
+  <script defer phx-track-static type="text/javascript" src={__asset_path__(@asset_path, "assets/app.js")} ></script>
+</html>

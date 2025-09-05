@@ -9,7 +9,7 @@ module.exports = {
   darkMode: "class",
   content: [
     "./js/**/*.js",
-    "../lib/ash_atlas/**/*.*ex",
+    "../lib/atlas/**/*.*ex",
   ],
   theme: {
     extend: {

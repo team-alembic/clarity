@@ -1,4 +1,4 @@
-# AshAtlas
+# Atlas
 
 **TODO: Add description**
 
@@ -7,18 +7,18 @@
 ### Igniter
 
 ```bash
-mix igniter.install ash_atlas@github:team-alembic/atlas
+mix igniter.install atlas@github:team-alembic/atlas
 ```
 
 ### Manual
 
-The package can be installed by adding `ash_atlas` to your list of dependencies
+The package can be installed by adding `atlas` to your list of dependencies
 in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:ash_atlas, github: "team-alembic/atlas", branch: "main"}
+    {:atlas, github: "team-alembic/atlas", branch: "main"}
   ]
 end
 ```
@@ -27,18 +27,18 @@ Endpoint (just below the existing `Plug.Static`):
 ```elixir
 plug Plug.Static,
   at: "/atlas",
-  from: :ash_atlas,
+  from: :atlas,
   gzip: true,
-  only: AshAtlas.Web.static_paths()
+  only: Atlas.Web.static_paths()
 ```
 
 Router:
 ```elixir
-import AshAtlas.Router
-ash_atlas("/atlas")
+import Atlas.Router
+atlas("/atlas")
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/ash_atlas>.
+be found at <https://hexdocs.pm/atlas>.
 

@@ -21,7 +21,7 @@ config :tailwind,
   ]
 
 if config_env() == :dev do
-  config :ash_atlas,
+  config :atlas,
     ash_domains: [Demo.Accounts.Domain]
 
   config :logger, level: :debug

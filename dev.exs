@@ -1,4 +1,4 @@
-Application.put_env(:ash_atlas, DemoWeb.Endpoint,
+Application.put_env(:atlas, DemoWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "Hu4qQN3iKzTV4fJxhorPQlA/osH9fAMtbtjVS58PFgfw3ja5Z18Q/WSNR9wP4OfW",
   live_view: [signing_salt: "hMegieSe"],
@@ -14,8 +14,8 @@ Application.put_env(:ash_atlas, DemoWeb.Endpoint,
     patterns: [
       ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
-      ~r"lib/ash_atlas/(live|views|pages|components)/.*(ex)$",
-      ~r"lib/ash_atlas/templates/.*(eex)$"
+      ~r"lib/atlas/(live|views|pages|components)/.*(ex)$",
+      ~r"lib/atlas/templates/.*(eex)$"
     ]
   ]
 )
@@ -30,23 +30,23 @@ defmodule DemoWeb.Router do
 
   scope "/" do
     pipe_through :browser
-    import AshAtlas.Router
+    import Atlas.Router
 
-    ash_atlas("/")
+    atlas("/")
   end
 end
 
 defmodule DemoWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :ash_atlas
+  use Phoenix.Endpoint, otp_app: :atlas
 
   socket "/live", Phoenix.LiveView.Socket
   socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
 
   plug Plug.Static,
     at: "/",
-    from: :ash_atlas,
+    from: :atlas,
     gzip: true,
-    only: AshAtlas.Web.static_paths()
+    only: Atlas.Web.static_paths()
 
   plug Phoenix.LiveReloader
   plug Phoenix.CodeReloader
