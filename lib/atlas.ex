@@ -1,17 +1,18 @@
 readme_path = Path.join(__DIR__, "../README.md")
 
-readme_content = readme_path
-|> File.read!()
-|> String.replace(~r/<!-- ex_doc_ignore_start -->.*?<!-- ex_doc_ignore_end -->/s, "")
+readme_content =
+  readme_path
+  |> File.read!()
+  |> String.replace(~r/<!-- ex_doc_ignore_start -->.*?<!-- ex_doc_ignore_end -->/s, "")
 
 defmodule Atlas do
   @moduledoc """
   #{readme_content}
   """
 
-  @external_resource readme_path
-
   use Agent
+
+  @external_resource readme_path
 
   @type tree() :: %{
           node: :digraph.vertex(),

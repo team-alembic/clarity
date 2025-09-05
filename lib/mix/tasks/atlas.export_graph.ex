@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.Atlas.ExportGraph do
-  @shortdoc "Exports the Ash Atlas graph to a DOT file"
+  @shortdoc "Exports the Atlas graph to a DOT file"
   @moduledoc """
-  This task exports the Ash Atlas graph to a DOT file, which can be used for
+  This task exports the Atlas graph to a DOT file, which can be used for
   visualization with Graphviz.
 
   ## Options

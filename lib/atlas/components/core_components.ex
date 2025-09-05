@@ -29,7 +29,7 @@ defmodule Atlas.CoreComponents do
       </.link>
       <h1 class="text-2xl font-bold tracking-tight flex-1 truncate">
         <.link patch={Path.join([@prefix, "root", "graph"])} class="mr-4">
-          Ash Atlas
+          Atlas
         </.link>
       </h1>
 

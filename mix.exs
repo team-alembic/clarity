@@ -11,7 +11,8 @@ defmodule Atlas.MixProject do
       deps: deps(),
       aliases: aliases(),
       name: "Atlas",
-      description: "Atlas is an interactive introspection and visualization tool for Elixir projects, providing navigable graphs and diagrams for frameworks like Ash, Phoenix, and Ecto.",
+      description:
+        "Atlas is an interactive introspection and visualization tool for Elixir projects, providing navigable graphs and diagrams for frameworks like Ash, Phoenix, and Ecto.",
       source_url: "https://github.com/team-alembic/atlas",
       package: package(),
       dialyzer: [
@@ -65,7 +66,7 @@ defmodule Atlas.MixProject do
     ]
   end
 
-  defp package() do
+  defp package do
     [
       maintainers: ["Alembic Pty Ltd"],
       files: [

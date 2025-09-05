@@ -131,8 +131,7 @@ defmodule Atlas.Introspector do
   ones.
   """
   @spec introspectors() :: [t()]
-  def introspectors,
-    do: @native_introspectors ++ Application.get_env(:atlas, :introspectors, [])
+  def introspectors, do: @native_introspectors ++ Application.get_env(:atlas, :introspectors, [])
 
   @doc """
   Attaches the moduledoc content of a module to the introspection graph.
