@@ -35,6 +35,10 @@ defmodule Atlas.Vertex.Type do
           {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
            _metadata, _docs} ->
             moduledoc
+            |> String.split("\n")
+            |> Enum.take(10)
+            |> then(fn lines -> if length(lines) == 10, do: lines ++ ["..."], else: lines end)
+            |> Enum.join("\n")
 
           _ ->
             []

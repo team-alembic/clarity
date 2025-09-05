@@ -124,12 +124,10 @@ defmodule Atlas.PageLive do
           mod != Vertex.Content,
           overview = vertex |> Vertex.markdown_overview() |> IO.iodata_to_binary() |> String.trim(),
           overview != "" do %>
-      <div
-        id={"tooltip-#{Vertex.unique_id(vertex)}"}
-        phx-hook="Tooltip"
-        class="tooltip hidden border border-gray-700 shadow-lg bg-gray-800 text-gray-100 px-4 py-2 rounded"
-      >
-        <.markdown content={overview} />
+      <div id={"tooltip-#{Vertex.unique_id(vertex)}"} phx-hook="Tooltip" class="tooltip hidden py-5">
+        <div class="border border-gray-700 shadow-lg bg-gray-800 text-gray-100 px-4 py-2 rounded">
+          <.markdown content={overview} />
+        </div>
       </div>
     <% end %>
     """

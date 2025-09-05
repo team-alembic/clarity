@@ -145,10 +145,28 @@
 }
 
 .tooltip {
-  position: absolute;
+  position: fixed;
   position-anchor: --tooltip-anchor;
-  position-area: top;
-  position-try-fallbacks: bottom, right, left;
+  position-area: block-end inline-start;
+  position-try-fallbacks: 
+    flip-inline,
+    flip-block,
+    flip-block flip-inline;
+  position-try-order: most-width;
+  max-inline-size: 50vi;
+  max-block-size: 50vb;
+  overflow: auto;
   z-index: 10000;
-  /* TODO: Fix Positioning with SVG elements */
+  pointer-events: none;
+}
+
+#tooltip-cursor {
+  anchor-name: --tooltip-anchor;
+  position: fixed;
+  z-index: -10000;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  /* display: inline; */
 }
