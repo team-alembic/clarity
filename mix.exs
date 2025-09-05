@@ -10,6 +10,10 @@ defmodule Atlas.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
+      name: "Atlas",
+      description: "Atlas is an interactive introspection and visualization tool for Elixir projects, providing navigable graphs and diagrams for frameworks like Ash, Phoenix, and Ecto.",
+      source_url: "https://github.com/team-alembic/atlas",
+      package: package(),
       dialyzer: [
         plt_add_apps: [:mix]
       ]
@@ -58,6 +62,20 @@ defmodule Atlas.MixProject do
       "assets.build": ["tailwind default", "esbuild default"],
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
       dev: "run --no-halt dev.exs --config config"
+    ]
+  end
+
+  defp package() do
+    [
+      maintainers: ["Alembic Pty Ltd"],
+      files: [
+        "lib",
+        "LICENSE*",
+        "mix.exs",
+        "README*"
+      ],
+      licenses: ["Apache-2.0"],
+      links: %{"Github" => "https://github.com/team-alembic/atlas"}
     ]
   end
 end

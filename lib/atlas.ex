@@ -1,5 +1,15 @@
+readme_path = Path.join(__DIR__, "../README.md")
+
+readme_content = readme_path
+|> File.read!()
+|> String.replace(~r/<!-- ex_doc_ignore_start -->.*?<!-- ex_doc_ignore_end -->/s, "")
+
 defmodule Atlas do
-  @moduledoc false
+  @moduledoc """
+  #{readme_content}
+  """
+
+  @external_resource readme_path
 
   use Agent
 
@@ -28,6 +38,9 @@ defmodule Atlas do
     Agent.start_link(&introspect/0, opts)
   end
 
+  @doc """
+  Gets the current state of the atlas.
+  """
   @spec get(name :: Agent.agent()) :: t()
   def get(name \\ __MODULE__), do: Agent.get(name, & &1)
 
@@ -39,6 +52,9 @@ defmodule Atlas do
     end)
   end
 
+  @doc """
+  Builds a new atlas by introspecting the current state of the system.
+  """
   @spec introspect() :: t()
   def introspect do
     graph = Atlas.Introspector.introspect(:digraph.new())
