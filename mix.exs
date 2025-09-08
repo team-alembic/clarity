@@ -17,7 +17,8 @@ defmodule Atlas.MixProject do
       package: package(),
       dialyzer: [
         plt_add_apps: [:mix]
-      ]
+      ],
+      docs: &docs/0
     ]
   end
 
@@ -77,6 +78,13 @@ defmodule Atlas.MixProject do
       ],
       licenses: ["Apache-2.0"],
       links: %{"Github" => "https://github.com/team-alembic/atlas"}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Atlas",
+      assets: %{"docs/assets" => "docs/assets"}
     ]
   end
 end

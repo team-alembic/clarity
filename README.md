@@ -12,7 +12,7 @@ It automatically discovers and visualizes applications, domains, resources,
 modules, and their relationships, giving you a navigable graph interface
 enriched with diagrams, tooltips, and documentation.
 
-![Screenshot Placeholder](docs/screenshot.png)
+![Atlas Screenshot](docs/assets/screenshot.png)
 
 ## Features
 
