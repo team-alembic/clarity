@@ -5,7 +5,7 @@ defmodule Mix.Tasks.Atlas.InstallTest do
 
   test "installs atlas" do
     phx_test_project()
-    |> Igniter.compose_task(".install", [])
+    |> Igniter.compose_task("atlas.install", [])
     |> assert_has_patch(".formatter.exs", """
        |[
      - |  import_deps: [:ecto, :ecto_sql, :phoenix],

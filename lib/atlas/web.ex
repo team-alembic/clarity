@@ -1,9 +1,11 @@
 defmodule Atlas.Web do
   @moduledoc false
 
+  @doc false
   @spec static_paths :: [Path.t()]
   def static_paths, do: ~w(assets images)
 
+  @doc false
   @spec router :: Macro.t()
   def router do
     quote do
@@ -17,6 +19,7 @@ defmodule Atlas.Web do
     end
   end
 
+  @doc false
   @spec channel :: Macro.t()
   def channel do
     quote do
@@ -24,6 +27,7 @@ defmodule Atlas.Web do
     end
   end
 
+  @doc false
   @spec live_view :: Macro.t()
   def live_view do
     quote do
@@ -34,6 +38,7 @@ defmodule Atlas.Web do
     end
   end
 
+  @doc false
   @spec live_component :: Macro.t()
   def live_component do
     quote do
@@ -43,6 +48,7 @@ defmodule Atlas.Web do
     end
   end
 
+  @doc false
   @spec html :: Macro.t()
   def html do
     quote do

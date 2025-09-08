@@ -5,6 +5,7 @@ defmodule Atlas.Pages.Setup do
 
   alias Phoenix.LiveView.Socket
 
+  @doc false
   @spec on_mount(
           arg :: term(),
           params :: Phoenix.LiveView.unsigned_params() | :not_mounted_at_router,

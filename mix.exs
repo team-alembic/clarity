@@ -54,7 +54,13 @@ defmodule Atlas.MixProject do
       {:doctest_formatter, "~> 0.4.0", only: [:dev, :test], runtime: false},
       {:phoenix_live_reload, "~> 1.2", only: [:dev, :test]},
       {:picosat_elixir, "~> 0.2.3", only: [:dev, :test]},
-      {:plug_cowboy, "~> 2.0", only: [:dev, :test]}
+      {:plug_cowboy, "~> 2.0", only: [:dev, :test]},
+      {:mix_audit, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
+      {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.18", only: [:dev, :test]},
+      {:ex_check, "~> 0.15", only: [:dev, :test]},
+      {:git_ops, "~> 2.4", only: [:dev, :test], runtime: false}
     ]
   end
 

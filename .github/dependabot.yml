@@ -1,0 +1,25 @@
+---
+updates:
+  - directory: /
+    groups:
+      dev-dependencies:
+        dependency-type: development
+      production-dependencies:
+        dependency-type: production
+    package-ecosystem: mix
+    schedule:
+      day: thursday
+      interval: monthly
+    versioning-strategy: lockfile-only
+  - directory: /
+    groups:
+      dev-dependencies:
+        dependency-type: development
+      production-dependencies:
+        dependency-type: production
+    package-ecosystem: npm
+    schedule:
+      day: thursday
+      interval: monthly
+    versioning-strategy: lockfile-only
+version: 2
