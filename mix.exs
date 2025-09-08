@@ -36,7 +36,7 @@ defmodule Atlas.MixProject do
 
   defp deps do
     [
-      {:ash, "~> 3.5"},
+      {:ash, "~> 3.5", optional: true},
       {:phoenix, "~> 1.7"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},
@@ -63,7 +63,7 @@ defmodule Atlas.MixProject do
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind default", "esbuild default"],
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
-      dev: "run --no-halt dev.exs --config config"
+      dev: "run --no-halt --no-start dev.exs --config config"
     ]
   end
 

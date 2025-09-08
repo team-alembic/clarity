@@ -118,12 +118,14 @@ defmodule Atlas.Introspector do
   @native_introspectors [
     Atlas.Introspector.Root,
     Atlas.Introspector.Application,
-    Atlas.Introspector.Domain,
-    Atlas.Introspector.DataLayer,
-    Atlas.Introspector.Action,
-    Atlas.Introspector.Field,
-    Atlas.Introspector.Type,
-    Atlas.Introspector.Diagram
+    Atlas.Introspector.Ash.Domain,
+    Atlas.Introspector.Ash.DataLayer,
+    Atlas.Introspector.Ash.Action,
+    Atlas.Introspector.Ash.Field,
+    Atlas.Introspector.Ash.Type,
+    Atlas.Introspector.Ash.Diagram,
+    Atlas.Introspector.Phoenix.Endpoint,
+    Atlas.Introspector.Phoenix.Router
   ]
 
   @doc """

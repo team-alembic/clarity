@@ -20,48 +20,10 @@ Application.put_env(:atlas, DemoWeb.Endpoint,
   ]
 )
 
-defmodule DemoWeb.Router do
-  use Phoenix.Router
-
-  pipeline :browser do
-    plug :fetch_session
-    plug :fetch_query_params
-  end
-
-  scope "/" do
-    pipe_through :browser
-    import Atlas.Router
-
-    atlas("/")
-  end
-end
-
-defmodule DemoWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :atlas
-
-  socket "/live", Phoenix.LiveView.Socket
-  socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
-
-  plug Plug.Static,
-    at: "/",
-    from: :atlas,
-    gzip: true,
-    only: Atlas.Web.static_paths()
-
-  plug Phoenix.LiveReloader
-  plug Phoenix.CodeReloader
-
-  plug Plug.Session,
-    store: :cookie,
-    key: "_live_view_key",
-    signing_salt: "/VEDsdfsffMnp5"
-
-  plug Plug.RequestId
-  plug DemoWeb.Router
-end
-
 Application.put_env(:phoenix, :serve_endpoints, true)
   :erlang.system_flag(:backtrace_depth, 100)
+
+Application.ensure_all_started(:atlas)
 
 Task.start(fn ->
   children = [
