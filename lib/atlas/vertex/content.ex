@@ -1,8 +1,10 @@
 defmodule Atlas.Vertex.Content do
   @moduledoc false
+
+  @type viz_options() :: %{theme: :dark | :light}
   @type content_mermaid() :: {:mermaid, iodata() | (-> iodata())}
   @type content_markdown() :: {:markdown, iodata() | (-> iodata())}
-  @type content_viz() :: {:viz, iodata() | (-> iodata())}
+  @type content_viz() :: {:viz, iodata() | (viz_options() -> iodata())}
   @type content_live_view() :: {:live_view, {module(), session :: map()}}
   @type content() ::
           content_mermaid()

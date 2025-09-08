@@ -33,6 +33,8 @@ defmodule Atlas.Graph do
           "  color = \"#9ca3af\";\n",
           "  fontcolor = \"#f0f0f0\";\n"
         ]
+      else
+        []
       end,
       "  node [\n",
       "    tooltip = \" \";\n",
@@ -44,6 +46,8 @@ defmodule Atlas.Graph do
           "    fillcolor = \"#374151\";\n",
           "    color = \"#9ca3af\";\n"
         ]
+      else
+        []
       end,
       "  ];\n",
       "  edge [\n",
@@ -53,6 +57,8 @@ defmodule Atlas.Graph do
           "    fontcolor = \"#e5e7eb\";\n",
           "    color = \"#d1d5db\";\n"
         ]
+      else
+        []
       end,
       "  ];\n",
       "  rankdir = LR;\n",
@@ -132,8 +138,8 @@ defmodule Atlas.Graph do
         Vertex.unique_id(vertex),
         "\"",
         case {vertex in options[:highlight], options[:theme]} do
-          {true, :dark} -> ", style = filled, fillcolor = \"#f87171\", color = \"#f87171\""
-          {true, :light} -> ", style = filled, fillcolor = \"#fca5a5\", color = \"#fca5a5\""
+          {true, :dark} -> ", style = filled, fillcolor = \"#ff5757\", color = \"#ff5757\""
+          {true, :light} -> ", style = filled, fillcolor = \"#FF914D\", color = \"#FF914D\""
           _ -> ""
         end,
         "];\n"

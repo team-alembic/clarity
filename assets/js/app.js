@@ -20,18 +20,24 @@ import { LiveSocket } from "phoenix_live_view";
 import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
 import Tooltip from "./tooltip.hook";
+import ThemeToggle, { getInitialTheme } from "./theme.hook";
 
 const Hooks = {
   Mermaid: Mermaid,
   Viz: Viz,
   Tooltip: Tooltip,
+  ThemeToggle: ThemeToggle,
 };
 
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
 let liveSocket = new LiveSocket("/live", Socket, {
-  params: { _csrf_token: csrfToken, user_agent: window.navigator.userAgent },
+  params: { 
+    _csrf_token: csrfToken, 
+    user_agent: window.navigator.userAgent,
+    theme: getInitialTheme()
+  },
   hooks: Hooks,
 });
 

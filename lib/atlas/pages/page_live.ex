@@ -31,11 +31,12 @@ defmodule Atlas.PageLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <article class="layout-container bg-gray-900 text-gray-100">
+    <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
       <.header
         breadcrumbs={@breadcrumbs}
         prefix={@prefix}
         asset_path={@asset_path}
+        theme={@theme}
         class="header z-10"
       />
 
@@ -44,7 +45,7 @@ defmodule Atlas.PageLive do
         prefix={@prefix}
         current={@current_vertex}
         breadcrumbs={@breadcrumbs}
-        class={"navigation bg-gray-800 border-r border-gray-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
+        class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
       />
 
       <.tabs
@@ -53,7 +54,7 @@ defmodule Atlas.PageLive do
         prefix={@prefix}
         current_vertex={@current_vertex}
       />
-      <.render_content content={@current_content} socket={@socket} />
+      <.render_content content={@current_content} socket={@socket} theme={@theme} />
     </article>
     <.render_tooltips atlas={@atlas} />
     """
@@ -71,7 +72,7 @@ defmodule Atlas.PageLive do
   @spec tabs(assigns :: Socket.assigns()) :: Rendered.t()
   defp tabs(assigns) do
     ~H"""
-    <nav class="tabs border-b border-gray-700 bg-gray-900 px-4">
+    <nav class="tabs border-b border-base-light-300 dark:border-base-dark-700 bg-base-light-100 dark:bg-base-dark-900 px-4">
       <ul class="flex space-x-2">
         <li :for={content <- @contents}>
           <.link
@@ -79,8 +80,8 @@ defmodule Atlas.PageLive do
             class={
             "inline-block px-4 py-2 rounded-t-md font-medium transition-colors " <>
             if content.id == @current_content.id,
-              do: "bg-gray-800 text-ash-400 border-b-2 border-ash-400",
-              else: "text-gray-400 hover:text-ash-400 hover:bg-gray-800"
+              do: "bg-base-light-200 dark:bg-base-dark-800 text-primary-light dark:text-primary-dark border-b-2 border-primary-light dark:border-primary-dark",
+              else: "text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark hover:bg-base-light-200 dark:hover:bg-base-dark-800"
             }
           >
             <.vertex_name vertex={content} />
@@ -99,6 +100,8 @@ defmodule Atlas.PageLive do
         <.mermaid graph={content.()} class="content p-4" id="content-view-mermaid" />
       <% {:mermaid, content} -> %>
         <.mermaid graph={content} class="content p-4" id="content-view-mermaid" />
+      <% {:viz, content} when is_function(content, 1) -> %>
+        <.viz graph={content.(%{theme: @theme})} class="content p-4" id="content-view-viz" />
       <% {:viz, content} when is_function(content, 0) -> %>
         <.viz graph={content.()} class="content p-4" id="content-view-viz" />
       <% {:viz, content} -> %>
@@ -125,7 +128,7 @@ defmodule Atlas.PageLive do
           overview = vertex |> Vertex.markdown_overview() |> IO.iodata_to_binary() |> String.trim(),
           overview != "" do %>
       <div id={"tooltip-#{Vertex.unique_id(vertex)}"} phx-hook="Tooltip" class="tooltip hidden py-5">
-        <div class="border border-gray-700 shadow-lg bg-gray-800 text-gray-100 px-4 py-2 rounded">
+        <div class="border border-base-light-400 dark:border-base-dark-600 shadow-lg bg-white dark:bg-base-dark-800 text-gray-900 dark:text-base-dark-100 px-4 py-2 rounded">
           <.markdown content={overview} />
         </div>
       </div>
@@ -162,10 +165,10 @@ defmodule Atlas.PageLive do
         name: "Graph Navigation",
         content:
           {:viz,
-           fn ->
+           fn %{theme: theme} ->
              graph
              |> Atlas.GraphUtil.subgraph_within_steps(current_vertex, 2, 1)
-             |> Atlas.Graph.to_dot(theme: :dark, highlight: current_vertex)
+             |> Atlas.Graph.to_dot(theme: theme, highlight: current_vertex)
            end}
       }
       | contents

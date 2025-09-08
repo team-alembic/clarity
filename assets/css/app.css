@@ -153,8 +153,8 @@
     flip-block,
     flip-block flip-inline;
   position-try-order: most-width;
-  max-inline-size: 50vi;
-  max-block-size: 50vb;
+  max-inline-size: 70vi;
+  max-block-size: 70vb;
   overflow: auto;
   z-index: 10000;
   pointer-events: none;
@@ -168,5 +168,4 @@
   width: 1px;
   height: 1px;
   pointer-events: none;
-  /* display: inline; */
 }
