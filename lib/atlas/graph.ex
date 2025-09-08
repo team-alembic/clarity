@@ -14,6 +14,9 @@ defmodule Atlas.Graph do
     highlight: []
   ]
 
+  @doc """
+  Converts Atlas Graph to DOT format.
+  """
   @spec to_dot(graph :: :digraph.graph(), options :: options()) :: iodata()
   def to_dot(graph, options \\ []) do
     options =

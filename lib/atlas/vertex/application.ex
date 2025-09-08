@@ -1,5 +1,6 @@
 defmodule Atlas.Vertex.Application do
   @moduledoc false
+
   @type t() :: %__MODULE__{
           app: Application.app(),
           description: String.t(),
@@ -8,6 +9,9 @@ defmodule Atlas.Vertex.Application do
   @enforce_keys [:app, :description, :version]
   defstruct [:app, :description, :version]
 
+  @doc """
+  Creates an `Atlas.Vertex.Application` from an application tuple.
+  """
   @spec from_app_tuple(
           app_tuple ::
             {app :: Application.app(), description :: charlist(), version :: charlist()}

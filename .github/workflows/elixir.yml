@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    tags:
+      - "v*"
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  ash-ci:
+    uses: ash-project/ash/.github/workflows/ash-ci.yml@main
+    with:
+      postgres: false
+      doctor: true
+      community-files: true
+      conventional-commit: false
+      tenants: false
+      spark-formatter: false
+    permissions:
+      id-token: write
+      contents: write
+      pages: write
+      security-events: write
+
+    secrets:
+      hex_api_key: ${{ secrets.HEX_API_KEY }}

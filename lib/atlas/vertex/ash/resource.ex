@@ -1,6 +1,9 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Atlas.Vertex.Ash.Resource do
     @moduledoc false
+
+    alias Ash.Resource.Info
+
     @type t() :: %__MODULE__{
             resource: Ash.Resource.t()
           }
@@ -33,7 +36,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           inspect(vertex.resource),
           "`\n\n",
           "Domain: `",
-          inspect(Ash.Resource.Info.domain(vertex.resource)),
+          inspect(Info.domain(vertex.resource)),
           "`\n\n",
           case Code.fetch_docs(vertex.resource) do
             {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},

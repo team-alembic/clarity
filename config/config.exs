@@ -20,9 +20,13 @@ config :tailwind,
     cd: Path.expand("../assets", __DIR__)
   ]
 
-if config_env() == :dev do
-  config :atlas,
-    ash_domains: [Demo.Accounts.Domain]
+case config_env() do
+  env when env in [:dev, :test] ->
+    config :atlas,
+      ash_domains: [Demo.Accounts.Domain]
 
-  config :logger, level: :debug
+    config :logger, level: :debug
+
+  _ ->
+    :ok
 end
