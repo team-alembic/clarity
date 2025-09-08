@@ -1259,6 +1259,16 @@ video {
   flex: 1 1 0%;
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }
@@ -1716,6 +1726,14 @@ video {
 .focus\:ring-primary-light:focus {
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(255 145 77 / var(--tw-ring-opacity));
+}
+
+.disabled\:cursor-not-allowed:disabled {
+  cursor: not-allowed;
+}
+
+.disabled\:opacity-50:disabled {
+  opacity: 0.5;
 }
 
 .group[open] .group-open\:bg-base-light-200 {

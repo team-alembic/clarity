@@ -14,6 +14,7 @@ defmodule Atlas.CoreComponents do
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
   attr :asset_path, :string, default: "/", doc: "The path to static assets"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
+  attr :refreshing, :boolean, default: false, doc: "Whether a refresh is in progress"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
 
@@ -54,6 +55,7 @@ defmodule Atlas.CoreComponents do
       </nav>
 
       <div class="flex items-center space-x-2 md:ml-6">
+        <.refresh_button refreshing={@refreshing} />
         <.theme_toggle id="header-theme-toggle" theme={@theme} />
         <button
           type="button"
@@ -210,6 +212,40 @@ defmodule Atlas.CoreComponents do
         {:error, reason, _} -> "<p>Error rendering markdown: #{reason}</p>"
       end}
     </div>
+    """
+  end
+
+  attr :class, :string, default: "", doc: "CSS classes to apply to the refresh button"
+  attr :refreshing, :boolean, default: false, doc: "Whether the refresh is in progress"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the refresh button"
+
+  @spec refresh_button(assigns :: Socket.assigns()) :: Rendered.t()
+  def refresh_button(assigns) do
+    ~H"""
+    <button
+      type="button"
+      disabled={@refreshing}
+      phx-click="refresh"
+      class={"inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed #{@class}"}
+      aria-label="Refresh"
+      {@rest}
+    >
+      <!-- Refresh icon -->
+      <svg
+        id="refresh-icon"
+        class={"w-5 h-5 #{if @refreshing, do: "animate-spin", else: ""}"}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+        />
+      </svg>
+    </button>
     """
   end
 

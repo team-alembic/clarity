@@ -14,7 +14,7 @@ defmodule Atlas.PageLive do
 
     {:ok,
      socket
-     |> assign(atlas: atlas, show_navigation: false)
+     |> assign(atlas: atlas, show_navigation: false, refreshing: false)
      |> update_dynamics(vertex, content)}
   end
 
@@ -37,6 +37,7 @@ defmodule Atlas.PageLive do
         prefix={@prefix}
         asset_path={@asset_path}
         theme={@theme}
+        refreshing={@refreshing}
         class="header z-10"
       />
 
@@ -67,6 +68,30 @@ defmodule Atlas.PageLive do
 
   def handle_event("toggle_navigation", _params, socket) do
     {:noreply, assign(socket, show_navigation: not socket.assigns.show_navigation)}
+  end
+
+  def handle_event("refresh", _params, socket) do
+    socket = assign(socket, refreshing: true)
+    {:noreply, start_async(socket, :refresh_atlas, fn -> Atlas.update() end)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_async(:refresh_atlas, {:ok, new_atlas}, socket) do
+    socket =
+      socket
+      |> assign(atlas: new_atlas, refreshing: false)
+      |> update_dynamics(socket.assigns.current_vertex, socket.assigns.current_content.id)
+
+    {:noreply, socket}
+  end
+
+  def handle_async(:refresh_atlas, {:exit, reason}, socket) do
+    socket =
+      socket
+      |> assign(refreshing: false)
+      |> put_flash(:error, "Failed to refresh: #{inspect(reason)}")
+
+    {:noreply, socket}
   end
 
   @spec tabs(assigns :: Socket.assigns()) :: Rendered.t()
