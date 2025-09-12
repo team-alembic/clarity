@@ -23,14 +23,15 @@ case Code.ensure_loaded(Ash) do
 
           :digraph.add_edge(graph, resource_vertex, action_vertex, :action)
 
-          action_trigger_content = %Vertex.Content{
-            id: Vertex.unique_id(action_vertex) <> "_trigger",
-            name: "Trigger",
-            content: {:live_view, {Clarity.ActionTriggerLive, %{}}}
-          }
+          # TODO: Implement action triggers
+          # action_trigger_content = %Vertex.Content{
+          #   id: Vertex.unique_id(action_vertex) <> "_trigger",
+          #   name: "Trigger",
+          #   content: {:live_view, {Clarity.ActionTriggerLive, %{}}}
+          # }
 
-          :digraph.add_vertex(graph, action_trigger_content)
-          :digraph.add_edge(graph, action_vertex, action_trigger_content, :content)
+          # :digraph.add_vertex(graph, action_trigger_content)
+          # :digraph.add_edge(graph, action_vertex, action_trigger_content, :content)
         end
 
         graph

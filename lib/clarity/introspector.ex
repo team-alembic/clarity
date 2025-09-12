@@ -133,7 +133,8 @@ defmodule Clarity.Introspector do
   ones.
   """
   @spec introspectors() :: [t()]
-  def introspectors, do: @native_introspectors ++ Application.get_env(:clarity, :introspectors, [])
+  def introspectors,
+    do: @native_introspectors ++ Application.get_env(:clarity, :introspectors, [])
 
   @doc """
   Attaches the moduledoc content of a module to the introspection graph.
