@@ -1,18 +1,18 @@
 <!-- ex_doc_ignore_start -->
-# Atlas
+# Clarity
 <!-- ex_doc_ignore_end -->
 
-⚠️ **Alpha Notice**: Atlas is currently in an **alpha state**. APIs and features
+⚠️ **Alpha Notice**: Clarity is currently in an **alpha state**. APIs and features
 may change rapidly, and things may break. Feedback and contributions are very
 welcome!
 
 
-Atlas is an interactive introspection and visualization tool for Elixir projects.  
+Clarity is an interactive introspection and visualization tool for Elixir projects.  
 It automatically discovers and visualizes applications, domains, resources,
 modules, and their relationships, giving you a navigable graph interface
 enriched with diagrams, tooltips, and documentation.
 
-![Atlas Screenshot](docs/assets/screenshot.png)
+![Clarity Screenshot](docs/assets/screenshot.png)
 
 ## Features
 
@@ -33,18 +33,18 @@ enriched with diagrams, tooltips, and documentation.
 ### Igniter
 
 ```bash
-mix igniter.install atlas@github:team-alembic/atlas
+mix igniter.install clarity@github:team-alembic/clarity
 ```
 
 ### Manual
 
-The package can be installed by adding `atlas` to your list of dependencies
+The package can be installed by adding `clarity` to your list of dependencies
 in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:atlas, github: "team-alembic/atlas", branch: "main"}
+    {:clarity, github: "team-alembic/clarity", branch: "main"}
   ]
 end
 ```
@@ -52,22 +52,22 @@ end
 Endpoint (just below the existing `Plug.Static`):
 ```elixir
 plug Plug.Static,
-  at: "/atlas",
-  from: :atlas,
+  at: "/clarity",
+  from: :clarity,
   gzip: true,
-  only: Atlas.Web.static_paths()
+  only: Clarity.Web.static_paths()
 ```
 
 Router:
 ```elixir
-import Atlas.Router
-atlas("/atlas")
+import Clarity.Router
+clarity("/clarity")
 ```
 
 <!-- ex_doc_ignore_start -->
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm).The docs can be found at
-<https://hexdocs.pm/atlas>.
+<https://hexdocs.pm/clarity>.
 <!-- ex_doc_ignore_end -->
 
 ## License

@@ -1,4 +1,6 @@
 defmodule DemoWeb.Router do
+  @moduledoc false
+
   use Phoenix.Router
 
   pipeline :browser do
@@ -7,9 +9,9 @@ defmodule DemoWeb.Router do
   end
 
   scope "/" do
-    import Atlas.Router
+    import Clarity.Router
 
     pipe_through :browser
-    atlas("/")
+    clarity("/")
   end
 end

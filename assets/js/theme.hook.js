@@ -1,6 +1,6 @@
 // Detect initial theme from localStorage or system preference
 export const getInitialTheme = () => {
-  const storedTheme = localStorage.getItem('atlas-theme');
+  const storedTheme = localStorage.getItem('clarity-theme');
   if (storedTheme) return storedTheme;
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
@@ -28,7 +28,7 @@ const ThemeToggle = {
 
     // Listen for system theme changes when no stored preference
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem('atlas-theme')) {
+      if (!localStorage.getItem('clarity-theme')) {
         const newTheme = e.matches ? 'dark' : 'light';
         this.applyTheme(newTheme);
         this.pushEvent("set-theme", { theme: newTheme });
@@ -46,7 +46,7 @@ const ThemeToggle = {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
     // Store the user's preference
-    localStorage.setItem('atlas-theme', newTheme);
+    localStorage.setItem('clarity-theme', newTheme);
     this.applyTheme(newTheme);
     
     // Notify the LiveView of the theme change

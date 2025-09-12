@@ -9,7 +9,7 @@ module.exports = {
   darkMode: "class",
   content: [
     "./js/**/*.js",
-    "../lib/atlas/**/*.*ex",
+    "../lib/clarity/**/*.*ex",
   ],
   theme: {
     extend: {

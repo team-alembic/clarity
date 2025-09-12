@@ -22,7 +22,7 @@ config :tailwind,
 
 case config_env() do
   env when env in [:dev, :test] ->
-    config :atlas, DemoWeb.Endpoint,
+    config :clarity, DemoWeb.Endpoint,
       url: [host: "localhost"],
       secret_key_base: "Hu4qQN3iKzTV4fJxhorPQlA/osH9fAMtbtjVS58PFgfw3ja5Z18Q/WSNR9wP4OfW",
       live_view: [signing_salt: "hMegieSe"],
@@ -38,12 +38,12 @@ case config_env() do
         patterns: [
           ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
           ~r"priv/gettext/.*(po)$",
-          ~r"lib/atlas/(live|views|pages|components)/.*(ex)$",
-          ~r"lib/atlas/templates/.*(eex)$"
+          ~r"lib/clarity/(live|views|pages|components)/.*(ex)$",
+          ~r"lib/clarity/templates/.*(eex)$"
         ]
       ]
 
-    config :atlas,
+    config :clarity,
       ash_domains: [Demo.Accounts.Domain]
 
     config :logger, level: :debug

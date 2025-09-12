@@ -1,7 +1,7 @@
-defmodule Mix.Tasks.Atlas.ExportGraph do
-  @shortdoc "Exports the Atlas graph to a DOT file"
+defmodule Mix.Tasks.Clarity.ExportGraph do
+  @shortdoc "Exports the Clarity graph to a DOT file"
   @moduledoc """
-  This task exports the Atlas graph to a DOT file, which can be used for
+  This task exports the Clarity graph to a DOT file, which can be used for
   visualization with Graphviz.
 
   ## Options
@@ -34,35 +34,35 @@ defmodule Mix.Tasks.Atlas.ExportGraph do
         path -> File.stream!(path, [:write, :utf8])
       end
 
-    %Atlas{graph: graph} = atlas = Atlas.get()
+    %Clarity{graph: graph} = clarity = Clarity.get()
 
     graph =
       case Keyword.get_values(options, :filter_vertices) do
         [] -> graph
-        filters -> filter_graph_reachable_vertices(atlas, filters)
+        filters -> filter_graph_reachable_vertices(clarity, filters)
       end
 
     graph
-    |> Atlas.Graph.to_dot()
+    |> Clarity.Graph.to_dot()
     |> Enum.into(out, &List.wrap/1)
   end
 
-  @spec filter_graph_reachable_vertices(atlas :: Atlas.t(), filter_vertices :: [String.t()]) ::
+  @spec filter_graph_reachable_vertices(clarity :: Clarity.t(), filter_vertices :: [String.t()]) ::
           :digraph.graph()
-  defp filter_graph_reachable_vertices(atlas, filter_vertices) do
+  defp filter_graph_reachable_vertices(clarity, filter_vertices) do
     filtered_graph = :digraph.new()
-    filter_vertices = Enum.map(filter_vertices, &Map.fetch!(atlas.vertices, &1))
+    filter_vertices = Enum.map(filter_vertices, &Map.fetch!(clarity.vertices, &1))
 
-    for vertex <- :digraph.vertices(atlas.graph),
+    for vertex <- :digraph.vertices(clarity.graph),
         Enum.any?(filter_vertices, fn filter ->
           vertex == filter or
-            :digraph.get_short_path(atlas.graph, filter, vertex) != false
+            :digraph.get_short_path(clarity.graph, filter, vertex) != false
         end) do
       :digraph.add_vertex(filtered_graph, vertex)
     end
 
-    for edge <- :digraph.edges(atlas.graph),
-        {_edge, from, to, label} = :digraph.edge(atlas.graph, edge) do
+    for edge <- :digraph.edges(clarity.graph),
+        {_edge, from, to, label} = :digraph.edge(clarity.graph, edge) do
       :digraph.add_edge(filtered_graph, from, to, label)
     end
 

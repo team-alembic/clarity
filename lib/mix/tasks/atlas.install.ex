@@ -1,13 +1,13 @@
-defmodule Mix.Tasks.Atlas.Install.Docs do
+defmodule Mix.Tasks.Clarity.Install.Docs do
   @moduledoc false
 
   @doc false
   @spec short_doc() :: String.t()
-  def short_doc, do: "Installs `Atlas`"
+  def short_doc, do: "Installs `Clarity`"
 
   @doc false
   @spec example() :: String.t()
-  def example, do: "mix atlas.install"
+  def example, do: "mix clarity.install"
 
   @doc false
   @spec long_doc() :: String.t()
@@ -25,7 +25,7 @@ defmodule Mix.Tasks.Atlas.Install.Docs do
 end
 
 if Code.ensure_loaded?(Igniter) do
-  defmodule Mix.Tasks.Atlas.Install do
+  defmodule Mix.Tasks.Clarity.Install do
     @shortdoc "#{__MODULE__.Docs.short_doc()}"
 
     @moduledoc __MODULE__.Docs.long_doc()
@@ -45,7 +45,7 @@ if Code.ensure_loaded?(Igniter) do
       %Igniter.Mix.Task.Info{
         # Groups allow for overlapping arguments for tasks by the same author
         # See the generators guide for more.
-        group: :atlas,
+        group: :clarity,
         # *other* dependencies to add
         # i.e `{:foo, "~> 2.0"}`
         adds_deps: [],
@@ -77,13 +77,13 @@ if Code.ensure_loaded?(Igniter) do
       app_name = Application.app_name(igniter)
 
       {igniter, router} =
-        Phoenix.select_router(igniter, "Which router should Atlas be added to?")
+        Phoenix.select_router(igniter, "Which router should Clarity be added to?")
 
       {igniter, endpoint} =
-        Phoenix.select_endpoint(igniter, router, "Which endpoint should Atlas be added to?")
+        Phoenix.select_endpoint(igniter, router, "Which endpoint should Clarity be added to?")
 
       igniter
-      |> Formatter.import_dep(:atlas)
+      |> Formatter.import_dep(:clarity)
       |> add_to_endpoint(endpoint)
       |> add_to_router(app_name, router)
     end
@@ -97,7 +97,7 @@ if Code.ensure_loaded?(Igniter) do
       No Phoenix router found or selected. Please ensure that Phoenix is set up
       and then run this installer again with
 
-          mix atlas.install
+          mix clarity.install
       """)
     end
 
@@ -105,19 +105,19 @@ if Code.ensure_loaded?(Igniter) do
       Module.find_and_update_module!(igniter, router, fn zipper ->
         zipper =
           zipper
-          |> Common.move_to(&Function.function_call?(&1, :atlas, [1, 2]))
+          |> Common.move_to(&Function.function_call?(&1, :clarity, [1, 2]))
           |> case do
             :error ->
               Common.add_code(
                 zipper,
                 """
                 if Application.compile_env(#{inspect(app_name)}, :dev_routes) do
-                  import Atlas.Router
+                  import Clarity.Router
 
-                  scope "/atlas" do
+                  scope "/clarity" do
                     pipe_through :browser
 
-                    atlas "/"
+                    clarity "/"
                   end
                 end
                 """,
@@ -141,7 +141,7 @@ if Code.ensure_loaded?(Igniter) do
       No Phoenix endpoint found or selected. Please ensure that Phoenix is set up
       and then run this installer again with
 
-          mix atlas.install
+          mix clarity.install
       """)
     end
 
@@ -152,7 +152,7 @@ if Code.ensure_loaded?(Igniter) do
           with true <- Common.nodes_equal?(zipper, Plug.Static),
                {:ok, zipper} <- Common.move_right(zipper, 1),
                {:ok, zipper} <- Keyword.get_key(zipper, :from) do
-            Common.nodes_equal?(zipper, :atlas)
+            Common.nodes_equal?(zipper, :clarity)
           else
             _ -> false
           end
@@ -177,10 +177,10 @@ if Code.ensure_loaded?(Igniter) do
              zipper,
              """
              plug Plug.Static,
-               at: "/atlas",
-               from: :atlas,
+               at: "/clarity",
+               from: :clarity,
                gzip: true,
-               only: Atlas.Web.static_paths()
+               only: Clarity.Web.static_paths()
              """,
              placement: :after
            )}
@@ -193,10 +193,10 @@ if Code.ensure_loaded?(Igniter) do
            is present in your endpoint or add the following code manually:
 
                plug Plug.Static,
-                 at: "/atlas",
-                 from: :atlas,
+                 at: "/clarity",
+                 from: :clarity,
                  gzip: true,
-                 only: Atlas.Web.static_paths()
+                 only: Clarity.Web.static_paths()
            """}
       end
     end
@@ -217,7 +217,7 @@ if Code.ensure_loaded?(Igniter) do
     end
   end
 else
-  defmodule Mix.Tasks.Atlas.Install do
+  defmodule Mix.Tasks.Clarity.Install do
     @shortdoc "#{__MODULE__.Docs.short_doc()} | Install `igniter` to use"
 
     @moduledoc __MODULE__.Docs.long_doc()
@@ -227,7 +227,7 @@ else
     @impl Mix.Task
     def run(_argv) do
       Mix.shell().error("""
-      The task 'atlas.install' requires igniter. Please install igniter and try again.
+      The task 'clarity.install' requires igniter. Please install igniter and try again.
 
       For more information, see: https://hexdocs.pm/igniter/readme.html#installation
       """)

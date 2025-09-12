@@ -1,14 +1,16 @@
 defmodule DemoWeb.Endpoint do
-  use Phoenix.Endpoint, otp_app: :atlas
+  @moduledoc false
+
+  use Phoenix.Endpoint, otp_app: :clarity
 
   socket "/live", Phoenix.LiveView.Socket
   socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
 
   plug Plug.Static,
     at: "/",
-    from: :atlas,
+    from: :clarity,
     gzip: true,
-    only: Atlas.Web.static_paths()
+    only: Clarity.Web.static_paths()
 
   plug Phoenix.LiveReloader
   plug Phoenix.CodeReloader

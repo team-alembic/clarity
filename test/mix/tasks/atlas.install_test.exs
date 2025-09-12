@@ -1,15 +1,15 @@
-defmodule Mix.Tasks.Atlas.InstallTest do
+defmodule Mix.Tasks.Clarity.InstallTest do
   use ExUnit.Case, async: true
 
   import Igniter.Test
 
-  test "installs atlas" do
+  test "installs clarity" do
     phx_test_project()
-    |> Igniter.compose_task("atlas.install", [])
+    |> Igniter.compose_task("clarity.install", [])
     |> assert_has_patch(".formatter.exs", """
        |[
      - |  import_deps: [:ecto, :ecto_sql, :phoenix],
-     + |  import_deps: [:atlas, :ecto, :ecto_sql, :phoenix],
+     + |  import_deps: [:clarity, :ecto, :ecto_sql, :phoenix],
        |  subdirectories: ["priv/*/migrations"],
        |  plugins: [Phoenix.LiveView.HTMLFormatter],
     ...|
@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Atlas.InstallTest do
     ...|
        |  )
        |
-     + |  plug Plug.Static, at: "/atlas", from: :atlas, gzip: true, only: Atlas.Web.static_paths()
+     + |  plug Plug.Static, at: "/clarity", from: :clarity, gzip: true, only: Clarity.Web.static_paths()
      + |
        |  # Code reloading can be explicitly enabled under the
        |  # :code_reloader configuration of your endpoint.
@@ -30,19 +30,19 @@ defmodule Mix.Tasks.Atlas.InstallTest do
        |  end
      + |
      + |  if Application.compile_env(:test, :dev_routes) do
-     + |    import Atlas.Router
+     + |    import Clarity.Router
      + |
-     + |    scope "/atlas" do
+     + |    scope "/clarity" do
      + |      pipe_through :browser
      + |
-     + |      atlas("/")
+     + |      clarity("/")
      + |    end
      + |  end
        |end
        |
     """)
     |> apply_igniter!()
-    |> Igniter.compose_task("atlas.install", [])
+    |> Igniter.compose_task("clarity.install", [])
     |> assert_unchanged()
   end
 
@@ -58,34 +58,34 @@ defmodule Mix.Tasks.Atlas.InstallTest do
       """)
     end)
     |> apply_igniter!()
-    |> Igniter.compose_task("atlas.install", [])
+    |> Igniter.compose_task("clarity.install", [])
     |> assert_has_warning("""
     The location of the `Plug.Static` plug in your endpoint could not be
     determined. Please ensure that the preinstalled `Plug.Static` plug
     is present in your endpoint or add the following code manually:
 
         plug Plug.Static,
-          at: "/atlas",
-          from: :atlas,
+          at: "/clarity",
+          from: :clarity,
           gzip: true,
-          only: Atlas.Web.static_paths()
+          only: Clarity.Web.static_paths()
     """)
   end
 
   test "warns if there's no phoenix router found" do
     test_project()
-    |> Igniter.compose_task("atlas.install", [])
+    |> Igniter.compose_task("clarity.install", [])
     |> assert_has_warning("""
     No Phoenix router found or selected. Please ensure that Phoenix is set up
     and then run this installer again with
 
-        mix atlas.install
+        mix clarity.install
     """)
     |> assert_has_warning("""
     No Phoenix endpoint found or selected. Please ensure that Phoenix is set up
     and then run this installer again with
 
-        mix atlas.install
+        mix clarity.install
     """)
   end
 end

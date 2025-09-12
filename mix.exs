@@ -1,19 +1,19 @@
-defmodule Atlas.MixProject do
+defmodule Clarity.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :atlas,
+      app: :clarity,
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
-      name: "Atlas",
+      name: "Clarity",
       description:
-        "Atlas is an interactive introspection and visualization tool for Elixir projects, providing navigable graphs and diagrams for frameworks like Ash, Phoenix, and Ecto.",
-      source_url: "https://github.com/team-alembic/atlas",
+        "Clarity is an interactive introspection and visualization tool for Elixir projects, providing navigable graphs and diagrams for frameworks like Ash, Phoenix, and Ecto.",
+      source_url: "https://github.com/team-alembic/clarity",
       package: package(),
       dialyzer: [
         plt_add_apps: [:mix]
@@ -30,7 +30,7 @@ defmodule Atlas.MixProject do
   def application do
     [
       extra_applications: [],
-      mod: {Atlas.Application, []}
+      mod: {Clarity.Application, []}
     ]
   end
 
@@ -83,13 +83,13 @@ defmodule Atlas.MixProject do
         "README*"
       ],
       licenses: ["Apache-2.0"],
-      links: %{"Github" => "https://github.com/team-alembic/atlas"}
+      links: %{"Github" => "https://github.com/team-alembic/clarity"}
     ]
   end
 
   defp docs do
     [
-      main: "Atlas",
+      main: "Clarity",
       assets: %{"docs/assets" => "docs/assets"}
     ]
   end

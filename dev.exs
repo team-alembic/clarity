@@ -2,7 +2,7 @@ Application.put_env(:phoenix, :serve_endpoints, true)
 
 :erlang.system_flag(:backtrace_depth, 100)
 
-Application.ensure_all_started(:atlas)
+Application.ensure_all_started(:clarity)
 
 Task.start(fn ->
   children = [
