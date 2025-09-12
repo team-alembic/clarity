@@ -41,6 +41,7 @@ defmodule Clarity.Vertex.Phoenix.Router do
             "| ",
             case Map.fetch(route, :helper) do
               :error -> ""
+              {:ok, nil} -> ""
               {:ok, helper} -> [helper, "_path"]
             end,
             " | ",
