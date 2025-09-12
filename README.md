@@ -33,7 +33,7 @@ enriched with diagrams, tooltips, and documentation.
 ### Igniter
 
 ```bash
-mix igniter.install clarity@github:team-alembic/clarity
+mix igniter.install clarity
 ```
 
 ### Manual
