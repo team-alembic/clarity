@@ -44,7 +44,7 @@ in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:clarity, github: "team-alembic/clarity", branch: "main"}
+    {:clarity, "~> 0.1.0"}
   ]
 end
 ```
