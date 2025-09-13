@@ -78,6 +78,7 @@ defmodule Clarity.MixProject do
       maintainers: ["Alembic Pty Ltd"],
       files: [
         "lib",
+        "priv",
         "LICENSE*",
         "mix.exs",
         "README*"
