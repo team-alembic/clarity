@@ -35,7 +35,6 @@ defmodule Clarity.PageLive do
       <.header
         breadcrumbs={@breadcrumbs}
         prefix={@prefix}
-        asset_path={@asset_path}
         theme={@theme}
         refreshing={@refreshing}
         class="header z-10"
