@@ -43,8 +43,8 @@ defmodule Clarity.MixProject do
       {:earmark, "~> 1.4"},
       {:igniter, "~> 0.6.25", optional: true},
       # UI
-      {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.3.1", runtime: Mix.env() == :dev},
+      {:esbuild, "~> 0.8", only: [:dev, :test], runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.3.1", only: [:dev, :test], runtime: Mix.env() == :dev},
       # Development
       {:phx_new, "~> 1.7", only: [:test]},
       {:ex_doc, "~> 0.38.2", only: [:dev, :test], runtime: false},
