@@ -1,3 +1,11 @@
+<img src="priv/static/images/logo.svg" alt="Clarity Logo" width="250px" />
+
+![Elixir CI](https://github.com/team-alembic/clarity/workflows/CI/badge.svg)
+[![Hex.pm License](https://img.shields.io/hexpm/l/clarity)
+](https://opensource.org/licenses/Apache-2.0)
+[![Hex version badge](https://img.shields.io/hexpm/v/clarity.svg)](https://hex.pm/packages/ash)
+[![Hexdocs badge](https://img.shields.io/badge/docs-hexdocs-purple)](https://hexdocs.pm/clarity)
+
 <!-- ex_doc_ignore_start -->
 # Clarity
 <!-- ex_doc_ignore_end -->
