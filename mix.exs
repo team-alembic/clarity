@@ -81,6 +81,7 @@ defmodule Clarity.MixProject do
         "priv",
         "LICENSE*",
         "mix.exs",
+        ".formatter.exs",
         "README*"
       ],
       licenses: ["Apache-2.0"],

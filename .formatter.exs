@@ -1,11 +1,16 @@
+locals_without_parens = [
+  clarity: 1,
+  clarity: 2,
+  clarity_browser_pipeline: 0,
+  clarity_browser_pipeline: 1
+]
+
 [
   import_deps: [:ash, :phoenix],
-  locals_without_parens: [
-    clarity: 1,
-    clarity: 2,
-    clarity_browser_pipeline: 0,
-    clarity_browser_pipeline: 1
-  ],
+  locals_without_parens: locals_without_parens,
   plugins: [Styler, DoctestFormatter, Phoenix.LiveView.HTMLFormatter],
-  inputs: ["{mix,.formatter,.credo}.exs", "{config,lib,test,dev}/**/*.{ex,exs}"]
+  inputs: ["{mix,.formatter,.credo}.exs", "{config,lib,test,dev}/**/*.{ex,exs}"],
+  export: [
+    locals_without_parens: locals_without_parens
+  ]
 ]
