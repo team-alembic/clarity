@@ -3,7 +3,6 @@ defmodule Clarity.CoreComponents do
 
   use Phoenix.Component
 
-  import Clarity.Router, only: [__asset_path__: 2]
   import Phoenix.HTML
 
   alias Clarity.Vertex
@@ -12,7 +11,6 @@ defmodule Clarity.CoreComponents do
 
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
-  attr :asset_path, :string, default: "/", doc: "The path to static assets"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :refreshing, :boolean, default: false, doc: "Whether a refresh is in progress"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
@@ -27,7 +25,7 @@ defmodule Clarity.CoreComponents do
     >
       <.link patch={Path.join([@prefix, "root", "graph"])} class="mr-4">
         <img
-          src={__asset_path__(@asset_path, "images/ash_logo_orange.svg")}
+          src={Clarity.Resources.logo_uri()}
           alt="Ash Logo"
           class="h-8 w-8"
         />

@@ -14,13 +14,13 @@
 //
 //     import "some-package"
 
-// Establish Phoenix Socket and LiveView configuration.
-import { Socket } from "phoenix";
-import { LiveSocket } from "phoenix_live_view";
 import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
 import Tooltip from "./tooltip.hook";
 import ThemeToggle, { getInitialTheme } from "./theme.hook";
+
+let socketPath =
+  document.querySelector("html").getAttribute("phx-socket") || "/live";
 
 const Hooks = {
   Mermaid: Mermaid,
@@ -32,7 +32,7 @@ const Hooks = {
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
-let liveSocket = new LiveSocket("/live", Socket, {
+let liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
   params: { 
     _csrf_token: csrfToken, 
     user_agent: window.navigator.userAgent,

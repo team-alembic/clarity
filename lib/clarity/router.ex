@@ -48,10 +48,6 @@ defmodule Clarity.Router do
     * `:live_socket_path` - Optional override for the socket path. it must match
       the `socket "/live", Phoenix.LiveView.Socket` in your endpoint. Defaults to `/live`.
 
-    * `:asset_path` - Optional override for the asset path. It must match
-      the path of the clarity `Plug.Static` in your endpoint. Defaults to the
-      base url of clarity.
-
     * `:on_mount` - Optional list of hooks to attach to the mount lifecycle.
 
     * `:session` - Optional extra session map or MFA tuple to be merged with the session.
@@ -82,7 +78,6 @@ defmodule Clarity.Router do
 
       live_socket_path = Keyword.get(opts, :live_socket_path, "/live")
       full_path = Phoenix.Router.scoped_path(__MODULE__, path)
-      asset_path = Keyword.get(opts, :asset_path, full_path)
 
       live_session_name = opts[:live_session_name] || :clarity
       on_mount = [Clarity.Pages.Setup | List.wrap(opts[:on_mount])]
@@ -90,7 +85,7 @@ defmodule Clarity.Router do
       session =
         {Clarity.Router, :__session__,
          [
-           %{"prefix" => full_path, "asset_path" => asset_path},
+           %{"prefix" => full_path},
            List.wrap(opts[:session])
          ]}
 
@@ -152,28 +147,5 @@ defmodule Clarity.Router do
           Map.put(session, cookie, value)
       end
     end)
-  end
-
-  @doc false
-  @spec __asset_path__(base_path :: Path.t(), filename :: Path.t()) :: Path.t()
-  def __asset_path__(base_path, filename)
-
-  cache_static_manifest_path = Application.app_dir(:clarity, "priv/static/cache_manifest.json")
-  @external_resource cache_static_manifest_path
-  if File.exists?(cache_static_manifest_path) do
-    @cache_static_manifest cache_static_manifest_path
-                           |> File.read!()
-                           |> JSON.decode!()
-                           |> Map.fetch!("latest")
-    def __asset_path__(base_path, filename) do
-      case Map.fetch(@cache_static_manifest, filename) do
-        :error -> Path.join([base_path, filename])
-        {:ok, hashed_filename} -> Path.join([base_path, hashed_filename])
-      end
-    end
-  else
-    def __asset_path__(base_path, filename) do
-      Path.join([base_path, filename])
-    end
   end
 end

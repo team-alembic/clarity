@@ -8,13 +8,13 @@
     <.live_title default="Dashboard" suffix=" · Clarity">
       {assigns[:page_title]}
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={__asset_path__(@asset_path, "assets/app.css")} />
+    <Clarity.Resources.css />
     <meta name="theme-color" content="#b91c1c" />
     <meta name="background-color" content="#111827" />
-    <link rel="shortcut icon" href={__asset_path__(@asset_path, "images/ash_logo_orange.svg")} />
+    <link rel="shortcut icon" href={Clarity.Resources.logo_uri()} />
   </head>
   <body>
     {@inner_content}
   </body>
-  <script defer phx-track-static type="text/javascript" src={__asset_path__(@asset_path, "assets/app.js")} ></script>
+  <Clarity.Resources.js />
 </html>

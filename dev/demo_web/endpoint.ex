@@ -6,12 +6,6 @@ defmodule DemoWeb.Endpoint do
   socket "/live", Phoenix.LiveView.Socket
   socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
 
-  plug Plug.Static,
-    at: "/",
-    from: :clarity,
-    gzip: true,
-    only: Clarity.Web.static_paths()
-
   plug Phoenix.LiveReloader
   plug Phoenix.CodeReloader
 

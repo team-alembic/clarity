@@ -49,15 +49,6 @@ def deps do
 end
 ```
 
-Endpoint (just below the existing `Plug.Static`):
-```elixir
-plug Plug.Static,
-  at: "/clarity",
-  from: :clarity,
-  gzip: true,
-  only: Clarity.Web.static_paths()
-```
-
 Router:
 ```elixir
 import Clarity.Router

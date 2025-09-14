@@ -2,10 +2,6 @@ defmodule Clarity.Web do
   @moduledoc false
 
   @doc false
-  @spec static_paths :: [Path.t()]
-  def static_paths, do: ~w(assets images)
-
-  @doc false
   @spec router :: Macro.t()
   def router do
     quote do
@@ -53,8 +49,6 @@ defmodule Clarity.Web do
   def html do
     quote do
       use Phoenix.Component
-
-      import Clarity.Router, only: [__asset_path__: 2]
 
       # Import convenience functions from controllers
       import Phoenix.Controller,
