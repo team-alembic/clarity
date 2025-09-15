@@ -25,7 +25,7 @@ defmodule Mix.Tasks.Clarity.ExportGraph do
   ]
 
   @impl Mix.Task
-  def run(args) do
+  def run(clarity \\ Clarity.get(), args) do
     {options, []} = OptionParser.parse!(args, strict: @options, aliases: @aliases)
 
     out =
@@ -34,7 +34,7 @@ defmodule Mix.Tasks.Clarity.ExportGraph do
         path -> File.stream!(path, [:write, :utf8])
       end
 
-    %Clarity{graph: graph} = clarity = Clarity.get()
+    %Clarity{graph: graph} = clarity
 
     graph =
       case Keyword.get_values(options, :filter_vertices) do

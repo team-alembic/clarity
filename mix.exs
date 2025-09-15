@@ -10,6 +10,7 @@ defmodule Clarity.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
+      listeners: [Phoenix.CodeReloader],
       name: "Clarity",
       description:
         "Clarity is an interactive introspection and visualization tool for Elixir projects, providing navigable graphs and diagrams for frameworks like Ash, Phoenix, and Ecto.",
@@ -17,6 +18,9 @@ defmodule Clarity.MixProject do
       package: package(),
       dialyzer: [
         plt_add_apps: [:mix]
+      ],
+      test_coverage: [
+        ignore_modules: [~r/^Demo\./, ~r/^DemoWeb\./, ~r/\.Docs$/, ~r/^Inspect\.Demo\./]
       ],
       docs: &docs/0
     ]
@@ -55,6 +59,8 @@ defmodule Clarity.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: [:dev, :test]},
       {:picosat_elixir, "~> 0.2.3", only: [:dev, :test]},
       {:plug_cowboy, "~> 2.0", only: [:dev, :test]},
+      {:floki, ">= 0.30.0", only: [:test]},
+      {:lazy_html, ">= 0.1.0", only: [:test]},
       {:mix_audit, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
