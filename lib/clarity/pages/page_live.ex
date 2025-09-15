@@ -9,7 +9,7 @@ defmodule Clarity.PageLive do
 
   @impl Phoenix.LiveView
   def mount(%{"vertex" => vertex, "content" => content} = _params, _session, socket) do
-    clarity = Clarity.get()
+    clarity = Clarity.get(socket.assigns.clarity_pid)
     vertex = Map.fetch!(clarity.vertices, vertex)
 
     {:ok,
@@ -71,7 +71,8 @@ defmodule Clarity.PageLive do
 
   def handle_event("refresh", _params, socket) do
     socket = assign(socket, refreshing: true)
-    {:noreply, start_async(socket, :refresh_clarity, fn -> Clarity.update() end)}
+    clarity_pid = socket.assigns.clarity_pid
+    {:noreply, start_async(socket, :refresh_clarity, fn -> Clarity.update(clarity_pid) end)}
   end
 
   @impl Phoenix.LiveView

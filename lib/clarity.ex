@@ -43,7 +43,9 @@ defmodule Clarity do
   Gets the current state of the clarity.
   """
   @spec get(name :: Agent.agent()) :: t()
-  def get(name \\ __MODULE__), do: Agent.get(name, & &1)
+  def get(name \\ __MODULE__) do
+    Agent.get(name, & &1)
+  end
 
   @spec update(name :: Agent.agent()) :: t()
   def update(name \\ __MODULE__) do

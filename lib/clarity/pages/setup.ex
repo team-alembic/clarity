@@ -13,7 +13,7 @@ defmodule Clarity.Pages.Setup do
           session :: map(),
           socket :: Socket.t()
         ) :: {:cont, Socket.t()} | {:halt, Socket.t()}
-  def on_mount(_name, _params, %{"prefix" => prefix} = _session, socket) do
+  def on_mount(_name, _params, %{"prefix" => prefix} = session, socket) do
     theme =
       case get_connect_params(socket)["theme"] do
         "dark" -> :dark
@@ -23,7 +23,11 @@ defmodule Clarity.Pages.Setup do
 
     socket =
       socket
-      |> assign(prefix: prefix, theme: theme)
+      |> assign(
+        prefix: prefix,
+        theme: theme,
+        clarity_pid: Map.get(session, "clarity_pid", Clarity)
+      )
       |> attach_hook(:theme_handler, :handle_event, &handle_theme_event/3)
 
     {:cont, socket}
