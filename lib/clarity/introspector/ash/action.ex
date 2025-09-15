@@ -9,6 +9,9 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex
 
       @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Ash.Domain]
+
+      @impl Clarity.Introspector
       def introspect(graph) do
         for %Vertex.Ash.Resource{resource: resource} = resource_vertex <-
               :digraph.vertices(graph),
@@ -43,6 +46,9 @@ case Code.ensure_loaded(Ash) do
       @moduledoc false
 
       @behaviour Clarity.Introspector
+
+      @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Ash.Domain]
 
       @impl Clarity.Introspector
       def introspect(graph), do: graph

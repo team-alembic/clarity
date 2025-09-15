@@ -8,6 +8,9 @@ case Code.ensure_loaded(Phoenix.Router) do
       alias Clarity.Vertex
 
       @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Application]
+
+      @impl Clarity.Introspector
       def introspect(graph) do
         for %Vertex.Application{app: app} = app_vertex <- :digraph.vertices(graph),
             router <- routers(app) do
@@ -39,6 +42,9 @@ case Code.ensure_loaded(Phoenix.Router) do
       @moduledoc false
 
       @behaviour Clarity.Introspector
+
+      @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Application]
 
       @impl Clarity.Introspector
       def introspect(graph), do: graph
