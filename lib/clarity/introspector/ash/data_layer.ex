@@ -10,6 +10,9 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex.Ash.Resource
 
       @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Application, Clarity.Introspector.Ash.Domain]
+
+      @impl Clarity.Introspector
       def introspect(graph) do
         app_vertices =
           graph
@@ -53,6 +56,9 @@ case Code.ensure_loaded(Ash) do
       @moduledoc false
 
       @behaviour Clarity.Introspector
+
+      @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Application, Clarity.Introspector.Ash.Domain]
 
       @impl Clarity.Introspector
       def introspect(graph), do: graph

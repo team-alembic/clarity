@@ -15,6 +15,9 @@ case Code.ensure_loaded(Ash) do
       alias Ash.Resource.Relationships.ManyToMany
       alias Clarity.Vertex
 
+      @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Ash.Domain]
+
       @typep field() ::
                Attribute.t()
                | Aggregate.t()
@@ -86,6 +89,9 @@ case Code.ensure_loaded(Ash) do
       @moduledoc false
 
       @behaviour Clarity.Introspector
+
+      @impl Clarity.Introspector
+      def dependencies, do: [Clarity.Introspector.Ash.Domain]
 
       @impl Clarity.Introspector
       def introspect(graph), do: graph

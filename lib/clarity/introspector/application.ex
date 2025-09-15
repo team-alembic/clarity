@@ -6,6 +6,9 @@ defmodule Clarity.Introspector.Application do
   alias Clarity.Vertex
 
   @impl Clarity.Introspector
+  def dependencies, do: [Clarity.Introspector.Root]
+
+  @impl Clarity.Introspector
   def introspect(graph) do
     for app_tuple <- Application.loaded_applications(),
         %Vertex.Root{} = root_vertex <- :digraph.vertices(graph) do

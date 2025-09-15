@@ -15,10 +15,10 @@ defmodule Clarity.Introspector do
   ## Custom Introspectors
 
   You can define your own introspectors by implementing this behaviour and adding
-  your module to the `:introspectors` config under the `:clarity` application.
+  your module to the `:clarity_introspectors` config under the your application.
 
   ```elixir
-  config :clarity, :introspectors, [
+  config :acme, :clarity_introspectors, [
     MyApp.MyCustomIntrospector
   ]
   ```
@@ -32,6 +32,9 @@ defmodule Clarity.Introspector do
     @behaviour Clarity.Introspector
 
     alias Clarity.Vertex
+
+    @impl Clarity.Introspector
+    def dependencies, do: [Clarity.Introspector.Ash.Domain]
 
     @impl Clarity.Introspector
     def introspect(graph) do
@@ -95,6 +98,22 @@ defmodule Clarity.Introspector do
   """
   @callback post_introspect(graph :: :digraph.graph()) :: :digraph.graph()
 
+  @doc """
+  Declares the introspectors that this module depends on.
+
+  Returns a list of introspector modules that must be executed before this one.
+  This callback must be implemented by all introspectors to declare their
+  dependencies explicitly.
+
+  ## Example
+
+      @impl Clarity.Introspector
+      def dependencies do
+        [Clarity.Introspector.Root, Clarity.Introspector.Application]
+      end
+  """
+  @callback dependencies() :: [t()]
+
   @optional_callbacks [
     post_introspect: 1
   ]
@@ -130,11 +149,42 @@ defmodule Clarity.Introspector do
 
   @doc """
   Returns the list of introspectors, including both built-in and user-defined
-  ones.
+  ones, sorted by their dependencies.
   """
   @spec introspectors() :: [t()]
-  def introspectors,
-    do: @native_introspectors ++ Application.get_env(:clarity, :introspectors, [])
+  def introspectors do
+    configured_introspectors =
+      Application.loaded_applications()
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.flat_map(&Application.get_all_env/1)
+      |> Keyword.get_values(:clarity_introspectors)
+      |> List.flatten()
+
+    (@native_introspectors ++ configured_introspectors)
+    |> Enum.uniq()
+    |> sort_by_dependencies()
+  end
+
+  @spec sort_by_dependencies([t()]) :: [t()]
+  defp sort_by_dependencies(introspectors) do
+    dep_graph = :digraph.new([:acyclic])
+
+    try do
+      # Add all introspectors as vertices
+      Enum.each(introspectors, &:digraph.add_vertex(dep_graph, &1))
+
+      # Add dependency edges
+      for introspector <- introspectors,
+          dependency <- introspector.dependencies() do
+        :digraph.add_edge(dep_graph, dependency, introspector)
+      end
+
+      # Perform topological sort
+      :digraph_utils.topsort(dep_graph)
+    after
+      :digraph.delete(dep_graph)
+    end
+  end
 
   @doc """
   Attaches the moduledoc content of a module to the introspection graph.
