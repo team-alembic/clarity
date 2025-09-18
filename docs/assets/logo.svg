@@ -1,0 +1,44 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="line-shade">
+            <stop stop-color="#d6341c" offset="0%" />
+            <stop stop-color="#feb12f" offset="20%" />
+            <stop stop-color="#feb12f" offset="80%" />
+            <stop stop-color="#d6341c" offset="100%" />
+        </linearGradient>
+        <linearGradient id="sun-lower-inner" x1="0" x2="0" y1="0" y2="1">
+            <stop stop-color="#54133a" offset="0%" />
+            <stop stop-color="#34142d" offset="100%" />
+        </linearGradient>
+        <linearGradient id="sun-lower-outer" x1="0" x2="0" y1="0" y2="1">
+            <stop stop-color="#3f123a" offset="0%" />
+            <stop stop-color="#251427" offset="100%" />
+        </linearGradient>
+    </defs>
+    <clipPath id="top-half">
+        <rect x="20" y="20" width="60" height="30" />
+    </clipPath>
+    <clipPath id="bottom-half">
+        <rect x="20" y="50" width="60" height="30" />
+    </clipPath>
+    <g id="sun">
+        <circle cx="50" cy="50" r="20" fill="#35171f" clip-path="url(#top-half)" />
+        <circle cx="50" cy="50" r="10" fill="#feb92e" clip-path="url(#top-half)" />
+
+        <circle cx="50" cy="50" r="20" fill="url(#sun-lower-outer)" clip-path="url(#bottom-half)" />
+        <circle cx="50" cy="50" r="10" fill="url(#sun-lower-inner)" clip-path="url(#bottom-half)" />
+    </g>
+    <g id="frame" stroke-width="0.5">
+        <path d="M0 50 L 10 49.75 L 90 49.75 L 100 50 L 90 50.25 L 10 50.25 L 0 50" fill="url(#line-shade)" />
+        <path d="M15 19.75 L90 19.75 L 100 20 L 90 20.25 L 15 20.25 L 15 19.75" fill="url(#line-shade)" />
+        <path d="M20 15 L 19.75 25 L 19.75 90 L 20 100 L 20.25 90 L 20.25 25 L 20 15" fill="url(#line-shade)" />
+        <path d="M0 80 L 10 79.75 L 75 79.75 L 85 80 L 75 80.25 L10 80.25 L 0 80" fill="url(#line-shade)" />
+        <path d="M80 0 L 79.95 10 L 79.95 75 L 80 85 L 80.25 75 L 80.25 10 L 80 0" fill="url(#line-shade)" />
+        <path d="M50 83 L 49.875 86 L 49.875 90 L 50 93 L 50.125 90 L 50.125 86 L 50 83" fill="url(#line-shade)" />
+        <path d="M50 7 L 49.875 10 L 49.975 14 L 50 17 L 50.125 14 L 50.175 10 L 50 7" fill="url(#line-shade)" />
+    </g>
+    <g id="flare">
+        <circle cx="75" cy="25" r="2.5" fill="#fcbd19" />
+        <circle cx="25" cy="75" r="2.5" fill="#2a172d" />
+    </g>
+</svg>
