@@ -36,7 +36,7 @@ defmodule Clarity do
   def start_link(opts \\ []) do
     opts = Keyword.put_new(opts, :name, __MODULE__)
 
-    Agent.start_link(&introspect/0, opts)
+    Agent.start_link(fn -> nil end, opts)
   end
 
   @doc """
@@ -44,7 +44,18 @@ defmodule Clarity do
   """
   @spec get(name :: Agent.agent()) :: t()
   def get(name \\ __MODULE__) do
-    Agent.get(name, & &1)
+    Agent.get_and_update(
+      name,
+      fn
+        nil ->
+          state = introspect()
+          {state, state}
+
+        value ->
+          {value, value}
+      end,
+      to_timeout(minute: 1)
+    )
   end
 
   @spec update(name :: Agent.agent()) :: t()
