@@ -99,7 +99,7 @@ defmodule Clarity.MixProject do
     [
       main: "Clarity",
       logo: "priv/static/images/logo.svg",
-      assets: %{"docs/assets" => "docs/assets", "priv/static/images" => "priv/static/images"},
+      assets: %{"docs/assets" => "docs/assets", "priv/static/images" => "priv/static/images"}
     ]
   end
 end
