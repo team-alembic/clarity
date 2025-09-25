@@ -6,6 +6,16 @@ defmodule Mix.Tasks.Clarity.InstallTest do
   test "installs clarity" do
     phx_test_project()
     |> Igniter.compose_task("clarity.install", [])
+    |> assert_has_patch("mix.exs", """
+    ...|
+       |      deps: deps(),
+       |      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+     - |      listeners: [Phoenix.CodeReloader]
+     + |      listeners: [Phoenix.CodeReloader, Clarity.CodeReloader]
+       |    ]
+       |  end
+    ...|
+    """)
     |> assert_has_patch(".formatter.exs", """
        |[
      - |  import_deps: [:ecto, :ecto_sql, :phoenix],
