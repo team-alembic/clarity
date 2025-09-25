@@ -46,8 +46,8 @@ defmodule Clarity.Resources do
                          static_path,
                          Map.get(
                            manifest,
-                           "images/ash_logo_orange.svg",
-                           "images/ash_logo_orange.svg"
+                           "images/logo.svg",
+                           "images/logo.svg"
                          )
                        ])
 

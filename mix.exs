@@ -98,7 +98,8 @@ defmodule Clarity.MixProject do
   defp docs do
     [
       main: "Clarity",
-      assets: %{"docs/assets" => "docs/assets"}
+      logo: "priv/static/images/logo.svg",
+      assets: %{"docs/assets" => "docs/assets", "priv/static/images" => "priv/static/images"},
     ]
   end
 end
