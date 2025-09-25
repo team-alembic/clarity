@@ -34,9 +34,11 @@ if Code.ensure_loaded?(Igniter) do
 
     alias Igniter.Code.Common
     alias Igniter.Code.Function
+    alias Igniter.Code.List
     alias Igniter.Libs.Phoenix
     alias Igniter.Project.Application
     alias Igniter.Project.Formatter
+    alias Igniter.Project.MixProject
     alias Igniter.Project.Module
 
     @impl Igniter.Mix.Task
@@ -81,6 +83,7 @@ if Code.ensure_loaded?(Igniter) do
       igniter
       |> Formatter.import_dep(:clarity)
       |> add_to_router(app_name, router)
+      |> add_code_reloader()
     end
 
     @spec add_to_router(igniter :: Igniter.t(), app_name :: atom(), router :: module() | nil) ::
@@ -124,6 +127,14 @@ if Code.ensure_loaded?(Igniter) do
           end
 
         {:ok, zipper}
+      end)
+    end
+
+    @spec add_code_reloader(igniter :: Igniter.t()) :: Igniter.t()
+    defp add_code_reloader(igniter) do
+      MixProject.update(igniter, :project, [:listeners], fn
+        nil -> {:ok, {:code, [Clarity.CodeReloader]}}
+        zipper -> List.append_new_to_list(zipper, Clarity.CodeReloader)
       end)
     end
   end
