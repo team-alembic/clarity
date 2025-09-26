@@ -23,6 +23,32 @@ defmodule Clarity.Introspector do
   ]
   ```
 
+  ## Custom Introspectors in libraries
+
+  Libraries can also provide their own introspectors by adding them to their
+  application config. Clarity will automatically discover and include them
+  during the introspection process. However since the config files of libraries
+  are not evaluated, you must add the config to the `mix.exs` of the library.
+
+  ```elixir
+  defmodule Acme.MixProject do
+    use Mix.Project
+
+    def project do
+      # ...
+    end
+
+    def application do
+      [
+        extra_applications: [:logger],
+        env: [
+          clarity_introspectors: [Acme.ClarityIntrospector]
+        ]
+      ]
+    end
+  end
+  ```
+
   ## Example
 
   Here's a simplified example of a custom introspector implementation:
