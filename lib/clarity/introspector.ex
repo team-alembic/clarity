@@ -168,7 +168,6 @@ defmodule Clarity.Introspector do
     Clarity.Introspector.Ash.Action,
     Clarity.Introspector.Ash.Field,
     Clarity.Introspector.Ash.Type,
-    Clarity.Introspector.Ash.Diagram,
     Clarity.Introspector.Phoenix.Endpoint,
     Clarity.Introspector.Phoenix.Router
   ]

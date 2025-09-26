@@ -36,6 +36,15 @@ enriched with diagrams, tooltips, and documentation.
 - 🔌 **Custom extensions** – add your own introspectors to visualize
   domain-specific concepts.
 
+## Third-Party Libraries
+
+Third-party libraries can add custom content to Clarity, extending its
+visualization capabilities. To install any of these libraries, simply add them
+to your `mix.exs` dependencies.
+
+- **[ash_diagram](https://hex.pm/packages/ash_diagram)** – Provides mermaid
+  diagrams for Ash
+
 ## Installation
 
 ### Igniter
