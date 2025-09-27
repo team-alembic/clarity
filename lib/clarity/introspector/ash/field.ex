@@ -14,9 +14,7 @@ case Code.ensure_loaded(Ash) do
       alias Ash.Resource.Relationships.HasOne
       alias Ash.Resource.Relationships.ManyToMany
       alias Clarity.Vertex
-
-      @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Ash.Domain]
+      alias Clarity.Vertex.Ash.Resource, as: ResourceVertex
 
       @typep field() ::
                Attribute.t()
@@ -25,21 +23,44 @@ case Code.ensure_loaded(Ash) do
                | Ash.Resource.Relationships.relationship()
 
       @impl Clarity.Introspector
-      def introspect(graph) do
-        for %Vertex.Ash.Resource{resource: resource} = resource_vertex <-
-              :digraph.vertices(graph),
-            field <- Resource.Info.fields(resource) do
+      def source_vertex_types, do: [ResourceVertex]
+
+      @impl Clarity.Introspector
+      def introspect_vertex(%ResourceVertex{resource: resource} = resource_vertex, graph) do
+        resource
+        |> Resource.Info.fields()
+        |> Enum.flat_map(fn field ->
           field_vertex = field_vertex(field, resource)
           edge_label = edge_label(field)
 
-          field_vertex = :digraph.add_vertex(graph, field_vertex, Vertex.unique_id(field_vertex))
-          :digraph.add_edge(graph, resource_vertex, field_vertex, edge_label)
+          base_results = [
+            {:vertex, field_vertex},
+            {:edge, resource_vertex, field_vertex, edge_label}
+          ]
 
-          resolve_field_targets(graph, field_vertex, field)
-        end
-
-        graph
+          # Add relationship target edges if applicable
+          base_results ++ add_relationship_edges(field, field_vertex, graph)
+        end)
       end
+
+      def introspect_vertex(_vertex, _graph), do: []
+
+      @spec add_relationship_edges(field :: field(), Vertex.t(), Clarity.Graph.t()) ::
+              Clarity.Introspector.results()
+      defp add_relationship_edges(%mod{destination: target_resource}, field_vertex, graph)
+           when mod in [HasOne, BelongsTo, HasMany, ManyToMany] do
+        target_resource_vertex =
+          graph
+          |> Clarity.Graph.vertices()
+          |> Enum.find(&match?(%ResourceVertex{resource: ^target_resource}, &1))
+
+        case target_resource_vertex do
+          nil -> []
+          target -> [{:edge, field_vertex, target, :relationship}]
+        end
+      end
+
+      defp add_relationship_edges(_field, _field_vertex, _graph), do: []
 
       @spec field_vertex(field :: field(), resource :: Resource.t()) :: Vertex.t()
       defp field_vertex(%Attribute{} = attribute, resource),
@@ -62,26 +83,6 @@ case Code.ensure_loaded(Ash) do
 
       defp edge_label(%mod{}) when mod in [HasOne, BelongsTo, HasMany, ManyToMany],
         do: :relationship
-
-      @spec resolve_field_targets(
-              graph :: :digraph.graph(),
-              field_vertex :: :digraph.vertex(),
-              field :: field()
-            ) :: :ok
-      defp resolve_field_targets(graph, field_vertex, %mod{destination: target_resource})
-           when mod in [HasOne, BelongsTo, HasMany, ManyToMany] do
-        target_resource_vertex =
-          Enum.find(
-            :digraph.vertices(graph),
-            &match?(%Vertex.Ash.Resource{resource: ^target_resource}, &1)
-          )
-
-        :digraph.add_edge(graph, field_vertex, target_resource_vertex, :relationship)
-
-        :ok
-      end
-
-      defp resolve_field_targets(_, _, _), do: :ok
     end
 
   _ ->
@@ -91,9 +92,9 @@ case Code.ensure_loaded(Ash) do
       @behaviour Clarity.Introspector
 
       @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Ash.Domain]
+      def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect(graph), do: graph
+      def introspect_vertex(_vertex, _graph), do: []
     end
 end

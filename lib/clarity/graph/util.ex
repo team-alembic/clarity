@@ -1,5 +1,5 @@
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
-defmodule Clarity.GraphUtil do
+defmodule Clarity.Graph.Util do
   @moduledoc false
 
   @doc """
@@ -51,100 +51,6 @@ defmodule Clarity.GraphUtil do
       )
 
     subgraph
-  end
-
-  @doc """
-  Converts a directed graph into a tree structure starting from the given root vertex.
-
-  Traverses the graph using a queue-based approach, collects tree information, and builds
-  a tree representation rooted at `root_vertex`.
-
-  ## Parameters
-
-    - `graph`: The directed graph (`:digraph.graph()`) to convert.
-    - `root_vertex`: The vertex (`:digraph.vertex()`) to use as the root of the tree.
-
-  ## Returns
-
-    - A tree structure (`Clarity.tree()`) representing the hierarchy of the graph starting from the root vertex.
-
-  """
-  @spec graph_to_tree(graph :: :digraph.graph(), root_vertex :: :digraph.vertex()) ::
-          Clarity.tree()
-  def graph_to_tree(graph, root_vertex) do
-    root_stub = %{node: root_vertex, children: %{}}
-
-    visited_map = %{root_vertex => root_stub}
-    queue = :queue.in(root_vertex, :queue.new())
-
-    collected_tree_info = collect_tree_info(graph, queue, visited_map)
-
-    build_tree(collected_tree_info, root_vertex)
-  end
-
-  @spec collect_tree_info(
-          graph :: :digraph.graph(),
-          queue :: :queue.queue(),
-          visited_map :: %{required(:digraph.vertex()) => Clarity.tree()}
-        ) :: %{required(:digraph.vertex()) => Clarity.tree()}
-  defp collect_tree_info(graph, queue, visited_map) do
-    case :queue.out(queue) do
-      {:empty, _} ->
-        visited_map
-
-      {{:value, current_vertex}, queue_tail} ->
-        {updated_visited_map, updated_queue} =
-          Enum.reduce(
-            :digraph.out_edges(graph, current_vertex),
-            {visited_map, queue_tail},
-            fn edge_id, {vis_acc, q_acc} ->
-              {_, source_vertex, target_vertex, edge_label} = :digraph.edge(graph, edge_id)
-
-              child_vertex =
-                if current_vertex == source_vertex, do: target_vertex, else: source_vertex
-
-              if Map.has_key?(vis_acc, child_vertex) do
-                # Already placed elsewhere (shorter or equal path) → skip
-                {vis_acc, q_acc}
-              else
-                child_stub = %{vertex: child_vertex, children: %{}}
-                vis_with_child = Map.put(vis_acc, child_vertex, child_stub)
-
-                parent_stub = Map.fetch!(vis_with_child, current_vertex)
-
-                updated_parent_stub =
-                  Map.update(
-                    parent_stub,
-                    :children,
-                    %{edge_label => [child_vertex]},
-                    fn child_map ->
-                      Map.update(child_map, edge_label, [child_vertex], &[child_vertex | &1])
-                    end
-                  )
-
-                vis_parent_fixed = Map.put(vis_with_child, current_vertex, updated_parent_stub)
-                {vis_parent_fixed, :queue.in(child_vertex, q_acc)}
-              end
-            end
-          )
-
-        collect_tree_info(graph, updated_queue, updated_visited_map)
-    end
-  end
-
-  @spec build_tree(
-          visited_map :: %{required(:digraph.vertex()) => Clarity.tree()},
-          vertex_id :: :digraph.vertex()
-        ) :: Clarity.tree()
-  defp build_tree(visited_map, vertex_id) do
-    %{children: raw_children} = Map.fetch!(visited_map, vertex_id)
-
-    concrete_children =
-      Map.new(raw_children, fn {label, child_id_list} ->
-        {label, Enum.map(child_id_list, &build_tree(visited_map, &1))}
-      end)
-
-    %{node: vertex_id, children: concrete_children}
   end
 
   @spec bfs_direction(original_graph, subgraph, visited, start_vertex, max_steps, edges_fun) ::

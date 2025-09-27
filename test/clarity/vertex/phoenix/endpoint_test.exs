@@ -1,5 +1,5 @@
 defmodule Clarity.Vertex.Phoenix.EndpointTest do
-  use Clarity.Web.ConnCase, async: true
+  use Clarity.Test.ConnCase, async: true
 
   alias Clarity.Vertex
   alias Clarity.Vertex.Phoenix.Endpoint

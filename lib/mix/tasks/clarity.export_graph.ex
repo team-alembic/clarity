@@ -12,6 +12,9 @@ defmodule Mix.Tasks.Clarity.ExportGraph do
 
   use Mix.Task
 
+  alias Clarity.Graph.DOT
+  alias Clarity.Graph.Filter
+
   @requirements ["app.start"]
 
   @options [
@@ -25,7 +28,7 @@ defmodule Mix.Tasks.Clarity.ExportGraph do
   ]
 
   @impl Mix.Task
-  def run(clarity \\ Clarity.get(), args) do
+  def run(clarity \\ Clarity.get(Clarity.Server, :complete), args) do
     {options, []} = OptionParser.parse!(args, strict: @options, aliases: @aliases)
 
     out =
@@ -34,38 +37,32 @@ defmodule Mix.Tasks.Clarity.ExportGraph do
         path -> File.stream!(path, [:write, :utf8])
       end
 
-    %Clarity{graph: graph} = clarity
+    %Clarity{graph: clarity_graph} = clarity
 
-    graph =
+    case_result =
       case Keyword.get_values(options, :filter_vertices) do
-        [] -> graph
-        filters -> filter_graph_reachable_vertices(clarity, filters)
+        [] ->
+          DOT.to_dot(clarity_graph)
+
+        filter_vertex_ids ->
+          source_vertices = lookup_vertices(clarity_graph, filter_vertex_ids)
+
+          filtered_clarity_graph =
+            Clarity.Graph.filter(clarity_graph, Filter.reachable_from(source_vertices))
+
+          DOT.to_dot(filtered_clarity_graph)
       end
 
-    graph
-    |> Clarity.Graph.to_dot()
-    |> Enum.into(out, &List.wrap/1)
+    Enum.into(case_result, out, &List.wrap/1)
   end
 
-  @spec filter_graph_reachable_vertices(clarity :: Clarity.t(), filter_vertices :: [String.t()]) ::
-          :digraph.graph()
-  defp filter_graph_reachable_vertices(clarity, filter_vertices) do
-    filtered_graph = :digraph.new()
-    filter_vertices = Enum.map(filter_vertices, &Map.fetch!(clarity.vertices, &1))
-
-    for vertex <- :digraph.vertices(clarity.graph),
-        Enum.any?(filter_vertices, fn filter ->
-          vertex == filter or
-            :digraph.get_short_path(clarity.graph, filter, vertex) != false
-        end) do
-      :digraph.add_vertex(filtered_graph, vertex)
-    end
-
-    for edge <- :digraph.edges(clarity.graph),
-        {_edge, from, to, label} = :digraph.edge(clarity.graph, edge) do
-      :digraph.add_edge(filtered_graph, from, to, label)
-    end
-
-    filtered_graph
+  @spec lookup_vertices(Clarity.Graph.t(), [String.t()]) :: [Clarity.Vertex.t()]
+  defp lookup_vertices(graph, vertex_ids) do
+    Enum.map(vertex_ids, fn vertex_id ->
+      case Clarity.Graph.get_vertex(graph, vertex_id) do
+        nil -> raise "Vertex with ID '#{vertex_id}' not found in graph"
+        vertex -> vertex
+      end
+    end)
   end
 end

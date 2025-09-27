@@ -5,38 +5,26 @@ case Code.ensure_loaded(Ash) do
 
       @behaviour Clarity.Introspector
 
-      alias Clarity.Vertex
+      alias Clarity.Vertex.Application
+      alias Clarity.Vertex.Ash.Domain
 
       @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Application]
+      def source_vertex_types, do: [Application]
 
       @impl Clarity.Introspector
-      def introspect(graph) do
-        for %Vertex.Application{app: app} = app_vertex <- :digraph.vertices(graph),
-            {domain, resources} <- Ash.Info.domains_and_resources(app) do
-          domain_vertex = %Vertex.Ash.Domain{domain: domain}
+      def introspect_vertex(%Application{app: app} = app_vertex, _graph) do
+        Enum.flat_map(Ash.Info.domains(app), fn domain ->
+          domain_vertex = %Domain{domain: domain}
 
-          domain_vertex =
-            :digraph.add_vertex(graph, domain_vertex, Vertex.unique_id(domain_vertex))
-
-          :digraph.add_edge(graph, app_vertex, domain_vertex, :domain)
-
-          Clarity.Introspector.attach_moduledoc_content(domain, graph, domain_vertex)
-
-          for resource <- resources do
-            resource_vertex = %Vertex.Ash.Resource{resource: resource}
-
-            resource_vertex =
-              :digraph.add_vertex(graph, resource_vertex, Vertex.unique_id(resource_vertex))
-
-            :digraph.add_edge(graph, domain_vertex, resource_vertex, :resource)
-
-            Clarity.Introspector.attach_moduledoc_content(resource, graph, resource_vertex)
-          end
-        end
-
-        graph
+          [
+            {:vertex, domain_vertex},
+            {:edge, app_vertex, domain_vertex, :domain}
+            | Clarity.Introspector.moduledoc_content(domain, domain_vertex)
+          ]
+        end)
       end
+
+      def introspect_vertex(_vertex, _graph), do: []
     end
 
   _ ->
@@ -46,9 +34,9 @@ case Code.ensure_loaded(Ash) do
       @behaviour Clarity.Introspector
 
       @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Application]
+      def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect(graph), do: graph
+      def introspect_vertex(_vertex, _graph), do: []
     end
 end

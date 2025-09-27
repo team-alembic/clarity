@@ -33,6 +33,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       @impl Clarity.Vertex
       def markdown_overview(_vertex), do: []
+
+      @impl Clarity.Vertex
+      # TODO: Add anno once ash supports it
+      def source_anno(_vertex), do: nil
     end
   end
 end

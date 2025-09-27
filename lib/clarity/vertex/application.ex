@@ -60,5 +60,8 @@ defmodule Clarity.Vertex.Application do
         to_string(vertex.version),
         "`"
       ]
+
+    @impl Clarity.Vertex
+    def source_anno(_vertex), do: nil
   end
 end

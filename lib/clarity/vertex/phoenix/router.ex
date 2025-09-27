@@ -15,7 +15,7 @@ defmodule Clarity.Vertex.Phoenix.Router do
     def graph_group(_vertex), do: []
 
     @impl Clarity.Vertex
-    def type_label(_vertex), do: inspect(Clarity.Vertex.Phoenix.Router)
+    def type_label(_vertex), do: "Clarity.Vertex.Phoenix.Router"
 
     @impl Clarity.Vertex
     def render_name(%{router: module}), do: inspect(module)
@@ -56,5 +56,19 @@ defmodule Clarity.Vertex.Phoenix.Router do
           ]
         end)
       ]
+
+    @impl Clarity.Vertex
+    def source_anno(%{router: module}) do
+      case module.__info__(:compile)[:source] do
+        source when is_list(source) ->
+          :erl_anno.set_file(source, :erl_anno.new(1))
+
+        _ ->
+          nil
+      end
+    rescue
+      _ ->
+        nil
+    end
   end
 end

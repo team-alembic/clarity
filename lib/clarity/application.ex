@@ -4,8 +4,16 @@ defmodule Clarity.Application do
   use Application
 
   case Mix.env() do
-    :test -> @children [DemoWeb.Endpoint]
-    _env -> @children [Clarity]
+    :test ->
+      @children [DemoWeb.Endpoint]
+
+    _env ->
+      @children [
+        Clarity.Server,
+        {PartitionSupervisor,
+         child_spec: {Clarity.Server.Worker, clarity_server: Clarity.Server},
+         name: Clarity.WorkerPartitionSupervisor}
+      ]
   end
 
   @impl Application

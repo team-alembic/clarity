@@ -26,25 +26,29 @@ defmodule Clarity.CodeReloader do
   def init(_opts), do: {:ok, nil}
 
   @impl GenServer
-  def handle_info({:modules_compiled, _listener_update}, state) do
-    case GenServer.whereis(Clarity) do
-      nil -> :clarity_not_running
-      # TODO: Implement incremental updates
-      _pid -> Clarity.start_link()
-    end
+  def handle_info({event, listener_update}, state)
+      when event in [:modules_compiled, :dep_compiled] do
+    case GenServer.whereis(Clarity.Server) do
+      nil ->
+        :clarity_not_running
 
-    {:noreply, state}
-  end
-
-  def handle_info({:dep_compiled, _listener_update}, state) do
-    case GenServer.whereis(Clarity) do
-      nil -> :clarity_not_running
-      # TODO: Implement incremental updates
-      _pid -> Clarity.start_link()
+      _pid ->
+        {app, modules_diff} = extract_app_and_modules_diff(listener_update)
+        Clarity.introspect(Clarity.Server, {:incremental, app, modules_diff})
     end
 
     {:noreply, state}
   end
 
   def handle_info(_msg, state), do: {:noreply, state}
+
+  # Event Format: https://hexdocs.pm/mix/Mix.Task.Compiler.html#module-listening-to-compilation
+  @spec extract_app_and_modules_diff(map()) :: {Application.app(), Clarity.modules_diff()}
+  defp extract_app_and_modules_diff(%{
+         app: app,
+         modules_diff: %{changed: changed, added: added, removed: removed}
+       }) do
+    modules_diff = %{changed: changed, added: added, removed: removed}
+    {app, modules_diff}
+  end
 end

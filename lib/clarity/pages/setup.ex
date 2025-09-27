@@ -26,7 +26,7 @@ defmodule Clarity.Pages.Setup do
       |> assign(
         prefix: prefix,
         theme: theme,
-        clarity_pid: Map.get(session, "clarity_pid", Clarity)
+        clarity_pid: Map.get(session, "clarity_pid", Clarity.Server)
       )
       |> attach_hook(:theme_handler, :handle_event, &handle_theme_event/3)
 

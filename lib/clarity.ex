@@ -10,78 +10,96 @@ defmodule Clarity do
   #{readme_content}
   """
 
-  use Agent
-
   @external_resource readme_path
 
-  @type tree() :: %{
-          node: :digraph.vertex(),
-          children: %{
-            optional(:digraph.label()) => [tree()]
-          }
+  @type unsubscribe() :: (-> :ok)
+
+  @type queue_info() :: %{
+          future_queue: non_neg_integer(),
+          in_progress: non_neg_integer(),
+          total_vertices: non_neg_integer()
+        }
+
+  @type event() ::
+          :work_started
+          | :work_completed
+          | {:work_progress, queue_info()}
+
+  @type status() :: :working | :done
+
+  @type modules_diff() :: %{
+          changed: [module()],
+          added: [module()],
+          removed: [module()]
         }
 
   @type t() :: %__MODULE__{
-          graph: :digraph.graph(),
-          root: Clarity.Vertex.t(),
-          tree: tree(),
-          vertices: %{String.t() => Clarity.Vertex.t()}
+          graph: Clarity.Graph.t(),
+          status: status(),
+          queue_info: queue_info()
         }
 
-  @enforce_keys [:graph, :root, :tree, :vertices]
-  defstruct [:graph, :root, :tree, :vertices]
+  @enforce_keys [:graph, :status, :queue_info]
+  defstruct [:graph, :status, :queue_info]
 
-  @doc false
-  @spec start_link(opts :: GenServer.options()) :: Agent.on_start()
-  def start_link(opts \\ []) do
-    opts = Keyword.put_new(opts, :name, __MODULE__)
-
-    Agent.start_link(fn -> nil end, opts)
+  @doc """
+  Subscribe to clarity events. Returns an unsubscribe function.
+  """
+  @spec subscribe(GenServer.server()) :: unsubscribe()
+  def subscribe(server \\ Clarity.Server) do
+    GenServer.call(server, :subscribe)
   end
 
   @doc """
-  Gets the current state of the clarity.
+  Start introspection process.
+
+  ## Options
+
+  - `:full` - Full introspection, clears graph and re-introspects everything
+  - `{:incremental, app, modules_diff}` - Incremental introspection based on module changes for specific app
+  - `[module()]` - Introspect specific modules (legacy support)
   """
-  @spec get(name :: Agent.agent()) :: t()
-  def get(name \\ __MODULE__) do
-    Agent.get_and_update(
-      name,
-      fn
-        nil ->
-          state = introspect()
-          {state, state}
-
-        value ->
-          {value, value}
-      end,
-      to_timeout(minute: 1)
-    )
-  end
-
-  @spec update(name :: Agent.agent()) :: t()
-  def update(name \\ __MODULE__) do
-    Agent.get_and_update(name, fn _state ->
-      clarity = introspect()
-      {clarity, clarity}
-    end)
+  @spec introspect(
+          GenServer.server(),
+          :full | {:incremental, Application.app(), modules_diff()} | [module()]
+        ) :: :ok
+  def introspect(server \\ Clarity.Server, scope \\ :full) do
+    GenServer.cast(server, {:introspect, scope})
   end
 
   @doc """
-  Builds a new clarity by introspecting the current state of the system.
+  Get current clarity state.
+
+  For `:partial` mode, returns the current state immediately.
+  For `:complete` mode, waits for all work to complete before returning the final state.
   """
-  @spec introspect() :: t()
-  def introspect do
-    graph = Clarity.Introspector.introspect(:digraph.new())
+  @spec get(GenServer.server(), :partial | :complete) :: t()
+  def get(server \\ Clarity.Server, mode \\ :partial)
 
-    vertices =
-      for vertex <- :digraph.vertices(graph),
-          into: %{},
-          do: {Clarity.Vertex.unique_id(vertex), vertex}
+  def get(server, :partial) do
+    GenServer.call(server, :get)
+  end
 
-    root_vertex = Map.fetch!(vertices, "root")
+  def get(server, :complete) do
+    case GenServer.call(server, :get) do
+      %__MODULE__{status: :done} = clarity ->
+        clarity
 
-    tree = Clarity.GraphUtil.graph_to_tree(graph, root_vertex)
+      %__MODULE__{status: :working} ->
+        # Subscribe and wait for work to complete
+        unsubscribe = subscribe(server)
 
-    %__MODULE__{graph: graph, root: root_vertex, tree: tree, vertices: vertices}
+        try do
+          receive do
+            {:clarity, :work_completed} ->
+              GenServer.call(server, :get)
+          after
+            30_000 ->
+              raise "Timeout waiting for work to complete"
+          end
+        after
+          unsubscribe.()
+        end
+    end
   end
 end

@@ -3,12 +3,12 @@ defmodule Mix.Tasks.Clarity.ExportGraphTest do
 
   import ExUnit.CaptureIO
 
-  alias Clarity.TestHelper
+  alias Clarity.Test.Helper
   alias Mix.Tasks.Clarity.ExportGraph
 
   setup do
     # Set up test clarity agent
-    clarity = TestHelper.build_test_clarity()
+    clarity = Helper.build_test_clarity()
     {:ok, clarity: clarity}
   end
 
@@ -83,7 +83,7 @@ defmodule Mix.Tasks.Clarity.ExportGraphTest do
   end
 
   test "handles invalid filter vertices gracefully", %{clarity: clarity} do
-    assert_raise KeyError, fn ->
+    assert_raise RuntimeError, ~r/Vertex with ID 'nonexistent_vertex' not found in graph/, fn ->
       capture_io(fn ->
         ExportGraph.run(clarity, ["-f", "nonexistent_vertex"])
       end)

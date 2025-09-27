@@ -6,33 +6,46 @@ case Code.ensure_loaded(Phoenix.Endpoint) do
       @behaviour Clarity.Introspector
 
       alias Clarity.Vertex
+      alias Clarity.Vertex.Phoenix.Endpoint, as: EndpointVertex
 
       @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Application]
+      def source_vertex_types, do: [Clarity.Vertex.Module]
 
       @impl Clarity.Introspector
-      def introspect(graph) do
-        for %Vertex.Application{app: app} = app_vertex <- :digraph.vertices(graph),
-            endpoint <- endpoints(app) do
-          endpoint_vertex = %Vertex.Phoenix.Endpoint{endpoint: endpoint}
+      def introspect_vertex(%Vertex.Module{module: module} = module_vertex, graph) do
+        if endpoint?(module) do
+          endpoint_vertex = %EndpointVertex{endpoint: module}
+          app = Application.get_application(module)
 
-          endpoint_vertex =
-            :digraph.add_vertex(graph, endpoint_vertex, Vertex.unique_id(endpoint_vertex))
+          app_vertex =
+            graph
+            |> Clarity.Graph.vertices()
+            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
 
-          :digraph.add_edge(graph, app_vertex, endpoint_vertex, "endpoint")
+          [
+            {:vertex, endpoint_vertex},
+            {:edge, module_vertex, endpoint_vertex, "endpoint"},
+            {:edge, app_vertex, endpoint_vertex, "endpoint"}
+            | Clarity.Introspector.moduledoc_content(module, endpoint_vertex)
+          ]
+        else
+          []
         end
-
-        graph
       end
 
-      @spec endpoints(app :: Application.app()) :: [module()]
-      defp endpoints(app) do
-        for module <- Application.spec(app, :modules) || [],
-            match?({:module, ^module}, Code.ensure_loaded(module)),
-            attributes = module.module_info(:attributes),
-            behaviours = attributes |> Keyword.get_values(:behaviour) |> List.flatten(),
-            Phoenix.Endpoint in behaviours,
-            do: module
+      def introspect_vertex(_vertex, _graph), do: []
+
+      @spec endpoint?(module :: module()) :: boolean()
+      defp endpoint?(module) do
+        case Code.ensure_loaded(module) do
+          {:module, ^module} ->
+            attributes = module.module_info(:attributes)
+            behaviours = attributes |> Keyword.get_values(:behaviour) |> List.flatten()
+            Phoenix.Endpoint in behaviours
+
+          _ ->
+            false
+        end
       end
     end
 
@@ -43,9 +56,9 @@ case Code.ensure_loaded(Phoenix.Endpoint) do
       @behaviour Clarity.Introspector
 
       @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Application]
+      def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect(graph), do: graph
+      def introspect_vertex(_vertex, _graph), do: []
     end
 end

@@ -6,34 +6,46 @@ case Code.ensure_loaded(Phoenix.Router) do
       @behaviour Clarity.Introspector
 
       alias Clarity.Vertex
+      alias Clarity.Vertex.Phoenix.Router, as: RouterVertex
 
       @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Application]
+      def source_vertex_types, do: [Clarity.Vertex.Module]
 
       @impl Clarity.Introspector
-      def introspect(graph) do
-        for %Vertex.Application{app: app} = app_vertex <- :digraph.vertices(graph),
-            router <- routers(app) do
-          router_vertex = %Vertex.Phoenix.Router{router: router}
+      def introspect_vertex(%Vertex.Module{module: module} = module_vertex, graph) do
+        if router?(module) do
+          router_vertex = %RouterVertex{router: module}
+          app = Application.get_application(module)
 
-          router_vertex =
-            :digraph.add_vertex(graph, router_vertex, Vertex.unique_id(router_vertex))
+          app_vertex =
+            graph
+            |> Clarity.Graph.vertices()
+            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
 
-          :digraph.add_edge(graph, app_vertex, router_vertex, "router")
+          [
+            {:vertex, router_vertex},
+            {:edge, module_vertex, router_vertex, "router"},
+            {:edge, app_vertex, router_vertex, "router"}
+            | Clarity.Introspector.moduledoc_content(module, router_vertex)
+          ]
+        else
+          []
         end
-
-        graph
       end
 
-      @spec routers(app :: Application.app()) :: [module()]
-      defp routers(app) do
-        for module <- Application.spec(app, :modules) || [],
-            match?({:module, ^module}, Code.ensure_loaded(module)),
-            attributes = module.module_info(:attributes),
-            behaviours = attributes |> Keyword.get_values(:behaviour) |> List.flatten(),
-            Plug in behaviours,
-            function_exported?(module, :__routes__, 0),
-            do: module
+      def introspect_vertex(_vertex, _graph), do: []
+
+      @spec router?(module :: module()) :: boolean()
+      defp router?(module) do
+        case Code.ensure_loaded(module) do
+          {:module, ^module} ->
+            attributes = module.module_info(:attributes)
+            behaviours = attributes |> Keyword.get_values(:behaviour) |> List.flatten()
+            Plug in behaviours and function_exported?(module, :__routes__, 0)
+
+          _ ->
+            false
+        end
       end
     end
 
@@ -44,9 +56,9 @@ case Code.ensure_loaded(Phoenix.Router) do
       @behaviour Clarity.Introspector
 
       @impl Clarity.Introspector
-      def dependencies, do: [Clarity.Introspector.Application]
+      def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect(graph), do: graph
+      def introspect_vertex(_vertex, _graph), do: []
     end
 end

@@ -43,6 +43,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         ]
       end
 
+      @impl Clarity.Vertex
+      # TODO: Add anno once ash supports it
+      def source_anno(_vertex), do: nil
+
       @spec truncate_markdown(content :: String.t(), length :: pos_integer()) :: String.t()
       defp truncate_markdown(content, length \\ 10) do
         content

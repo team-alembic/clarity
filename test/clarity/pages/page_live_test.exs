@@ -1,5 +1,5 @@
 defmodule Clarity.Pages.PageLiveTest do
-  use Clarity.Web.ConnCase, async: true
+  use Clarity.Test.ConnCase, async: true
 
   describe "PageLive Navigation and Basic Functionality" do
     test "redirects to root graph when no params", %{conn: conn} do
@@ -170,18 +170,31 @@ defmodule Clarity.Pages.PageLiveTest do
   end
 
   describe "PageLive Error Handling" do
-    test "shows error for invalid vertex", %{conn: conn} do
-      # Test with invalid vertex ID
-      assert_raise KeyError, fn ->
-        live(conn, "/invalid_vertex/graph")
-      end
+    test "shows 404 page for invalid vertex", %{conn: conn} do
+      # Test with invalid vertex ID should show node 404 error
+      {:ok, view, html} = live(conn, "/invalid_vertex/graph")
+
+      # Should show node not found error
+      assert html =~ "Node Not Found"
+      assert html =~ "Go to Root"
+
+      # Should not show tabs
+      refute has_element?(view, "nav.tabs")
+
+      # Should have link to root
+      assert has_element?(view, "a[href='/root/graph']")
     end
 
-    test "handles missing content gracefully", %{conn: conn} do
-      # Test with valid vertex but invalid content should still load (defaults to first content)
-      {:ok, _view, html} = live(conn, "/root/invalid_content")
+    test "shows content 404 for invalid content", %{conn: conn} do
+      # Test with valid vertex but invalid content should show content 404
+      {:ok, view, html} = live(conn, "/root/invalid_content")
 
-      # Should still show the default content (Graph Navigation)
+      # Should show content not found error inside the content area
+      assert html =~ "Content Not Found"
+      assert html =~ "Try selecting a different tab"
+
+      # Should still show tabs for the valid vertex
+      assert has_element?(view, "nav.tabs")
       assert html =~ "Graph Navigation"
     end
   end

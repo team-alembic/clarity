@@ -8,9 +8,7 @@ defmodule Clarity.Introspector do
 
   This module defines the `Clarity.Introspector` behaviour and the default
   pipeline for built-in and user-defined introspectors. Each introspector
-  receives a digraph and may add or modify vertices and edges. After all
-  `introspect/1` calls, each introspector can optionally perform post-processing
-  via `post_introspect/1`.
+  processes vertices individually through the `c:introspect_vertex/2` callback.
 
   ## Custom Introspectors
 
@@ -18,7 +16,7 @@ defmodule Clarity.Introspector do
   your module to the `:clarity_introspectors` config under the your application.
 
   ```elixir
-  config :acme, :clarity_introspectors, [
+  config :my_app, :clarity_introspectors, [
     MyApp.MyCustomIntrospector
   ]
   ```
@@ -31,7 +29,7 @@ defmodule Clarity.Introspector do
   are not evaluated, you must add the config to the `mix.exs` of the library.
 
   ```elixir
-  defmodule Acme.MixProject do
+  defmodule MyApp.MixProject do
     use Mix.Project
 
     def project do
@@ -42,7 +40,7 @@ defmodule Clarity.Introspector do
       [
         extra_applications: [:logger],
         env: [
-          clarity_introspectors: [Acme.ClarityIntrospector]
+          clarity_introspectors: [MyApp.MyCustomIntrospector]
         ]
       ]
     end
@@ -60,37 +58,20 @@ defmodule Clarity.Introspector do
     alias Clarity.Vertex
 
     @impl Clarity.Introspector
-    def dependencies, do: [Clarity.Introspector.Ash.Domain]
+    def source_vertex_types, do: [Vertex.Module]
 
     @impl Clarity.Introspector
-    def introspect(graph) do
-      for %Vertex.Resource{resource: resource} = resource_vertex <- :digraph.vertices(graph) do
-        # Create a custom vertex for the resource
-        custom_vertex = %Vertex.Custom{resource: resource}
-        custom_vertex_id = Vertex.unique_id(custom_vertex)
-        :digraph.add_vertex(graph, custom_vertex, custom_vertex_id)
+    def introspect_vertex(%Vertex.Module{module: module} = module_vertex, _graph) do
+      # Create a custom vertex for the module
+      custom_vertex = %Vertex.Custom{module: module}
 
-        # Add an edge from the resource to the custom vertex
-        :digraph.add_edge(graph, resource_vertex, custom_vertex, :custom)
-      end
-
-      graph
+      [
+        {:vertex, custom_vertex},
+        {:edge, module_vertex, custom_vertex, :custom}
+      ]
     end
 
-    @impl Clarity.Introspector
-    def post_introspect(graph) do
-      del_vertices =
-        for %Vertex.Custom{} = custom_vertex <- :digraph.vertices(graph),
-            # No outgoing edges
-            0 == :digraph.out_degree(graph, custom_vertex),
-            # Only one incoming edge (resource)
-            1 == :digraph.in_degree(graph, custom_vertex),
-            do: custom_vertex
-
-      :digraph.del_vertices(graph, del_vertices)
-
-      graph
-    end
+    def introspect_vertex(_vertex, _graph), do: []
   end
   ```
   """
@@ -102,68 +83,33 @@ defmodule Clarity.Introspector do
   """
   @type t() :: module()
 
-  @doc """
-  Builds and processes the introspection graph using the built-in and configured
-  introspectors.
-
-  Each introspector first modifies the graph using `c:introspect/1`, and then may
-  apply further changes with `c:post_introspect/1`.
-
-  Returns the final `:digraph.graph()` structure.
-  """
-  @callback introspect(graph :: :digraph.graph()) :: :digraph.graph()
+  @type result() :: {:vertex, Vertex.t()} | {:edge, Vertex.t(), Vertex.t(), term()}
+  @type results() :: [result()]
 
   @doc """
-  Called after the main graph resolution phase.
+  Returns the list of vertex types this introspector can process.
 
-  Allows introspectors to further refine or clean up the graph. For example, it
-  can remove vertices that are not used anywhere and therefore are not relevant
-  for visualization.
-
-  Must return the modified `:digraph.graph()` structure.
+  This is used to filter which introspectors should be run for each vertex type,
+  improving performance by avoiding unnecessary task creation.
   """
-  @callback post_introspect(graph :: :digraph.graph()) :: :digraph.graph()
+  @callback source_vertex_types() :: [module()]
 
   @doc """
-  Declares the introspectors that this module depends on.
+  Performs introspection on a single vertex in the async system.
 
-  Returns a list of introspector modules that must be executed before this one.
-  This callback must be implemented by all introspectors to declare their
-  dependencies explicitly.
+  This callback is called by workers for each vertex that needs to be processed.
+  The introspector receives the vertex to process and a read-only view of the 
+  current graph state for context.
 
-  ## Example
-
-      @impl Clarity.Introspector
-      def dependencies do
-        [Clarity.Introspector.Root, Clarity.Introspector.Application]
-      end
+  Returns a list of `{:vertex, vertex}` and `{:edge, from_vertex, to_vertex, label}` tuples.
   """
-  @callback dependencies() :: [t()]
-
-  @optional_callbacks [
-    post_introspect: 1
-  ]
-
-  @doc """
-  Builds and processes the introspection graph using the built-in and configured
-  introspectors.
-
-  Returns the final `:digraph.graph()` structure.
-  """
-  @spec introspect(graph :: :digraph.graph(), introspectors :: [t()]) :: :digraph.graph()
-  def introspect(graph, introspectors \\ introspectors()) do
-    graph = Enum.reduce(introspectors, graph, & &1.introspect(&2))
-
-    introspectors
-    |> Enum.reverse()
-    |> Enum.filter(&function_exported?(&1, :post_introspect, 1))
-    |> Enum.reduce(graph, & &1.post_introspect(&2))
-  end
+  @callback introspect_vertex(vertex :: Vertex.t(), graph :: Clarity.Graph.t()) :: results()
 
   @native_introspectors [
-    Clarity.Introspector.Root,
     Clarity.Introspector.Application,
+    Clarity.Introspector.Module,
     Clarity.Introspector.Ash.Domain,
+    Clarity.Introspector.Ash.Resource,
     Clarity.Introspector.Ash.DataLayer,
     Clarity.Introspector.Ash.Action,
     Clarity.Introspector.Ash.Field,
@@ -174,10 +120,10 @@ defmodule Clarity.Introspector do
 
   @doc """
   Returns the list of introspectors, including both built-in and user-defined
-  ones, sorted by their dependencies.
+  ones, unsorted.
   """
-  @spec introspectors() :: [t()]
-  def introspectors do
+  @spec list() :: [t()]
+  def list do
     configured_introspectors =
       Application.loaded_applications()
       |> Enum.map(&elem(&1, 0))
@@ -185,54 +131,56 @@ defmodule Clarity.Introspector do
       |> Keyword.get_values(:clarity_introspectors)
       |> List.flatten()
 
-    (@native_introspectors ++ configured_introspectors)
-    |> Enum.uniq()
-    |> sort_by_dependencies()
-  end
-
-  @spec sort_by_dependencies([t()]) :: [t()]
-  defp sort_by_dependencies(introspectors) do
-    dep_graph = :digraph.new([:acyclic])
-
-    try do
-      # Add all introspectors as vertices
-      Enum.each(introspectors, &:digraph.add_vertex(dep_graph, &1))
-
-      # Add dependency edges
-      for introspector <- introspectors,
-          dependency <- introspector.dependencies() do
-        :digraph.add_edge(dep_graph, dependency, introspector)
-      end
-
-      # Perform topological sort
-      :digraph_utils.topsort(dep_graph)
-    after
-      :digraph.delete(dep_graph)
-    end
+    Enum.uniq(@native_introspectors ++ configured_introspectors)
   end
 
   @doc """
-  Attaches the moduledoc content of a module to the introspection graph.
+  Creates moduledoc content vertex and edge for the specified module.
+
+  This function fetches the module's documentation and creates both a content vertex
+  containing the moduledoc and an edge from the provided vertex to that content.
+  This is similar to the private `moduledoc_content/1` function in `Clarity.Introspector.Module`
+  but can be used by any introspector to add moduledoc content for their vertices.
+
+  ## Parameters
+
+  - `module` - The module whose moduledoc content to create
+  - `vertex` - The vertex that should be connected to the moduledoc content
+
+  ## Returns
+
+  Returns a list containing either:
+  - `[{:vertex, content_vertex}, {:edge, vertex, content_vertex, :content}]` if moduledoc exists
+  - `[]` if no moduledoc content exists for the module
+
+  ## Example
+
+      # In an introspector:
+      def introspect_vertex(%MyVertex{module: module} = my_vertex, _graph) do
+        [
+          {:vertex, my_vertex}
+          | Clarity.Introspector.moduledoc_content(module, my_vertex)
+        ]
+      end
   """
-  @spec attach_moduledoc_content(
-          module :: module(),
-          graph :: :digraph.graph(),
-          vertex :: :digraph.vertex()
-        ) :: :ok
-  def attach_moduledoc_content(module, graph, vertex) do
-    with {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc}, _metadata,
-          _docs} <-
-           Code.fetch_docs(module) do
-      content_vertex = %Vertex.Content{
-        id: inspect(module) <> "_moduledoc",
-        name: "Module Documentation",
-        content: {:markdown, moduledoc}
-      }
+  @spec moduledoc_content(module(), Vertex.t()) :: results()
+  def moduledoc_content(module, vertex) do
+    case Code.fetch_docs(module) do
+      {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc}, _metadata,
+       _docs} ->
+        content_vertex = %Vertex.Content{
+          id: inspect(module) <> "_moduledoc",
+          name: "Module Documentation",
+          content: {:markdown, moduledoc}
+        }
 
-      :digraph.add_vertex(graph, content_vertex)
-      :digraph.add_edge(graph, vertex, content_vertex, :content)
+        [
+          {:vertex, content_vertex},
+          {:edge, vertex, content_vertex, :content}
+        ]
+
+      _ ->
+        []
     end
-
-    :ok
   end
 end

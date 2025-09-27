@@ -20,7 +20,15 @@ defmodule Clarity.MixProject do
         plt_add_apps: [:mix]
       ],
       test_coverage: [
-        ignore_modules: [~r/^Demo\./, ~r/^DemoWeb\./, ~r/\.Docs$/, ~r/^Inspect\.Demo\./]
+        ignore_modules: [
+          ~r/^Demo\./,
+          ~r/^DemoWeb\./,
+          ~r/\.Docs$/,
+          ~r/^Inspect\.Demo\./,
+          ~r/^Clarity\.Test\./,
+          Clarity.CodeReloader,
+          Clarity.Vertex
+        ]
       ],
       docs: &docs/0
     ]
@@ -40,7 +48,7 @@ defmodule Clarity.MixProject do
 
   defp deps do
     [
-      {:ash, "~> 3.5", optional: true},
+      {:ash, "~> 3.5 and >= 3.5.42", optional: true},
       {:phoenix, "~> 1.7"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},

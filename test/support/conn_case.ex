@@ -1,4 +1,4 @@
-defmodule Clarity.Web.ConnCase do
+defmodule Clarity.Test.ConnCase do
   @moduledoc false
 
   use ExUnit.CaseTemplate
@@ -9,12 +9,12 @@ defmodule Clarity.Web.ConnCase do
       import Phoenix.LiveViewTest
       import Plug.Conn
 
-      alias Clarity.TestHelper
+      alias Clarity.Test.Helper
 
       @endpoint DemoWeb.Endpoint
 
       setup tags do
-        clarity_pid = TestHelper.setup_test_clarity()
+        clarity_pid = Helper.setup_test_clarity()
 
         # Set up the conn with clarity_pid in the session
         conn =

@@ -6,30 +6,19 @@ defmodule Clarity.Introspector.Application do
   alias Clarity.Vertex
 
   @impl Clarity.Introspector
-  def dependencies, do: [Clarity.Introspector.Root]
+  def source_vertex_types, do: [Clarity.Vertex.Root]
 
   @impl Clarity.Introspector
-  def introspect(graph) do
-    for app_tuple <- Application.loaded_applications(),
-        %Vertex.Root{} = root_vertex <- :digraph.vertices(graph) do
+  def introspect_vertex(%Vertex.Root{} = root_vertex, _graph) do
+    Enum.flat_map(Application.loaded_applications(), fn app_tuple ->
       app_vertex = Vertex.Application.from_app_tuple(app_tuple)
-      app_vertex = :digraph.add_vertex(graph, app_vertex, Vertex.unique_id(app_vertex))
-      :digraph.add_edge(graph, root_vertex, app_vertex, :application)
-    end
 
-    graph
+      [
+        {:vertex, app_vertex},
+        {:edge, root_vertex, app_vertex, :application}
+      ]
+    end)
   end
 
-  @impl Clarity.Introspector
-  def post_introspect(graph) do
-    del_vertices =
-      for %Vertex.Application{} = app_vertex <- :digraph.vertices(graph),
-          0 == :digraph.out_degree(graph, app_vertex),
-          1 == :digraph.in_degree(graph, app_vertex),
-          do: app_vertex
-
-    :digraph.del_vertices(graph, del_vertices)
-
-    graph
-  end
+  def introspect_vertex(_vertex, _graph), do: []
 end

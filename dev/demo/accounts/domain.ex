@@ -1,5 +1,8 @@
 defmodule Demo.Accounts.Domain do
-  @moduledoc false
+  @moduledoc """
+  The Accounts domain.
+  """
+
   use Ash.Domain
 
   resources do
