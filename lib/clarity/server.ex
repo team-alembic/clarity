@@ -41,25 +41,34 @@ defmodule Clarity.Server do
   @doc """
   Pull a task from the work queue (used by workers).
   """
-  @spec pull_task(GenServer.server(), pid()) :: {:ok, Clarity.Server.Task.t()} | :empty
-  def pull_task(server, worker_pid) do
-    GenServer.call(server, {:pull_task, worker_pid})
+  @spec pull_task(GenServer.server()) :: {:ok, Clarity.Server.Task.t()} | :empty
+  def pull_task(server) do
+    GenServer.call(server, :pull_task)
   end
 
   @doc """
   Acknowledge task completion (used by workers).
   """
-  @spec ack_task(GenServer.server(), reference(), Clarity.Introspector.results(), pid()) :: :ok
-  def ack_task(server, task_id, result, worker_pid) do
-    GenServer.call(server, {:ack_task, task_id, result, worker_pid}, 30_000)
+  @spec ack_task(GenServer.server(), reference(), [Clarity.Introspector.entry()]) :: :ok
+  def ack_task(server, task_id, result) do
+    GenServer.cast(server, {:ack_task, task_id, result})
   end
 
   @doc """
   Report task failure (used by workers).
   """
-  @spec nack_task(GenServer.server(), reference(), term(), pid()) :: :ok
-  def nack_task(server, task_id, error, worker_pid) do
-    GenServer.call(server, {:nack_task, task_id, error, worker_pid})
+  @spec nack_task(GenServer.server(), reference(), term()) :: :ok
+  def nack_task(server, task_id, error) do
+    GenServer.cast(server, {:nack_task, task_id, error})
+  end
+
+  @doc """
+  Re-queue a task due to unmet dependencies. Task will be pushed to the back of
+  the queue.
+  """
+  @spec requeue_task(GenServer.server(), reference()) :: :ok
+  def requeue_task(server, task_id) do
+    GenServer.cast(server, {:requeue_task, task_id})
   end
 
   @impl GenServer
@@ -157,8 +166,7 @@ defmodule Clarity.Server do
           id: make_ref(),
           vertex: app_vertex,
           introspector: Clarity.Introspector.Module,
-          graph: Clarity.Graph.seal(state.graph),
-          created_at: System.monotonic_time(:millisecond)
+          graph: Clarity.Graph.seal(state.graph)
         }
 
         broadcast_event(state, :work_started)
@@ -172,6 +180,60 @@ defmodule Clarity.Server do
 
         {:noreply, state}
       end
+    end
+  end
+
+  def handle_cast({:ack_task, task_id, result}, state) do
+    case Map.pop(state.in_progress, task_id) do
+      {nil, _} ->
+        Logger.warning(
+          "Received nack for unknown task #{inspect(task_id)}. The task may have already been acknowledged or requeued."
+        )
+
+        {:noreply, state}
+
+      {task, remaining_in_progress} ->
+        new_state =
+          process_task_results(task, result, %{state | in_progress: remaining_in_progress})
+
+        {:noreply, new_state}
+    end
+  end
+
+  def handle_cast({:nack_task, task_id, error}, state) do
+    case Map.pop(state.in_progress, task_id) do
+      {nil, _} ->
+        Logger.warning(
+          "Received ack for unknown task #{inspect(task_id)}. The task may have already been acknowledged or requeued."
+        )
+
+        {:noreply, state}
+
+      {task, remaining_in_progress} ->
+        Logger.warning(
+          "Task failed: #{Clarity.Server.Task.describe(task)}, error: #{inspect(error)}"
+        )
+
+        {:noreply, %{state | in_progress: remaining_in_progress}}
+    end
+  end
+
+  def handle_cast({:requeue_task, task_id}, state) do
+    case Map.pop(state.in_progress, task_id) do
+      {nil, _} ->
+        Logger.warning(
+          "Received requeue for unknown task #{inspect(task_id)}. The task may have already been acknowledged or requeued."
+        )
+
+        {:noreply, state}
+
+      {task, remaining_in_progress} ->
+        {:noreply,
+         %{
+           state
+           | in_progress: remaining_in_progress,
+             future_queue: :queue.in(task, state.future_queue)
+         }}
     end
   end
 
@@ -202,56 +264,15 @@ defmodule Clarity.Server do
     {:reply, clarity, state}
   end
 
-  def handle_call({:pull_task, worker_pid}, _from, state) do
+  def handle_call(:pull_task, _from, state) do
     case :queue.out(state.future_queue) do
       {{:value, task}, remaining_queue} ->
-        start_time = System.monotonic_time(:millisecond)
-        new_in_progress = Map.put(state.in_progress, task.id, {task, worker_pid, start_time})
+        new_in_progress = Map.put(state.in_progress, task.id, task)
         new_state = %{state | future_queue: remaining_queue, in_progress: new_in_progress}
         {:reply, {:ok, task}, new_state}
 
       {:empty, _queue} ->
         {:reply, :empty, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:ack_task, task_id, result, worker_pid}, _from, state) do
-    case Map.pop(state.in_progress, task_id) do
-      {{task, ^worker_pid, _start_time}, remaining_in_progress} ->
-        new_state =
-          process_task_results(task, result, %{state | in_progress: remaining_in_progress})
-
-        {:reply, :ok, new_state}
-
-      {{_task, _other_worker, _start_time}, _} ->
-        # Task exists but different worker - ignore
-        {:reply, :ok, state}
-
-      {nil, _} ->
-        {:reply, :ok, state}
-    end
-  end
-
-  @impl GenServer
-  def handle_call({:nack_task, task_id, error, worker_pid}, _from, state) do
-    case Map.pop(state.in_progress, task_id) do
-      {{task, ^worker_pid, _start_time}, remaining_in_progress} ->
-        Logger.warning(
-          "Task failed: #{Clarity.Server.Task.describe(task)}, error: #{inspect(error)}"
-        )
-
-        {:reply, :ok, %{state | in_progress: remaining_in_progress}}
-
-      {{_task, _other_worker, _start_time}, _} ->
-        Logger.warning(
-          "Received nack for task #{inspect(task_id)} from non-owning worker #{inspect(worker_pid)}"
-        )
-
-        {:reply, :ok, state}
-
-      {nil, _} ->
-        {:reply, :ok, state}
     end
   end
 
@@ -279,7 +300,7 @@ defmodule Clarity.Server do
     |> Enum.map(&Clarity.Server.Task.new_introspection(vertex, &1, Clarity.Graph.seal(graph)))
   end
 
-  @spec process_task_results(Clarity.Server.Task.t(), Clarity.Introspector.results(), State.t()) ::
+  @spec process_task_results(Clarity.Server.Task.t(), [Clarity.Introspector.entry()], State.t()) ::
           State.t()
   defp process_task_results(task, results, state) do
     # First pass: collect all vertices created by this introspection

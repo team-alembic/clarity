@@ -5,16 +5,14 @@ defmodule Clarity.Server.Task do
           id: reference(),
           vertex: Clarity.Vertex.t(),
           introspector: module(),
-          graph: Clarity.Graph.t(),
-          created_at: integer()
+          graph: Clarity.Graph.t()
         }
 
   defstruct [
     :id,
     :vertex,
     :introspector,
-    :graph,
-    :created_at
+    :graph
   ]
 
   @doc """
@@ -26,8 +24,7 @@ defmodule Clarity.Server.Task do
       id: make_ref(),
       vertex: vertex,
       introspector: introspector,
-      graph: graph,
-      created_at: System.monotonic_time(:millisecond)
+      graph: graph
     }
   end
 
