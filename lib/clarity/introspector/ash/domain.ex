@@ -5,26 +5,36 @@ case Code.ensure_loaded(Ash) do
 
       @behaviour Clarity.Introspector
 
-      alias Clarity.Vertex.Application
+      alias Clarity.Vertex
       alias Clarity.Vertex.Ash.Domain
+      alias Clarity.Vertex.Module
 
       @impl Clarity.Introspector
-      def source_vertex_types, do: [Application]
+      def source_vertex_types, do: [Module]
 
       @impl Clarity.Introspector
-      def introspect_vertex(%Application{app: app} = app_vertex, _graph) do
-        Enum.flat_map(Ash.Info.domains(app), fn domain ->
-          domain_vertex = %Domain{domain: domain}
+      def introspect_vertex(%Module{module: module} = module_vertex, graph) do
+        if Spark.implements_behaviour?(module, Ash.Domain) do
+          app = Application.get_application(module)
 
-          [
-            {:vertex, domain_vertex},
-            {:edge, app_vertex, domain_vertex, :domain}
-            | Clarity.Introspector.moduledoc_content(domain, domain_vertex)
-          ]
-        end)
+          app_vertex =
+            graph
+            |> Clarity.Graph.vertices()
+            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
+
+          domain_vertex = %Domain{domain: module}
+
+          {:ok,
+           [
+             {:vertex, domain_vertex},
+             {:edge, app_vertex, domain_vertex, :domain},
+             {:edge, module_vertex, domain_vertex, :module}
+             | Clarity.Introspector.moduledoc_content(module, domain_vertex)
+           ]}
+        else
+          {:ok, []}
+        end
       end
-
-      def introspect_vertex(_vertex, _graph), do: []
     end
 
   _ ->
@@ -37,6 +47,6 @@ case Code.ensure_loaded(Ash) do
       def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect_vertex(_vertex, _graph), do: []
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
     end
 end

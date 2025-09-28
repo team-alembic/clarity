@@ -83,8 +83,8 @@ defmodule Clarity.Introspector do
   """
   @type t() :: module()
 
-  @type result() :: {:vertex, Vertex.t()} | {:edge, Vertex.t(), Vertex.t(), term()}
-  @type results() :: [result()]
+  @type entry() :: {:vertex, Vertex.t()} | {:edge, Vertex.t(), Vertex.t(), term()}
+  @type result() :: {:ok, [result()]} | {:error, :unmet_dependencies | term()}
 
   @doc """
   Returns the list of vertex types this introspector can process.
@@ -101,9 +101,20 @@ defmodule Clarity.Introspector do
   The introspector receives the vertex to process and a read-only view of the 
   current graph state for context.
 
-  Returns a list of `{:vertex, vertex}` and `{:edge, from_vertex, to_vertex, label}` tuples.
+  Returns `{:ok, results}` on success, where `results` is a list of
+  `{:vertex, vertex}` and `{:edge, from_vertex, to_vertex, label}` tuples to add
+  to the graph.
+
+  If the introspector cannot run due to missing dependencies in the graph
+  (such as an Ash resource referencing a domain that hasn't been introspected
+  yet), it should return `:missing_dependencies`. The worker will re-queue
+  the task to be retried later, allowing other introspectors to run first
+  and potentially satisfy the dependencies.
+
+  If an unexpected error occurs, return `{:error, reason}`. The worker will
+  log the error and acknowledge the task to prevent infinite retries.
   """
-  @callback introspect_vertex(vertex :: Vertex.t(), graph :: Clarity.Graph.t()) :: results()
+  @callback introspect_vertex(vertex :: Vertex.t(), graph :: Clarity.Graph.t()) :: result()
 
   @doc """
   Returns the list of introspectors, including both built-in and user-defined
@@ -111,11 +122,11 @@ defmodule Clarity.Introspector do
   """
   @spec list() :: [t()]
   def list do
-      Application.loaded_applications()
-      |> Enum.map(&elem(&1, 0))
-      |> Enum.flat_map(&Application.get_all_env/1)
-      |> Keyword.get_values(:clarity_introspectors)
-      |> List.flatten()
+    Application.loaded_applications()
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.flat_map(&Application.get_all_env/1)
+    |> Keyword.get_values(:clarity_introspectors)
+    |> List.flatten()
     |> Enum.uniq()
   end
 
@@ -148,7 +159,7 @@ defmodule Clarity.Introspector do
         ]
       end
   """
-  @spec moduledoc_content(module(), Vertex.t()) :: results()
+  @spec moduledoc_content(module(), Vertex.t()) :: [entry()]
   def moduledoc_content(module, vertex) do
     case Code.fetch_docs(module) do
       {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc}, _metadata,

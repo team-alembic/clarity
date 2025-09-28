@@ -10,58 +10,62 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex.Ash.Attribute
       alias Clarity.Vertex.Ash.Calculation
       alias Clarity.Vertex.Ash.Type
+      alias Clarity.Vertex.Module
 
       @impl Clarity.Introspector
-      def source_vertex_types, do: [Attribute, Aggregate, Calculation]
+      def source_vertex_types, do: [Module, Attribute, Aggregate, Calculation]
 
       @impl Clarity.Introspector
+      def introspect_vertex(%Module{module: module} = module_vertex, graph) do
+        if Spark.implements_behaviour?(module, Ash.Type) do
+          app = Application.get_application(module)
+
+          app_vertex =
+            graph
+            |> Clarity.Graph.vertices()
+            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
+
+          type_vertex = %Type{type: module}
+
+          {:ok,
+           [
+             {:vertex, type_vertex},
+             {:edge, app_vertex, type_vertex, :type},
+             {:edge, module_vertex, type_vertex, :type}
+             | Clarity.Introspector.moduledoc_content(module, type_vertex)
+           ]}
+        else
+          {:ok, []}
+        end
+      end
+
       def introspect_vertex(%Attribute{attribute: %{type: type}} = field_vertex, graph) do
-        create_type_vertex_and_edges(type, field_vertex, graph)
+        create_type_edge(type, field_vertex, graph)
       end
 
       def introspect_vertex(%Aggregate{aggregate: %{type: type}} = field_vertex, graph) do
-        create_type_vertex_and_edges(type, field_vertex, graph)
+        create_type_edge(type, field_vertex, graph)
       end
 
       def introspect_vertex(%Calculation{calculation: %{type: type}} = field_vertex, graph) do
-        create_type_vertex_and_edges(type, field_vertex, graph)
+        create_type_edge(type, field_vertex, graph)
       end
 
-      def introspect_vertex(_vertex, _graph), do: []
-
-      @spec create_type_vertex_and_edges(Ash.Type.t(), Vertex.t(), Clarity.Graph.t()) ::
-              Clarity.Introspector.results()
-      defp create_type_vertex_and_edges(type, field_vertex, graph) do
+      @spec create_type_edge(Ash.Type.t(), Vertex.t(), Clarity.Graph.t()) ::
+              Clarity.Introspector.result()
+      defp create_type_edge(type, field_vertex, graph) do
         simplified_type = simplify_type(type)
-        type_vertex = %Type{type: simplified_type}
-        app = Application.get_application(simplified_type)
-
-        app_vertex =
-          graph
-          |> Clarity.Graph.vertices()
-          |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
 
         # Check if the type vertex already exists in the graph
-        existing_type_vertex =
-          graph
-          |> Clarity.Graph.vertices()
-          |> Enum.find(&match?(%Type{type: ^simplified_type}, &1))
-
-        case existing_type_vertex do
+        graph
+        |> Clarity.Graph.vertices()
+        |> Enum.find(&match?(%Type{type: ^simplified_type}, &1))
+        |> case do
           nil ->
-            # Type vertex doesn't exist, create it with both edges
-            [
-              {:vertex, type_vertex},
-              {:edge, app_vertex, type_vertex, :type},
-              {:edge, field_vertex, type_vertex, :type}
-              | Clarity.Introspector.moduledoc_content(simplified_type, type_vertex)
-            ]
+            {:error, :unmet_dependencies}
 
           existing_vertex ->
-            # Type vertex exists, only create the field -> type edge
-            [
-              {:edge, field_vertex, existing_vertex, :type}
-            ]
+            {:ok, [{:edge, field_vertex, existing_vertex, :type}]}
         end
       end
 
@@ -80,6 +84,6 @@ case Code.ensure_loaded(Ash) do
       def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect_vertex(_vertex, _graph), do: []
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
     end
 end

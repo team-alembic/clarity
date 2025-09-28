@@ -29,16 +29,15 @@ case Code.ensure_loaded(Ash) do
           |> Clarity.Graph.vertices()
           |> Enum.find(&match?(%Vertex.Module{module: ^data_layer}, &1))
 
-        [
-          {:vertex, data_layer_vertex},
-          {:edge, app_vertex, data_layer_vertex, :data_layer},
-          {:edge, resource_vertex, data_layer_vertex, :data_layer},
-          {:edge, module_vertex, data_layer_vertex, :module}
-          | Clarity.Introspector.moduledoc_content(data_layer, data_layer_vertex)
-        ]
+        {:ok,
+         [
+           {:vertex, data_layer_vertex},
+           {:edge, app_vertex, data_layer_vertex, :data_layer},
+           {:edge, resource_vertex, data_layer_vertex, :data_layer},
+           {:edge, module_vertex, data_layer_vertex, :module}
+           | Clarity.Introspector.moduledoc_content(data_layer, data_layer_vertex)
+         ]}
       end
-
-      def introspect_vertex(_vertex, _graph), do: []
     end
 
   _ ->
@@ -51,6 +50,6 @@ case Code.ensure_loaded(Ash) do
       def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect_vertex(_vertex, _graph), do: []
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
     end
 end

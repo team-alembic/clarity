@@ -11,21 +11,22 @@ defmodule Clarity.Introspector.Module do
 
   @impl Clarity.Introspector
   def introspect_vertex(%Vertex.Application{app: app} = app_vertex, _graph) do
-    app
-    |> modules()
-    |> Enum.flat_map(fn module ->
-      version = get_module_version(module)
-      module_vertex = %ModuleVertex{module: module, version: version}
+    entries =
+      app
+      |> modules()
+      |> Enum.flat_map(fn module ->
+        version = get_module_version(module)
+        module_vertex = %ModuleVertex{module: module, version: version}
 
-      [
-        {:vertex, module_vertex},
-        {:edge, app_vertex, module_vertex, :module}
-        | Clarity.Introspector.moduledoc_content(module, module_vertex)
-      ]
-    end)
+        [
+          {:vertex, module_vertex},
+          {:edge, app_vertex, module_vertex, :module}
+          | Clarity.Introspector.moduledoc_content(module, module_vertex)
+        ]
+      end)
+
+    {:ok, entries}
   end
-
-  def introspect_vertex(_vertex, _graph), do: []
 
   @doc """
   Creates introspection results for specific modules within an application.
@@ -45,7 +46,7 @@ defmodule Clarity.Introspector.Module do
   List of `{:vertex, module_vertex}` and `{:edge, app_vertex, module_vertex, :module}` tuples.
   """
   @spec introspect_modules(Vertex.Application.t(), [module()], Clarity.Graph.t()) ::
-          Clarity.Introspector.results()
+          [Clarity.Introspector.entry()]
   def introspect_modules(%Vertex.Application{} = app_vertex, modules, _graph) do
     Enum.flat_map(modules, fn module ->
       version = get_module_version(module)

@@ -22,18 +22,17 @@ case Code.ensure_loaded(Phoenix.Endpoint) do
             |> Clarity.Graph.vertices()
             |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
 
-          [
-            {:vertex, endpoint_vertex},
-            {:edge, module_vertex, endpoint_vertex, "endpoint"},
-            {:edge, app_vertex, endpoint_vertex, "endpoint"}
-            | Clarity.Introspector.moduledoc_content(module, endpoint_vertex)
-          ]
+          {:ok,
+           [
+             {:vertex, endpoint_vertex},
+             {:edge, module_vertex, endpoint_vertex, "endpoint"},
+             {:edge, app_vertex, endpoint_vertex, "endpoint"}
+             | Clarity.Introspector.moduledoc_content(module, endpoint_vertex)
+           ]}
         else
-          []
+          {:ok, []}
         end
       end
-
-      def introspect_vertex(_vertex, _graph), do: []
 
       @spec endpoint?(module :: module()) :: boolean()
       defp endpoint?(module) do
@@ -59,6 +58,6 @@ case Code.ensure_loaded(Phoenix.Endpoint) do
       def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect_vertex(_vertex, _graph), do: []
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
     end
 end

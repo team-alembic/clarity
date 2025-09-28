@@ -14,22 +14,23 @@ case Code.ensure_loaded(Ash) do
 
       @impl Clarity.Introspector
       def introspect_vertex(%Resource{resource: resource} = resource_vertex, _graph) do
-        resource
-        |> ResourceInfo.actions()
-        |> Enum.flat_map(fn action ->
-          action_vertex = %Action{
-            action: action,
-            resource: resource
-          }
+        entries =
+          resource
+          |> ResourceInfo.actions()
+          |> Enum.flat_map(fn action ->
+            action_vertex = %Action{
+              action: action,
+              resource: resource
+            }
 
-          [
-            {:vertex, action_vertex},
-            {:edge, resource_vertex, action_vertex, :action}
-          ]
-        end)
+            [
+              {:vertex, action_vertex},
+              {:edge, resource_vertex, action_vertex, :action}
+            ]
+          end)
+
+        {:ok, entries}
       end
-
-      def introspect_vertex(_vertex, _graph), do: []
     end
 
   _ ->
@@ -42,6 +43,6 @@ case Code.ensure_loaded(Ash) do
       def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect_vertex(_vertex, _graph), do: []
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
     end
 end

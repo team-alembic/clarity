@@ -22,14 +22,15 @@ case Code.ensure_loaded(Phoenix.Router) do
             |> Clarity.Graph.vertices()
             |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
 
-          [
-            {:vertex, router_vertex},
-            {:edge, module_vertex, router_vertex, "router"},
-            {:edge, app_vertex, router_vertex, "router"}
-            | Clarity.Introspector.moduledoc_content(module, router_vertex)
-          ]
+          {:ok,
+           [
+             {:vertex, router_vertex},
+             {:edge, module_vertex, router_vertex, "router"},
+             {:edge, app_vertex, router_vertex, "router"}
+             | Clarity.Introspector.moduledoc_content(module, router_vertex)
+           ]}
         else
-          []
+          {:ok, []}
         end
       end
 
@@ -59,6 +60,6 @@ case Code.ensure_loaded(Phoenix.Router) do
       def source_vertex_types, do: []
 
       @impl Clarity.Introspector
-      def introspect_vertex(_vertex, _graph), do: []
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
     end
 end
