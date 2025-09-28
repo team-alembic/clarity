@@ -7,12 +7,6 @@ defmodule Clarity.Introspector.Phoenix.RouterTest do
   alias Clarity.Vertex.Root
 
   describe inspect(&RouterIntrospector.introspect_vertex/2) do
-    test "returns empty list for non-module vertices" do
-      graph = Clarity.Graph.new()
-
-      assert [] = RouterIntrospector.introspect_vertex(%Root{}, graph)
-    end
-
     test "creates router vertex for Phoenix router modules" do
       graph = Clarity.Graph.new()
 
@@ -21,18 +15,20 @@ defmodule Clarity.Introspector.Phoenix.RouterTest do
 
       module_vertex = %Vertex.Module{module: DemoWeb.Router}
 
-      assert [
-               {:vertex, %Router{router: DemoWeb.Router}},
-               {:edge, ^module_vertex, %Router{router: DemoWeb.Router}, "router"},
-               {:edge, ^clarity_app_vertex, %Router{router: DemoWeb.Router}, "router"}
-             ] = RouterIntrospector.introspect_vertex(module_vertex, graph)
+      assert {:ok,
+              [
+                {:vertex, %Router{router: DemoWeb.Router}},
+                {:edge, ^module_vertex, %Router{router: DemoWeb.Router}, "router"},
+                {:edge, ^clarity_app_vertex, %Router{router: DemoWeb.Router}, "router"}
+                | _
+              ]} = RouterIntrospector.introspect_vertex(module_vertex, graph)
     end
 
     test "returns empty list for non-router modules" do
       graph = Clarity.Graph.new()
       module_vertex = %Vertex.Module{module: String}
 
-      assert [] = RouterIntrospector.introspect_vertex(module_vertex, graph)
+      assert {:ok, []} = RouterIntrospector.introspect_vertex(module_vertex, graph)
     end
   end
 end

@@ -9,13 +9,6 @@ defmodule Clarity.Introspector.Ash.DataLayerTest do
   alias Demo.Accounts.User
 
   describe inspect(&DataLayerIntrospector.introspect_vertex/2) do
-    test "returns empty list for non-resource vertices" do
-      graph = Clarity.Graph.new()
-      root_vertex = %Root{}
-
-      assert [] = DataLayerIntrospector.introspect_vertex(root_vertex, graph)
-    end
-
     test "creates data layer vertices for resource vertices" do
       graph = Clarity.Graph.new()
 
@@ -24,13 +17,14 @@ defmodule Clarity.Introspector.Ash.DataLayerTest do
 
       Clarity.Graph.add_vertex(graph, module_vertex, %Root{})
 
-      assert [
-               {:vertex, %DataLayer{data_layer: Simple}},
-               {:edge, nil, %DataLayer{data_layer: Simple}, :data_layer},
-               {:edge, ^resource_vertex, %DataLayer{data_layer: Simple}, :data_layer},
-               {:edge, ^module_vertex, %DataLayer{data_layer: Simple}, :module}
-               | _
-             ] = DataLayerIntrospector.introspect_vertex(resource_vertex, graph)
+      assert {:ok,
+              [
+                {:vertex, %DataLayer{data_layer: Simple}},
+                {:edge, nil, %DataLayer{data_layer: Simple}, :data_layer},
+                {:edge, ^resource_vertex, %DataLayer{data_layer: Simple}, :data_layer},
+                {:edge, ^module_vertex, %DataLayer{data_layer: Simple}, :module}
+                | _
+              ]} = DataLayerIntrospector.introspect_vertex(resource_vertex, graph)
     end
   end
 end

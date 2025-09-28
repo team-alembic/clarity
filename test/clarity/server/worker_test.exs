@@ -20,8 +20,8 @@ defmodule Clarity.Server.WorkerTest do
     end
 
     @impl GenServer
-    def handle_call({:pull_task, worker_pid}, _from, state) do
-      send(state.test_pid, {:pull_task, worker_pid})
+    def handle_call(:pull_task, _from, state) do
+      send(state.test_pid, :pull_task)
 
       receive do
         {:reply_pull_task, response} -> {:reply, response, state}
@@ -47,20 +47,26 @@ defmodule Clarity.Server.WorkerTest do
       end
     end
 
-    def handle_call({:ack_task, task_id, result, worker_pid}, _from, state) do
-      send(state.test_pid, {:ack_task, task_id, result, worker_pid})
-      {:reply, :ok, state}
-    end
-
-    def handle_call({:nack_task, task_id, error, worker_pid}, _from, state) do
-      send(state.test_pid, {:nack_task, task_id, error, worker_pid})
-      {:reply, :ok, state}
-    end
-
     def handle_call(:subscribe, _from, state) do
       send(state.test_pid, :subscribe)
       unsubscribe_fn = fn -> send(state.test_pid, :unsubscribed) end
       {:reply, unsubscribe_fn, state}
+    end
+
+    @impl GenServer
+    def handle_cast({:ack_task, task_id, result}, state) do
+      send(state.test_pid, {:ack_task, task_id, result})
+      {:noreply, state}
+    end
+
+    def handle_cast({:nack_task, task_id, error}, state) do
+      send(state.test_pid, {:nack_task, task_id, error})
+      {:noreply, state}
+    end
+
+    def handle_cast({:requeue_task, task_id}, state) do
+      send(state.test_pid, {:requeue_task, task_id})
+      {:noreply, state}
     end
   end
 
@@ -76,18 +82,18 @@ defmodule Clarity.Server.WorkerTest do
       start_supervised!({Worker, clarity_server: mock_server})
 
       # Worker should immediately try to pull a task
-      assert_receive {:pull_task, worker_pid}
+      assert_receive :pull_task
 
       # Respond with our test task
       send(mock_server, {:reply_pull_task, {:ok, task}})
 
       # Worker should acknowledge task completion (no longer needs to get graph)
-      assert_receive {:ack_task, task_id, result, ^worker_pid}
+      assert_receive {:ack_task, task_id, result}
       assert task_id == task.id
       assert is_list(result)
 
       # Worker should try to pull another task
-      assert_receive {:pull_task, ^worker_pid}
+      assert_receive :pull_task
     end
 
     test "handles empty queue by subscribing and hibernating" do
@@ -99,17 +105,14 @@ defmodule Clarity.Server.WorkerTest do
       assert_receive :subscribe
 
       # Worker tries to pull a task
-      assert_receive {:pull_task, ^worker_pid}
-
-      # Don't respond to pull_task, let it timeout to :empty (1 second timeout)
-      # Give worker time to hibernate
-      Process.sleep(1100)
+      assert_receive :pull_task
+      send(mock_server, {:reply_pull_task, :empty})
 
       # Worker should now be hibernating - send work_started event to wake up
       send(worker_pid, {:clarity, :work_started})
 
       # Worker should try to pull task again (no unsubscribe since we never unsubscribe)
-      assert_receive {:pull_task, ^worker_pid}
+      assert_receive :pull_task
     end
 
     test "ignores other clarity events when subscribed" do
@@ -121,7 +124,7 @@ defmodule Clarity.Server.WorkerTest do
       assert_receive :subscribe
 
       # Get worker to hibernate
-      assert_receive {:pull_task, ^worker_pid}
+      assert_receive :pull_task
       # Let pull_task timeout to :empty
 
       # Send other clarity events - worker should ignore them and stay hibernating
@@ -129,13 +132,16 @@ defmodule Clarity.Server.WorkerTest do
       send(worker_pid, {:clarity, {:work_progress, %{}}})
 
       # Should not pull tasks for non-work_started events
-      refute_receive {:pull_task, ^worker_pid}, 50
+      refute_receive :pull_task, 50
     end
 
     test "handles task execution errors with nack_task" do
       defmodule FailingIntrospector do
         @moduledoc false
         @behaviour Clarity.Introspector
+
+        @impl Clarity.Introspector
+        def source_vertex_types, do: [Root]
 
         @impl Clarity.Introspector
         def introspect_vertex(_vertex, _graph) do
@@ -148,17 +154,19 @@ defmodule Clarity.Server.WorkerTest do
       # Create a task with an introspector that will fail
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, FailingIntrospector, graph)
+      task_id = task.id
 
-      start_supervised!({Worker, clarity_server: mock_server})
+      worker = start_supervised!({Worker, clarity_server: mock_server})
+
+      # Wake up worker to pull task
+      send(worker, {:clarity, :work_started})
 
       # Worker pulls task
-      assert_receive {:pull_task, worker_pid}
+      assert_receive :pull_task
       send(mock_server, {:reply_pull_task, {:ok, task}})
 
       # Worker should nack the task due to execution error
-      assert_receive {:nack_task, task_id, error, ^worker_pid}
-      assert task_id == task.id
-      assert error == %RuntimeError{message: "Intentional test error"}
+      assert_receive {:nack_task, ^task_id, {%RuntimeError{message: "Intentional test error"}, _stacktrace}}
     end
   end
 end

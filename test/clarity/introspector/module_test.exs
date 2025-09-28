@@ -7,18 +7,11 @@ defmodule Clarity.Introspector.ModuleTest do
   alias Clarity.Vertex.Module
 
   describe inspect(&ModuleIntrospector.introspect_vertex/2) do
-    test "returns empty list for non-application vertices" do
-      graph = Clarity.Graph.new()
-      root_vertex = %Vertex.Root{}
-
-      assert [] = ModuleIntrospector.introspect_vertex(root_vertex, graph)
-    end
-
     test "creates module vertices for application vertices" do
       graph = Clarity.Graph.new()
       app_vertex = %Vertex.Application{app: :clarity, description: "Clarity", version: "1.0.0"}
 
-      result = ModuleIntrospector.introspect_vertex(app_vertex, graph)
+      {:ok, result} = ModuleIntrospector.introspect_vertex(app_vertex, graph)
 
       # Should contain specific modules we know exist in clarity app
       # Check that modules have version field set (either :unknown or string)
@@ -45,14 +38,14 @@ defmodule Clarity.Introspector.ModuleTest do
       graph = Clarity.Graph.new()
       app_vertex = %Vertex.Application{app: :nonexistent_app, description: "Test", version: "1.0.0"}
 
-      assert [] = ModuleIntrospector.introspect_vertex(app_vertex, graph)
+      assert {:ok, []} = ModuleIntrospector.introspect_vertex(app_vertex, graph)
     end
 
     test "extracts module version information" do
       graph = Clarity.Graph.new()
       app_vertex = %Vertex.Application{app: :kernel, description: "Kernel", version: "1.0.0"}
 
-      result = ModuleIntrospector.introspect_vertex(app_vertex, graph)
+      {:ok, result} = ModuleIntrospector.introspect_vertex(app_vertex, graph)
 
       # Get a module vertex from the result
       module_vertices = result |> Enum.filter(&match?({:vertex, %Module{}}, &1)) |> Enum.map(&elem(&1, 1))

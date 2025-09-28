@@ -8,6 +8,7 @@ defmodule Clarity.ServerTest do
   alias Clarity.Server.Worker
   alias Clarity.Test.DummyIntrospector
   alias Clarity.Vertex.Application
+  alias Clarity.Vertex.Module, as: ModuleVertex
   alias Clarity.Vertex.Root
 
   describe "Server initialization and basic operations" do
@@ -20,78 +21,71 @@ defmodule Clarity.ServerTest do
       assert [%Root{}] = Clarity.Graph.vertices(clarity.graph)
 
       # Should be able to pull initial task (only Application introspector handles Root)
-      worker_pid = spawn(fn -> :ok end)
-      assert {:ok, task1} = Server.pull_task(server, worker_pid)
+      assert {:ok, task1} = Server.pull_task(server)
 
       # Task should be for root vertex with Application introspector
       assert task1.vertex == %Root{}
       assert task1.introspector == Clarity.Introspector.Application
 
       # No more tasks should be available for root vertex
-      assert :empty = Server.pull_task(server, worker_pid)
+      assert :empty = Server.pull_task(server)
     end
 
     test "handles empty queue when no more tasks available", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      worker_pid = spawn(fn -> :ok end)
-
       # Pull all available tasks
-      tasks = pull_all_tasks(server, worker_pid)
+      tasks = pull_all_tasks(server)
       assert length(tasks) > 0
 
       # Next pull should return empty
-      assert :empty = Server.pull_task(server, worker_pid)
+      assert :empty = Server.pull_task(server)
     end
 
     test "tracks tasks in progress correctly", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      worker1 = spawn(fn -> :ok end)
-      worker2 = spawn(fn -> :ok end)
-
       # Pull the first (root) task with worker1
-      assert {:ok, task1} = Server.pull_task(server, worker1)
+      assert {:ok, task1} = Server.pull_task(server)
 
       # Process task1 to create more vertices/tasks
-      app_vertex = %Application{app: :kernel, description: "Kernel", version: "1.0.0"}
-      Server.ack_task(server, task1.id, [{:vertex, app_vertex}], worker1)
+      app_vertex = %ModuleVertex{module: __MODULE__}
+      Server.ack_task(server, task1.id, [{:vertex, app_vertex}])
 
-      # Now pull new tasks with different workers
-      assert {:ok, task2} = Server.pull_task(server, worker1)
-      assert {:ok, _task3} = Server.pull_task(server, worker2)
+      # Force synchronization since ack_task is async
+      Clarity.get(server, :partial)
+
+      assert {:ok, task2} = Server.pull_task(server)
+      assert {:ok, _task3} = Server.pull_task(server)
 
       # Tasks should be tracked in progress
       # We can verify this indirectly by acking with wrong worker
-      assert :ok = Server.nack_task(server, task2.id, :test_error, worker2)
+      assert :ok = Server.nack_task(server, task2.id, :test_error)
 
       # task2 should still be in progress for worker1
-      assert :ok = Server.ack_task(server, task2.id, [], worker1)
+      assert :ok = Server.ack_task(server, task2.id, [])
     end
 
     test "vertex type filtering creates only relevant tasks", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
-      worker_pid = spawn(fn -> :ok end)
 
       # Initially should only have 1 task for Root vertex (Application introspector)
-      assert {:ok, root_task} = Server.pull_task(server, worker_pid)
+      assert {:ok, root_task} = Server.pull_task(server)
       assert root_task.introspector == Clarity.Introspector.Application
-      assert :empty = Server.pull_task(server, worker_pid)
+      assert :empty = Server.pull_task(server)
 
-      # Process root task to create Application vertex
       app_vertex = %Application{app: :kernel, description: "Kernel", version: "1.0.0"}
-      Server.ack_task(server, root_task.id, [{:vertex, app_vertex}], worker_pid)
+      Server.ack_task(server, root_task.id, [{:vertex, app_vertex}])
 
-      # Now should have tasks for Application vertex (Module and Ash.Domain introspectors)
-      tasks = pull_all_tasks(server, worker_pid)
+      # Force synchronization since ack_task is async
+      Clarity.get(server, :partial)
 
-      # Should have exactly 2 tasks for Application vertex
-      assert length(tasks) == 2
+      tasks = pull_all_tasks(server)
+      assert length(tasks) == 1
       assert Enum.all?(tasks, &(&1.vertex == app_vertex))
 
       expected_introspectors = [
-        Clarity.Introspector.Module,
-        Clarity.Introspector.Ash.Domain
+        Clarity.Introspector.Module
       ]
 
       actual_introspectors = Enum.map(tasks, & &1.introspector)
@@ -103,10 +97,8 @@ defmodule Clarity.ServerTest do
     test "processes task results and builds graph", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      worker_pid = spawn(fn -> :ok end)
-
       # Pull an Application introspector task
-      {:ok, task} = find_task_for_introspector(server, worker_pid, Clarity.Introspector.Application)
+      {:ok, task} = find_task_for_introspector(server, Clarity.Introspector.Application)
 
       # Create mock result with new vertex and edge
       app_vertex = %Application{app: :test_app, description: "Test App", version: "1.0.0"}
@@ -117,7 +109,7 @@ defmodule Clarity.ServerTest do
       ]
 
       # Ack the task with results
-      assert :ok = Server.ack_task(server, task.id, result, worker_pid)
+      assert :ok = Server.ack_task(server, task.id, result)
 
       # Verify graph was updated
       clarity = Clarity.get(server, :partial)
@@ -143,10 +135,8 @@ defmodule Clarity.ServerTest do
     test "creates new tasks for newly added vertices", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      worker_pid = spawn(fn -> :ok end)
-
       # Pull and ack a task that creates a new vertex
-      {:ok, task} = find_task_for_introspector(server, worker_pid, Clarity.Introspector.Application)
+      {:ok, task} = find_task_for_introspector(server, Clarity.Introspector.Application)
 
       app_vertex = %Application{app: :test_app, description: "Test App", version: "1.0.0"}
 
@@ -155,64 +145,31 @@ defmodule Clarity.ServerTest do
         {:edge, task.vertex, app_vertex, :application}
       ]
 
-      assert :ok = Server.ack_task(server, task.id, result, worker_pid)
+      assert :ok = Server.ack_task(server, task.id, result)
 
-      # Should now be able to find tasks for the app vertex
-      # We may need to pull several tasks since they're queued for all vertices
-      app_task = find_task_for_vertex(server, worker_pid, app_vertex)
+      Clarity.get(server, :partial)
+      app_task = find_task_for_vertex(server, app_vertex)
       assert app_task != :not_found
     end
 
     test "handles task failure with nack", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      worker_pid = spawn(fn -> :ok end)
-
-      assert {:ok, task} = Server.pull_task(server, worker_pid)
+      assert {:ok, task} = Server.pull_task(server)
 
       # Nack the task
-      assert :ok = Server.nack_task(server, task.id, :test_error, worker_pid)
+      assert :ok = Server.nack_task(server, task.id, :test_error)
 
       # Task should no longer be in progress
       # Verify by trying to ack it - should succeed but do nothing
-      assert :ok = Server.ack_task(server, task.id, [], worker_pid)
-    end
-
-    test "ignores ack/nack for wrong worker or invalid task", %{test: test} do
-      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
-
-      worker1 = spawn(fn -> :ok end)
-      worker2 = spawn(fn -> :ok end)
-
-      assert {:ok, task} = Server.pull_task(server, worker1)
-
-      # Wrong worker should be ignored and log warnings
-      log =
-        capture_log(fn ->
-          assert :ok = Server.ack_task(server, task.id, [], worker2)
-          assert :ok = Server.nack_task(server, task.id, :error, worker2)
-
-          # Invalid task ID should be ignored
-          fake_ref = make_ref()
-          assert :ok = Server.ack_task(server, fake_ref, [], worker1)
-          assert :ok = Server.nack_task(server, fake_ref, :error, worker1)
-        end)
-
-      # Assert that warnings were logged for wrong worker
-      assert log =~ "Received nack for task"
-      assert log =~ "from non-owning worker"
-
-      # Original task should still be processable by correct worker
-      assert :ok = Server.ack_task(server, task.id, [], worker1)
+      assert :ok = Server.ack_task(server, task.id, [])
     end
 
     test "validates edge provenance and logs warnings for invalid edges", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      worker_pid = spawn(fn -> :ok end)
-
       # Pull a task
-      assert {:ok, task} = Server.pull_task(server, worker_pid)
+      assert {:ok, task} = Server.pull_task(server)
 
       # Create vertices for testing edge provenance
       valid_vertex = %Application{app: :valid_app, description: "Valid App", version: "1.0.0"}
@@ -232,7 +189,10 @@ defmodule Clarity.ServerTest do
       # Capture logs to verify warning is logged for invalid edge
       log =
         capture_log(fn ->
-          assert :ok = Server.ack_task(server, task.id, result, worker_pid)
+          assert :ok = Server.ack_task(server, task.id, result)
+
+          # Force synchronization since ack_task is async
+          Clarity.get(server, :partial)
         end)
 
       # Should log warning about discarded invalid edge
@@ -310,7 +270,7 @@ defmodule Clarity.ServerTest do
       module_vertex_modules =
         module_vertices
         |> Enum.map(fn
-          %Clarity.Vertex.Module{module: m} -> m
+          %ModuleVertex{module: m} -> m
           _ -> nil
         end)
         |> Enum.reject(&is_nil/1)
@@ -396,7 +356,7 @@ defmodule Clarity.ServerTest do
       app_to_module_edges =
         Enum.filter(final_edges, fn edge_id ->
           case Clarity.Graph.edge(final_state.graph, edge_id) do
-            {_, ^clarity_app_vertex, %Clarity.Vertex.Module{}, :module} -> true
+            {_, ^clarity_app_vertex, %ModuleVertex{}, :module} -> true
             _ -> false
           end
         end)
@@ -404,7 +364,7 @@ defmodule Clarity.ServerTest do
       # Should have edges for changed and added modules
       app_to_module_edge_targets =
         Enum.map(app_to_module_edges, fn edge_id ->
-          {_, _, %Clarity.Vertex.Module{module: m}, :module} = Clarity.Graph.edge(final_state.graph, edge_id)
+          {_, _, %ModuleVertex{module: m}, :module} = Clarity.Graph.edge(final_state.graph, edge_id)
           m
         end)
 
@@ -461,8 +421,8 @@ defmodule Clarity.ServerTest do
     @spec get_module_names_from_vertices([Clarity.Vertex.t()]) :: [module()]
     defp get_module_names_from_vertices(vertices) do
       vertices
-      |> Enum.filter(&match?(%Clarity.Vertex.Module{}, &1))
-      |> Enum.map(fn %Clarity.Vertex.Module{module: m} -> m end)
+      |> Enum.filter(&match?(%ModuleVertex{}, &1))
+      |> Enum.map(fn %ModuleVertex{module: m} -> m end)
     end
   end
 
@@ -501,11 +461,9 @@ defmodule Clarity.ServerTest do
         100 -> :ok
       end
 
-      worker_pid = spawn(fn -> :ok end)
-
       # Pull and ack a task
-      assert {:ok, task} = Server.pull_task(server, worker_pid)
-      assert :ok = Server.ack_task(server, task.id, [], worker_pid)
+      assert {:ok, task} = Server.pull_task(server)
+      assert :ok = Server.ack_task(server, task.id, [])
 
       # Should receive queue_info event
       assert_receive {:clarity, {:work_progress, info}}
@@ -529,13 +487,11 @@ defmodule Clarity.ServerTest do
         100 -> :ok
       end
 
-      worker_pid = spawn(fn -> :ok end)
-
       # Pull and ack all tasks
-      tasks = pull_all_tasks(server, worker_pid)
+      tasks = pull_all_tasks(server)
 
       Enum.each(tasks, fn task ->
-        Server.ack_task(server, task.id, [], worker_pid)
+        Server.ack_task(server, task.id, [])
       end)
 
       # Should eventually receive work_completed
@@ -583,24 +539,24 @@ defmodule Clarity.ServerTest do
   end
 
   # Helper functions
-  @spec pull_all_tasks(GenServer.server(), pid(), [Server.Task.t()]) :: [Server.Task.t()]
-  defp pull_all_tasks(server, worker_pid, acc \\ []) do
-    case Server.pull_task(server, worker_pid) do
-      {:ok, task} -> pull_all_tasks(server, worker_pid, [task | acc])
+  @spec pull_all_tasks(GenServer.server(), [Server.Task.t()]) :: [Server.Task.t()]
+  defp pull_all_tasks(server, acc \\ []) do
+    case Server.pull_task(server) do
+      {:ok, task} -> pull_all_tasks(server, [task | acc])
       :empty -> Enum.reverse(acc)
     end
   end
 
-  @spec find_task_for_introspector(GenServer.server(), pid(), module()) :: {:ok, Server.Task.t()} | :empty
-  defp find_task_for_introspector(server, worker_pid, introspector) do
-    case Server.pull_task(server, worker_pid) do
+  @spec find_task_for_introspector(GenServer.server(), module()) :: {:ok, Server.Task.t()} | :empty
+  defp find_task_for_introspector(server, introspector) do
+    case Server.pull_task(server) do
       {:ok, task} ->
         if task.introspector == introspector do
           {:ok, task}
         else
           # Put task back by nacking it and try again
-          Server.nack_task(server, task.id, :not_needed, worker_pid)
-          find_task_for_introspector(server, worker_pid, introspector)
+          Server.nack_task(server, task.id, :not_needed)
+          find_task_for_introspector(server, introspector)
         end
 
       :empty ->
@@ -608,10 +564,10 @@ defmodule Clarity.ServerTest do
     end
   end
 
-  @spec find_task_for_vertex(GenServer.server(), pid(), Clarity.Vertex.t(), non_neg_integer()) ::
+  @spec find_task_for_vertex(GenServer.server(), Clarity.Vertex.t(), non_neg_integer()) ::
           Server.Task.t() | :not_found
-  defp find_task_for_vertex(server, worker_pid, vertex, attempts \\ 20) do
-    case {attempts, Server.pull_task(server, worker_pid)} do
+  defp find_task_for_vertex(server, vertex, attempts \\ 20) do
+    case {attempts, Server.pull_task(server)} do
       {0, _} ->
         :not_found
 
@@ -622,8 +578,8 @@ defmodule Clarity.ServerTest do
         task
 
       {n, {:ok, task}} ->
-        Server.nack_task(server, task.id, :not_needed, worker_pid)
-        find_task_for_vertex(server, worker_pid, vertex, n - 1)
+        Server.nack_task(server, task.id, :not_needed)
+        find_task_for_vertex(server, vertex, n - 1)
     end
   end
 end

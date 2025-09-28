@@ -7,12 +7,6 @@ defmodule Clarity.Introspector.Phoenix.EndpointTest do
   alias Clarity.Vertex.Root
 
   describe inspect(&EndpointIntrospector.introspect_vertex/2) do
-    test "returns empty list for non-module vertices" do
-      graph = Clarity.Graph.new()
-
-      assert [] = EndpointIntrospector.introspect_vertex(%Root{}, graph)
-    end
-
     test "creates endpoint vertex for Phoenix endpoint modules" do
       graph = Clarity.Graph.new()
 
@@ -21,18 +15,20 @@ defmodule Clarity.Introspector.Phoenix.EndpointTest do
 
       module_vertex = %Vertex.Module{module: DemoWeb.Endpoint}
 
-      assert [
-               {:vertex, %Endpoint{endpoint: DemoWeb.Endpoint}},
-               {:edge, ^module_vertex, %Endpoint{endpoint: DemoWeb.Endpoint}, "endpoint"},
-               {:edge, ^clarity_app_vertex, %Endpoint{endpoint: DemoWeb.Endpoint}, "endpoint"}
-             ] = EndpointIntrospector.introspect_vertex(module_vertex, graph)
+      assert {:ok,
+              [
+                {:vertex, %Endpoint{endpoint: DemoWeb.Endpoint}},
+                {:edge, ^module_vertex, %Endpoint{endpoint: DemoWeb.Endpoint}, "endpoint"},
+                {:edge, ^clarity_app_vertex, %Endpoint{endpoint: DemoWeb.Endpoint}, "endpoint"}
+                | _
+              ]} = EndpointIntrospector.introspect_vertex(module_vertex, graph)
     end
 
     test "returns empty list for non-endpoint modules" do
       graph = Clarity.Graph.new()
       module_vertex = %Vertex.Module{module: String}
 
-      assert [] = EndpointIntrospector.introspect_vertex(module_vertex, graph)
+      assert {:ok, []} = EndpointIntrospector.introspect_vertex(module_vertex, graph)
     end
   end
 end

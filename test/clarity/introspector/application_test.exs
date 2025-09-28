@@ -9,7 +9,7 @@ defmodule Clarity.Introspector.ApplicationTest do
       graph = Clarity.Graph.new()
       root_vertex = %Vertex.Root{}
 
-      result = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
 
       loaded_apps = Application.loaded_applications()
 
@@ -29,15 +29,6 @@ defmodule Clarity.Introspector.ApplicationTest do
         assert from_vertex == root_vertex
         assert %Vertex.Application{} = to_vertex
       end
-    end
-
-    test "returns empty list for non-root vertices" do
-      graph = Clarity.Graph.new()
-      app_vertex = %Vertex.Application{app: :test_app, description: "Test", version: "1.0.0"}
-
-      result = ApplicationIntrospector.introspect_vertex(app_vertex, graph)
-
-      assert result == []
     end
   end
 end
