@@ -105,33 +105,18 @@ defmodule Clarity.Introspector do
   """
   @callback introspect_vertex(vertex :: Vertex.t(), graph :: Clarity.Graph.t()) :: results()
 
-  @native_introspectors [
-    Clarity.Introspector.Application,
-    Clarity.Introspector.Module,
-    Clarity.Introspector.Ash.Domain,
-    Clarity.Introspector.Ash.Resource,
-    Clarity.Introspector.Ash.DataLayer,
-    Clarity.Introspector.Ash.Action,
-    Clarity.Introspector.Ash.Field,
-    Clarity.Introspector.Ash.Type,
-    Clarity.Introspector.Phoenix.Endpoint,
-    Clarity.Introspector.Phoenix.Router
-  ]
-
   @doc """
   Returns the list of introspectors, including both built-in and user-defined
   ones, unsorted.
   """
   @spec list() :: [t()]
   def list do
-    configured_introspectors =
       Application.loaded_applications()
       |> Enum.map(&elem(&1, 0))
       |> Enum.flat_map(&Application.get_all_env/1)
       |> Keyword.get_values(:clarity_introspectors)
       |> List.flatten()
-
-    Enum.uniq(@native_introspectors ++ configured_introspectors)
+    |> Enum.uniq()
   end
 
   @doc """

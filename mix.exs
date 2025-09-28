@@ -42,7 +42,21 @@ defmodule Clarity.MixProject do
   def application do
     [
       extra_applications: [],
-      mod: {Clarity.Application, []}
+      mod: {Clarity.Application, []},
+      env: [
+        clarity_introspectors: [
+          Clarity.Introspector.Application,
+          Clarity.Introspector.Module,
+          Clarity.Introspector.Ash.Domain,
+          Clarity.Introspector.Ash.Resource,
+          Clarity.Introspector.Ash.DataLayer,
+          Clarity.Introspector.Ash.Action,
+          Clarity.Introspector.Ash.Field,
+          Clarity.Introspector.Ash.Type,
+          Clarity.Introspector.Phoenix.Endpoint,
+          Clarity.Introspector.Phoenix.Router
+        ]
+      ]
     ]
   end
 
