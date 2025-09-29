@@ -41,7 +41,7 @@ defmodule Clarity.MixProject do
 
   def application do
     [
-      extra_applications: [],
+      extra_applications: [:stdlib, :logger],
       mod: {Clarity.Application, []},
       env: [
         clarity_introspectors: [
