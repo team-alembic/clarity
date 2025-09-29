@@ -594,4 +594,41 @@ defmodule Clarity.ServerTest do
         find_task_for_vertex(server, vertex, n - 1)
     end
   end
+
+  describe "Task requeue count safety" do
+    test "increments requeue count on each requeue", %{test: test} do
+      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
+
+      assert {:ok, task} = Server.pull_task(server)
+      assert task.requeue_count == 0
+
+      Server.requeue_task(server, task.id)
+
+      assert {:ok, requeued_task} = Server.pull_task(server)
+      assert requeued_task.requeue_count == 1
+      assert requeued_task.id == task.id
+    end
+
+    test "drops task after 100 requeues and logs warning", %{test: test} do
+      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
+
+      assert {:ok, task} = Server.pull_task(server)
+
+      Enum.each(1..100, fn _i ->
+        Server.requeue_task(server, task.id)
+        assert {:ok, _requeued_task} = Server.pull_task(server)
+      end)
+
+      log =
+        capture_log(fn ->
+          Server.requeue_task(server, task.id)
+          Clarity.get(server, :partial)
+        end)
+
+      assert log =~ "Dropping task after 101 requeue attempts"
+      assert log =~ "Introspect Root with Application"
+
+      assert :empty = Server.pull_task(server)
+    end
+  end
 end

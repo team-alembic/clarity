@@ -21,7 +21,7 @@ defmodule Clarity.Server do
 
     @type t() :: %__MODULE__{
             future_queue: :queue.queue(Clarity.Server.Task.t()),
-            in_progress: %{reference() => {Clarity.Server.Task.t(), pid(), integer()}},
+            in_progress: %{reference() => Clarity.Server.Task.t()},
             graph: Clarity.Graph.t(),
             introspectors: [module()],
             custom_introspectors: [module()] | nil,
@@ -227,7 +227,16 @@ defmodule Clarity.Server do
 
         {:noreply, state}
 
+      {%{requeue_count: count} = task, remaining_in_progress} when count >= 100 ->
+        Logger.warning(
+          "Dropping task after #{count + 1} requeue attempts: #{Clarity.Server.Task.describe(task)}"
+        )
+
+        {:noreply, %{state | in_progress: remaining_in_progress}}
+
       {task, remaining_in_progress} ->
+        task = %{task | requeue_count: task.requeue_count + 1}
+
         {:noreply,
          %{
            state

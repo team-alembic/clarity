@@ -98,12 +98,26 @@ defmodule Clarity.Router do
         live(
           "#{path}",
           Clarity.PageLive,
-          :page,
+          :root,
           private: private
         )
 
         live(
-          "#{path}/:vertex/:content",
+          "#{path}/:lens",
+          Clarity.PageLive,
+          :lens,
+          private: private
+        )
+
+        live(
+          "#{path}/:lens/:vertex",
+          Clarity.PageLive,
+          :vertex,
+          private: private
+        )
+
+        live(
+          "#{path}/:lens/:vertex/:content",
           Clarity.PageLive,
           :page,
           private: private

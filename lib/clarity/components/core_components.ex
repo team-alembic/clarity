@@ -12,6 +12,11 @@ defmodule Clarity.CoreComponents do
 
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
+
+  attr :lens, Clarity.Perspective.Lens,
+    required: true,
+    doc: "Current lens for perspective switching"
+
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :refreshing, :boolean, default: false, doc: "Whether a refresh is in progress"
   attr :work_status, :atom, required: true, doc: "Current work status (:working or :done)"
@@ -58,14 +63,19 @@ defmodule Clarity.CoreComponents do
           <% end %>
         </ol>
       </nav>
-      
-    <!-- Progress bar in the middle -->
+
       <div class="flex justify-center mx-4">
         <.progress_bar work_status={@work_status} queue_info={@queue_info} />
       </div>
 
       <div class="flex items-center space-x-2">
         <.refresh_button refreshing={@refreshing} />
+        <.live_component
+          module={Clarity.LensSwitcherComponent}
+          id="lens-switcher"
+          prefix={@prefix}
+          current_lens={@lens}
+        />
         <.theme_toggle id="header-theme-toggle" theme={@theme} />
         <button
           type="button"

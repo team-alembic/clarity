@@ -1,10 +1,12 @@
 defmodule Clarity.MixProject do
   use Mix.Project
 
+  @version "0.2.0"
+
   def project do
     [
       app: :clarity,
-      version: "0.2.0",
+      version: @version,
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -26,6 +28,7 @@ defmodule Clarity.MixProject do
           ~r/\.Docs$/,
           ~r/^Inspect\.Demo\./,
           ~r/^Clarity\.Test\./,
+          Clarity.Web,
           Clarity.CodeReloader,
           Clarity.Vertex
         ]
@@ -55,13 +58,20 @@ defmodule Clarity.MixProject do
           Clarity.Introspector.Ash.Type,
           Clarity.Introspector.Phoenix.Endpoint,
           Clarity.Introspector.Phoenix.Router
-        ]
+        ],
+        clarity_perspective_lensmakers: [
+          Clarity.Perspective.Lensmaker.Debug,
+          Clarity.Perspective.Lensmaker.Architect,
+          Clarity.Perspective.Lensmaker.Security
+        ],
+        default_perspective_lens: "debug"
       ]
     ]
   end
 
   defp deps do
     [
+      {:usage_rules, "~> 0.1", only: [:dev]},
       {:ash, "~> 3.5 and >= 3.5.43", optional: true},
       {:spark, "~> 2.3", optional: true},
       {:phoenix, "~> 1.7"},
@@ -98,7 +108,16 @@ defmodule Clarity.MixProject do
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind default", "esbuild default --sourcemap=inline"],
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
-      dev: "run --no-halt --no-start dev.exs --config config"
+      dev: "run --no-halt --no-start dev.exs --config config",
+      "usage_rules.update": [
+        String.trim("""
+        usage_rules.sync CLAUDE.md --all \
+          --inline usage_rules:all \
+          --link-to-folder deps \
+          --remove-missing \
+          --link-style at
+        """)
+      ]
     ]
   end
 
@@ -122,7 +141,19 @@ defmodule Clarity.MixProject do
     [
       main: "Clarity",
       logo: "priv/static/images/logo.svg",
-      assets: %{"docs/assets" => "docs/assets", "priv/static/images" => "priv/static/images"}
+      assets: %{"docs/assets" => "docs/assets", "priv/static/images" => "priv/static/images"},
+      source_ref: "v#{@version}",
+      groups_for_modules: [
+        Perspective: [
+          ~r/^Clarity\.Perspective/
+        ],
+        Graph: [
+          ~r/^Clarity\.Graph/
+        ],
+        Vertices: [
+          ~r/^Clarity\.Vertex/
+        ]
+      ]
     ]
   end
 end

@@ -40,6 +40,9 @@ defmodule Clarity.Graph do
     provenance_graph = :digraph.new([:acyclic])
     vertices = :ets.new(Vertex, [:set, :protected, read_concurrency: true])
 
+    # Initialize update counter
+    :ets.insert(vertices, {:"$update_count", 0})
+
     graph = %__MODULE__{
       main_graph: main_graph,
       tree_graph: tree_graph,
@@ -80,6 +83,9 @@ defmodule Clarity.Graph do
   @spec clear(t()) :: result()
   def clear(%__MODULE__{} = graph) do
     with :ok <- check_writable(graph) do
+      # Save current counter value before clearing
+      current_count = get_update_count(graph)
+
       # Delete all vertices from graphs using bulk operation
       :digraph.del_vertices(graph.main_graph, :digraph.vertices(graph.main_graph))
       :digraph.del_vertices(graph.tree_graph, :digraph.vertices(graph.tree_graph))
@@ -88,8 +94,14 @@ defmodule Clarity.Graph do
       # Clear vertex table
       :ets.delete_all_objects(graph.vertices)
 
+      # Re-initialize update counter with preserved value
+      :ets.insert(graph.vertices, {:"$update_count", current_count})
+
       # Reset graphs to empty state with root vertex
       add_root_vertex(graph)
+
+      # Increment update counter for the clear operation
+      increment_update_count(graph)
 
       :ok
     end
@@ -115,6 +127,9 @@ defmodule Clarity.Graph do
       # Add provenance edge: caused_by -> vertex
       :digraph.add_edge(graph.provenance_graph, caused_by_id, vertex_id)
 
+      # Increment update counter
+      increment_update_count(graph)
+
       :ok
     end
   end
@@ -135,6 +150,9 @@ defmodule Clarity.Graph do
       # Add edge to tree graph if it creates a shorter path
       Tree.add_edge(graph.tree_graph, from_id, to_id, label)
 
+      # Increment update counter
+      increment_update_count(graph)
+
       :ok
     end
   end
@@ -152,10 +170,7 @@ defmodule Clarity.Graph do
   """
   @spec get_vertex(t(), String.t()) :: Vertex.t() | nil
   def get_vertex(%__MODULE__{} = graph, vertex_id) do
-    case :ets.lookup(graph.vertices, vertex_id) do
-      [{^vertex_id, vertex_struct}] -> vertex_struct
-      [] -> nil
-    end
+    :ets.lookup_element(graph.vertices, vertex_id, 2, nil)
   end
 
   @doc """
@@ -167,6 +182,7 @@ defmodule Clarity.Graph do
 
     graph.vertices
     |> :ets.tab2list()
+    |> Enum.reject(&match?({:"$update_count", _}, &1))
     |> Enum.map(&elem(&1, 1))
     |> Enum.filter(&MapSet.member?(all_vertices, Vertex.unique_id(&1)))
   end
@@ -216,6 +232,53 @@ defmodule Clarity.Graph do
   end
 
   @doc """
+  Gets all vertices that are direct targets of outgoing edges from a vertex.
+  """
+  @spec out_neighbors(t(), Vertex.t()) :: [Vertex.t()]
+  def out_neighbors(%__MODULE__{} = graph, vertex) do
+    vertex_id = Vertex.unique_id(vertex)
+
+    graph.main_graph
+    |> :digraph.out_neighbours(vertex_id)
+    |> Enum.map(&get_vertex(graph, &1))
+  end
+
+  @doc """
+  Gets all vertices that are direct sources of incoming edges to a vertex.
+  """
+  @spec in_neighbors(t(), Vertex.t()) :: [Vertex.t()]
+  def in_neighbors(%__MODULE__{} = graph, vertex) do
+    vertex_id = Vertex.unique_id(vertex)
+
+    graph.main_graph
+    |> :digraph.in_neighbours(vertex_id)
+    |> Enum.map(&get_vertex(graph, &1))
+  end
+
+  @doc """
+  Gets the current update count for the graph.
+
+  The count remains stable when no mutations occur and increases monotonically
+  when the graph is modified. Use this for change detection to invalidate
+  cached subgraphs.
+
+  Do not rely on specific count values or increment amounts as the internal
+  update mechanism may change.
+
+  ## Example
+
+      count1 = Graph.get_update_count(graph)
+      # ... operations that might modify graph ...
+      count2 = Graph.get_update_count(graph)
+      
+      if count2 > count1, do: # graph changed
+  """
+  @spec get_update_count(t()) :: pos_integer()
+  def get_update_count(%__MODULE__{} = graph) do
+    :ets.lookup_element(graph.vertices, :"$update_count", 2)
+  end
+
+  @doc """
   Purges a vertex and all vertices that were caused by it.
   """
   @spec purge(t(), Vertex.t()) :: result([Vertex.t()])
@@ -244,6 +307,9 @@ defmodule Clarity.Graph do
         :digraph.del_vertex(graph.tree_graph, id)
         :digraph.del_vertex(graph.provenance_graph, id)
       end)
+
+      # Increment update counter
+      increment_update_count(graph)
 
       {:ok, purged_vertices}
     end
@@ -356,6 +422,9 @@ defmodule Clarity.Graph do
     Tree.add_vertex(graph.tree_graph, root_id)
     :digraph.add_vertex(graph.provenance_graph, root_id)
 
+    # Increment update counter
+    increment_update_count(graph)
+
     :ok
   end
 
@@ -372,4 +441,9 @@ defmodule Clarity.Graph do
   defp check_writable(graph)
   defp check_writable(%__MODULE__{subgraph: true}), do: {:error, :subgraphs_are_readonly}
   defp check_writable(graph), do: check_owner(graph)
+
+  @spec increment_update_count(t()) :: pos_integer()
+  defp increment_update_count(%__MODULE__{} = graph) do
+    :ets.update_counter(graph.vertices, :"$update_count", 1, {:"$update_count", 0})
+  end
 end
