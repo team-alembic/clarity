@@ -135,8 +135,6 @@ defmodule Clarity.Introspector do
 
   This function fetches the module's documentation and creates both a content vertex
   containing the moduledoc and an edge from the provided vertex to that content.
-  This is similar to the private `moduledoc_content/1` function in `Clarity.Introspector.Module`
-  but can be used by any introspector to add moduledoc content for their vertices.
 
   ## Parameters
 
