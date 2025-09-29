@@ -2,6 +2,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Aggregate do
     @moduledoc false
     alias Ash.Resource.Aggregate
+    alias Spark.Dsl.Entity
 
     @type t() :: %__MODULE__{
             aggregate: Aggregate.t(),
@@ -35,8 +36,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       def markdown_overview(_vertex), do: []
 
       @impl Clarity.Vertex
-      # TODO: Add anno once ash supports it
-      def source_anno(_vertex), do: nil
+      def source_anno(%{aggregate: aggregate}), do: Entity.anno(aggregate)
     end
   end
 end

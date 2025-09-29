@@ -1,7 +1,7 @@
 defmodule Clarity.Introspector.Ash.DataLayerTest do
   use ExUnit.Case, async: true
 
-  alias Ash.DataLayer.Simple
+  alias Ash.DataLayer.Ets
   alias Clarity.Introspector.Ash.DataLayer, as: DataLayerIntrospector
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.DataLayer
@@ -12,17 +12,17 @@ defmodule Clarity.Introspector.Ash.DataLayerTest do
     test "creates data layer vertices for resource vertices" do
       graph = Clarity.Graph.new()
 
-      module_vertex = %Vertex.Module{module: Simple}
+      module_vertex = %Vertex.Module{module: Ets}
       resource_vertex = %Vertex.Ash.Resource{resource: User}
 
       Clarity.Graph.add_vertex(graph, module_vertex, %Root{})
 
       assert {:ok,
               [
-                {:vertex, %DataLayer{data_layer: Simple}},
-                {:edge, nil, %DataLayer{data_layer: Simple}, :data_layer},
-                {:edge, ^resource_vertex, %DataLayer{data_layer: Simple}, :data_layer},
-                {:edge, ^module_vertex, %DataLayer{data_layer: Simple}, :module}
+                {:vertex, %DataLayer{data_layer: Ets}},
+                {:edge, nil, %DataLayer{data_layer: Ets}, :data_layer},
+                {:edge, ^resource_vertex, %DataLayer{data_layer: Ets}, :data_layer},
+                {:edge, ^module_vertex, %DataLayer{data_layer: Ets}, :module}
                 | _
               ]} = DataLayerIntrospector.introspect_vertex(resource_vertex, graph)
     end

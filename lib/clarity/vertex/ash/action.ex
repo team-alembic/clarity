@@ -2,6 +2,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Action do
     @moduledoc false
     alias Ash.Resource.Actions
+    alias Spark.Dsl.Entity
 
     @type t() :: %__MODULE__{
             action: Actions.action(),
@@ -76,8 +77,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
 
       @impl Clarity.Vertex
-      # TODO: Add anno once ash supports it
-      def source_anno(_vertex), do: nil
+      def source_anno(%{action: action}), do: Entity.anno(action)
     end
   end
 end

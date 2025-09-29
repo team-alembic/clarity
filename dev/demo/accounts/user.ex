@@ -4,7 +4,8 @@ defmodule Demo.Accounts.User do
     domain: Demo.Accounts.Domain,
     authorizers: [
       Ash.Policy.Authorizer
-    ]
+    ],
+    data_layer: Ash.DataLayer.Ets
 
   multitenancy do
     strategy :attribute
@@ -52,6 +53,12 @@ defmodule Demo.Accounts.User do
     validate present([:first_name, :last_name], at_least: 1)
   end
 
+  aggregates do
+    count :admin_count, __MODULE__ do
+      filter expr(admin == true)
+    end
+  end
+
   calculations do
     calculate :is_super_admin?, :boolean, expr(admin && representative)
 
@@ -73,6 +80,12 @@ defmodule Demo.Accounts.User do
       argument :arg3, :float do
         allow_nil? true
       end
+    end
+  end
+
+  relationships do
+    belongs_to :manager, __MODULE__ do
+      attribute_writable? true
     end
   end
 

@@ -42,6 +42,14 @@ defmodule Clarity.Vertex.Ash.DataLayerTest do
 
       assert overview_string =~ "`Ash.DataLayer.Ets`"
     end
+
+    test "source_anno/1 returns annotation from module compilation info", %{vertex: vertex} do
+      result = Vertex.source_anno(vertex)
+      assert :erl_anno.is_anno(result)
+
+      file = :erl_anno.file(result)
+      assert String.ends_with?(List.to_string(file), "ash/lib/ash/data_layer/ets/ets.ex")
+    end
   end
 
   describe "DataLayer struct" do

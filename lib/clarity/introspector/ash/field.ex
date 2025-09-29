@@ -38,7 +38,7 @@ case Code.ensure_loaded(Ash) do
             {:edge, resource_vertex, field_vertex, edge_label}
           ]
 
-          case add_relationship_edges(field, field_vertex, graph) do
+          case add_relationship_edges(field, field_vertex, resource_vertex, graph) do
             {:ok, edges} ->
               {:cont, {:ok, acc ++ base_results ++ edges}}
 
@@ -48,20 +48,33 @@ case Code.ensure_loaded(Ash) do
         end)
       end
 
-      @spec add_relationship_edges(field :: field(), Vertex.t(), Clarity.Graph.t()) ::
+      @spec add_relationship_edges(field :: field(), Vertex.t(), Vertex.t(), Clarity.Graph.t()) ::
               Clarity.Introspector.result()
-      defp add_relationship_edges(%mod{destination: target_resource}, field_vertex, graph)
+      defp add_relationship_edges(
+             %mod{destination: target_resource},
+             field_vertex,
+             resource_vertex,
+             graph
+           )
            when mod in [HasOne, BelongsTo, HasMany, ManyToMany] do
-        graph
-        |> Clarity.Graph.vertices()
-        |> Enum.find(&match?(%ResourceVertex{resource: ^target_resource}, &1))
-        |> case do
+        case_result =
+          case resource_vertex do
+            %ResourceVertex{resource: ^target_resource} ->
+              resource_vertex
+
+            %ResourceVertex{} ->
+              graph
+              |> Clarity.Graph.vertices()
+              |> Enum.find(&match?(%ResourceVertex{resource: ^target_resource}, &1))
+          end
+
+        case case_result do
           nil -> {:error, :unmet_dependencies}
           target -> {:ok, [{:edge, field_vertex, target, :relationship}]}
         end
       end
 
-      defp add_relationship_edges(_field, _field_vertex, _graph), do: {:ok, []}
+      defp add_relationship_edges(_field, _field_vertex, _resource_vertex, _graph), do: {:ok, []}
 
       @spec field_vertex(field :: field(), resource :: Resource.t()) :: Vertex.t()
       defp field_vertex(%Attribute{} = attribute, resource),

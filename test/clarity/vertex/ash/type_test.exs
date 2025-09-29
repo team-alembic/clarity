@@ -41,6 +41,14 @@ defmodule Clarity.Vertex.Ash.TypeTest do
       assert overview_string =~ "`Ash.Type.String`"
       # Module docs would be included if available via Code.fetch_docs
     end
+
+    test "source_anno/1 returns annotation from module compilation info", %{vertex: vertex} do
+      result = Vertex.source_anno(vertex)
+      assert :erl_anno.is_anno(result)
+
+      file = :erl_anno.file(result)
+      assert String.ends_with?(List.to_string(file), "ash/lib/ash/type/string.ex")
+    end
   end
 
   describe "Type struct" do

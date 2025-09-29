@@ -3,18 +3,16 @@ defmodule Clarity.Vertex.Ash.ActionTest do
 
   alias Ash.Resource.Actions.Argument
   alias Ash.Resource.Actions.Read
+  alias Ash.Resource.Info
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Action
   alias Demo.Accounts.User
+  alias Spark.Dsl.Entity
 
   describe "Clarity.Vertex protocol implementation for Ash.Action" do
     setup do
-      # Create a mock action structure (simplified version of Ash action)
-      action = %Read{
-        name: :read,
-        type: :read,
-        description: "Read users"
-      }
+      # Get a real action from the Demo.Accounts.User resource
+      action = User |> Info.actions() |> List.first()
 
       vertex = %Action{
         action: action,
@@ -24,13 +22,13 @@ defmodule Clarity.Vertex.Ash.ActionTest do
       {:ok, vertex: vertex, action: action}
     end
 
-    test "unique_id/1 returns correct unique identifier", %{vertex: vertex} do
-      assert Vertex.unique_id(vertex) == "action:Demo.Accounts.User:read"
+    test "unique_id/1 returns correct unique identifier", %{vertex: vertex, action: action} do
+      assert Vertex.unique_id(vertex) == "action:Demo.Accounts.User:#{action.name}"
     end
 
-    test "graph_id/1 returns correct graph identifier", %{vertex: vertex} do
+    test "graph_id/1 returns correct graph identifier", %{vertex: vertex, action: action} do
       result = Vertex.graph_id(vertex)
-      assert IO.iodata_to_binary(result) == "Demo.Accounts.User_read"
+      assert IO.iodata_to_binary(result) == "Demo.Accounts.User_#{action.name}"
     end
 
     test "graph_group/1 returns resource and actions group", %{vertex: vertex} do
@@ -38,25 +36,28 @@ defmodule Clarity.Vertex.Ash.ActionTest do
       assert result == ["Demo.Accounts.User", "Ash.Resource.Actions"]
     end
 
-    test "type_label/1 returns action module name", %{vertex: vertex} do
-      assert Vertex.type_label(vertex) == "Ash.Resource.Actions.Read"
+    test "type_label/1 returns action module name", %{vertex: vertex, action: action} do
+      assert Vertex.type_label(vertex) == action.__struct__ |> Module.split() |> Enum.join(".")
     end
 
-    test "render_name/1 returns action name", %{vertex: vertex} do
-      assert Vertex.render_name(vertex) == "read"
+    test "render_name/1 returns action name", %{vertex: vertex, action: action} do
+      assert Vertex.render_name(vertex) == to_string(action.name)
     end
 
     test "dot_shape/1 returns correct shape", %{vertex: vertex} do
       assert Vertex.dot_shape(vertex) == "cds"
     end
 
-    test "markdown_overview/1 returns formatted overview", %{vertex: vertex} do
+    test "markdown_overview/1 returns formatted overview", %{vertex: vertex, action: action} do
       overview = Vertex.markdown_overview(vertex)
       overview_string = IO.iodata_to_binary(overview)
 
-      assert overview_string =~ "Action: `:read`"
+      assert overview_string =~ "Action: `:#{action.name}`"
       assert overview_string =~ "Resource: `Demo.Accounts.User`"
-      assert overview_string =~ "Read users"
+    end
+
+    test "source_anno/1 returns annotation from action entity", %{vertex: vertex, action: action} do
+      assert Vertex.source_anno(vertex) == Entity.anno(action)
     end
   end
 

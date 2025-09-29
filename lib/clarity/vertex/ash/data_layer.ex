@@ -44,8 +44,18 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
 
       @impl Clarity.Vertex
-      # TODO: Add anno once ash supports it
-      def source_anno(_vertex), do: nil
+      def source_anno(%{data_layer: module}) do
+        case module.__info__(:compile)[:source] do
+          source when is_list(source) ->
+            :erl_anno.set_file(source, :erl_anno.new(1))
+
+          _ ->
+            nil
+        end
+      rescue
+        _ ->
+          nil
+      end
     end
   end
 end
