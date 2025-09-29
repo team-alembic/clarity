@@ -94,7 +94,7 @@ defmodule Clarity do
             {:clarity, :work_completed} ->
               GenServer.call(server, :get)
           after
-            30_000 ->
+            60_000 ->
               raise "Timeout waiting for work to complete"
           end
         after

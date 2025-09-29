@@ -290,7 +290,13 @@ defmodule Clarity.ServerTest do
       end
 
       # Use clarity app for testing since we know it exists
-      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
+      server =
+        start_supervised!(
+          {Server,
+           name: Module.concat(__MODULE__, test),
+           introspectors: [Clarity.Introspector.Application, Clarity.Introspector.Module]}
+        )
+
       _worker = start_supervised!({Worker, clarity_server: server})
 
       # Wait for initial introspection to complete
@@ -385,7 +391,13 @@ defmodule Clarity.ServerTest do
     test "incremental introspection skips when app not found in graph", %{test: test} do
       import ExUnit.CaptureLog
 
-      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
+      server =
+        start_supervised!(
+          {Server,
+           name: Module.concat(__MODULE__, test),
+           introspectors: [Clarity.Introspector.Application, Clarity.Introspector.Module]}
+        )
+
       _worker = start_supervised!({Worker, clarity_server: server})
 
       # Wait for initial introspection to complete

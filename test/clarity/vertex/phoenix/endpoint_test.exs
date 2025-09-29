@@ -42,6 +42,14 @@ defmodule Clarity.Vertex.Phoenix.EndpointTest do
       assert overview_string =~ "URL: "
       # The URL would be provided by DemoWeb.Endpoint.url()
     end
+
+    test "source_anno/1 returns annotation from module compilation info", %{vertex: vertex} do
+      result = Vertex.source_anno(vertex)
+      assert :erl_anno.is_anno(result)
+
+      file = :erl_anno.file(result)
+      assert String.ends_with?(List.to_string(file), "dev/demo_web/endpoint.ex")
+    end
   end
 
   describe "Endpoint struct" do

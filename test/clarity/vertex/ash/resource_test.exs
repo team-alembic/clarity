@@ -42,6 +42,14 @@ defmodule Clarity.Vertex.Ash.ResourceTest do
       assert overview_string =~ "`Demo.Accounts.User`"
       assert overview_string =~ "Domain: `Demo.Accounts.Domain`"
     end
+
+    test "source_anno/1 returns annotation from module compilation info", %{vertex: vertex} do
+      result = Vertex.source_anno(vertex)
+      assert :erl_anno.is_anno(result)
+
+      file = :erl_anno.file(result)
+      assert String.ends_with?(List.to_string(file), "dev/demo/accounts/user.ex")
+    end
   end
 
   describe "Resource struct" do

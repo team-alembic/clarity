@@ -1,29 +1,27 @@
 defmodule Clarity.Vertex.Ash.AggregateTest do
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Info
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Aggregate
   alias Demo.Accounts.User
+  alias Spark.Dsl.Entity
 
   describe "Clarity.Vertex protocol implementation for Ash.Aggregate" do
     setup do
-      # Create a mock aggregate structure
-      aggregate = %{
-        name: :total_count,
-        type: :count,
-        resource: User
-      }
+      # Get a real aggregate from the Demo.Accounts.User resource
+      aggregate = User |> Info.aggregates() |> List.first()
 
       vertex = %Aggregate{aggregate: aggregate, resource: User}
-      {:ok, vertex: vertex}
+      {:ok, vertex: vertex, aggregate: aggregate}
     end
 
-    test "unique_id/1 returns correct unique identifier", %{vertex: vertex} do
-      assert Vertex.unique_id(vertex) == "aggregate:Demo.Accounts.User:total_count"
+    test "unique_id/1 returns correct unique identifier", %{vertex: vertex, aggregate: aggregate} do
+      assert Vertex.unique_id(vertex) == "aggregate:Demo.Accounts.User:#{aggregate.name}"
     end
 
-    test "graph_id/1 returns correct graph identifier", %{vertex: vertex} do
-      assert Vertex.graph_id(vertex) == ["Demo.Accounts.User", "_", "total_count"]
+    test "graph_id/1 returns correct graph identifier", %{vertex: vertex, aggregate: aggregate} do
+      assert Vertex.graph_id(vertex) == ["Demo.Accounts.User", "_", "#{aggregate.name}"]
     end
 
     test "graph_group/1 returns correct group", %{vertex: vertex} do
@@ -34,8 +32,8 @@ defmodule Clarity.Vertex.Ash.AggregateTest do
       assert Vertex.type_label(vertex) == "Ash.Resource.Aggregate"
     end
 
-    test "render_name/1 returns correct display name", %{vertex: vertex} do
-      assert Vertex.render_name(vertex) == "total_count"
+    test "render_name/1 returns correct display name", %{vertex: vertex, aggregate: aggregate} do
+      assert Vertex.render_name(vertex) == to_string(aggregate.name)
     end
 
     test "dot_shape/1 returns correct shape", %{vertex: vertex} do
@@ -44,6 +42,10 @@ defmodule Clarity.Vertex.Ash.AggregateTest do
 
     test "markdown_overview/1 returns empty list", %{vertex: vertex} do
       assert Vertex.markdown_overview(vertex) == []
+    end
+
+    test "source_anno/1 returns annotation from aggregate entity", %{vertex: vertex, aggregate: aggregate} do
+      assert Vertex.source_anno(vertex) == Entity.anno(aggregate)
     end
   end
 

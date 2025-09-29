@@ -44,6 +44,14 @@ defmodule Clarity.Vertex.Phoenix.RouterTest do
       assert overview_string =~ "| page_path | GET | / | Phoenix.LiveView.Plug | :page |"
       assert overview_string =~ "| page_path | GET | /:vertex/:content | Phoenix.LiveView.Plug | :page |"
     end
+
+    test "source_anno/1 returns annotation from module compilation info", %{vertex: vertex} do
+      result = Vertex.source_anno(vertex)
+      assert :erl_anno.is_anno(result)
+
+      file = :erl_anno.file(result)
+      assert String.ends_with?(List.to_string(file), "dev/demo_web/router.ex")
+    end
   end
 
   describe "Router struct" do
