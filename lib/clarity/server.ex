@@ -166,7 +166,7 @@ defmodule Clarity.Server do
           id: make_ref(),
           vertex: app_vertex,
           introspector: Clarity.Introspector.Module,
-          graph: Clarity.Graph.seal(state.graph)
+          graph: state.graph
         }
 
         broadcast_event(state, :work_started)
@@ -256,7 +256,7 @@ defmodule Clarity.Server do
     status = if queue_empty_and_no_progress?(state), do: :done, else: :working
 
     clarity = %Clarity{
-      graph: Clarity.Graph.seal(state.graph),
+      graph: state.graph,
       status: status,
       queue_info: queue_info(state)
     }
@@ -297,7 +297,7 @@ defmodule Clarity.Server do
     |> Enum.filter(fn introspector ->
       vertex_type in introspector.source_vertex_types()
     end)
-    |> Enum.map(&Clarity.Server.Task.new_introspection(vertex, &1, Clarity.Graph.seal(graph)))
+    |> Enum.map(&Clarity.Server.Task.new_introspection(vertex, &1, graph))
   end
 
   @spec process_task_results(Clarity.Server.Task.t(), [Clarity.Introspector.entry()], State.t()) ::

@@ -372,6 +372,8 @@ defmodule Clarity.PageLive do
 
   @spec load_clarity(Socket.t()) :: Socket.t()
   defp load_clarity(socket) do
+    if socket.assigns[:clarity], do: Graph.delete(socket.assigns.clarity.graph)
+
     clarity =
       socket.assigns.clarity_pid
       |> Clarity.get(:partial)
