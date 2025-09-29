@@ -8,8 +8,13 @@ defmodule Clarity.Graph do
   alias Clarity.Vertex
   alias Clarity.Vertex.Root
 
-  @derive {Inspect, only: [:readonly]}
-  defstruct [:main_graph, :tree_graph, :provenance_graph, :vertices, readonly: false]
+  @derive {Inspect, only: [:owner, :subgraph]}
+  @enforce_keys [:main_graph, :tree_graph, :provenance_graph, :vertices, :owner]
+  defstruct [:main_graph, :tree_graph, :provenance_graph, :vertices, :owner, subgraph: false]
+
+  @type error() :: :subgraphs_are_readonly | :not_owner
+  @type result() :: :ok | {:error, error()}
+  @type result(inner) :: {:ok, inner} | {:error, error()}
 
   @typedoc """
   The Graph structure.
@@ -21,7 +26,8 @@ defmodule Clarity.Graph do
             tree_graph: :digraph.graph(),
             provenance_graph: :digraph.graph(),
             vertices: :ets.tid(),
-            readonly: boolean()
+            owner: pid(),
+            subgraph: boolean()
           }
 
   @doc """
@@ -38,7 +44,8 @@ defmodule Clarity.Graph do
       main_graph: main_graph,
       tree_graph: tree_graph,
       provenance_graph: provenance_graph,
-      vertices: vertices
+      vertices: vertices,
+      owner: self()
     }
 
     add_root_vertex(graph)
@@ -46,26 +53,23 @@ defmodule Clarity.Graph do
   end
 
   @doc """
-  Make Graph read-only.
-
-  Further modifications will return {:error, :readonly}.
-  """
-  @spec seal(t()) :: t()
-  def seal(graph), do: %{graph | readonly: true}
-
-  @doc """
   Deletes Graph
   """
-  @spec delete(t()) :: :ok | {:error, :readonly}
-  def delete(graph)
-  def delete(%__MODULE__{readonly: true}), do: {:error, :readonly}
-
+  @spec delete(t()) :: result()
   def delete(%__MODULE__{} = graph) do
-    :digraph.delete(graph.main_graph)
-    :digraph.delete(graph.tree_graph)
-    :digraph.delete(graph.provenance_graph)
-    :ets.delete(graph.vertices)
-    :ok
+    with :ok <- check_owner(graph) do
+      true = :digraph.delete(graph.main_graph)
+      true = :digraph.delete(graph.tree_graph)
+
+      # Subgraphs shares the vertices ets table and the provenance graph
+      # with the main graph, so we only delete them for the main graph
+      if not graph.subgraph do
+        true = :digraph.delete(graph.provenance_graph)
+        true = :ets.delete(graph.vertices)
+      end
+
+      :ok
+    end
   end
 
   @doc """
@@ -73,71 +77,66 @@ defmodule Clarity.Graph do
 
   Resets graphs to empty state with root vertex.
   """
-  @spec clear(t()) :: :ok | {:error, :readonly}
-  def clear(graph)
-  def clear(%__MODULE__{readonly: true}), do: {:error, :readonly}
-
+  @spec clear(t()) :: result()
   def clear(%__MODULE__{} = graph) do
-    # Delete all vertices from graphs using bulk operation
-    :digraph.del_vertices(graph.main_graph, :digraph.vertices(graph.main_graph))
-    :digraph.del_vertices(graph.tree_graph, :digraph.vertices(graph.tree_graph))
-    :digraph.del_vertices(graph.provenance_graph, :digraph.vertices(graph.provenance_graph))
+    with :ok <- check_writable(graph) do
+      # Delete all vertices from graphs using bulk operation
+      :digraph.del_vertices(graph.main_graph, :digraph.vertices(graph.main_graph))
+      :digraph.del_vertices(graph.tree_graph, :digraph.vertices(graph.tree_graph))
+      :digraph.del_vertices(graph.provenance_graph, :digraph.vertices(graph.provenance_graph))
 
-    # Clear vertex table
-    :ets.delete_all_objects(graph.vertices)
+      # Clear vertex table
+      :ets.delete_all_objects(graph.vertices)
 
-    # Reset graphs to empty state with root vertex
-    add_root_vertex(graph)
+      # Reset graphs to empty state with root vertex
+      add_root_vertex(graph)
 
-    :ok
+      :ok
+    end
   end
 
   @doc """
   Adds a vertex.
   """
-  @spec add_vertex(t(), Vertex.t(), Vertex.t()) :: :ok | {:error, :readonly}
-  def add_vertex(graph, vertex, caused_by)
-  def add_vertex(%__MODULE__{readonly: true}, _vertex, _caused_by), do: {:error, :readonly}
-
+  @spec add_vertex(t(), Vertex.t(), Vertex.t()) :: result()
   def add_vertex(%__MODULE__{} = graph, vertex, caused_by) do
-    vertex_id = Vertex.unique_id(vertex)
-    caused_by_id = Vertex.unique_id(caused_by)
+    with :ok <- check_writable(graph) do
+      vertex_id = Vertex.unique_id(vertex)
+      caused_by_id = Vertex.unique_id(caused_by)
 
-    # Store vertex in ETS table
-    :ets.insert(graph.vertices, {vertex_id, vertex})
+      # Store vertex in ETS table
+      :ets.insert(graph.vertices, {vertex_id, vertex})
 
-    # Add vertex ID to graphs (not the vertex struct)
-    :digraph.add_vertex(graph.main_graph, vertex_id)
-    Tree.add_vertex(graph.tree_graph, vertex_id)
-    :digraph.add_vertex(graph.provenance_graph, vertex_id)
+      # Add vertex ID to graphs (not the vertex struct)
+      :digraph.add_vertex(graph.main_graph, vertex_id)
+      Tree.add_vertex(graph.tree_graph, vertex_id)
+      :digraph.add_vertex(graph.provenance_graph, vertex_id)
 
-    # Add provenance edge: caused_by -> vertex
-    :digraph.add_edge(graph.provenance_graph, caused_by_id, vertex_id)
+      # Add provenance edge: caused_by -> vertex
+      :digraph.add_edge(graph.provenance_graph, caused_by_id, vertex_id)
 
-    :ok
+      :ok
+    end
   end
 
   @doc """
   Adds an edge between two vertices.
   """
-  @spec add_edge(t(), Vertex.t(), Vertex.t(), :digraph.label()) :: :ok | {:error, :readonly}
-  def add_edge(graph, from_vertex, to_vertex, label)
-
-  def add_edge(%__MODULE__{readonly: true}, _from_vertex, _to_vertex, _label),
-    do: {:error, :readonly}
-
+  @spec add_edge(t(), Vertex.t(), Vertex.t(), :digraph.label()) :: result()
   def add_edge(%__MODULE__{} = graph, from_vertex, to_vertex, label) do
-    # Convert vertices to IDs
-    from_id = Vertex.unique_id(from_vertex)
-    to_id = Vertex.unique_id(to_vertex)
+    with :ok <- check_writable(graph) do
+      # Convert vertices to IDs
+      from_id = Vertex.unique_id(from_vertex)
+      to_id = Vertex.unique_id(to_vertex)
 
-    # Add edge to main graph using vertex IDs
-    :digraph.add_edge(graph.main_graph, from_id, to_id, label)
+      # Add edge to main graph using vertex IDs
+      :digraph.add_edge(graph.main_graph, from_id, to_id, label)
 
-    # Add edge to tree graph if it creates a shorter path
-    Tree.add_edge(graph.tree_graph, from_id, to_id, label)
+      # Add edge to tree graph if it creates a shorter path
+      Tree.add_edge(graph.tree_graph, from_id, to_id, label)
 
-    :ok
+      :ok
+    end
   end
 
   @doc """
@@ -219,36 +218,35 @@ defmodule Clarity.Graph do
   @doc """
   Purges a vertex and all vertices that were caused by it.
   """
-  @spec purge(t(), Vertex.t()) :: {:ok, [Vertex.t()]} | {:error, :readonly}
-  def purge(graph, vertex)
-  def purge(%__MODULE__{readonly: true}, _vertex), do: {:error, :readonly}
-
+  @spec purge(t(), Vertex.t()) :: result([Vertex.t()])
   def purge(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.unique_id(vertex)
+    with :ok <- check_writable(graph) do
+      vertex_id = Vertex.unique_id(vertex)
 
-    # Find all vertices reachable from this vertex (including itself)
-    reachable_ids = :digraph_utils.reachable([vertex_id], graph.provenance_graph)
+      # Find all vertices reachable from this vertex (including itself)
+      reachable_ids = :digraph_utils.reachable([vertex_id], graph.provenance_graph)
 
-    # Get the vertex structs before deleting them
-    purged_vertices =
-      reachable_ids
-      |> Enum.map(fn id ->
-        case :ets.lookup(graph.vertices, id) do
-          [{^id, vertex_struct}] -> vertex_struct
-          [] -> nil
-        end
+      # Get the vertex structs before deleting them
+      purged_vertices =
+        reachable_ids
+        |> Enum.map(fn id ->
+          case :ets.lookup(graph.vertices, id) do
+            [{^id, vertex_struct}] -> vertex_struct
+            [] -> nil
+          end
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      # Remove vertices from all graphs and ETS table
+      Enum.each(reachable_ids, fn id ->
+        :ets.delete(graph.vertices, id)
+        :digraph.del_vertex(graph.main_graph, id)
+        :digraph.del_vertex(graph.tree_graph, id)
+        :digraph.del_vertex(graph.provenance_graph, id)
       end)
-      |> Enum.reject(&is_nil/1)
 
-    # Remove vertices from all graphs and ETS table
-    Enum.each(reachable_ids, fn id ->
-      :ets.delete(graph.vertices, id)
-      :digraph.del_vertex(graph.main_graph, id)
-      :digraph.del_vertex(graph.tree_graph, id)
-      :digraph.del_vertex(graph.provenance_graph, id)
-    end)
-
-    {:ok, purged_vertices}
+      {:ok, purged_vertices}
+    end
   end
 
   @doc """
@@ -295,6 +293,13 @@ defmodule Clarity.Graph do
   Creates a filtered subgraph using one or more composable filter functions.
   Returns a new Clarity.Graph instance with the filtered vertices and edges.
 
+  > #### Graph Memory Management {: .warning}
+  >
+  > Creating a subgraph will create multiple `:digraph` instances and `:ets`
+  > tables. While the main graph is managed by `Clarity`, any subgraphs
+  > created via this function must be explicitly deleted using `delete/1`
+  > when no longer needed to free up memory.
+
   ## Examples
 
       # Single filter
@@ -333,11 +338,11 @@ defmodule Clarity.Graph do
       tree_graph: filtered_tree_graph,
       provenance_graph: graph.provenance_graph,
       vertices: graph.vertices,
-      readonly: true
+      owner: self(),
+      subgraph: true
     }
   end
 
-  # Helper function to add root vertex to all graphs
   @spec add_root_vertex(t()) :: :ok
   defp add_root_vertex(graph) do
     root_vertex = %Root{}
@@ -353,4 +358,18 @@ defmodule Clarity.Graph do
 
     :ok
   end
+
+  @spec check_owner(graph :: t()) :: :ok | {:error, error()}
+  defp check_owner(%__MODULE__{owner: owner} = _graph) do
+    if owner == self() do
+      :ok
+    else
+      {:error, :not_owner}
+    end
+  end
+
+  @spec check_writable(graph :: t()) :: :ok | {:error, error()}
+  defp check_writable(graph)
+  defp check_writable(%__MODULE__{subgraph: true}), do: {:error, :subgraphs_are_readonly}
+  defp check_writable(graph), do: check_owner(graph)
 end

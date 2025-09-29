@@ -234,20 +234,27 @@ defmodule Clarity.GraphTest do
       assert Graph.edges(graph) == []
     end
 
-    test "seal/1 makes graph readonly" do
+    test "subgraphs are readonly" do
       graph = Graph.new()
-      sealed_graph = Graph.seal(graph)
+      subgraph = Graph.filter(graph, Filter.custom(fn _ -> true end))
 
       app = %Application{app: :test, description: "Test", version: "1.0.0"}
-      assert {:error, :readonly} = Graph.add_vertex(sealed_graph, app, %Root{})
+      assert {:error, :subgraphs_are_readonly} = Graph.add_vertex(subgraph, app, %Root{})
     end
 
     test "delete/1 cleans up graph resources" do
       graph = Graph.new()
-      assert :ok = Graph.delete(graph)
 
-      sealed_graph = Graph.seal(graph)
-      assert {:error, :readonly} = Graph.delete(sealed_graph)
+      # Test ownership system - different process can't delete
+      task =
+        Task.async(fn ->
+          assert {:error, :not_owner} = Graph.delete(graph)
+        end)
+
+      Task.await(task)
+
+      # Original process can delete
+      assert :ok = Graph.delete(graph)
     end
 
     test "clear/1 resets graph to root only" do
@@ -263,11 +270,16 @@ defmodule Clarity.GraphTest do
       assert %Root{} = hd(vertices)
     end
 
-    test "clear/1 respects readonly flag" do
+    test "clear/1 respects ownership" do
       graph = Graph.new()
-      sealed_graph = Graph.seal(graph)
 
-      assert {:error, :readonly} = Graph.clear(sealed_graph)
+      # Test ownership system - different process can't clear
+      task =
+        Task.async(fn ->
+          assert {:error, :not_owner} = Graph.clear(graph)
+        end)
+
+      Task.await(task)
     end
   end
 
@@ -286,9 +298,14 @@ defmodule Clarity.GraphTest do
       assert app in Graph.vertices(graph)
     end
 
-    test "add_vertex/3 respects readonly flag", %{graph: graph, app: app} do
-      sealed_graph = Graph.seal(graph)
-      assert {:error, :readonly} = Graph.add_vertex(sealed_graph, app, %Root{})
+    test "add_vertex/3 respects ownership", %{graph: graph, app: app} do
+      # Test ownership system - different process can't add vertex
+      task =
+        Task.async(fn ->
+          assert {:error, :not_owner} = Graph.add_vertex(graph, app, %Root{})
+        end)
+
+      Task.await(task)
     end
 
     test "get_vertex/2 retrieves vertex by ID", %{graph: graph, app: app} do
@@ -335,10 +352,14 @@ defmodule Clarity.GraphTest do
       refute app in Graph.vertices(graph)
     end
 
-    test "purge/2 respects readonly flag", %{graph: graph} do
-      sealed_graph = Graph.seal(graph)
+    test "purge/2 respects ownership", %{graph: graph} do
+      # Test ownership system - different process can't purge
+      task =
+        Task.async(fn ->
+          assert {:error, :not_owner} = Graph.purge(graph, %Root{})
+        end)
 
-      assert {:error, :readonly} = Graph.purge(sealed_graph, %Root{})
+      Task.await(task)
     end
   end
 
@@ -367,9 +388,16 @@ defmodule Clarity.GraphTest do
       assert label == :application
     end
 
-    test "add_edge/4 respects readonly flag", %{graph: graph, app: app} do
-      sealed_graph = Graph.seal(graph)
-      assert {:error, :readonly} = Graph.add_edge(sealed_graph, %Root{}, app, :application)
+    test "add_edge/4 respects ownership", %{graph: graph, app: app} do
+      Graph.add_vertex(graph, app, %Root{})
+
+      # Test ownership system - different process can't add edge
+      task =
+        Task.async(fn ->
+          assert {:error, :not_owner} = Graph.add_edge(graph, %Root{}, app, :application)
+        end)
+
+      Task.await(task)
     end
 
     test "out_edges/2 returns outgoing edges from vertex", %{graph: graph, app: app, mod: mod} do
