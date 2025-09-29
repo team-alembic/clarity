@@ -54,8 +54,13 @@ defmodule Clarity.Vertex.Ash.AttributeTest do
       assert overview_string =~ "Resource: `Demo.Accounts.User`"
     end
 
-    test "source_anno/1 returns annotation from attribute entity", %{vertex: vertex, attribute: attribute} do
-      assert Vertex.source_anno(vertex) == Entity.anno(attribute)
+    test "source_location/1 returns SourceLocation from attribute entity", %{vertex: vertex, attribute: attribute} do
+      source_location = Vertex.source_location(vertex)
+
+      assert %Clarity.SourceLocation{} = source_location
+      assert source_location.anno == Entity.anno(attribute)
+      assert source_location.module == User
+      assert source_location.application == :clarity
     end
   end
 

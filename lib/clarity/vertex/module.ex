@@ -1,6 +1,8 @@
 defmodule Clarity.Vertex.Module do
   @moduledoc false
 
+  alias Clarity.SourceLocation
+
   @type t() :: %__MODULE__{
           module: module(),
           version: :unknown | String.t()
@@ -53,17 +55,8 @@ defmodule Clarity.Vertex.Module do
     end
 
     @impl Clarity.Vertex
-    def source_anno(%{module: module}) do
-      case module.__info__(:compile)[:source] do
-        source when is_list(source) ->
-          :erl_anno.set_file(source, :erl_anno.new(1))
-
-        _ ->
-          nil
-      end
-    rescue
-      _ ->
-        nil
+    def source_location(%{module: module}) do
+      SourceLocation.from_module(module)
     end
   end
 end

@@ -2,7 +2,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Relationship do
     @moduledoc false
     alias Ash.Resource.Relationships
-    alias Spark.Dsl.Entity
+    alias Clarity.SourceLocation
 
     @type t() :: %__MODULE__{
             relationship: Relationships.relationship(),
@@ -36,7 +36,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       def markdown_overview(_vertex), do: []
 
       @impl Clarity.Vertex
-      def source_anno(%{relationship: relationship}), do: Entity.anno(relationship)
+      def source_location(%{relationship: relationship, resource: resource}) do
+        SourceLocation.from_spark_entity(resource, relationship)
+      end
     end
   end
 end

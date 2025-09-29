@@ -58,12 +58,12 @@ defprotocol Clarity.Vertex do
   def markdown_overview(vertex)
 
   @doc """
-  Returns the source annotation for the vertex, if available.
+  Returns the source location for the vertex, if available.
 
   This is used to link the vertex to its source location in the IDE.
-  Returns an Erlang annotation containing file and line information,
-  or nil if no source location is available.
+  Returns a SourceLocation struct containing application, module, and 
+  annotation information, or nil if no source location is available.
   """
-  @spec source_anno(t) :: :erl_anno.anno() | nil
-  def source_anno(vertex)
+  @spec source_location(t) :: Clarity.SourceLocation.t() | nil
+  def source_location(vertex)
 end

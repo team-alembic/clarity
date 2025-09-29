@@ -2,7 +2,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Action do
     @moduledoc false
     alias Ash.Resource.Actions
-    alias Spark.Dsl.Entity
+    alias Clarity.SourceLocation
 
     @type t() :: %__MODULE__{
             action: Actions.action(),
@@ -77,7 +77,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
 
       @impl Clarity.Vertex
-      def source_anno(%{action: action}), do: Entity.anno(action)
+      def source_location(%{action: action, resource: resource}) do
+        SourceLocation.from_spark_entity(resource, action)
+      end
     end
   end
 end

@@ -26,6 +26,6 @@ defmodule Clarity.Vertex.Root do
     def markdown_overview(_vertex), do: []
 
     @impl Clarity.Vertex
-    def source_anno(_vertex), do: nil
+    def source_location(_vertex), do: nil
   end
 end

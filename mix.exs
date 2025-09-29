@@ -63,6 +63,7 @@ defmodule Clarity.MixProject do
   defp deps do
     [
       {:ash, "~> 3.5 and >= 3.5.43", optional: true},
+      {:spark, "~> 2.3", optional: true},
       {:phoenix, "~> 1.7"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},

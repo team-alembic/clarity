@@ -157,11 +157,11 @@ defmodule Clarity.PageLive do
       
     <!-- Editor button section -->
       <div class="flex items-center">
-        <%= if Vertex.source_anno(@current_vertex) != nil do %>
+        <%= if Vertex.source_location(@current_vertex) != nil do %>
           <.live_component
             module={Clarity.EditorButtonComponent}
             id="editor-button"
-            anno={Vertex.source_anno(@current_vertex)}
+            source_location={Vertex.source_location(@current_vertex)}
           />
         <% end %>
       </div>
