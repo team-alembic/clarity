@@ -44,8 +44,13 @@ defmodule Clarity.Vertex.Ash.AggregateTest do
       assert Vertex.markdown_overview(vertex) == []
     end
 
-    test "source_anno/1 returns annotation from aggregate entity", %{vertex: vertex, aggregate: aggregate} do
-      assert Vertex.source_anno(vertex) == Entity.anno(aggregate)
+    test "source_location/1 returns SourceLocation from aggregate entity", %{vertex: vertex, aggregate: aggregate} do
+      source_location = Vertex.source_location(vertex)
+
+      assert %Clarity.SourceLocation{} = source_location
+      assert source_location.anno == Entity.anno(aggregate)
+      assert source_location.module == User
+      assert source_location.application == :clarity
     end
   end
 

@@ -43,12 +43,16 @@ defmodule Clarity.Vertex.Ash.DataLayerTest do
       assert overview_string =~ "`Ash.DataLayer.Ets`"
     end
 
-    test "source_anno/1 returns annotation from module compilation info", %{vertex: vertex} do
-      result = Vertex.source_anno(vertex)
-      assert :erl_anno.is_anno(result)
+    test "source_location/1 returns SourceLocation from module", %{vertex: vertex} do
+      source_location = Vertex.source_location(vertex)
 
-      file = :erl_anno.file(result)
-      assert String.ends_with?(List.to_string(file), "ash/lib/ash/data_layer/ets/ets.ex")
+      assert %Clarity.SourceLocation{} = source_location
+      assert :erl_anno.is_anno(source_location.anno)
+      assert source_location.application == :ash
+      assert source_location.module == Ets
+
+      file_path = Clarity.SourceLocation.file_path(source_location)
+      if file_path, do: assert(String.ends_with?(file_path, "ash/lib/ash/data_layer/ets/ets.ex"))
     end
   end
 

@@ -54,8 +54,13 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
       assert overview_string =~ "Resource: `Demo.Accounts.User`"
     end
 
-    test "source_anno/1 returns annotation from calculation entity", %{vertex: vertex, calculation: calculation} do
-      assert Vertex.source_anno(vertex) == Entity.anno(calculation)
+    test "source_location/1 returns SourceLocation from calculation entity", %{vertex: vertex, calculation: calculation} do
+      source_location = Vertex.source_location(vertex)
+
+      assert %Clarity.SourceLocation{} = source_location
+      assert source_location.anno == Entity.anno(calculation)
+      assert source_location.module == User
+      assert source_location.application == :clarity
     end
   end
 

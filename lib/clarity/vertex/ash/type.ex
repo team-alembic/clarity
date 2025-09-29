@@ -1,6 +1,9 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Type do
     @moduledoc false
+
+    alias Clarity.SourceLocation
+
     @type t() :: %__MODULE__{
             type: Ash.Type.t()
           }
@@ -44,17 +47,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
 
       @impl Clarity.Vertex
-      def source_anno(%{type: module}) do
-        case module.__info__(:compile)[:source] do
-          source when is_list(source) ->
-            :erl_anno.set_file(source, :erl_anno.new(1))
-
-          _ ->
-            nil
-        end
-      rescue
-        _ ->
-          nil
+      def source_location(%{type: module}) do
+        SourceLocation.from_module(module)
       end
 
       @spec truncate_markdown(content :: String.t(), length :: pos_integer()) :: String.t()

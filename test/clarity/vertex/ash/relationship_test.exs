@@ -44,8 +44,16 @@ defmodule Clarity.Vertex.Ash.RelationshipTest do
       assert Vertex.markdown_overview(vertex) == []
     end
 
-    test "source_anno/1 returns annotation from relationship entity", %{vertex: vertex, relationship: relationship} do
-      assert Vertex.source_anno(vertex) == Entity.anno(relationship)
+    test "source_location/1 returns SourceLocation from relationship entity", %{
+      vertex: vertex,
+      relationship: relationship
+    } do
+      source_location = Vertex.source_location(vertex)
+
+      assert %Clarity.SourceLocation{} = source_location
+      assert source_location.anno == Entity.anno(relationship)
+      assert source_location.module == User
+      assert source_location.application == :clarity
     end
   end
 

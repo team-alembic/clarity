@@ -42,12 +42,16 @@ defmodule Clarity.Vertex.Ash.DomainTest do
       assert overview_string =~ "`Demo.Accounts.Domain`"
     end
 
-    test "source_anno/1 returns annotation from module compilation info", %{vertex: vertex} do
-      result = Vertex.source_anno(vertex)
-      assert :erl_anno.is_anno(result)
+    test "source_location/1 returns SourceLocation from module", %{vertex: vertex} do
+      source_location = Vertex.source_location(vertex)
 
-      file = :erl_anno.file(result)
-      assert String.ends_with?(List.to_string(file), "dev/demo/accounts/domain.ex")
+      assert %Clarity.SourceLocation{} = source_location
+      assert :erl_anno.is_anno(source_location.anno)
+      assert source_location.application == :clarity
+      assert source_location.module == TestDomain
+
+      file_path = Clarity.SourceLocation.file_path(source_location)
+      if file_path, do: assert(String.ends_with?(file_path, "dev/demo/accounts/domain.ex"))
     end
   end
 

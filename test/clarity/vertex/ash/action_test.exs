@@ -56,8 +56,13 @@ defmodule Clarity.Vertex.Ash.ActionTest do
       assert overview_string =~ "Resource: `Demo.Accounts.User`"
     end
 
-    test "source_anno/1 returns annotation from action entity", %{vertex: vertex, action: action} do
-      assert Vertex.source_anno(vertex) == Entity.anno(action)
+    test "source_location/1 returns SourceLocation from action entity", %{vertex: vertex, action: action} do
+      source_location = Vertex.source_location(vertex)
+
+      assert %Clarity.SourceLocation{} = source_location
+      assert source_location.anno == Entity.anno(action)
+      assert source_location.module == User
+      assert source_location.application == :clarity
     end
   end
 

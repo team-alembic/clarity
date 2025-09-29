@@ -1,5 +1,8 @@
 defmodule Clarity.Vertex.Phoenix.Endpoint do
   @moduledoc false
+
+  alias Clarity.SourceLocation
+
   @type t() :: %__MODULE__{endpoint: module()}
   @enforce_keys [:endpoint]
   defstruct [:endpoint]
@@ -28,17 +31,8 @@ defmodule Clarity.Vertex.Phoenix.Endpoint do
       do: ["`", inspect(module), "`\n\n", "URL: ", module.url()]
 
     @impl Clarity.Vertex
-    def source_anno(%{endpoint: module}) do
-      case module.__info__(:compile)[:source] do
-        source when is_list(source) ->
-          :erl_anno.set_file(source, :erl_anno.new(1))
-
-        _ ->
-          nil
-      end
-    rescue
-      _ ->
-        nil
+    def source_location(%{endpoint: module}) do
+      SourceLocation.from_module(module)
     end
   end
 end
