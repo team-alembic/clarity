@@ -31,7 +31,7 @@ enriched with diagrams, tooltips, and documentation.
   diagrams where available.
 - 📝 **Markdown rendering** – show documentation from moduledocs and resource
   definitions.
-- 🔎 **Interactive tooltips** – quick overviews of nodes and edges.
+- 🔎 **Interactive tooltips** – quick overviews of vertices and edges.
 - ⚡ **LiveView-powered** – fully dynamic, real-time updates in the browser.
 - 🔌 **Custom extensions** – add your own introspectors to visualize
   domain-specific concepts.

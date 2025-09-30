@@ -5,14 +5,16 @@ defmodule Clarity.Server.Task do
           id: reference(),
           vertex: Clarity.Vertex.t(),
           introspector: module(),
-          graph: Clarity.Graph.t()
+          graph: Clarity.Graph.t(),
+          requeue_count: non_neg_integer()
         }
 
   defstruct [
     :id,
     :vertex,
     :introspector,
-    :graph
+    :graph,
+    requeue_count: 0
   ]
 
   @doc """

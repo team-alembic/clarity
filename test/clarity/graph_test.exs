@@ -580,6 +580,77 @@ defmodule Clarity.GraphTest do
     end
   end
 
+  describe "neighbor operations" do
+    setup do
+      # root -> app1 -> mod1 -> mod2
+      #      -> app2 -> mod3
+      graph = Graph.new()
+      app1 = %Application{app: :test_app1, description: "Test App 1", version: "1.0.0"}
+      app2 = %Application{app: :test_app2, description: "Test App 2", version: "1.0.0"}
+      mod1 = %Module{module: TestMod1}
+      mod2 = %Module{module: TestMod2}
+      mod3 = %Module{module: TestMod3}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, mod1, app1)
+      Graph.add_vertex(graph, mod2, mod1)
+      Graph.add_vertex(graph, mod3, app2)
+
+      Graph.add_edge(graph, %Root{}, app1, :application)
+      Graph.add_edge(graph, %Root{}, app2, :application)
+      Graph.add_edge(graph, app1, mod1, :module)
+      Graph.add_edge(graph, app2, mod3, :module)
+      Graph.add_edge(graph, mod1, mod2, :dependency)
+
+      %{graph: graph, app1: app1, app2: app2, mod1: mod1, mod2: mod2, mod3: mod3}
+    end
+
+    test "out_neighbors/2 returns direct outgoing neighbors", %{
+      graph: graph,
+      app1: app1,
+      app2: app2,
+      mod1: mod1,
+      mod2: mod2,
+      mod3: mod3
+    } do
+      assert length(Graph.out_neighbors(graph, %Root{})) == 2
+      assert Graph.out_neighbors(graph, app1) == [mod1]
+      assert Graph.out_neighbors(graph, app2) == [mod3]
+      assert Graph.out_neighbors(graph, mod1) == [mod2]
+      assert Graph.out_neighbors(graph, mod2) == []
+      assert Graph.out_neighbors(graph, mod3) == []
+    end
+
+    test "in_neighbors/2 returns direct incoming neighbors", %{
+      graph: graph,
+      app1: app1,
+      app2: app2,
+      mod1: mod1,
+      mod2: mod2,
+      mod3: mod3
+    } do
+      assert Graph.in_neighbors(graph, %Root{}) == []
+      assert Graph.in_neighbors(graph, app1) == [%Root{}]
+      assert Graph.in_neighbors(graph, app2) == [%Root{}]
+      assert Graph.in_neighbors(graph, mod1) == [app1]
+      assert Graph.in_neighbors(graph, mod2) == [mod1]
+      assert Graph.in_neighbors(graph, mod3) == [app2]
+    end
+
+    test "handles isolated vertices and works with subgraphs", %{graph: graph, app1: app1, mod1: mod1, mod2: mod2} do
+      isolated = %Module{module: IsolatedModule}
+      Graph.add_vertex(graph, isolated, %Root{})
+
+      assert Graph.out_neighbors(graph, isolated) == []
+      assert Graph.in_neighbors(graph, isolated) == []
+
+      subgraph = Graph.filter(graph, Filter.within_steps(app1, 2, 0))
+      assert Graph.out_neighbors(subgraph, app1) == [mod1]
+      assert Graph.in_neighbors(subgraph, mod2) == [mod1]
+    end
+  end
+
   describe "filter operations" do
     setup do
       graph = Graph.new()
@@ -671,6 +742,76 @@ defmodule Clarity.GraphTest do
       # Should NOT include root or isolated
       refute %Root{} in vertices
       refute isolated in vertices
+    end
+  end
+
+  describe "update counter" do
+    test "starts with positive count after creating new graph" do
+      graph = Graph.new()
+      assert Graph.get_update_count(graph) > 0
+    end
+
+    test "increments when adding vertex" do
+      graph = Graph.new()
+      initial_count = Graph.get_update_count(graph)
+
+      app = %Application{app: :test_app, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+
+      assert Graph.get_update_count(graph) > initial_count
+    end
+
+    test "increments when adding edge" do
+      graph = Graph.new()
+      app = %Application{app: :test_app, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+
+      count_before_edge = Graph.get_update_count(graph)
+      Graph.add_edge(graph, %Root{}, app, :application)
+
+      assert Graph.get_update_count(graph) > count_before_edge
+    end
+
+    test "increments when clearing graph" do
+      graph = Graph.new()
+      app = %Application{app: :test_app, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+
+      count_before_clear = Graph.get_update_count(graph)
+      Graph.clear(graph)
+
+      assert Graph.get_update_count(graph) > count_before_clear
+    end
+
+    test "increments when purging vertex" do
+      graph = Graph.new()
+      app = %Application{app: :test_app, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+
+      count_before_purge = Graph.get_update_count(graph)
+      Graph.purge(graph, app)
+
+      assert Graph.get_update_count(graph) > count_before_purge
+    end
+
+    test "allows change detection for subgraph invalidation" do
+      graph = Graph.new()
+      count1 = Graph.get_update_count(graph)
+
+      # No changes - count should be same
+      count2 = Graph.get_update_count(graph)
+      assert count2 == count1
+
+      # Add vertex - count should increase
+      app = %Application{app: :test_app, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+      count3 = Graph.get_update_count(graph)
+      assert count3 > count2
+
+      # Add edge - count should increase again
+      Graph.add_edge(graph, %Root{}, app, :application)
+      count4 = Graph.get_update_count(graph)
+      assert count4 > count3
     end
   end
 end

@@ -1,0 +1,74 @@
+defmodule Clarity.Perspective.Lensmaker.SecurityTest do
+  use ExUnit.Case, async: true
+
+  alias Clarity.Graph
+  alias Clarity.Perspective.Lens
+  alias Clarity.Perspective.Lensmaker.Security
+  alias Phoenix.LiveView.Rendered
+
+  setup do
+    graph = Graph.new()
+    {:ok, graph: graph}
+  end
+
+  describe "make_lens/0" do
+    test "creates security lens with correct properties" do
+      assert %Lens{
+               id: "security",
+               name: "Security",
+               description: description,
+               icon: icon_fn,
+               filter: filter,
+               content_sorter: content_sorter,
+               intro_vertex: intro_vertex_fn
+             } = Security.make_lens()
+
+      assert is_binary(description)
+      assert is_function(icon_fn, 0)
+      assert is_function(filter, 1)
+      assert is_function(content_sorter, 2)
+      assert is_function(intro_vertex_fn, 1)
+    end
+
+    test "security lens focuses on security-related elements" do
+      lens = Security.make_lens()
+
+      assert is_function(lens.filter, 1)
+    end
+
+    test "security lens uses appropriate intro vertex" do
+      lens = Security.make_lens()
+      graph = Graph.new()
+
+      intro_vertex = lens.intro_vertex.(graph)
+      assert intro_vertex
+    end
+
+    test "security lens icon renders shield emoji" do
+      lens = Security.make_lens()
+
+      rendered = lens.icon.()
+      assert %Rendered{} = rendered
+    end
+
+    test "security lens uses default alphabetical content sorter" do
+      alias Clarity.Vertex.Content
+
+      lens = Security.make_lens()
+
+      # Should use the default sorter function
+      assert lens.content_sorter == (&Lens.sort_alphabetically_by_id/2)
+
+      # Create test content
+      content_a = %Content{id: "content_a", name: "Content A", content: {:markdown, "test"}}
+      content_z = %Content{id: "content_z", name: "Content Z", content: {:markdown, "test"}}
+      content_b = %Content{id: "content_b", name: "Content B", content: {:markdown, "test"}}
+
+      # Test alphabetical sorting using the default function
+      assert Lens.sort_alphabetically_by_id(content_a, content_z) == true
+      assert Lens.sort_alphabetically_by_id(content_z, content_a) == false
+      assert Lens.sort_alphabetically_by_id(content_a, content_b) == true
+      assert Lens.sort_alphabetically_by_id(content_b, content_a) == false
+    end
+  end
+end

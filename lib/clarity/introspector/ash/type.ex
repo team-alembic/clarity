@@ -51,8 +51,11 @@ case Code.ensure_loaded(Ash) do
         create_type_edge(type, field_vertex, graph)
       end
 
-      @spec create_type_edge(Ash.Type.t(), Vertex.t(), Clarity.Graph.t()) ::
+      @spec create_type_edge(Ash.Type.t() | nil, Vertex.t(), Clarity.Graph.t()) ::
               Clarity.Introspector.result()
+      defp create_type_edge(type, field_vertex, graph)
+      defp create_type_edge(nil, _field_vertex, _graph), do: {:ok, []}
+
       defp create_type_edge(type, field_vertex, graph) do
         simplified_type = simplify_type(type)
 

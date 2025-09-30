@@ -41,8 +41,10 @@ defmodule Clarity.Vertex.Phoenix.RouterTest do
       assert overview_string =~ "`DemoWeb.Router`"
       assert overview_string =~ "| Name | Method | Path | Plug | Action |"
       assert overview_string =~ "| ---- | ------ | ---- | ---------- | ------ |"
-      assert overview_string =~ "| page_path | GET | / | Phoenix.LiveView.Plug | :page |"
-      assert overview_string =~ "| page_path | GET | /:vertex/:content | Phoenix.LiveView.Plug | :page |"
+      assert overview_string =~ "| page_path | GET | / | Phoenix.LiveView.Plug | :root |"
+      assert overview_string =~ "| page_path | GET | /:lens | Phoenix.LiveView.Plug | :lens |"
+      assert overview_string =~ "| page_path | GET | /:lens/:vertex | Phoenix.LiveView.Plug | :vertex |"
+      assert overview_string =~ "| page_path | GET | /:lens/:vertex/:content | Phoenix.LiveView.Plug | :page |"
     end
 
     test "source_location/1 returns SourceLocation from module", %{vertex: vertex} do
@@ -84,7 +86,9 @@ defmodule Clarity.Vertex.Phoenix.RouterTest do
       assert overview_string =~ "| Name | Method | Path | Plug | Action |"
       # Should include the specific routes
       assert overview_string =~ "| page_path | GET | / |"
-      assert overview_string =~ "| page_path | GET | /:vertex/:content |"
+      assert overview_string =~ "| page_path | GET | /:lens |"
+      assert overview_string =~ "| page_path | GET | /:lens/:vertex |"
+      assert overview_string =~ "| page_path | GET | /:lens/:vertex/:content |"
     end
   end
 end
