@@ -149,14 +149,19 @@ defmodule Clarity.SourceLocation do
     """
     @spec from_spark_entity(module(), Entity.entity()) :: t()
     def from_spark_entity(module, %{} = entity) do
-      anno = Entity.anno(entity)
       application = Application.get_application(module)
 
-      %__MODULE__{
-        application: application,
-        module: module,
-        anno: anno
-      }
+      case Entity.anno(entity) do
+        nil ->
+          create_anno_from_module(module)
+
+        anno ->
+          %__MODULE__{
+            application: application,
+            module: module,
+            anno: anno
+          }
+      end
     end
   end
 
