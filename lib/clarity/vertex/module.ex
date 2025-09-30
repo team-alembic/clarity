@@ -1,5 +1,7 @@
 defmodule Clarity.Vertex.Module do
-  @moduledoc false
+  @moduledoc """
+  Vertex implementation for Elixir modules.
+  """
 
   alias Clarity.SourceLocation
 

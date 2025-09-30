@@ -1,6 +1,8 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Aggregate do
-    @moduledoc false
+    @moduledoc """
+    Vertex implementation for Ash resource aggregates.
+    """
     alias Ash.Resource.Aggregate
     alias Clarity.SourceLocation
 

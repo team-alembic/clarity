@@ -1,5 +1,7 @@
 defmodule Clarity.Vertex.Root do
-  @moduledoc false
+  @moduledoc """
+  Vertex implementation for the root node in the Clarity graph.
+  """
   @type t() :: %__MODULE__{}
   defstruct []
 

@@ -1,5 +1,7 @@
 defmodule Clarity.Vertex.Application do
-  @moduledoc false
+  @moduledoc """
+  Vertex implementation for OTP applications.
+  """
 
   @type t() :: %__MODULE__{
           app: Application.app(),

@@ -1,6 +1,8 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.DataLayer do
-    @moduledoc false
+    @moduledoc """
+    Vertex implementation for Ash data layers.
+    """
 
     alias Clarity.SourceLocation
 

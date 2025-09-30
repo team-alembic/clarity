@@ -1,5 +1,7 @@
 defmodule Clarity.Vertex.Content do
-  @moduledoc false
+  @moduledoc """
+  Vertex implementation for content items in the Clarity dashboard.
+  """
 
   @type viz_options() :: %{theme: :dark | :light}
   @type content_mermaid() :: {:mermaid, iodata() | (-> iodata())}

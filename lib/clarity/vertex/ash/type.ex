@@ -1,6 +1,8 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Type do
-    @moduledoc false
+    @moduledoc """
+    Vertex implementation for Ash types.
+    """
 
     alias Clarity.SourceLocation
 
