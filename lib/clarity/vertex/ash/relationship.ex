@@ -1,6 +1,8 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Vertex.Ash.Relationship do
-    @moduledoc false
+    @moduledoc """
+    Vertex implementation for Ash resource relationships.
+    """
     alias Ash.Resource.Relationships
     alias Clarity.SourceLocation
 

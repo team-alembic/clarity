@@ -1,5 +1,7 @@
 defmodule Clarity.Vertex.Phoenix.Router do
-  @moduledoc false
+  @moduledoc """
+  Vertex implementation for Phoenix routers.
+  """
 
   alias Clarity.SourceLocation
 

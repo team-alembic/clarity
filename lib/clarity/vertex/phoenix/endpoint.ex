@@ -1,5 +1,7 @@
 defmodule Clarity.Vertex.Phoenix.Endpoint do
-  @moduledoc false
+  @moduledoc """
+  Vertex implementation for Phoenix endpoints.
+  """
 
   alias Clarity.SourceLocation
 
