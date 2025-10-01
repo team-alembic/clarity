@@ -12,40 +12,8 @@ defmodule Clarity.Introspector do
 
   ## Custom Introspectors
 
-  You can define your own introspectors by implementing this behaviour and adding
-  your module to the `:clarity_introspectors` config under the your application.
-
-  ```elixir
-  config :my_app, :clarity_introspectors, [
-    MyApp.MyCustomIntrospector
-  ]
-  ```
-
-  ## Custom Introspectors in libraries
-
-  Libraries can also provide their own introspectors by adding them to their
-  application config. Clarity will automatically discover and include them
-  during the introspection process. However since the config files of libraries
-  are not evaluated, you must add the config to the `mix.exs` of the library.
-
-  ```elixir
-  defmodule MyApp.MixProject do
-    use Mix.Project
-
-    def project do
-      # ...
-    end
-
-    def application do
-      [
-        extra_applications: [:logger],
-        env: [
-          clarity_introspectors: [MyApp.MyCustomIntrospector]
-        ]
-      ]
-    end
-  end
-  ```
+  Introspector configuration is managed by `Clarity.Config`. See the documentation
+  for `Clarity.Config` for detailed configuration options and examples.
 
   ## Example
 
@@ -115,20 +83,6 @@ defmodule Clarity.Introspector do
   log the error and acknowledge the task to prevent infinite retries.
   """
   @callback introspect_vertex(vertex :: Vertex.t(), graph :: Clarity.Graph.t()) :: result()
-
-  @doc """
-  Returns the list of introspectors, including both built-in and user-defined
-  ones, unsorted.
-  """
-  @spec list() :: [t()]
-  def list do
-    Application.loaded_applications()
-    |> Enum.map(&elem(&1, 0))
-    |> Enum.flat_map(&Application.get_all_env/1)
-    |> Keyword.get_values(:clarity_introspectors)
-    |> List.flatten()
-    |> Enum.uniq()
-  end
 
   @doc """
   Creates moduledoc content vertex and edge for the specified module.

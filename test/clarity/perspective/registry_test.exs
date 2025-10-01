@@ -84,15 +84,6 @@ defmodule Clarity.Perspective.RegistryTest do
     end
   end
 
-  describe "discover_lensmakers/0" do
-    test "returns list from current application environment" do
-      # This tests the real discovery mechanism with the current app
-      lensmakers = Registry.discover_lensmakers()
-      assert is_list(lensmakers)
-      # Don't assert specific content since it depends on the current environment
-    end
-  end
-
   describe "get_all_lenses/1" do
     test "discovers lensmakers and creates lenses using current app config" do
       lenses = Registry.get_all_lenses()

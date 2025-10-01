@@ -27,10 +27,8 @@ defmodule Clarity.Perspective do
 
   ## Configuration
 
-  Configure the default lens in your application config:
-
-      # config/config.exs
-      config :clarity, default_perspective_lens: "debug"
+  Default lens configuration is managed by `Clarity.Config`. See the documentation
+  for `Clarity.Config` for detailed configuration options and examples.
   """
 
   use Agent
@@ -85,7 +83,7 @@ defmodule Clarity.Perspective do
   """
   @spec start_link(Graph.t()) :: Agent.on_start()
   def start_link(graph) do
-    default_lens_id = Application.fetch_env!(:clarity, :default_perspective_lens)
+    default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
     {:ok, lens} = resolve_lens(default_lens_id)
 
     initial_vertex = lens.intro_vertex.(graph) || %Root{}

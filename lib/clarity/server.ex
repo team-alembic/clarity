@@ -401,7 +401,7 @@ defmodule Clarity.Server do
   defp reset_queue_and_introspectors(graph, custom_introspectors) do
     root_vertex = %Root{}
 
-    introspectors = custom_introspectors || Clarity.Introspector.list()
+    introspectors = custom_introspectors || Clarity.Config.list_introspectors()
 
     initial_tasks =
       create_tasks_for_vertex(root_vertex, introspectors, graph)

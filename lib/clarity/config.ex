@@ -1,16 +1,17 @@
 defmodule Clarity.Config do
   @moduledoc """
-  Configuration utilities for Clarity.
+  Centralized configuration management for Clarity.
 
-  ## Application Filtering
+  This module provides a single source of truth for all Clarity configuration settings,
+  handling both global application settings and per-application extension configurations.
 
-  Clarity can be configured to include or exclude specific applications from introspection
-  to improve performance. By default, when no configuration is provided, all OTP and Elixir
-  standard library applications are excluded.
+  ## Global Configuration Settings
 
-  ### Configuration
+  These settings are configured on the `:clarity` application:
 
-  Set the `:introspector_applications` key in your Clarity configuration:
+  ### Application Filtering (`:introspector_applications`)
+
+  Controls which applications are introspected to improve performance:
 
   ```elixir
   # Include only specific applications
@@ -21,9 +22,76 @@ defmodule Clarity.Config do
   - A list of atoms - Only these applications will be introspected (include mode)
   - `nil` or not set - All applications except OTP/Elixir standard libraries will be introspected
 
-  This configuration affects:
-  - Which application vertices are created in the graph
-  - Which code reload events are processed
+  This affects which application vertices are created and which code reload events are processed.
+
+  ### Editor Configuration (`:editor`)
+
+  Controls how files are opened from Clarity. Supports both local editor commands and URL mode:
+
+  ```elixir
+  # Local editor with template variables
+  config :clarity, :editor, "code --goto __FILE__:__LINE__:__COLUMN__"
+  config :clarity, :editor, "subl __FILE__:__LINE__"
+
+  # URL mode for browser-based editing (use atom in config)
+  config :clarity, :editor, :url
+  ```
+
+  ```bash
+  # Environment variables (use string since atoms aren't available)
+  export CLARITY_EDITOR="code --goto __FILE__:__LINE__:__COLUMN__"
+  export CLARITY_EDITOR="__URL__"  # URL mode via environment variable
+  ```
+
+  **Configuration Priority:** (highest to lowest)
+  1. `config :clarity, editor: ...`
+  2. `CLARITY_EDITOR` environment variable
+  3. `ELIXIR_EDITOR` environment variable
+  4. `EDITOR` environment variable
+
+  **Template Variables:** (case-insensitive)
+  - `__FILE__` - replaced with the file path
+  - `__LINE__` - replaced with the line number
+  - `__COLUMN__` - replaced with the column number
+
+  > #### Security Warning {: .warning}
+  >
+  > Editor configuration executes system commands based on user configuration.
+  > Ensure configured commands are safe and trusted. For untrusted environments,
+  > use URL mode (`:url` or `"__URL__"`).
+
+  ### Default Perspective Lens (`:default_perspective_lens`)
+
+  Sets the initial lens when starting a perspective:
+
+  ```elixir
+  config :clarity, :default_perspective_lens, "debug"
+  ```
+
+  ## Per-Application Extension Settings
+
+  These settings are configured on individual applications:
+
+  ### Lensmaker Registration (`:clarity_perspective_lensmakers`)
+
+  Applications can register lensmakers for the perspective system:
+
+  ```elixir
+  config :my_app, :clarity_perspective_lensmakers, [
+    MyApp.SecurityLensmaker,
+    MyApp.CustomExtension
+  ]
+  ```
+
+  ### Custom Introspector Registration (`:clarity_introspectors`)
+
+  Applications can register custom introspectors:
+
+  ```elixir
+  config :my_app, :clarity_introspectors, [
+    MyApp.MyCustomIntrospector
+  ]
+  ```
   """
 
   @typedoc false
@@ -42,6 +110,53 @@ defmodule Clarity.Config do
       {:include, apps} -> app in apps
       {:exclude, apps} -> app not in apps
     end
+  end
+
+  @doc false
+  @spec fetch_editor_config() :: {:ok, String.t() | atom()} | :error
+  def fetch_editor_config do
+    sources = [
+      fn -> Application.fetch_env(:clarity, :editor) end,
+      fn -> System.fetch_env("CLARITY_EDITOR") end,
+      fn -> System.fetch_env("ELIXIR_EDITOR") end,
+      fn -> System.fetch_env("EDITOR") end
+    ]
+
+    Enum.find_value(sources, :error, fn source ->
+      case source.() do
+        :error ->
+          false
+
+        {:ok, value} ->
+          normalize_editor_config_value(value)
+      end
+    end)
+  end
+
+  @doc false
+  @spec list_lensmakers() :: [module()]
+  def list_lensmakers do
+    Application.loaded_applications()
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.flat_map(&Application.get_env(&1, :clarity_perspective_lensmakers, []))
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec list_introspectors() :: [module()]
+  def list_introspectors do
+    Application.loaded_applications()
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.flat_map(&Application.get_all_env/1)
+    |> Keyword.get_values(:clarity_introspectors)
+    |> List.flatten()
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec fetch_default_perspective_lens!() :: String.t()
+  def fetch_default_perspective_lens! do
+    Application.fetch_env!(:clarity, :default_perspective_lens)
   end
 
   @spec filter_by_config([application_details()]) :: [application_details()]
@@ -80,5 +195,17 @@ defmodule Clarity.Config do
       apps when is_list(apps) ->
         {:include, apps}
     end
+  end
+
+  @spec normalize_editor_config_value(term()) :: {:ok, String.t() | :url} | :error
+  defp normalize_editor_config_value(value)
+
+  defp normalize_editor_config_value(falsy) when falsy in [false, "false", "0", 0, "", nil],
+    do: :error
+
+  defp normalize_editor_config_value(:url), do: {:ok, :url}
+
+  defp normalize_editor_config_value(value) when is_binary(value) do
+    if String.match?(value, ~r/^__url__$/i), do: {:ok, :url}, else: {:ok, value}
   end
 end

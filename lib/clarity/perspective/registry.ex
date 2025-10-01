@@ -8,13 +8,8 @@ defmodule Clarity.Perspective.Registry do
 
   ## Configuration
 
-  Applications register lensmakers in their configuration:
-
-      config :my_app, :clarity_perspective_lensmakers, [
-        MyApp.SecurityLensmaker,
-        MyApp.CustomExtension
-      ]
-
+  Lensmaker configuration is managed by `Clarity.Config`. See the documentation
+  for `Clarity.Config` for detailed configuration options and examples.
 
   ## Extension System
 
@@ -33,27 +28,13 @@ defmodule Clarity.Perspective.Registry do
   @type result(type) :: {:ok, type} | {:error, term()}
 
   @doc """
-  Discovers all lensmaker modules from loaded application configurations.
-
-  Scans all loaded applications for `:clarity_perspective_lensmakers` config
-  and returns a deduplicated list of lensmaker modules.
-  """
-  @spec discover_lensmakers() :: [module()]
-  def discover_lensmakers do
-    Application.loaded_applications()
-    |> Enum.map(&elem(&1, 0))
-    |> Enum.flat_map(&Application.get_env(&1, :clarity_perspective_lensmakers, []))
-    |> Enum.uniq()
-  end
-
-  @doc """
   Creates lenses from lensmaker modules using the two-phase creation process.
 
   First calls `make_lens/0` on lensmakers to create base lenses, then calls
   `update_lens/1` on all other lensmakers to allow enhancements.
   """
   @spec get_all_lenses([module()]) :: [Lens.t()]
-  def get_all_lenses(lensmakers \\ discover_lensmakers()) do
+  def get_all_lenses(lensmakers \\ Clarity.Config.list_lensmakers()) do
     base_lenses =
       lensmakers
       |> Enum.map(&safe_make_lens/1)
