@@ -16,6 +16,7 @@ defmodule Clarity do
 
   @type queue_info() :: %{
           future_queue: non_neg_integer(),
+          requeue_queue: non_neg_integer(),
           in_progress: non_neg_integer(),
           total_vertices: non_neg_integer()
         }

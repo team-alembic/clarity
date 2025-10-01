@@ -343,7 +343,7 @@ defmodule Clarity.CoreComponents do
     <!-- Queue info -->
       <span class="text-xs text-blue-600 dark:text-blue-400">
         <%= if @queue_info.in_progress > 0 or @queue_info.future_queue > 0 do %>
-          {@queue_info.in_progress} active, {@queue_info.future_queue} queued
+          {@queue_info.in_progress} active, {@queue_info.future_queue + @queue_info.requeue_queue} queued
         <% else %>
           {@queue_info.total_vertices} items total
         <% end %>
