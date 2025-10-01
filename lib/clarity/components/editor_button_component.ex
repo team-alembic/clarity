@@ -17,7 +17,7 @@ defmodule Clarity.EditorButtonComponent do
         <% :editor_not_available -> %>
           <button
             disabled
-            class="p-2 rounded transition-colors opacity-50 cursor-not-allowed text-base-light-400 dark:text-base-dark-600"
+            class="p-2 rounded-xs transition-colors opacity-50 cursor-not-allowed text-base-light-400 dark:text-base-dark-600"
             title="No editor configured - set CLARITY_EDITOR, ELIXIR_EDITOR, or EDITOR environment variable"
           >
             <.render_icon />
@@ -26,7 +26,7 @@ defmodule Clarity.EditorButtonComponent do
           <a
             href={url}
             target="_blank"
-            class="p-2 rounded transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark block"
+            class="p-2 rounded-xs transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark block"
             title="Open in Browser"
           >
             <.render_icon />
@@ -35,7 +35,7 @@ defmodule Clarity.EditorButtonComponent do
           <button
             phx-click="open_in_editor"
             phx-target={@myself}
-            class="p-2 rounded transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark"
+            class="p-2 rounded-xs transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark"
             title="Open in Editor"
           >
             <.render_icon />

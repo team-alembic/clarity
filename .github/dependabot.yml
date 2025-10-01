@@ -11,7 +11,7 @@ updates:
       day: thursday
       interval: monthly
     versioning-strategy: lockfile-only
-  - directory: /
+  - directory: /assets
     groups:
       dev-dependencies:
         dependency-type: development

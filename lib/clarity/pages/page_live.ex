@@ -349,7 +349,7 @@ defmodule Clarity.PageLive do
           overview = vertex |> Vertex.markdown_overview() |> IO.iodata_to_binary() |> String.trim(),
           overview != "" do %>
       <div id={"tooltip-#{Vertex.unique_id(vertex)}"} phx-hook="Tooltip" class="tooltip hidden py-5">
-        <div class="border border-base-light-400 dark:border-base-dark-600 shadow-lg bg-white dark:bg-base-dark-800 text-gray-900 dark:text-base-dark-100 px-4 py-2 rounded">
+        <div class="border border-base-light-400 dark:border-base-dark-600 shadow-lg bg-white dark:bg-base-dark-800 text-gray-900 dark:text-base-dark-100 px-4 py-2 rounded-xs">
           <.markdown content={overview} prefix={@prefix} lens={@lens} />
         </div>
       </div>
@@ -370,7 +370,7 @@ defmodule Clarity.PageLive do
         </p>
         <.link
           patch={@prefix}
-          class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+          class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xs shadow-xs text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
         >
           ← Go to Default Page
         </.link>
@@ -392,7 +392,7 @@ defmodule Clarity.PageLive do
         </p>
         <.link
           patch={Path.join([@prefix, @lens.id, "root"])}
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xs shadow-xs text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
         >
           ← Go to Root
         </.link>

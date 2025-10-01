@@ -125,7 +125,7 @@ defmodule Clarity.CoreComponents do
   defp navigation_tree(assigns) do
     ~H"""
     <div :for={{label, vertices} <- @tree.out_edges} :if={label != :content}>
-      <span class="cursor-pointer select-none text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark px-2 py-1 rounded-sm group-open:bg-base-light-200 dark:group-open:bg-base-dark-700 transition-colors">
+      <span class="cursor-pointer select-none text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark px-2 py-1 rounded-xs group-open:bg-base-light-200 dark:group-open:bg-base-dark-700 transition-colors">
         {label}
       </span>
       <ul class="border-l border-base-light-300 dark:border-base-dark-700 pl-2 space-y-1">
@@ -162,7 +162,7 @@ defmodule Clarity.CoreComponents do
           <.link
             patch={Path.join([@prefix, @lens.id, Clarity.Vertex.unique_id(@tree.vertex)])}
             class={
-              "inline px-2 py-1 rounded-sm hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
+              "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
               if @tree.vertex == @current, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
             }
           >
@@ -183,7 +183,7 @@ defmodule Clarity.CoreComponents do
       <.link
         patch={Path.join([@prefix, @lens.id, Clarity.Vertex.unique_id(@tree.vertex)])}
         class={
-              "inline px-2 py-1 rounded-sm hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
+              "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
               if @tree.vertex == @current, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
             }
       >
@@ -235,7 +235,7 @@ defmodule Clarity.CoreComponents do
       type="button"
       disabled={@refreshing}
       phx-click="refresh"
-      class={"inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed #{@class}"}
+      class={"inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 focus:outline-hidden focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed #{@class}"}
       aria-label="Refresh"
       {@rest}
     >
@@ -270,7 +270,7 @@ defmodule Clarity.CoreComponents do
       type="button"
       id={@id}
       phx-hook="ThemeToggle"
-      class={"inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors #{@class}"}
+      class={"inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 focus:outline-hidden focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors #{@class}"}
       aria-label="Toggle theme"
       {@rest}
     >
@@ -405,7 +405,7 @@ defmodule Clarity.CoreComponents do
             <!-- Icon -->
             <svg
               class={[
-                "w-5 h-5 mr-3 flex-shrink-0",
+                "w-5 h-5 mr-3 shrink-0",
                 case kind do
                   "info" -> "text-blue-500 dark:text-blue-400"
                   "success" -> "text-green-500 dark:text-green-400"
@@ -466,12 +466,12 @@ defmodule Clarity.CoreComponents do
             type="button"
             phx-click={JS.hide(to: "#flash-#{kind}")}
             class={[
-              "ml-4 flex-shrink-0 rounded-md p-1 hover:bg-opacity-20 transition-colors",
+              "ml-4 shrink-0 rounded-md p-1 transition-colors",
               case kind do
-                "info" -> "hover:bg-blue-600 dark:hover:bg-blue-400"
-                "success" -> "hover:bg-green-600 dark:hover:bg-green-400"
-                "error" -> "hover:bg-red-600 dark:hover:bg-red-400"
-                "warning" -> "hover:bg-yellow-600 dark:hover:bg-yellow-400"
+                "info" -> "hover:bg-blue-600/20 dark:hover:bg-blue-400/20"
+                "success" -> "hover:bg-green-600/20 dark:hover:bg-green-400/20"
+                "error" -> "hover:bg-red-600/20 dark:hover:bg-red-400/20"
+                "warning" -> "hover:bg-yellow-600/20 dark:hover:bg-yellow-400/20"
                 _ -> "hover:bg-gray-600 dark:hover:bg-gray-400"
               end
             ]}

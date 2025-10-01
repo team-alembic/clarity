@@ -101,7 +101,7 @@ defmodule Clarity.LensSwitcherComponent do
               </div>
               <%= if lens.id == @current_lens.id do %>
                 <svg
-                  class="w-4 h-4 text-primary-light dark:text-primary-dark flex-shrink-0"
+                  class="w-4 h-4 text-primary-light dark:text-primary-dark shrink-0"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
