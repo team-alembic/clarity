@@ -10,17 +10,20 @@ defmodule Clarity.Server do
   defmodule State do
     @moduledoc false
 
+    @enforce_keys [:graph, :introspectors]
     defstruct [
-      :future_queue,
-      :in_progress,
       :graph,
       :introspectors,
-      :custom_introspectors,
-      :subscribers
+      future_queue: :queue.new(),
+      requeue_queue: :queue.new(),
+      in_progress: %{},
+      custom_introspectors: nil,
+      subscribers: %{}
     ]
 
     @type t() :: %__MODULE__{
             future_queue: :queue.queue(Clarity.Server.Task.t()),
+            requeue_queue: :queue.queue(Clarity.Server.Task.t()),
             in_progress: %{reference() => Clarity.Server.Task.t()},
             graph: Clarity.Graph.t(),
             introspectors: [module()],
@@ -81,12 +84,9 @@ defmodule Clarity.Server do
 
     # Create initial state with empty graph
     initial_state = %State{
-      future_queue: :queue.new(),
-      in_progress: %{},
       graph: graph,
-      introspectors: [],
       custom_introspectors: custom_introspectors,
-      subscribers: %{}
+      introspectors: custom_introspectors || []
     }
 
     {future_queue, introspectors} =
@@ -241,7 +241,7 @@ defmodule Clarity.Server do
          %{
            state
            | in_progress: remaining_in_progress,
-             future_queue: :queue.in(task, state.future_queue)
+             requeue_queue: :queue.in(task, state.requeue_queue)
          }}
     end
   end
@@ -273,7 +273,7 @@ defmodule Clarity.Server do
     {:reply, clarity, state}
   end
 
-  def handle_call(:pull_task, _from, state) do
+  def handle_call(:pull_task, from, state) do
     case :queue.out(state.future_queue) do
       {{:value, task}, remaining_queue} ->
         new_in_progress = Map.put(state.in_progress, task.id, task)
@@ -281,7 +281,25 @@ defmodule Clarity.Server do
         {:reply, {:ok, task}, new_state}
 
       {:empty, _queue} ->
-        {:reply, :empty, state}
+        cond do
+          # Still have in-progress tasks - wait for them to complete
+          # If we didn't do this, we could end up in a busy loop
+          # if all tasks kept failing with unmet dependencies
+          # while a longer running task is still in progress producing those
+          # dependencies
+          state.in_progress != %{} ->
+            {:reply, :empty, state}
+
+          # No in-progress tasks and have requeued tasks - swap queues
+          not :queue.is_empty(state.requeue_queue) ->
+            state = %{state | future_queue: state.requeue_queue, requeue_queue: :queue.new()}
+
+            handle_call(:pull_task, from, state)
+
+          # No in-progress, no requeued tasks - truly empty
+          true ->
+            {:reply, :empty, state}
+        end
     end
   end
 
@@ -377,7 +395,8 @@ defmodule Clarity.Server do
 
   @spec queue_empty_and_no_progress?(State.t()) :: boolean()
   defp queue_empty_and_no_progress?(state) do
-    :queue.is_empty(state.future_queue) && map_size(state.in_progress) == 0
+    :queue.is_empty(state.future_queue) && :queue.is_empty(state.requeue_queue) &&
+      map_size(state.in_progress) == 0
   end
 
   @spec broadcast_event(State.t(), Clarity.event()) :: :ok
@@ -391,6 +410,7 @@ defmodule Clarity.Server do
   defp queue_info(state) do
     %{
       future_queue: :queue.len(state.future_queue),
+      requeue_queue: :queue.len(state.requeue_queue),
       in_progress: map_size(state.in_progress),
       total_vertices: Clarity.Graph.vertex_count(state.graph)
     }
