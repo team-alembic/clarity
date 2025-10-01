@@ -3,8 +3,9 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Navigation and Basic Functionality" do
     test "redirects to root graph when no params", %{conn: conn} do
-      # Should redirect to /root/graph when accessing root path
-      assert {:error, {:live_redirect, %{to: "/debug"}}} = live(conn, "/")
+      default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
+      expected_path = "/#{default_lens_id}"
+      assert {:error, {:live_redirect, %{to: ^expected_path}}} = live(conn, "/")
     end
 
     test "loads root vertex with graph content", %{conn: conn} do

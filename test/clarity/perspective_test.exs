@@ -32,8 +32,8 @@ defmodule Clarity.PerspectiveTest do
     test "auto-installs default lens from application config", %{graph: graph} do
       pid = start_supervised!({Perspective, graph})
 
-      # Should have debug lens installed
-      assert %Lens{id: "debug"} = Perspective.get_current_lens(pid)
+      default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
+      assert %Lens{id: ^default_lens_id} = Perspective.get_current_lens(pid)
     end
   end
 
@@ -75,8 +75,9 @@ defmodule Clarity.PerspectiveTest do
   describe "get_current_lens/1" do
     test "returns current lens when installed", %{graph: graph} do
       pid = start_supervised!({Perspective, graph})
-      # Should have default lens already installed
-      assert %Lens{id: "debug"} = Perspective.get_current_lens(pid)
+
+      default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
+      assert %Lens{id: ^default_lens_id} = Perspective.get_current_lens(pid)
     end
 
     test "can change lens", %{graph: graph} do

@@ -15,8 +15,6 @@ defmodule Clarity.Perspective.Lensmaker.Security do
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex
-  alias Clarity.Vertex.Application
-  alias Clarity.Vertex.Module
 
   @impl Lensmaker
   def make_lens do
@@ -37,7 +35,7 @@ defmodule Clarity.Perspective.Lensmaker.Security do
     fn
       # Hide Applications from the navigation / graph. Without user
       # provided filters, this is too noisy to be useful.
-      %Application{} = vertex ->
+      %Vertex.Application{} = vertex ->
         graph
         |> Graph.out_edges(vertex)
         |> Enum.map(&Graph.edge(graph, &1))
@@ -46,16 +44,19 @@ defmodule Clarity.Perspective.Lensmaker.Security do
           _other -> true
         end)
 
-      # Hide Modules from the navigation / graph. Without user
-      # provided filters, this is too noisy to be useful.
-      %Module{} ->
-        false
-
-      # TODO: Add more specific filtering for security-related vertices
-      # For now, we show all other vertices
+      %struct{}
+      when struct in [
+             Vertex.Ash.DataLayer,
+             Vertex.Ash.Domain,
+             Vertex.Ash.Relationship,
+             Vertex.Ash.Resource,
+             Vertex.Phoenix.Router,
+             Vertex.Content
+           ] ->
+        true
 
       _vertex ->
-        true
+        false
     end
   end
 end

@@ -33,7 +33,7 @@ defmodule Clarity.CoreComponents do
       class={"flex items-center px-6 py-4 bg-base-light-100 dark:bg-base-dark-800 shadow-md #{@class}"}
       {@rest}
     >
-      <.link patch={Path.join([@prefix, "root", "graph"])} class="mr-4">
+      <.link patch={@prefix} class="mr-4">
         <img
           src={Clarity.Resources.logo_uri()}
           alt="Ash Logo"
@@ -41,7 +41,7 @@ defmodule Clarity.CoreComponents do
         />
       </.link>
       <h1 class="text-2xl font-bold tracking-tight flex-1 truncate text-base-light-900 dark:text-base-dark-50">
-        <.link patch={Path.join([@prefix, "root", "graph"])} class="mr-4">
+        <.link patch={@prefix} class="mr-4">
           Clarity
         </.link>
       </h1>

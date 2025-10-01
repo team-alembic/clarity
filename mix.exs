@@ -64,11 +64,11 @@ defmodule Clarity.MixProject do
           Clarity.Introspector.Phoenix.Router
         ],
         clarity_perspective_lensmakers: [
-          Clarity.Perspective.Lensmaker.Debug,
           Clarity.Perspective.Lensmaker.Architect,
-          Clarity.Perspective.Lensmaker.Security
+          Clarity.Perspective.Lensmaker.Security,
+          Clarity.Perspective.Lensmaker.Debug
         ],
-        default_perspective_lens: "debug"
+        default_perspective_lens: "architect"
       ]
     ]
   end
