@@ -103,12 +103,27 @@ defmodule Clarity.Config do
     filter_by_config(Application.loaded_applications())
   end
 
-  @doc false
+  @doc """
+  Checks if an application should be processed based on `:introspector_applications` configuration.
+  """
   @spec should_process_app?(Application.app()) :: boolean()
   def should_process_app?(app) do
     case get_filter_config() do
       {:include, apps} -> app in apps
       {:exclude, apps} -> app not in apps
+    end
+  end
+
+  @doc """
+  Checks if a module should be processed based on `:introspector_applications` configuration.
+
+  Returns `false` if the module doesn't belong to any application.
+  """
+  @spec should_process_module?(module()) :: boolean()
+  def should_process_module?(module) do
+    case Application.get_application(module) do
+      nil -> false
+      app -> should_process_app?(app)
     end
   end
 
@@ -185,12 +200,14 @@ defmodule Clarity.Config do
 
   @elixir_apps ~w(eex elixir ex_unit iex logger mix)a
 
+  @hex_apps ~w(hex)a
+
   @spec get_filter_config() :: {:include, [Application.app()]} | {:exclude, [Application.app()]}
   defp get_filter_config do
     case Application.get_env(:clarity, :introspector_applications) do
       nil ->
         # Default exclusion list when no configuration is provided
-        {:exclude, @otp_apps ++ @elixir_apps}
+        {:exclude, @otp_apps ++ @elixir_apps ++ @hex_apps}
 
       apps when is_list(apps) ->
         {:include, apps}

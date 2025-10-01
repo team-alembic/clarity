@@ -7,10 +7,11 @@ defmodule Clarity.Vertex.Module do
 
   @type t() :: %__MODULE__{
           module: module(),
-          version: :unknown | String.t()
+          version: :unknown | String.t(),
+          behaviour?: boolean()
         }
   @enforce_keys [:module]
-  defstruct [:module, version: :unknown]
+  defstruct [:module, version: :unknown, behaviour?: false]
 
   defimpl Clarity.Vertex do
     @impl Clarity.Vertex

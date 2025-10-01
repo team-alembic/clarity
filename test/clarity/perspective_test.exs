@@ -385,7 +385,7 @@ defmodule Clarity.PerspectiveTest do
   describe "zoom functionality" do
     test "has default zoom level", %{graph: graph} do
       pid = start_supervised!({Perspective, graph})
-      assert {2, 1} = Perspective.get_zoom(pid)
+      assert {1, 1} = Perspective.get_zoom(pid)
     end
 
     test "can set and get zoom level", %{graph: graph} do

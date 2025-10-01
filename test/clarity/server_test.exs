@@ -283,6 +283,7 @@ defmodule Clarity.ServerTest do
     test "incremental introspection removes, changes and adds modules correctly", %{test: test} do
       # Create a test module at runtime to simulate real module addition
       test_module_name = Module.concat([TestDynamicModule, test])
+      test_missing_module_name = Module.concat([TestDynamicModule, test, Missing])
 
       # Define the module at runtime
       defmodule TestDynamicModule do
@@ -323,12 +324,16 @@ defmodule Clarity.ServerTest do
       assert TestDynamicModule in after_add_modules
       assert String in after_add_modules
 
+      defmodule test_module_name do
+        @moduledoc false
+      end
+
       # Now perform realistic incremental changes
       realistic_modules_diff = %{
         # This module changed, should be purged and re-added
         changed: [String],
         # New module added at runtime
-        added: [test_module_name],
+        added: [test_module_name, test_missing_module_name],
         # Remove the module we just added
         removed: [TestDynamicModule]
       }

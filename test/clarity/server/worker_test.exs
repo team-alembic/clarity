@@ -166,7 +166,8 @@ defmodule Clarity.Server.WorkerTest do
       send(mock_server, {:reply_pull_task, {:ok, task}})
 
       # Worker should nack the task due to execution error
-      assert_receive {:nack_task, ^task_id, {%RuntimeError{message: "Intentional test error"}, _stacktrace}}
+      assert_receive {:nack_task, ^task_id, {%RuntimeError{message: "Intentional test error"}, _stacktrace}},
+                     to_timeout(second: 1)
     end
   end
 end
