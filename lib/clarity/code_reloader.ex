@@ -3,7 +3,7 @@ defmodule Clarity.CodeReloader do
   Simple Elixir CodeReloader listener that restarts Clarity on code changes.
 
   To use it, add `Clarity.CodeReloader` to your `:listeners` in your `mix.exs`:
-    
+
       def project do
         [
           # ...
@@ -13,6 +13,8 @@ defmodule Clarity.CodeReloader do
   """
 
   use GenServer
+
+  alias Clarity.Config
 
   @doc false
   @spec start_link(opts :: GenServer.options()) :: GenServer.on_start()
@@ -34,7 +36,10 @@ defmodule Clarity.CodeReloader do
 
       _pid ->
         {app, modules_diff} = extract_app_and_modules_diff(listener_update)
-        Clarity.introspect(Clarity.Server, {:incremental, app, modules_diff})
+
+        if Config.should_process_app?(app) do
+          Clarity.introspect(Clarity.Server, {:incremental, app, modules_diff})
+        end
     end
 
     {:noreply, state}

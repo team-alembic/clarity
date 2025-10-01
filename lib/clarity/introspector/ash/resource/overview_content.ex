@@ -6,6 +6,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Resource.Info
     alias Clarity.Vertex.Content
 
+    @doc false
     @spec generate_content(Ash.Resource.t()) :: Content.t()
     def generate_content(resource) do
       %Content{
