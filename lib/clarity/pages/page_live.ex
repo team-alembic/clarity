@@ -3,6 +3,8 @@ defmodule Clarity.PageLive do
 
   use Clarity.Web, :live_view
 
+  import Clarity.Components.MarkdownComponent
+
   alias Clarity.Graph
   alias Clarity.Perspective
   alias Clarity.Vertex
@@ -149,7 +151,6 @@ defmodule Clarity.PageLive do
       <% lens -> %>
         <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
           <.header
-            breadcrumbs={@breadcrumbs}
             prefix={@prefix}
             lens={@lens}
             theme={@theme}
@@ -162,12 +163,40 @@ defmodule Clarity.PageLive do
           <.navigation
             tree={@tree}
             prefix={@prefix}
+            lens={lens}
             current={@current_vertex}
             breadcrumbs={@breadcrumbs}
             class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
           />
 
           <%= if @current_vertex do %>
+            <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
+              <nav class="breadcrumbs mr-3">
+                <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
+                  <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)), idx > 0 do %>
+                    <li class="flex items-center">
+                      <span :if={idx > 1} class="mx-1 text-base-light-500 dark:text-base-dark-600">
+                        →
+                      </span>
+                      <.link
+                        patch={Path.join([@prefix, @lens.id, Vertex.unique_id(breadcrumb)])}
+                        class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
+                      >
+                        <.vertex_name vertex={breadcrumb} />
+                      </.link>
+                    </li>
+                  <% end %>
+                  <%= if length(@breadcrumbs) > 1 do %>
+                    <li class="flex items-center">
+                      <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
+                    </li>
+                  <% end %>
+                </ol>
+              </nav>
+              <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
+                {Vertex.render_name(@current_vertex)}
+              </h1>
+            </div>
             <.tabs
               contents={@contents}
               current_content={@current_content}
@@ -175,12 +204,18 @@ defmodule Clarity.PageLive do
               current_vertex={@current_vertex}
               lens={lens}
             />
-            <.render_content content={@current_content} socket={@socket} theme={@theme} />
+            <.render_content
+              content={@current_content}
+              socket={@socket}
+              theme={@theme}
+              prefix={@prefix}
+              lens={lens}
+            />
           <% else %>
             <.vertex_not_found_error prefix={@prefix} lens={lens} />
           <% end %>
         </article>
-        <.render_tooltips graph={@clarity.graph} />
+        <.render_tooltips graph={@clarity.graph} prefix={@prefix} lens={@lens} />
     <% end %>
     """
   end
@@ -275,9 +310,23 @@ defmodule Clarity.PageLive do
         <% {:viz, content} -> %>
           <.viz graph={content} class="content p-4" id="content-view-viz" />
         <% {:markdown, content} when is_function(content, 0) -> %>
-          <.markdown content={content.()} class="content p-4" />
+          <section class="content w-full flex justify-center">
+            <.markdown
+              content={content.()}
+              class="p-4 max-w-[100ch] w-full"
+              prefix={@prefix}
+              lens={@lens}
+            />
+          </section>
         <% {:markdown, content} -> %>
-          <.markdown content={content} class="content p-4" />
+          <section class="content w-full flex justify-center">
+            <.markdown
+              content={content}
+              class="p-4 max-w-[100ch] w-full"
+              prefix={@prefix}
+              lens={@lens}
+            />
+          </section>
         <% {:live_view, {module, session}} -> %>
           {live_render(@socket, module,
             id: "content-view",
@@ -301,7 +350,7 @@ defmodule Clarity.PageLive do
           overview != "" do %>
       <div id={"tooltip-#{Vertex.unique_id(vertex)}"} phx-hook="Tooltip" class="tooltip hidden py-5">
         <div class="border border-base-light-400 dark:border-base-dark-600 shadow-lg bg-white dark:bg-base-dark-800 text-gray-900 dark:text-base-dark-100 px-4 py-2 rounded">
-          <.markdown content={overview} />
+          <.markdown content={overview} prefix={@prefix} lens={@lens} />
         </div>
       </div>
     <% end %>

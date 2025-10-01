@@ -6,6 +6,7 @@ case Code.ensure_loaded(Ash) do
       @behaviour Clarity.Introspector
 
       alias Ash.Resource.Info
+      alias Clarity.Introspector.Ash.Resource.OverviewContent
       alias Clarity.Vertex.Ash.Resource
       alias Clarity.Vertex.Module
 
@@ -34,12 +35,15 @@ case Code.ensure_loaded(Ash) do
 
             domain_vertex ->
               resource_vertex = %Resource{resource: module}
+              overview_content = OverviewContent.generate_content(module)
 
               {:ok,
                [
                  {:vertex, resource_vertex},
+                 {:vertex, overview_content},
                  {:edge, domain_vertex, resource_vertex, :resource},
-                 {:edge, module_vertex, resource_vertex, :resource}
+                 {:edge, module_vertex, resource_vertex, :resource},
+                 {:edge, resource_vertex, overview_content, :content}
                  | Clarity.Introspector.moduledoc_content(module, resource_vertex)
                ]}
           end
