@@ -58,6 +58,7 @@ case Code.ensure_loaded(Ash) do
 
       defp create_type_edge(type, field_vertex, graph) do
         simplified_type = simplify_type(type)
+        Code.ensure_loaded(simplified_type)
 
         # Check if the type vertex already exists in the graph
         graph

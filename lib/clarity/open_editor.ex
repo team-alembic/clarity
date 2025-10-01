@@ -8,14 +8,10 @@ defmodule Clarity.OpenEditor do
   - Case-insensitive template variables (`__FILE__`, `__LINE__`, `__COLUMN__`)
   - Multiple configuration sources with priority hierarchy
 
-  ## Configuration Priority
+  ## Configuration
 
-  The editor configuration is resolved in the following order (highest to lowest priority):
-
-  1. `config :clarity, editor: ...`
-  2. `CLARITY_EDITOR` environment variable
-  3. `ELIXIR_EDITOR` environment variable
-  4. `EDITOR` environment variable
+  Editor configuration is managed by `Clarity.Config`. See the documentation
+  for `Clarity.Config` for detailed configuration options and examples.
 
   ## Template Variables
 
@@ -35,12 +31,6 @@ defmodule Clarity.OpenEditor do
   2. Extract the `source_url` from that application's configuration
   3. Generate a platform-specific URL using ExDoc-style patterns
   4. Return the URL for opening in a browser
-
-  ## Configuration examples
-
-      config :clarity, editor: "code --goto __FILE__:__LINE__:__COLUMN__"
-      config :clarity, editor: "subl __FILE__:__LINE__"
-      config :clarity, editor: "__URL__"  # Enable URL mode
 
   > #### Command Execution {: .warning}
   >
@@ -96,7 +86,7 @@ defmodule Clarity.OpenEditor do
   """
   @spec action(Clarity.SourceLocation.t()) :: action_result()
   def action(%Clarity.SourceLocation{} = source_location) do
-    case fetch_editor_config() do
+    case Clarity.Config.fetch_editor_config() do
       :error ->
         :editor_not_available
 
@@ -140,35 +130,6 @@ defmodule Clarity.OpenEditor do
         execute_fn = fn -> execute_system_command(substituted_command) end
         {:execute, execute_fn}
     end
-  end
-
-  @spec fetch_editor_config() :: {:ok, String.t() | atom()} | :error
-  defp fetch_editor_config do
-    sources = [
-      fn -> Application.fetch_env(:clarity, :editor) end,
-      fn -> System.fetch_env("CLARITY_EDITOR") end,
-      fn -> System.fetch_env("ELIXIR_EDITOR") end,
-      fn -> System.fetch_env("EDITOR") end
-    ]
-
-    Enum.find_value(sources, :error, fn source ->
-      case source.() do
-        :error ->
-          false
-
-        {:ok, value} ->
-          normalize_config_value(value)
-      end
-    end)
-  end
-
-  @spec normalize_config_value(term()) :: {:ok, String.t() | :url} | :error
-  defp normalize_config_value(value)
-  defp normalize_config_value(falsy) when falsy in [false, "false", "0", 0, "", nil], do: :error
-  defp normalize_config_value(:url), do: {:ok, :url}
-
-  defp normalize_config_value(value) when is_binary(value) do
-    if String.match?(value, ~r/^__url__$/i), do: {:ok, :url}, else: {:ok, value}
   end
 
   @spec substitute_template_vars(String.t(), String.t(), pos_integer(), pos_integer()) ::
