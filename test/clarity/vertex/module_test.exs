@@ -51,6 +51,7 @@ defmodule Clarity.Vertex.ModuleTest do
 
       assert vertex.module == String
       assert vertex.version == :unknown
+      refute vertex.behaviour?
     end
 
     test "works with any module atom" do

@@ -65,7 +65,7 @@ defmodule Clarity.Perspective do
     cache_params: nil,
     cached_tree: nil,
     cached_breadcrumbs: nil,
-    zoom_level: {2, 1},
+    zoom_level: {1, 1},
     cached_zoom_subgraph: nil,
     zoom_cache_params: nil
   ]
@@ -379,7 +379,7 @@ defmodule Clarity.Perspective do
 
   ## Examples
 
-      {2, 1} = Perspective.get_zoom(agent)
+      {1, 1} = Perspective.get_zoom(agent)
   """
   @spec get_zoom(Agent.agent()) :: zoom()
   def get_zoom(agent) do

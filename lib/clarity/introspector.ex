@@ -52,7 +52,7 @@ defmodule Clarity.Introspector do
   @type t() :: module()
 
   @type entry() :: {:vertex, Vertex.t()} | {:edge, Vertex.t(), Vertex.t(), term()}
-  @type result() :: {:ok, [result()]} | {:error, :unmet_dependencies | term()}
+  @type result() :: {:ok, [entry()]} | {:error, :unmet_dependencies | term()}
 
   @doc """
   Returns the list of vertex types this introspector can process.
