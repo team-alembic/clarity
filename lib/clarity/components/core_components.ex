@@ -3,17 +3,15 @@ defmodule Clarity.CoreComponents do
 
   use Phoenix.Component
 
-  import Phoenix.HTML
-
+  alias Clarity.Perspective.Lens
   alias Clarity.Vertex
   alias Phoenix.LiveView.JS
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
-  attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
 
-  attr :lens, Clarity.Perspective.Lens,
+  attr :lens, Lens,
     required: true,
     doc: "Current lens for perspective switching"
 
@@ -47,22 +45,6 @@ defmodule Clarity.CoreComponents do
           Clarity
         </.link>
       </h1>
-
-      <nav id="breadcrumbs" class="hidden md:block">
-        <ol class="flex flex-wrap text-sm text-base-light-600 dark:text-base-dark-400 space-x-2">
-          <%= for {breadcrumb, idx} <- Enum.with_index(@breadcrumbs), idx > 0 do %>
-            <li class="flex items-center">
-              <span :if={idx > 1} class="mx-2 text-base-light-500 dark:text-base-dark-600">/</span>
-              <.link
-                patch={Path.join([@prefix, Clarity.Vertex.unique_id(breadcrumb), "graph"])}
-                class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
-              >
-                <.vertex_name vertex={breadcrumb} />
-              </.link>
-            </li>
-          <% end %>
-        </ol>
-      </nav>
 
       <div class="flex justify-center mx-4">
         <.progress_bar work_status={@work_status} queue_info={@queue_info} />
@@ -106,6 +88,11 @@ defmodule Clarity.CoreComponents do
   attr :tree, :any, required: true, doc: "The navigation tree digraph"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
   attr :current, :any, required: true, doc: "The currently selected node in the tree"
+
+  attr :lens, Lens,
+    required: true,
+    doc: "Current lens for perspective switching"
+
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the navigation container"
 
@@ -113,7 +100,13 @@ defmodule Clarity.CoreComponents do
   def navigation(assigns) do
     ~H"""
     <nav {@rest}>
-      <.navigation_tree tree={@tree} prefix={@prefix} current={@current} breadcrumbs={@breadcrumbs} />
+      <.navigation_tree
+        tree={@tree}
+        prefix={@prefix}
+        current={@current}
+        lens={@lens}
+        breadcrumbs={@breadcrumbs}
+      />
     </nav>
     """
   end
@@ -121,6 +114,11 @@ defmodule Clarity.CoreComponents do
   attr :tree, :any, required: true, doc: "The navigation tree digraph"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
   attr :current, :any, required: true, doc: "The currently selected node in the tree"
+
+  attr :lens, Lens,
+    required: true,
+    doc: "Current lens for perspective switching"
+
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
 
   @spec navigation_tree(assigns :: Socket.assigns()) :: Rendered.t()
@@ -136,6 +134,7 @@ defmodule Clarity.CoreComponents do
             tree={vertex}
             prefix={@prefix}
             current={@current}
+            lens={@lens}
             breadcrumbs={@breadcrumbs}
           />
         </li>
@@ -146,6 +145,11 @@ defmodule Clarity.CoreComponents do
 
   attr :tree, :any, required: true, doc: "The navigation tree digraph"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
+
+  attr :lens, Lens,
+    required: true,
+    doc: "Current lens for perspective switching"
+
   attr :current, :any, required: true, doc: "The currently selected node in the tree"
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
 
@@ -156,7 +160,7 @@ defmodule Clarity.CoreComponents do
       <details open={Enum.any?(@breadcrumbs, &(&1 == @tree.vertex))}>
         <summary>
           <.link
-            patch={Path.join([@prefix, Clarity.Vertex.unique_id(@tree.vertex), "graph"])}
+            patch={Path.join([@prefix, @lens.id, Clarity.Vertex.unique_id(@tree.vertex)])}
             class={
               "inline px-2 py-1 rounded-sm hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
               if @tree.vertex == @current, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
@@ -170,13 +174,14 @@ defmodule Clarity.CoreComponents do
             tree={@tree}
             prefix={@prefix}
             current={@current}
+            lens={@lens}
             breadcrumbs={@breadcrumbs}
           />
         </div>
       </details>
     <% else %>
       <.link
-        patch={Path.join([@prefix, Clarity.Vertex.unique_id(@tree.vertex), "graph"])}
+        patch={Path.join([@prefix, @lens.id, Clarity.Vertex.unique_id(@tree.vertex)])}
         class={
               "inline px-2 py-1 rounded-sm hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
               if @tree.vertex == @current, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""

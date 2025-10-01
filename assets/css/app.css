@@ -100,10 +100,11 @@
 
   grid-template-columns: 1fr;
   /* TODO: Replace minmax(auto, 4rem) with auto once the navigation is build collpasible on mobile */
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto auto auto 1fr;
   grid-template-areas:
     "header"
     "navigation"
+    "title"
     "tabs"
     "main";
 
@@ -116,9 +117,10 @@
 @media (min-width: 48rem) {
   .layout-container {
     grid-template-columns: minmax(20rem, 25vw) 1fr;
-    grid-template-rows: min-content min-content 1fr;
+    grid-template-rows: min-content min-content min-content 1fr;
     grid-template-areas:
       "header header"
+      "navigation title"
       "navigation tabs"
       "navigation main";
 
@@ -137,6 +139,10 @@
 
 .layout-container > .tabs {
   grid-area: tabs;
+}
+
+.layout-container > .content {
+  grid-area: title;
 }
 
 .layout-container > .content {

@@ -149,7 +149,6 @@ defmodule Clarity.PageLive do
       <% lens -> %>
         <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
           <.header
-            breadcrumbs={@breadcrumbs}
             prefix={@prefix}
             lens={@lens}
             theme={@theme}
@@ -162,12 +161,40 @@ defmodule Clarity.PageLive do
           <.navigation
             tree={@tree}
             prefix={@prefix}
+            lens={lens}
             current={@current_vertex}
             breadcrumbs={@breadcrumbs}
             class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
           />
 
           <%= if @current_vertex do %>
+            <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
+              <nav class="breadcrumbs mr-3">
+                <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
+                  <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)), idx > 0 do %>
+                    <li class="flex items-center">
+                      <span :if={idx > 1} class="mx-1 text-base-light-500 dark:text-base-dark-600">
+                        →
+                      </span>
+                      <.link
+                        patch={Path.join([@prefix, @lens.id, Vertex.unique_id(breadcrumb)])}
+                        class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
+                      >
+                        <.vertex_name vertex={breadcrumb} />
+                      </.link>
+                    </li>
+                  <% end %>
+                  <%= if length(@breadcrumbs) > 1 do %>
+                    <li class="flex items-center">
+                      <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
+                    </li>
+                  <% end %>
+                </ol>
+              </nav>
+              <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
+                {Vertex.render_name(@current_vertex)}
+              </h1>
+            </div>
             <.tabs
               contents={@contents}
               current_content={@current_content}
