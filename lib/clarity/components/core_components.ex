@@ -224,22 +224,6 @@ defmodule Clarity.CoreComponents do
     """
   end
 
-  attr :content, :string, required: true, doc: "The markdown content to render"
-  attr :class, :string, default: "", doc: "CSS classes to apply to the markdown container"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the markdown container"
-
-  @spec markdown(assigns :: Socket.assigns()) :: Rendered.t()
-  def markdown(assigns) do
-    ~H"""
-    <div class={"prose dark:prose-invert #{@class}"} {@rest}>
-      {case Earmark.as_html(@content) do
-        {:ok, html, _} -> raw(html)
-        {:error, reason, _} -> "<p>Error rendering markdown: #{reason}</p>"
-      end}
-    </div>
-    """
-  end
-
   attr :class, :string, default: "", doc: "CSS classes to apply to the refresh button"
   attr :refreshing, :boolean, default: false, doc: "Whether the refresh is in progress"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the refresh button"
