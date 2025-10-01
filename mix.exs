@@ -51,11 +51,14 @@ defmodule Clarity.MixProject do
         clarity_introspectors: [
           Clarity.Introspector.Application,
           Clarity.Introspector.Module,
+          Clarity.Introspector.Spark.Dsl,
+          Clarity.Introspector.Spark.Extension,
+          Clarity.Introspector.Spark.Section,
+          Clarity.Introspector.Spark.Entity,
           Clarity.Introspector.Ash.Domain,
           Clarity.Introspector.Ash.Resource,
           Clarity.Introspector.Ash.DataLayer,
-          Clarity.Introspector.Ash.Action,
-          Clarity.Introspector.Ash.Field,
+          Clarity.Introspector.Ash.Spark,
           Clarity.Introspector.Ash.Type,
           Clarity.Introspector.Phoenix.Endpoint,
           Clarity.Introspector.Phoenix.Router
