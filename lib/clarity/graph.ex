@@ -117,7 +117,7 @@ defmodule Clarity.Graph do
       caused_by_id = Vertex.unique_id(caused_by)
 
       # Store vertex in ETS table
-      :ets.insert(graph.vertices, {vertex_id, vertex})
+      :ets.insert(graph.vertices, {vertex_id, vertex.__struct__, vertex})
 
       # Add vertex ID to graphs (not the vertex struct)
       :digraph.add_vertex(graph.main_graph, vertex_id)
@@ -170,21 +170,56 @@ defmodule Clarity.Graph do
   """
   @spec get_vertex(t(), String.t()) :: Vertex.t() | nil
   def get_vertex(%__MODULE__{} = graph, vertex_id) do
-    :ets.lookup_element(graph.vertices, vertex_id, 2, nil)
+    :ets.lookup_element(graph.vertices, vertex_id, 3, nil)
   end
+
+  @type query_option() ::
+          {:type, module() | [module()]}
+          | {:field_equal, {atom(), any()}}
+          | {:field_in, {atom(), [any()]}}
+  @type query() :: [query_option()]
 
   @doc """
   Gets all vertices.
   """
-  @spec vertices(t()) :: [Vertex.t()]
-  def vertices(%__MODULE__{} = graph) do
+  @spec vertices(t(), query()) :: [Vertex.t()]
+  def vertices(%__MODULE__{} = graph, query \\ []) do
     all_vertices = graph.main_graph |> :digraph.vertices() |> MapSet.new()
 
     graph.vertices
-    |> :ets.tab2list()
-    |> Enum.reject(&match?({:"$update_count", _}, &1))
-    |> Enum.map(&elem(&1, 1))
+    |> :ets.select(vertex_query_to_ets_match_spec(query))
     |> Enum.filter(&MapSet.member?(all_vertices, Vertex.unique_id(&1)))
+  end
+
+  @spec vertex_query_to_ets_match_spec(query :: query()) :: :ets.match_spec()
+  defp vertex_query_to_ets_match_spec(query)
+  defp vertex_query_to_ets_match_spec([]), do: [{{:"$1", :"$2", :"$3"}, [], [:"$3"]}]
+
+  defp vertex_query_to_ets_match_spec(conditions) do
+    filters =
+      conditions
+      |> Enum.map(fn
+        {:field_equal, {field, value}} ->
+          {:==, {:map_get, field, :"$3"}, value}
+
+        {:field_in, {_field, []}} ->
+          false
+
+        {:field_in, {field, values}} when is_list(values) ->
+          values
+          |> Enum.map(&{:==, {:map_get, field, :"$3"}, &1})
+          |> Enum.reduce(fn a, b -> {:orelse, a, b} end)
+
+        {:type, type} when is_atom(type) ->
+          {:==, :"$2", type}
+
+        {:type, types} when is_list(types) ->
+          types |> Enum.map(&{:==, :"$2", &1}) |> Enum.reduce(fn a, b -> {:orelse, a, b} end)
+      end)
+      |> Enum.reduce(fn a, b -> {:andalso, a, b} end)
+      |> List.wrap()
+
+    [{{:"$1", :"$2", :"$3"}, filters, [:"$3"]}]
   end
 
   @doc """
@@ -294,7 +329,7 @@ defmodule Clarity.Graph do
         reachable_ids
         |> Enum.map(fn id ->
           case :ets.lookup(graph.vertices, id) do
-            [{^id, vertex_struct}] -> vertex_struct
+            [{^id, _type, vertex_struct}] -> vertex_struct
             [] -> nil
           end
         end)
@@ -415,7 +450,7 @@ defmodule Clarity.Graph do
     root_id = Vertex.unique_id(root_vertex)
 
     # Store root vertex in ETS table
-    :ets.insert(graph.vertices, {root_id, root_vertex})
+    :ets.insert(graph.vertices, {root_id, Root, root_vertex})
 
     # Add root vertex ID to graphs (special case - root has no provenance)
     :digraph.add_vertex(graph.main_graph, root_id)
