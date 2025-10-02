@@ -163,7 +163,7 @@ defmodule Clarity.Perspective.LensTest do
       }
 
       # Should use default alphabetical sorter
-      assert lens.content_sorter == (&Lens.sort_alphabetically_by_id/2)
+      assert lens.content_sorter == (&Lens.sort_alphabetically/2)
     end
 
     test "content_sorter can be customized" do

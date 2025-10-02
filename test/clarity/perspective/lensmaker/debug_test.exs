@@ -61,7 +61,7 @@ defmodule Clarity.Perspective.Lensmaker.DebugTest do
       graph_content = %Clarity.Content{
         id: "Clarity.Content.Graph",
         name: "Graph",
-        provider: __MODULE__,
+        provider: Clarity.Content.Graph,
         live_view?: false,
         live_component?: false
       }

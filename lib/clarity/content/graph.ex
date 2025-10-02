@@ -12,6 +12,7 @@ defmodule Clarity.Content.Graph do
 
   alias Clarity.Graph
   alias Clarity.Perspective
+  alias Phoenix.LiveView.Socket
 
   @impl Clarity.Content
   def name, do: "Graph Navigation"
@@ -179,6 +180,7 @@ defmodule Clarity.Content.Graph do
      |> reload_graph()}
   end
 
+  @spec reload_graph(Socket.t()) :: Socket.t()
   defp reload_graph(socket) do
     zoom_subgraph = Perspective.get_zoom_subgraph(socket.assigns.perspective_pid)
 

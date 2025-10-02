@@ -63,22 +63,10 @@ defmodule Clarity.Content do
         end
       end
 
-  ## Registration
+  ## Configuration
 
-  Register content providers in your application configuration:
-
-      config :my_app, :clarity_content_providers, [
-        MyApp.CustomContent,
-        MyApp.InteractiveContent
-      ]
-
-  ## Built-in Content Providers
-
-  Clarity includes several built-in content providers:
-  - `Clarity.Content.Graph` - Graph visualization (always shown)
-  - `Clarity.Content.Moduledoc` - Module documentation
-  - `Clarity.Content.Ash.DomainOverview` - Ash domain overview
-  - `Clarity.Content.Ash.ResourceOverview` - Ash resource overview
+  Content provider configuration is managed by `Clarity.Config`. See the documentation
+  for `Clarity.Config` for detailed configuration options and examples.
   """
 
   alias Clarity.Perspective.Lens
@@ -141,10 +129,81 @@ defmodule Clarity.Content do
   - `:markdown` - Markdown text (iodata or function returning iodata)
   - `:mermaid` - Mermaid diagram (iodata or function returning iodata)
   - `:viz` - Graphviz DOT format (iodata or function returning iodata, or function taking theme map)
-
-  This callback is only called for content providers that don't implement `Phoenix.LiveView`.
   """
   @callback render_static(vertex :: Vertex.t(), lens :: Lens.t()) :: static_content()
 
   @optional_callbacks [render_static: 2]
+
+  @doc false
+  @spec get_contents_for_vertex(Vertex.t(), Lens.t()) :: [t()]
+  def get_contents_for_vertex(vertex, lens) do
+    Clarity.Config.list_content_providers()
+    |> Enum.filter(&applies?(&1, vertex, lens))
+    |> Enum.map(&build_content_struct(&1, vertex, lens))
+    |> Enum.sort(lens.content_sorter)
+  end
+
+  @spec applies?(module(), Vertex.t(), Lens.t()) :: boolean()
+  defp applies?(provider, vertex, lens) do
+    case Code.ensure_loaded(provider) do
+      {:module, ^provider} ->
+        if function_exported?(provider, :applies?, 2) do
+          provider.applies?(vertex, lens)
+        else
+          false
+        end
+
+      _ ->
+        false
+    end
+  end
+
+  @spec build_content_struct(module(), Vertex.t(), Lens.t()) :: t()
+  defp build_content_struct(provider, vertex, lens) do
+    live_view? = implements_behaviour?(provider, Phoenix.LiveView)
+    live_component? = implements_behaviour?(provider, Phoenix.LiveComponent)
+
+    render_static =
+      if function_exported?(provider, :render_static, 2) do
+        normalize_static_content(provider.render_static(vertex, lens))
+      end
+
+    %__MODULE__{
+      id: content_id(provider),
+      name: provider.name(),
+      description: if(function_exported?(provider, :description, 0), do: provider.description()),
+      provider: provider,
+      live_view?: live_view?,
+      live_component?: live_component?,
+      render_static: render_static
+    }
+  end
+
+  @spec normalize_static_content(static_content()) :: rendered_static_content()
+  defp normalize_static_content({type, content}) when is_binary(content) or is_list(content) do
+    {type, fn _props -> content end}
+  end
+
+  defp normalize_static_content({type, content}) when is_function(content, 1) do
+    {type, content}
+  end
+
+  @spec content_id(module()) :: String.t()
+  defp content_id(provider) do
+    provider
+    |> Macro.underscore()
+    |> String.replace(~r/[_\/]+/, "-")
+    |> String.replace_prefix("clarity-content-", "")
+  end
+
+  @spec implements_behaviour?(module(), module()) :: boolean()
+  defp implements_behaviour?(module, behaviour) do
+    {:module, ^module} = Code.ensure_loaded(module)
+
+    :attributes
+    |> module.module_info()
+    |> Keyword.get_values(:behaviour)
+    |> Enum.concat()
+    |> Enum.member?(behaviour)
+  end
 end

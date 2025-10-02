@@ -57,7 +57,7 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
       lens = Architect.make_lens()
 
       # Should use the default sorter function
-      assert lens.content_sorter == (&Lens.sort_alphabetically_by_id/2)
+      assert lens.content_sorter == (&Lens.sort_alphabetically/2)
 
       # Create test content (using the Registry.Content struct)
       content_a = %Clarity.Content{
@@ -85,10 +85,10 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
       }
 
       # Test alphabetical sorting using the default function
-      assert Lens.sort_alphabetically_by_id(content_a, content_z) == true
-      assert Lens.sort_alphabetically_by_id(content_z, content_a) == false
-      assert Lens.sort_alphabetically_by_id(content_a, content_b) == true
-      assert Lens.sort_alphabetically_by_id(content_b, content_a) == false
+      assert Lens.sort_alphabetically(content_a, content_z) == true
+      assert Lens.sort_alphabetically(content_z, content_a) == false
+      assert Lens.sort_alphabetically(content_a, content_b) == true
+      assert Lens.sort_alphabetically(content_b, content_a) == false
     end
   end
 end

@@ -34,11 +34,10 @@ defmodule Clarity.Perspective do
   use Agent
 
   alias Clarity.Content
-  alias Clarity.Content.Registry, as: ContentRegistry
   alias Clarity.Graph
   alias Clarity.Graph.Tree
   alias Clarity.Perspective.Lens
-  alias Clarity.Perspective.Registry
+  alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex
   alias Clarity.Vertex.Root
 
@@ -320,7 +319,7 @@ defmodule Clarity.Perspective do
     case state.cached_contents do
       nil ->
         contents =
-          ContentRegistry.get_contents_for_vertex(state.current_vertex, state.current_lens)
+          Content.get_contents_for_vertex(state.current_vertex, state.current_lens)
 
         state = %{state | cached_contents: contents}
         {contents, state}
@@ -388,7 +387,7 @@ defmodule Clarity.Perspective do
 
   @spec resolve_lens(String.t() | Lens.t()) :: result(Lens.t())
   defp resolve_lens(lens_id) when is_binary(lens_id) do
-    case Registry.get_lens_by_id(lens_id) do
+    case Lensmaker.get_lens_by_id(lens_id) do
       {:ok, lens} -> {:ok, lens}
       {:error, reason} -> {:error, reason}
     end
