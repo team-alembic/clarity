@@ -274,6 +274,7 @@ defmodule Clarity.PageLive do
               do: "bg-base-light-200 dark:bg-base-dark-800 text-primary-light dark:text-primary-dark border-b-2 border-primary-light dark:border-primary-dark",
               else: "text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark hover:bg-base-light-200 dark:hover:bg-base-dark-800"
             }
+            title={content.description}
           >
             {content.name}
           </.link>

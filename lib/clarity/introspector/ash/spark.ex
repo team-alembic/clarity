@@ -17,6 +17,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Clarity.Vertex.Ash.Aggregate
     alias Clarity.Vertex.Ash.Attribute
     alias Clarity.Vertex.Ash.Calculation
+    alias Clarity.Vertex.Ash.Policy
     alias Clarity.Vertex.Ash.Relationship
     alias Clarity.Vertex.Ash.Resource
     alias Clarity.Vertex.Spark.Entity, as: EntityVertex
@@ -46,7 +47,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     @spec create_ash_vertex(struct(), module()) ::
-            Action.t() | Attribute.t() | Aggregate.t() | Calculation.t() | Relationship.t() | nil
+            Action.t()
+            | Attribute.t()
+            | Aggregate.t()
+            | Calculation.t()
+            | Relationship.t()
+            | Policy.t()
+            | nil
     defp create_ash_vertex(%Ash.Resource.Actions.Action{} = entity, resource),
       do: %Action{action: entity, resource: resource}
 
@@ -82,6 +89,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     defp create_ash_vertex(%ManyToMany{} = entity, resource),
       do: %Relationship{relationship: entity, resource: resource}
+
+    defp create_ash_vertex(%Ash.Policy.Policy{} = entity, resource),
+      do: %Policy{policy: entity, resource: resource}
 
     defp create_ash_vertex(_entity, _resource), do: nil
 
@@ -137,5 +147,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defp edge_label(%BelongsTo{}), do: :relationship
     defp edge_label(%HasMany{}), do: :relationship
     defp edge_label(%ManyToMany{}), do: :relationship
+    defp edge_label(%Ash.Policy.Policy{}), do: :policy
   end
 end
