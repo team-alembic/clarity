@@ -71,8 +71,10 @@ defmodule Clarity.MixProject do
         clarity_content_providers: [
           Clarity.Content.Graph,
           Clarity.Content.Moduledoc,
+          Clarity.Content.Ash.ApplicationOverview,
           Clarity.Content.Ash.DomainOverview,
-          Clarity.Content.Ash.ResourceOverview
+          Clarity.Content.Ash.ResourceOverview,
+          Clarity.Content.Phoenix.RouterRoutes
         ],
         default_perspective_lens: "architect"
       ]
@@ -171,7 +173,7 @@ defmodule Clarity.MixProject do
           ~r/^Clarity\.Vertex(?!\.(Ash|Spark|Phoenix))/
         ],
         Content: [
-          ~r/^Clarity\.Content/
+          ~r/^Clarity\.Content(?!\.(Ash|Spark|Phoenix))/
         ],
         Components: [
           ~r/^Clarity\..+Component/

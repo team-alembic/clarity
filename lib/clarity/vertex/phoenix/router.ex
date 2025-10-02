@@ -38,40 +38,4 @@ defmodule Clarity.Vertex.Phoenix.Router do
       SourceLocation.from_module(module)
     end
   end
-
-  defimpl Clarity.Vertex.TooltipProvider do
-    @impl Clarity.Vertex.TooltipProvider
-    def tooltip(%@for{router: module}),
-      do: [
-        "`",
-        inspect(module),
-        "`\n\n",
-        "| Name | Method | Path | Plug | Action |\n",
-        "| ---- | ------ | ---- | ---------- | ------ |\n",
-        Enum.map(module.__routes__(), fn %{
-                                           verb: verb,
-                                           path: path,
-                                           plug: plug,
-                                           plug_opts: plug_opts
-                                         } = route ->
-          [
-            "| ",
-            case Map.fetch(route, :helper) do
-              :error -> ""
-              {:ok, nil} -> ""
-              {:ok, helper} -> [helper, "_path"]
-            end,
-            " | ",
-            verb |> Atom.to_string() |> String.upcase(),
-            " | ",
-            path,
-            " | ",
-            inspect(plug),
-            " | ",
-            inspect(plug_opts),
-            " |\n"
-          ]
-        end)
-      ]
-  end
 end

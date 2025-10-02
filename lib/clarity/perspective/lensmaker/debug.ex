@@ -31,7 +31,7 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
       content_sorter: fn
         %Content{provider: Content.Graph}, _b -> true
         _a, %Content{provider: Content.Graph} -> false
-        a, b -> Lens.sort_alphabetically_by_id(a, b)
+        a, b -> Lens.sort_alphabetically(a, b)
       end
     }
   end

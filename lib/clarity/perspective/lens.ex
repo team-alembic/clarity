@@ -33,18 +33,21 @@ defmodule Clarity.Perspective.Lens do
     :description,
     :icon,
     :filter,
-    content_sorter: &__MODULE__.sort_alphabetically_by_id/2,
+    content_sorter: &__MODULE__.sort_alphabetically/2,
     intro_vertex: &__MODULE__.default_intro_vertex/1
   ]
 
   @doc """
-  Default content sorter that sorts alphabetically by content ID.
+  Default content sorter that sorts alphabetically by content name, with Graph deprioritized.
 
   This is the default sorting function used by lenses unless they specify
-  their own content_sorter function.
+  their own content_sorter function. Graph content is moved to the end.
   """
-  @spec sort_alphabetically_by_id(Content.t(), Content.t()) :: boolean()
-  def sort_alphabetically_by_id(a, b), do: a.id <= b.id
+  @spec sort_alphabetically(Content.t(), Content.t()) :: boolean()
+  def sort_alphabetically(a, b)
+  def sort_alphabetically(%Content{provider: Content.Graph}, _b), do: false
+  def sort_alphabetically(_a, %Content{provider: Content.Graph}), do: true
+  def sort_alphabetically(a, b), do: a.name <= b.name
 
   @doc """
   Default intro vertex function that returns the root vertex.

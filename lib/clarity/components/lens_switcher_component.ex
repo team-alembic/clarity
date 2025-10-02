@@ -3,7 +3,7 @@ defmodule Clarity.LensSwitcherComponent do
 
   use Clarity.Web, :live_component
 
-  alias Clarity.Perspective.Registry
+  alias Clarity.Perspective.Lensmaker
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
@@ -12,7 +12,7 @@ defmodule Clarity.LensSwitcherComponent do
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
-    available_lenses = Registry.get_all_lenses()
+    available_lenses = Lensmaker.get_all_lenses()
 
     {:ok,
      socket

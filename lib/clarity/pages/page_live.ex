@@ -297,8 +297,23 @@ defmodule Clarity.PageLive do
   @spec render_content(assigns :: Socket.assigns()) :: Rendered.t()
   defp render_content(assigns) do
     ~H"""
-    <%= if @content do %>
-      <%= if @content.live_view? do %>
+    <% content_props = %{
+      theme: @theme,
+      zoom_subgraph: Clarity.Perspective.get_zoom_subgraph(@perspective_pid)
+    } %>
+    <%= cond do %>
+      <% @content == nil -> %>
+        <.content_not_found_error />
+      <% @content.live_component? -> %>
+        <.live_component
+          module={@content.provider}
+          id="content-view"
+          vertex={@vertex}
+          lens={@lens}
+          perspective_pid={@perspective_pid}
+          {content_props}
+        />
+      <% @content.live_view? -> %>
         {live_render(@socket, @content.provider,
           id: "content-view",
           session: %{
@@ -308,11 +323,7 @@ defmodule Clarity.PageLive do
           },
           container: {:div, class: "content"}
         )}
-      <% else %>
-        <% content_props = %{
-          theme: @theme,
-          zoom_subgraph: Clarity.Perspective.get_zoom_subgraph(@perspective_pid)
-        } %>
+      <% true -> %>
         <%= case @content.render_static do %>
           <% {:mermaid, content} -> %>
             <.mermaid graph={content.(content_props)} class="content p-4" id="content-view-mermaid" />
@@ -328,9 +339,6 @@ defmodule Clarity.PageLive do
               />
             </section>
         <% end %>
-      <% end %>
-    <% else %>
-      <.content_not_found_error />
     <% end %>
     """
   end

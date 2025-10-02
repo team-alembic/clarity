@@ -8,16 +8,15 @@ defmodule Clarity.Perspective.LensmakerTest do
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex.Root
 
-  defmodule TestLensmaker do
+  defmodule TestLensmaker1 do
     @moduledoc false
     @behaviour Lensmaker
 
     @impl Lensmaker
     def make_lens do
       %Lens{
-        id: "test",
-        name: "Test Lens",
-        description: "Test lens for testing",
+        id: "test1",
+        name: "Test Lens 1",
         icon: fn ->
           assigns = %{}
           ~H"🧪"
@@ -28,38 +27,18 @@ defmodule Clarity.Perspective.LensmakerTest do
     end
 
     @impl Lensmaker
-    def update_lens(lens) do
-      assert %Lens{} = lens
-
-      %{lens | description: "Updated by TestLensmaker"}
-    end
+    def update_lens(lens), do: lens
   end
 
-  defmodule UpdateOnlyLensmaker do
+  defmodule TestLensmaker2 do
     @moduledoc false
     @behaviour Lensmaker
 
     @impl Lensmaker
-    def update_lens(%{id: "test"} = lens) do
-      %{lens | description: "Updated by UpdateOnlyLensmaker"}
-    end
-
-    def update_lens(lens), do: lens
-  end
-
-  describe "behavior callbacks" do
-    test "make_lens/0 callback creates a lens" do
-      assert %Lens{
-               id: "test",
-               name: "Test Lens",
-               description: "Test lens for testing"
-             } = TestLensmaker.make_lens()
-    end
-
-    test "update_lens/1 callback modifies existing lens" do
-      lens = %Lens{
-        id: "existing",
-        name: "Existing",
+    def make_lens do
+      %Lens{
+        id: "test2",
+        name: "Test Lens 2",
         icon: fn ->
           assigns = %{}
           ~H"⚡"
@@ -67,58 +46,142 @@ defmodule Clarity.Perspective.LensmakerTest do
         filter: Filter.custom(fn _vertex -> false end),
         intro_vertex: fn _graph -> nil end
       }
-
-      updated_lens = TestLensmaker.update_lens(lens)
-      assert "Updated by TestLensmaker" = updated_lens.description
     end
 
-    test "update_lens/1 can be selective based on lens id" do
-      test_lens = %Lens{
-        id: "test",
-        name: "Test",
-        description: "Original description",
-        icon: fn ->
-          assigns = %{}
-          ~H"🧪"
-        end,
-        filter: Filter.custom(fn _vertex -> true end),
-        intro_vertex: fn _graph -> %Root{} end
-      }
+    @impl Lensmaker
+    def update_lens(lens), do: lens
+  end
 
-      other_lens = %Lens{
-        id: "other",
-        name: "Other",
-        description: "Other description",
-        icon: fn ->
-          assigns = %{}
-          ~H"🔍"
-        end,
-        filter: Filter.custom(fn _vertex -> true end),
-        intro_vertex: fn _graph -> %Root{} end
-      }
+  defmodule UpdateOnlyLensmaker do
+    @moduledoc false
+    @behaviour Lensmaker
 
-      updated_test = UpdateOnlyLensmaker.update_lens(test_lens)
-      assert "Updated by UpdateOnlyLensmaker" = updated_test.description
-
-      unchanged_other = UpdateOnlyLensmaker.update_lens(other_lens)
-      assert "Other description" = unchanged_other.description
+    @impl Lensmaker
+    def update_lens(%{id: "test1"} = lens) do
+      %{lens | description: "Enhanced by TestEnhancer"}
     end
 
-    test "lensmaker without make_lens/1 can still update lenses" do
-      lens = %Lens{
-        id: "test",
-        name: "Test",
-        description: "Original",
+    def update_lens(lens), do: lens
+  end
+
+  defmodule MakeOnlyLensmaker do
+    @moduledoc false
+    @behaviour Lensmaker
+
+    @impl Lensmaker
+    def make_lens do
+      %Lens{
+        id: "make_only",
+        name: "Make Only Lens",
         icon: fn ->
           assigns = %{}
-          ~H"🧪"
+          ~H"⚙️"
         end,
         filter: Filter.custom(fn _vertex -> true end),
         intro_vertex: fn _graph -> %Root{} end
       }
+    end
+  end
 
-      updated = UpdateOnlyLensmaker.update_lens(lens)
-      assert "Updated by UpdateOnlyLensmaker" = updated.description
+  describe "get_all_lenses/1" do
+    test "discovers lensmakers and creates lenses using current app config" do
+      lenses = Lensmaker.get_all_lenses()
+      assert is_list(lenses)
+    end
+
+    test "creates lenses from explicit lensmaker list" do
+      lensmakers = [TestLensmaker1, TestLensmaker2]
+
+      lenses = Lensmaker.get_all_lenses(lensmakers)
+      assert length(lenses) == 2
+
+      lens1 = Enum.find(lenses, &(&1.id == "test1"))
+      lens2 = Enum.find(lenses, &(&1.id == "test2"))
+
+      assert %Lens{name: "Test Lens 1"} = lens1
+      assert %Lens{name: "Test Lens 2"} = lens2
+    end
+
+    test "skips lensmakers that don't implement make_lens/0" do
+      lensmakers = [TestLensmaker1, UpdateOnlyLensmaker]
+
+      lenses = Lensmaker.get_all_lenses(lensmakers)
+      assert length(lenses) == 1
+
+      assert %Lens{id: "test1", name: "Test Lens 1"} = List.first(lenses)
+    end
+
+    test "works with lensmakers that only implement make_lens/0" do
+      lensmakers = [MakeOnlyLensmaker]
+
+      lenses = Lensmaker.get_all_lenses(lensmakers)
+      assert length(lenses) == 1
+
+      assert %Lens{id: "make_only", name: "Make Only Lens"} = List.first(lenses)
+    end
+
+    test "handles empty lensmaker list" do
+      assert [] = Lensmaker.get_all_lenses([])
+    end
+
+    test "applies update_lens/1 from other lensmakers" do
+      lensmakers = [TestLensmaker1, UpdateOnlyLensmaker]
+
+      lenses = Lensmaker.get_all_lenses(lensmakers)
+      assert length(lenses) == 1
+
+      lens = List.first(lenses)
+      assert %Lens{id: "test1", description: "Enhanced by TestEnhancer"} = lens
+    end
+
+    test "multiple lensmakers can update the same lens" do
+      defmodule AnotherUpdater do
+        @moduledoc false
+        @behaviour Lensmaker
+
+        @impl Lensmaker
+        def update_lens(%{id: "test1"} = lens) do
+          %{lens | description: "Updated by AnotherUpdater"}
+        end
+
+        def update_lens(lens), do: lens
+      end
+
+      lensmakers = [TestLensmaker1, UpdateOnlyLensmaker, AnotherUpdater]
+
+      lenses = Lensmaker.get_all_lenses(lensmakers)
+      assert length(lenses) == 1
+
+      lens = List.first(lenses)
+
+      assert %Lens{
+               id: "test1",
+               description: "Updated by AnotherUpdater"
+             } = lens
+    end
+
+    test "handles invalid lensmaker modules gracefully" do
+      defmodule InvalidLensmaker do
+        @moduledoc false
+      end
+
+      assert [] = Lensmaker.get_all_lenses([InvalidLensmaker])
+    end
+
+    test "crashes for invalid arguments" do
+      assert_raise Protocol.UndefinedError, fn ->
+        Lensmaker.get_all_lenses(:not_a_list)
+      end
+    end
+  end
+
+  describe "get_lens_by_id/1" do
+    test "finds lens by ID from discovered lenses" do
+      assert {:ok, %Lens{id: "debug", name: "Debug"}} = Lensmaker.get_lens_by_id("debug")
+    end
+
+    test "returns error for unknown lens ID" do
+      assert {:error, :lens_not_found} = Lensmaker.get_lens_by_id("unknown_lens")
     end
   end
 end
