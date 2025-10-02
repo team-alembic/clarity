@@ -3,6 +3,7 @@ defmodule Clarity.TelemetryTest do
   use ExUnit.Case, async: true
 
   alias Clarity.Server.Task
+  alias Clarity.Server.Worker
   alias Clarity.Telemetry
   alias Clarity.Test.MockClarityServer
   alias Clarity.Vertex.Application, as: ApplicationVertex
@@ -101,8 +102,7 @@ defmodule Clarity.TelemetryTest do
 
       @impl Clarity.Introspector
       def introspect_vertex(_vertex, _graph) do
-        {:ok,
-         [{:vertex, %ApplicationVertex{app: :test_app, description: "Test", version: "1.0.0"}}]}
+        {:ok, [{:vertex, %ApplicationVertex{app: :test_app, description: "Test", version: "1.0.0"}}]}
       end
     end
 
@@ -136,7 +136,7 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, SuccessfulIntrospector, graph)
 
-      start_supervised!({Clarity.Server.Worker, clarity_server: mock_server})
+      start_supervised!({Worker, clarity_server: mock_server})
 
       assert_receive :pull_task
       send(mock_server, {:reply_pull_task, {:ok, task}})
@@ -180,7 +180,7 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, SuccessfulWithEntriesIntrospector, graph)
 
-      start_supervised!({Clarity.Server.Worker, clarity_server: mock_server})
+      start_supervised!({Worker, clarity_server: mock_server})
 
       assert_receive :pull_task
       send(mock_server, {:reply_pull_task, {:ok, task}})
@@ -201,7 +201,7 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, UnmetDependenciesIntrospector, graph)
 
-      start_supervised!({Clarity.Server.Worker, clarity_server: mock_server})
+      start_supervised!({Worker, clarity_server: mock_server})
 
       assert_receive :pull_task
       send(mock_server, {:reply_pull_task, {:ok, task}})
@@ -221,7 +221,7 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, FailingIntrospector, graph)
 
-      start_supervised!({Clarity.Server.Worker, clarity_server: mock_server})
+      start_supervised!({Worker, clarity_server: mock_server})
 
       assert_receive :pull_task
       send(mock_server, {:reply_pull_task, {:ok, task}})
