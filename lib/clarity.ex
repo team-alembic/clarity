@@ -21,10 +21,18 @@ defmodule Clarity do
           total_vertices: non_neg_integer()
         }
 
+  @typedoc """
+  - `:work_started` - Emitted when work starts
+  - `:work_completed` - Emitted when all work is completed
+  - `{:work_progress, queue_info()}` - Emitted periodically with current queue info
+
+  Topics starting with `:__` are internal.
+  """
   @type event() ::
           :work_started
           | :work_completed
           | {:work_progress, queue_info()}
+          | :__restart_pulling__
 
   @type status() :: :working | :done
 
@@ -40,15 +48,47 @@ defmodule Clarity do
           queue_info: queue_info()
         }
 
+  @typedoc """
+  - `:work_started` - Emitted when work starts
+  - `:work_completed` - Emitted when all work is completed
+  - `:work_progress` - Emitted periodically with current queue info
+
+  Topics starting with `:__` are internal.
+  """
+  @type subscription_topic() ::
+          :work_started
+          | :work_completed
+          | :work_progress
+          | :__restart_pulling__
+
   @enforce_keys [:graph, :status, :queue_info]
   defstruct [:graph, :status, :queue_info]
 
   @doc """
   Subscribe to clarity events. Returns an unsubscribe function.
+
+  ## Examples
+
+      # Subscribe to specific events only
+      unsubscribe = Clarity.subscribe([:work_started, :work_completed])
+
+      # Unsubscribe later
+      unsubscribe.()
   """
-  @spec subscribe(GenServer.server()) :: unsubscribe()
-  def subscribe(server \\ Clarity.Server) do
-    GenServer.call(server, :subscribe)
+  @spec subscribe(GenServer.server(), subscription_topic() | [subscription_topic()]) ::
+          unsubscribe()
+  def subscribe(server \\ Clarity.Server, topics) do
+    topics = List.wrap(topics)
+
+    Enum.each(topics, fn topic ->
+      {:ok, _} = Registry.register(Clarity.PubSub, {server, topic}, [])
+    end)
+
+    fn ->
+      Enum.each(topics, fn topic ->
+        Registry.unregister(Clarity.PubSub, {server, topic})
+      end)
+    end
   end
 
   @doc """
@@ -82,15 +122,14 @@ defmodule Clarity do
   end
 
   def get(server, :complete) do
-    case GenServer.call(server, :get) do
-      %__MODULE__{status: :done} = clarity ->
-        clarity
+    unsubscribe = subscribe(server, :work_completed)
 
-      %__MODULE__{status: :working} ->
-        # Subscribe and wait for work to complete
-        unsubscribe = subscribe(server)
+    try do
+      case GenServer.call(server, :get) do
+        %Clarity{status: :done} = clarity ->
+          clarity
 
-        try do
+        _clarity ->
           receive do
             {:clarity, :work_completed} ->
               GenServer.call(server, :get)
@@ -98,9 +137,9 @@ defmodule Clarity do
             60_000 ->
               raise "Timeout waiting for work to complete"
           end
-        after
-          unsubscribe.()
-        end
+      end
+    after
+      unsubscribe.()
     end
   end
 end

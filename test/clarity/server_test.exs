@@ -448,7 +448,7 @@ defmodule Clarity.ServerTest do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
       # Subscribe to events
-      unsubscribe = Clarity.subscribe(server)
+      unsubscribe = Clarity.subscribe(server, :work_started)
 
       # Clear any initial events
       receive do
@@ -469,7 +469,7 @@ defmodule Clarity.ServerTest do
     test "broadcasts queue_info events during task processing", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      unsubscribe = Clarity.subscribe(server)
+      unsubscribe = Clarity.subscribe(server, :work_progress)
 
       # Clear initial events
       receive do
@@ -495,7 +495,7 @@ defmodule Clarity.ServerTest do
     test "broadcasts work_completed when all work is done", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      unsubscribe = Clarity.subscribe(server)
+      unsubscribe = Clarity.subscribe(server, :work_completed)
 
       # Clear initial events
       receive do

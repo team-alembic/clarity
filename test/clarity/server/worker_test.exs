@@ -101,9 +101,6 @@ defmodule Clarity.Server.WorkerTest do
 
       worker_pid = start_supervised!({Worker, clarity_server: mock_server})
 
-      # Worker should subscribe immediately on init
-      assert_receive :subscribe
-
       # Worker tries to pull a task
       assert_receive :pull_task
       send(mock_server, {:reply_pull_task, :empty})
@@ -111,7 +108,7 @@ defmodule Clarity.Server.WorkerTest do
       # Worker should now be hibernating - send work_started event to wake up
       send(worker_pid, {:clarity, :work_started})
 
-      # Worker should try to pull task again (no unsubscribe since we never unsubscribe)
+      # Worker should try to pull task again
       assert_receive :pull_task
     end
 
@@ -119,9 +116,6 @@ defmodule Clarity.Server.WorkerTest do
       mock_server = start_supervised!({MockClarityServer, self()})
 
       worker_pid = start_supervised!({Worker, clarity_server: mock_server})
-
-      # Worker subscribes immediately on init
-      assert_receive :subscribe
 
       # Get worker to hibernate
       assert_receive :pull_task

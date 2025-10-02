@@ -5,10 +5,14 @@ defmodule Clarity.Application do
 
   case Mix.env() do
     :test ->
-      @children [DemoWeb.Endpoint]
+      @children [
+        {Registry, keys: :duplicate, name: Clarity.PubSub},
+        DemoWeb.Endpoint
+      ]
 
     _env ->
       @children [
+        {Registry, keys: :duplicate, name: Clarity.PubSub},
         Clarity.Server,
         {PartitionSupervisor,
          child_spec: {Clarity.Server.Worker, clarity_server: Clarity.Server},

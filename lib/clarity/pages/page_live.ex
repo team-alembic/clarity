@@ -14,7 +14,7 @@ defmodule Clarity.PageLive do
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
     if connected?(socket) do
-      Clarity.subscribe(socket.assigns.clarity_pid)
+      Clarity.subscribe(socket.assigns.clarity_pid, [:work_started, :work_completed])
       :timer.send_interval(1000, self(), :refresh_interval)
     end
 
@@ -238,11 +238,6 @@ defmodule Clarity.PageLive do
   @impl Phoenix.LiveView
   def handle_info({:clarity, event}, socket) when event in [:work_started, :work_completed] do
     {:noreply, handle_routing(socket, socket.assigns.params, &push_patch/2)}
-  end
-
-  def handle_info({:clarity, {:work_progress, _progress_info}}, socket) do
-    # Ignore progress events - let the interval handle regular updates
-    {:noreply, socket}
   end
 
   def handle_info({:flash, kind, message}, socket) do

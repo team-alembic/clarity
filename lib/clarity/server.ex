@@ -10,15 +10,15 @@ defmodule Clarity.Server do
   defmodule State do
     @moduledoc false
 
-    @enforce_keys [:graph, :introspectors]
+    @enforce_keys [:graph, :introspectors, :name]
     defstruct [
       :graph,
       :introspectors,
+      :name,
       future_queue: :queue.new(),
       requeue_queue: :queue.new(),
       in_progress: %{},
-      custom_introspectors: nil,
-      subscribers: %{}
+      custom_introspectors: nil
     ]
 
     @type t() :: %__MODULE__{
@@ -28,7 +28,7 @@ defmodule Clarity.Server do
             graph: Clarity.Graph.t(),
             introspectors: [module()],
             custom_introspectors: [module()] | nil,
-            subscribers: %{reference() => {pid(), reference()}}
+            name: GenServer.name()
           }
   end
 
@@ -38,7 +38,8 @@ defmodule Clarity.Server do
     {introspectors, gen_server_opts} = Keyword.pop(opts, :introspectors)
     init_opts = if introspectors, do: [introspectors: introspectors], else: []
     gen_server_opts = Keyword.put_new(gen_server_opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, init_opts, gen_server_opts)
+
+    GenServer.start_link(__MODULE__, init_opts ++ gen_server_opts, gen_server_opts)
   end
 
   @doc """
@@ -86,7 +87,8 @@ defmodule Clarity.Server do
     initial_state = %State{
       graph: graph,
       custom_introspectors: custom_introspectors,
-      introspectors: custom_introspectors || []
+      introspectors: custom_introspectors || [],
+      name: Keyword.fetch!(opts, :name)
     }
 
     {future_queue, introspectors} =
@@ -102,17 +104,6 @@ defmodule Clarity.Server do
   end
 
   @impl GenServer
-  def handle_cast({:unsubscribe, subscription_ref}, state) do
-    case Map.pop(state.subscribers, subscription_ref) do
-      {{_pid, monitor_ref}, new_subscribers} ->
-        Process.demonitor(monitor_ref, [:flush])
-        {:noreply, %{state | subscribers: new_subscribers}}
-
-      {nil, _} ->
-        {:noreply, state}
-    end
-  end
-
   def handle_cast({:introspect, :full}, state) do
     :ok = Clarity.Graph.clear(state.graph)
 
@@ -247,20 +238,6 @@ defmodule Clarity.Server do
   end
 
   @impl GenServer
-  def handle_call(:subscribe, {pid, _ref}, state) do
-    subscription_ref = make_ref()
-    monitor_ref = Process.monitor(pid)
-
-    server = self()
-
-    unsubscribe = fn ->
-      GenServer.cast(server, {:unsubscribe, subscription_ref})
-    end
-
-    new_subscribers = Map.put(state.subscribers, subscription_ref, {pid, monitor_ref})
-    {:reply, unsubscribe, %{state | subscribers: new_subscribers}}
-  end
-
   def handle_call(:get, _from, state) do
     status = if queue_empty_and_no_progress?(state), do: :done, else: :working
 
@@ -294,6 +271,8 @@ defmodule Clarity.Server do
           not :queue.is_empty(state.requeue_queue) ->
             state = %{state | future_queue: state.requeue_queue, requeue_queue: :queue.new()}
 
+            broadcast_event(state, :__restart_pulling__)
+
             handle_call(:pull_task, from, state)
 
           # No in-progress, no requeued tasks - truly empty
@@ -301,17 +280,6 @@ defmodule Clarity.Server do
             {:reply, :empty, state}
         end
     end
-  end
-
-  @impl GenServer
-  def handle_info({:DOWN, monitor_ref, :process, _pid, _reason}, state) do
-    # Remove subscription when subscriber process dies
-    new_subscribers =
-      state.subscribers
-      |> Enum.reject(fn {_ref, {_pid, mon_ref}} -> mon_ref == monitor_ref end)
-      |> Map.new()
-
-    {:noreply, %{state | subscribers: new_subscribers}}
   end
 
   @spec create_tasks_for_vertex(Clarity.Vertex.t(), [module()], Clarity.Graph.t()) :: [
@@ -401,9 +369,19 @@ defmodule Clarity.Server do
 
   @spec broadcast_event(State.t(), Clarity.event()) :: :ok
   defp broadcast_event(state, event) do
-    Enum.each(state.subscribers, fn {_ref, {pid, _monitor_ref}} ->
-      send(pid, {:clarity, event})
-    end)
+    topic =
+      case event do
+        topic when is_atom(topic) -> topic
+        tuple when is_tuple(tuple) -> elem(tuple, 0)
+      end
+
+    for name <- [state.name, self()] do
+      Registry.dispatch(Clarity.PubSub, {name, topic}, fn entries ->
+        for {pid, _} <- entries, do: send(pid, {:clarity, event})
+      end)
+    end
+
+    :ok
   end
 
   @spec queue_info(State.t()) :: Clarity.queue_info()

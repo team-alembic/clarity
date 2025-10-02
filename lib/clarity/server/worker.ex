@@ -24,7 +24,7 @@ defmodule Clarity.Server.Worker do
   @impl GenServer
   def init(opts) do
     clarity_server = Keyword.get(opts, :clarity_server, Clarity.Server)
-    Clarity.subscribe(clarity_server)
+    Clarity.subscribe(clarity_server, [:work_started, :__restart_pulling__])
     state = %__MODULE__{clarity_server: clarity_server}
 
     Process.flag(:trap_exit, true)
