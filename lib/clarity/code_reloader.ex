@@ -17,6 +17,10 @@ defmodule Clarity.CodeReloader do
   alias Clarity.Config
 
   @doc false
+  @spec child_spec(GenServer.options()) :: Supervisor.child_spec()
+  def child_spec(opts), do: super(opts)
+
+  @doc false
   @spec start_link(opts :: GenServer.options()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     opts = Keyword.put_new(opts, :name, __MODULE__)
