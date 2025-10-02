@@ -15,8 +15,8 @@ defmodule Clarity.Server do
       :graph,
       :introspectors,
       :name,
-      future_queue: :queue.new(),
-      requeue_queue: :queue.new(),
+      :future_queue,
+      :requeue_queue,
       in_progress: %{},
       custom_introspectors: nil
     ]
@@ -88,7 +88,9 @@ defmodule Clarity.Server do
       graph: graph,
       custom_introspectors: custom_introspectors,
       introspectors: custom_introspectors || [],
-      name: Keyword.fetch!(opts, :name)
+      name: Keyword.fetch!(opts, :name),
+      future_queue: :queue.new(),
+      requeue_queue: :queue.new()
     }
 
     {future_queue, introspectors} =
