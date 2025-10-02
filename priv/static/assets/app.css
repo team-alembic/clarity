@@ -72,7 +72,6 @@
     --font-weight-bold: 700;
     --tracking-tight: -0.025em;
     --radius-xs: 0.125rem;
-    --radius-sm: 0.25rem;
     --radius-md: 0.375rem;
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --animate-spin: spin 1s linear infinite;
@@ -876,9 +875,6 @@
   .rounded-md {
     border-radius: var(--radius-md);
   }
-  .rounded-sm {
-    border-radius: var(--radius-sm);
-  }
   .rounded-xs {
     border-radius: var(--radius-xs);
   }
@@ -1195,13 +1191,6 @@
       }
     }
   }
-  .hover\:bg-blue-600 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-blue-600);
-      }
-    }
-  }
   .hover\:bg-blue-600\/20 {
     &:hover {
       @media (hover: hover) {
@@ -1216,13 +1205,6 @@
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-gray-600);
-      }
-    }
-  }
-  .hover\:bg-green-600 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-green-600);
       }
     }
   }
@@ -1243,13 +1225,6 @@
       }
     }
   }
-  .hover\:bg-red-600 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-red-600);
-      }
-    }
-  }
   .hover\:bg-red-600\/20 {
     &:hover {
       @media (hover: hover) {
@@ -1257,13 +1232,6 @@
         @supports (color: color-mix(in lab, red, red)) {
           background-color: color-mix(in oklab, var(--color-red-600) 20%, transparent);
         }
-      }
-    }
-  }
-  .hover\:bg-yellow-600 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-yellow-600);
       }
     }
   }
@@ -1578,15 +1546,6 @@
       }
     }
   }
-  .dark\:hover\:bg-blue-400 {
-    &:is(.dark *) {
-      &:hover {
-        @media (hover: hover) {
-          background-color: var(--color-blue-400);
-        }
-      }
-    }
-  }
   .dark\:hover\:bg-blue-400\/20 {
     &:is(.dark *) {
       &:hover {
@@ -1604,15 +1563,6 @@
       &:hover {
         @media (hover: hover) {
           background-color: var(--color-gray-400);
-        }
-      }
-    }
-  }
-  .dark\:hover\:bg-green-400 {
-    &:is(.dark *) {
-      &:hover {
-        @media (hover: hover) {
-          background-color: var(--color-green-400);
         }
       }
     }
@@ -1638,15 +1588,6 @@
       }
     }
   }
-  .dark\:hover\:bg-red-400 {
-    &:is(.dark *) {
-      &:hover {
-        @media (hover: hover) {
-          background-color: var(--color-red-400);
-        }
-      }
-    }
-  }
   .dark\:hover\:bg-red-400\/20 {
     &:is(.dark *) {
       &:hover {
@@ -1655,15 +1596,6 @@
           @supports (color: color-mix(in lab, red, red)) {
             background-color: color-mix(in oklab, var(--color-red-400) 20%, transparent);
           }
-        }
-      }
-    }
-  }
-  .dark\:hover\:bg-yellow-400 {
-    &:is(.dark *) {
-      &:hover {
-        @media (hover: hover) {
-          background-color: var(--color-yellow-400);
         }
       }
     }
