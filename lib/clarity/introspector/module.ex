@@ -168,21 +168,9 @@ defmodule Clarity.Introspector.Module do
 
   @spec build_module_lookup(Clarity.Graph.t(), [module()]) :: %{module() => ModuleVertex.t()}
   defp build_module_lookup(graph, needed_modules) do
-    needed_set = MapSet.new(needed_modules)
-
     graph
-    |> Clarity.Graph.vertices()
-    |> Enum.reduce(%{}, fn
-      %ModuleVertex{module: mod} = vertex, acc ->
-        if MapSet.member?(needed_set, mod) do
-          Map.put(acc, mod, vertex)
-        else
-          acc
-        end
-
-      _, acc ->
-        acc
-    end)
+    |> Clarity.Graph.vertices(type: ModuleVertex, field_in: {:module, needed_modules})
+    |> Map.new(&{&1.module, &1})
   end
 
   @spec get_protocol_info(module :: module()) :: {module(), module()} | nil

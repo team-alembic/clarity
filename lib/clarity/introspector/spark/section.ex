@@ -51,8 +51,8 @@ case Code.ensure_loaded(Spark) do
       @spec find_dsl_vertex(Clarity.Graph.t(), module()) :: Dsl.t() | nil
       defp find_dsl_vertex(graph, dsl_base) do
         graph
-        |> Clarity.Graph.vertices()
-        |> Enum.find(&match?(%Dsl{dsl: ^dsl_base}, &1))
+        |> Clarity.Graph.vertices(type: Dsl, field_equal: {:dsl, dsl_base})
+        |> List.first()
       end
 
       @spec get_section_paths(map()) :: [[atom()]]

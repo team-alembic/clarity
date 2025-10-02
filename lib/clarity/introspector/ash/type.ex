@@ -22,8 +22,8 @@ case Code.ensure_loaded(Ash) do
 
           app_vertex =
             graph
-            |> Clarity.Graph.vertices()
-            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
+            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
+            |> List.first()
 
           type_vertex = %Type{type: module}
 
@@ -62,14 +62,10 @@ case Code.ensure_loaded(Ash) do
 
         # Check if the type vertex already exists in the graph
         graph
-        |> Clarity.Graph.vertices()
-        |> Enum.find(&match?(%Type{type: ^simplified_type}, &1))
+        |> Clarity.Graph.vertices(type: Type, field_equal: {:type, simplified_type})
         |> case do
-          nil ->
-            {:error, :unmet_dependencies}
-
-          existing_vertex ->
-            {:ok, [{:edge, field_vertex, existing_vertex, :type}]}
+          [] -> {:error, :unmet_dependencies}
+          [vertex] -> {:ok, [{:edge, field_vertex, vertex, :type}]}
         end
       end
 

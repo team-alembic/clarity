@@ -316,7 +316,7 @@ defmodule Clarity.GraphTest do
       assert Graph.get_vertex(graph, "nonexistent") == nil
     end
 
-    test "vertices/1 returns all vertices in graph", %{graph: graph, app: app, mod: mod} do
+    test "vertices/2 returns all vertices in graph", %{graph: graph, app: app, mod: mod} do
       Graph.add_vertex(graph, app, %Root{})
       Graph.add_vertex(graph, mod, %Root{})
 
@@ -325,6 +325,21 @@ defmodule Clarity.GraphTest do
       assert %Root{} in vertices
       assert app in vertices
       assert mod in vertices
+
+      assert [] = Graph.vertices(graph, type: Inexistent)
+      assert [%Root{}] = Graph.vertices(graph, type: Root)
+      assert [^app] = Graph.vertices(graph, type: Application)
+      vertices = Graph.vertices(graph, type: [Root, Application])
+      assert %Root{} in vertices
+      assert app in vertices
+      refute mod in vertices
+
+      assert [^app] = Graph.vertices(graph, type: Application, field_equal: {:app, :test_app})
+      assert [] = Graph.vertices(graph, type: Application, field_equal: {:app, :nonexistent})
+
+      assert [^app] = Graph.vertices(graph, type: Application, field_in: {:app, [:test_app]})
+      assert [] = Graph.vertices(graph, type: Application, field_in: {:app, []})
+      assert [] = Graph.vertices(graph, type: Application, field_in: {:app, [:nonexistent]})
     end
 
     test "vertex_count/1 returns correct count", %{graph: graph, app: app, mod: mod} do
