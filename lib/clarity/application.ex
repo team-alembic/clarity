@@ -13,6 +13,7 @@ defmodule Clarity.Application do
     _env ->
       @children [
         {Registry, keys: :duplicate, name: Clarity.PubSub},
+        {Clarity.Telemetry, clarity_server: Clarity.Server},
         Clarity.Server,
         {PartitionSupervisor,
          child_spec: {Clarity.Server.Worker, clarity_server: Clarity.Server},
