@@ -73,9 +73,7 @@ defmodule Clarity.Perspective.Registry do
 
   @spec enhance_lens(Lens.t(), [module()]) :: Lens.t()
   defp enhance_lens(%Lens{} = lens, lensmakers) do
-    Enum.reduce(lensmakers, lens, fn lensmaker, current_lens ->
-      safe_update_lens(lensmaker, current_lens)
-    end)
+    Enum.reduce(lensmakers, lens, &safe_update_lens/2)
   end
 
   @spec safe_update_lens(module(), Lens.t()) :: Lens.t()

@@ -55,8 +55,7 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
              Vertex.Ash.Resource,
              Vertex.Ash.Type,
              Vertex.Phoenix.Endpoint,
-             Vertex.Phoenix.Router,
-             Vertex.Content
+             Vertex.Phoenix.Router
            ] ->
         true
 

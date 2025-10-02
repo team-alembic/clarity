@@ -55,15 +55,36 @@ defmodule Clarity.Perspective.Lensmaker.DebugTest do
     end
 
     test "debug lens content sorter prioritizes graph first, then alphabetical" do
-      alias Clarity.Vertex.Content
-
       lens = Debug.make_lens()
 
       # Create test content
-      graph_content = %Content{id: "graph", name: "Graph", content: {:viz, "test"}}
-      content_a = %Content{id: "content_a", name: "Content A", content: {:markdown, "test"}}
-      content_z = %Content{id: "content_z", name: "Content Z", content: {:markdown, "test"}}
-      content_b = %Content{id: "content_b", name: "Content B", content: {:markdown, "test"}}
+      graph_content = %Clarity.Content{
+        id: "Clarity.Content.Graph",
+        name: "Graph",
+        provider: __MODULE__,
+        live_view?: false
+      }
+
+      content_a = %Clarity.Content{
+        id: "content_a",
+        name: "Content A",
+        provider: __MODULE__,
+        live_view?: false
+      }
+
+      content_z = %Clarity.Content{
+        id: "content_z",
+        name: "Content Z",
+        provider: __MODULE__,
+        live_view?: false
+      }
+
+      content_b = %Clarity.Content{
+        id: "content_b",
+        name: "Content B",
+        provider: __MODULE__,
+        live_view?: false
+      }
 
       # Test graph should come first
       assert lens.content_sorter.(graph_content, content_a) == true

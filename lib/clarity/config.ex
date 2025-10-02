@@ -92,6 +92,17 @@ defmodule Clarity.Config do
     MyApp.MyCustomIntrospector
   ]
   ```
+
+  ### Content Provider Registration (`:clarity_content_providers`)
+
+  Applications can register custom content providers:
+
+  ```elixir
+  config :my_app, :clarity_content_providers, [
+    MyApp.CustomContent,
+    MyApp.InteractiveContent
+  ]
+  ```
   """
 
   @typedoc false
@@ -165,6 +176,15 @@ defmodule Clarity.Config do
     |> Enum.flat_map(&Application.get_all_env/1)
     |> Keyword.get_values(:clarity_introspectors)
     |> List.flatten()
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec list_content_providers() :: [module()]
+  def list_content_providers do
+    Application.loaded_applications()
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.flat_map(&Application.get_env(&1, :clarity_content_providers, []))
     |> Enum.uniq()
   end
 

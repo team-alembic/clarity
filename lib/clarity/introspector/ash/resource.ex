@@ -7,7 +7,6 @@ case Code.ensure_loaded(Ash) do
 
       alias Ash.Resource.Info
       alias Clarity.Graph
-      alias Clarity.Introspector.Ash.Resource.OverviewContent
       alias Clarity.Vertex.Ash.Domain
       alias Clarity.Vertex.Ash.Resource
       alias Clarity.Vertex.Module
@@ -17,9 +16,6 @@ case Code.ensure_loaded(Ash) do
 
       @impl Clarity.Introspector
       def introspect_vertex(%Module{module: module} = module_vertex, graph) do
-        # TODO: Remove Internal Spark API. Not using Spark.extensions/1 because
-        # it hangs for some modules.
-
         resource? =
           case module.module_info(:attributes)[:spark_is] do
             nil -> false
@@ -31,24 +27,18 @@ case Code.ensure_loaded(Ash) do
 
           with {:ok, domain_vertex} <- get_domain_vertex(graph, domain) do
             resource_vertex = %Resource{resource: module}
-            overview_content = OverviewContent.generate_content(module)
-
-            domain_edge =
-              if domain_vertex, do: [{:edge, domain_vertex, resource_vertex, :resource}], else: []
 
             {:ok,
              [
                {:vertex, resource_vertex},
-               {:vertex, overview_content},
-               {:edge, module_vertex, resource_vertex, :resource},
-               {:edge, resource_vertex, overview_content, :content}
-             ] ++ domain_edge ++ Clarity.Introspector.moduledoc_content(module, resource_vertex)}
+               {:edge, domain_vertex, resource_vertex, :resource},
+               {:edge, module_vertex, resource_vertex, :resource}
+             ]}
           end
         else
           {:ok, []}
         end
       rescue
-        # Happens if module is not loaded
         UndefinedFunctionError -> {:ok, []}
       end
 

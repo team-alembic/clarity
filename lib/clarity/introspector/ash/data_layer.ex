@@ -35,7 +35,6 @@ case Code.ensure_loaded(Ash) do
            {:edge, app_vertex, data_layer_vertex, :data_layer},
            {:edge, resource_vertex, data_layer_vertex, :data_layer},
            {:edge, module_vertex, data_layer_vertex, :module}
-           | Clarity.Introspector.moduledoc_content(data_layer, data_layer_vertex)
          ]}
       end
     end

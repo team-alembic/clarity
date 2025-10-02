@@ -56,7 +56,7 @@ defmodule Clarity.CoreComponents do
           module={Clarity.LensSwitcherComponent}
           id="lens-switcher"
           prefix={@prefix}
-          current_lens={@lens}
+          lens={@lens}
         />
         <.theme_toggle id="header-theme-toggle" theme={@theme} />
         <button
@@ -87,7 +87,7 @@ defmodule Clarity.CoreComponents do
 
   attr :tree, :any, required: true, doc: "The navigation tree digraph"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
-  attr :current, :any, required: true, doc: "The currently selected node in the tree"
+  attr :node, :any, required: true, doc: "The currently selected node in the tree"
 
   attr :lens, Lens,
     required: true,
@@ -103,7 +103,7 @@ defmodule Clarity.CoreComponents do
       <.navigation_tree
         tree={@tree}
         prefix={@prefix}
-        current={@current}
+        node={@node}
         lens={@lens}
         breadcrumbs={@breadcrumbs}
       />
@@ -113,7 +113,7 @@ defmodule Clarity.CoreComponents do
 
   attr :tree, :any, required: true, doc: "The navigation tree digraph"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
-  attr :current, :any, required: true, doc: "The currently selected node in the tree"
+  attr :node, :any, required: true, doc: "The currently selected node in the tree"
 
   attr :lens, Lens,
     required: true,
@@ -133,7 +133,7 @@ defmodule Clarity.CoreComponents do
           <.navigation_node
             tree={vertex}
             prefix={@prefix}
-            current={@current}
+            node={@node}
             lens={@lens}
             breadcrumbs={@breadcrumbs}
           />
@@ -150,7 +150,7 @@ defmodule Clarity.CoreComponents do
     required: true,
     doc: "Current lens for perspective switching"
 
-  attr :current, :any, required: true, doc: "The currently selected node in the tree"
+  attr :node, :any, required: true, doc: "The currently selected node in the tree"
   attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
 
   @spec navigation_node(assigns :: Socket.assigns()) :: Rendered.t()
@@ -160,10 +160,10 @@ defmodule Clarity.CoreComponents do
       <details open={Enum.any?(@breadcrumbs, &(&1 == @tree.vertex))}>
         <summary>
           <.link
-            patch={Path.join([@prefix, @lens.id, Clarity.Vertex.unique_id(@tree.vertex)])}
+            patch={Path.join([@prefix, @lens.id, Clarity.Vertex.id(@tree.vertex)])}
             class={
               "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
-              if @tree.vertex == @current, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
+              if @tree.vertex == @node, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
             }
           >
             <.vertex_name vertex={@tree.vertex} />
@@ -173,7 +173,7 @@ defmodule Clarity.CoreComponents do
           <.navigation_tree
             tree={@tree}
             prefix={@prefix}
-            current={@current}
+            node={@node}
             lens={@lens}
             breadcrumbs={@breadcrumbs}
           />
@@ -181,10 +181,10 @@ defmodule Clarity.CoreComponents do
       </details>
     <% else %>
       <.link
-        patch={Path.join([@prefix, @lens.id, Clarity.Vertex.unique_id(@tree.vertex)])}
+        patch={Path.join([@prefix, @lens.id, Clarity.Vertex.id(@tree.vertex)])}
         class={
               "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
-              if @tree.vertex == @current, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
+              if @tree.vertex == @node, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
             }
       >
         <.vertex_name vertex={@tree.vertex} />
@@ -198,7 +198,7 @@ defmodule Clarity.CoreComponents do
   @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
   def vertex_name(assigns) do
     ~H"""
-    <span data-tooltip={"tooltip-#{Vertex.unique_id(@vertex)}"}>{Vertex.render_name(@vertex)}</span>
+    <span data-tooltip={"tooltip-#{Vertex.id(@vertex)}"}>{Vertex.name(@vertex)}</span>
     """
   end
 

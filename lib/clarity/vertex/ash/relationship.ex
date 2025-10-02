@@ -14,31 +14,32 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:relationship, :resource]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{relationship: %{name: name}, resource: resource}),
-        do: "relationship:#{inspect(resource)}:#{name}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{relationship: %{name: name}, resource: resource}),
-        do: [inspect(resource), "_", Atom.to_string(name)]
+      def id(%@for{relationship: %{name: name}, resource: resource}),
+        do: Util.id(@for, [resource, name])
 
       @impl Clarity.Vertex
-      def graph_group(%{resource: resource}), do: [inspect(resource), inspect(Relationships)]
+      def type_label(%@for{relationship: %mod{}}), do: inspect(mod)
 
       @impl Clarity.Vertex
-      def type_label(%{relationship: %mod{}}), do: inspect(mod)
+      def name(%@for{relationship: %{name: name}}), do: Atom.to_string(name)
+    end
 
-      @impl Clarity.Vertex
-      def render_name(%{relationship: %{name: name}}), do: Atom.to_string(name)
+    defimpl Clarity.Vertex.GraphGroupProvider do
+      @impl Clarity.Vertex.GraphGroupProvider
+      def graph_group(%@for{resource: resource}), do: [inspect(resource), inspect(Relationships)]
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "rarrow"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "rarrow"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(_vertex), do: []
-
-      @impl Clarity.Vertex
-      def source_location(%{relationship: relationship, resource: resource}) do
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{relationship: relationship, resource: resource}) do
         SourceLocation.from_spark_entity(resource, relationship)
       end
     end

@@ -7,9 +7,9 @@ defmodule Clarity.Perspective.Lens do
   default content ordering.
   """
 
+  alias Clarity.Content
   alias Clarity.Graph
   alias Clarity.Vertex
-  alias Clarity.Vertex.Content
   alias Clarity.Vertex.Root
 
   @type icon_fn() :: (-> Phoenix.LiveView.Rendered.t())

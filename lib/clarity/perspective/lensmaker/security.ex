@@ -50,8 +50,7 @@ defmodule Clarity.Perspective.Lensmaker.Security do
              Vertex.Ash.Domain,
              Vertex.Ash.Relationship,
              Vertex.Ash.Resource,
-             Vertex.Phoenix.Router,
-             Vertex.Content
+             Vertex.Phoenix.Router
            ] ->
         true
 

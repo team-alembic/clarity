@@ -72,12 +72,8 @@ defmodule Clarity.Graph.DOT do
   defp render_graph(clarity_graph, options) do
     clarity_graph
     |> Clarity.Graph.vertices()
-    |> Enum.reject(fn
-      %Vertex.Root{} -> true
-      %Vertex.Content{} -> true
-      _ -> false
-    end)
-    |> Enum.map(&{Vertex.graph_group(&1), &1})
+    |> Enum.reject(&match?(%Vertex.Root{}, &1))
+    |> Enum.map(&{Vertex.GraphGroupProvider.graph_group(&1), &1})
     |> render_grouped_vertices(options)
   end
 
@@ -130,12 +126,12 @@ defmodule Clarity.Graph.DOT do
           raw("<I><FONT POINT-SIZE=\"8\">"),
           Vertex.type_label(vertex),
           raw("</FONT></I><BR />"),
-          Vertex.render_name(vertex)
+          Vertex.name(vertex)
         ]),
         ", shape = ",
-        Vertex.dot_shape(vertex),
+        Vertex.GraphShapeProvider.shape(vertex),
         ", URL = \"#",
-        Vertex.unique_id(vertex),
+        Vertex.id(vertex),
         "\"",
         case {vertex in options[:highlight], options[:theme]} do
           {true, :dark} -> ", style = filled, fillcolor = \"#ff5757\", color = \"#ff5757\""
@@ -193,9 +189,7 @@ defmodule Clarity.Graph.DOT do
   end
 
   @spec encode_vertex_id(vertex :: Vertex.t()) :: iodata()
-  defp encode_vertex_id(%vertex_module{} = vertex) do
-    encode_id([inspect(vertex_module), "_", vertex |> Vertex.graph_id() |> to_string()])
-  end
+  defp encode_vertex_id(vertex), do: vertex |> Vertex.id() |> encode_id()
 
   @spec encode_id(id :: iodata()) :: iodata()
   defp encode_id(id) do

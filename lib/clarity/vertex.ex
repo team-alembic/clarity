@@ -6,24 +6,26 @@ defprotocol Clarity.Vertex do
   @doc """
   Returns a unique identifier for the vertex.
 
-  Used for identifying vertexs in the graph, including in the UI of the dashboard.
-  """
-  @spec unique_id(t) :: String.t()
-  def unique_id(vertex)
+  Used for identifying vertices in the graph, including in the UI of the dashboard.
 
-  @doc """
-  Returns a graph ID for the vertex, which is used to identify the vertex in the
-  graph.
-  """
-  @spec graph_id(t) :: iodata()
-  def graph_id(vertex)
+  ## Implementation
 
-  @doc """
-  Returns the group to which the vertex belongs in the graph.
-  This is used for grouping vertexs in the visualization.
+  Implementations should use `Clarity.Vertex.Util.id/2` to generate the ID:
+
+      defimpl Clarity.Vertex do
+        alias Clarity.Vertex.Util
+
+        @impl Clarity.Vertex
+        def id(vertex) do
+          Util.id(@for, [identifying_parts])
+        end
+      end
+
+  Where `@for` refers to the struct module being implemented for, and `identifying_parts`
+  is a list of values that uniquely identify this vertex (e.g., module names, atoms, strings).
   """
-  @spec graph_group(t) :: [iodata()]
-  def graph_group(vertex)
+  @spec id(t) :: String.t()
+  def id(vertex)
 
   @doc """
   Returns the label for the type of the vertex.
@@ -33,37 +35,9 @@ defprotocol Clarity.Vertex do
   def type_label(vertex)
 
   @doc """
-  Renders the name of the vertex for display purposes.
+  Returns the name of the vertex for display purposes.
   This is typically used in the UI to show the name of the vertex.
   """
-  @spec render_name(t) :: String.t()
-  def render_name(vertex)
-
-  @doc """
-  Returns the shape to be used for the vertex in the graph visualization.
-  This is used to determine how the vertex will be rendered in the graph.
-  """
-  @spec dot_shape(t) :: String.t()
-  def dot_shape(vertex)
-
-  @doc """
-  Returns the overview content for the vertex.
-
-  Used for tooltips and other informational displays in the UI.
-
-  Careful: This component is rendered for every vertex in the graph, so it
-  should be efficient.
-  """
-  @spec markdown_overview(t) :: iodata() | nil
-  def markdown_overview(vertex)
-
-  @doc """
-  Returns the source location for the vertex, if available.
-
-  This is used to link the vertex to its source location in the IDE.
-  Returns a SourceLocation struct containing application, module, and 
-  annotation information, or nil if no source location is available.
-  """
-  @spec source_location(t) :: Clarity.SourceLocation.t() | nil
-  def source_location(vertex)
+  @spec name(t) :: String.t()
+  def name(vertex)
 end

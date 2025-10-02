@@ -13,26 +13,38 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:domain]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{domain: domain}), do: "domain:#{inspect(domain)}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{domain: domain}), do: inspect(domain)
-
-      @impl Clarity.Vertex
-      def graph_group(_vertex), do: []
+      def id(%@for{domain: domain}), do: Util.id(@for, [domain])
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: inspect(Ash.Domain)
 
       @impl Clarity.Vertex
-      def render_name(%{domain: domain}), do: inspect(domain)
+      def name(%@for{domain: domain}), do: inspect(domain)
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "folder"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "folder"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(vertex) do
+    defimpl Clarity.Vertex.ModuleProvider do
+      @impl Clarity.Vertex.ModuleProvider
+      def module(%@for{domain: domain}), do: domain
+    end
+
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{domain: module}) do
+        SourceLocation.from_module(module)
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(vertex) do
         [
           "`",
           inspect(vertex.domain),
@@ -46,11 +58,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               []
           end
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{domain: module}) do
-        SourceLocation.from_module(module)
       end
     end
   end

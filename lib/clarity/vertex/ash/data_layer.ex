@@ -13,26 +13,38 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:data_layer]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{data_layer: data_layer}), do: "data_layer:#{inspect(data_layer)}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{data_layer: data_layer}), do: inspect(data_layer)
-
-      @impl Clarity.Vertex
-      def graph_group(_vertex), do: []
+      def id(%@for{data_layer: data_layer}), do: Util.id(@for, [data_layer])
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: inspect(Ash.DataLayer)
 
       @impl Clarity.Vertex
-      def render_name(%{data_layer: data_layer}), do: inspect(data_layer)
+      def name(%@for{data_layer: data_layer}), do: inspect(data_layer)
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "cylinder"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "cylinder"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(vertex) do
+    defimpl Clarity.Vertex.ModuleProvider do
+      @impl Clarity.Vertex.ModuleProvider
+      def module(%@for{data_layer: data_layer}), do: data_layer
+    end
+
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{data_layer: module}) do
+        SourceLocation.from_module(module)
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(vertex) do
         [
           "`",
           inspect(vertex.data_layer),
@@ -46,11 +58,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               []
           end
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{data_layer: module}) do
-        SourceLocation.from_module(module)
       end
     end
   end

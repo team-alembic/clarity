@@ -35,7 +35,7 @@ defmodule Clarity.Server.Task do
   """
   @spec describe(t()) :: String.t()
   def describe(%__MODULE__{vertex: vertex, introspector: introspector}) do
-    vertex_name = Clarity.Vertex.render_name(vertex)
+    vertex_name = Clarity.Vertex.name(vertex)
     introspector_name = introspector |> Module.split() |> List.last()
     "Introspect #{vertex_name} with #{introspector_name}"
   end

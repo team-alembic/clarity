@@ -29,7 +29,6 @@ case Code.ensure_loaded(Spark) do
              {:vertex, extension_vertex},
              {:edge, app_vertex, extension_vertex, :spark_extension},
              {:edge, module_vertex, extension_vertex, :spark_extension}
-             | Clarity.Introspector.moduledoc_content(module, extension_vertex)
            ]}
         else
           {:ok, []}

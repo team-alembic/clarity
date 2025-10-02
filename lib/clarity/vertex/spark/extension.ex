@@ -13,26 +13,38 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
     defstruct [:extension]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{extension: extension}), do: "spark_extension:#{inspect(extension)}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{extension: extension}), do: inspect(extension)
-
-      @impl Clarity.Vertex
-      def graph_group(_vertex), do: []
+      def id(%@for{extension: extension}), do: Util.id(@for, [extension])
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: "Spark Extension"
 
       @impl Clarity.Vertex
-      def render_name(%{extension: extension}), do: inspect(extension)
+      def name(%@for{extension: extension}), do: inspect(extension)
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "component"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "component"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(vertex) do
+    defimpl Clarity.Vertex.ModuleProvider do
+      @impl Clarity.Vertex.ModuleProvider
+      def module(%@for{extension: extension}), do: extension
+    end
+
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{extension: module}) do
+        SourceLocation.from_module(module)
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(vertex) do
         [
           "`",
           inspect(vertex.extension),
@@ -46,11 +58,6 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
               []
           end
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{extension: module}) do
-        SourceLocation.from_module(module)
       end
     end
   end

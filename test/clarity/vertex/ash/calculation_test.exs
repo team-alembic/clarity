@@ -7,55 +7,51 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
   alias Demo.Accounts.User
   alias Spark.Dsl.Entity
 
-  describe "Clarity.Vertex protocol implementation for Ash.Calculation" do
-    setup do
-      # Get a real calculation from the Demo.Accounts.User resource
-      calculation = User |> Info.calculations() |> List.first()
+  setup do
+    calculation = User |> Info.calculations() |> List.first()
 
-      vertex = %Calculation{
-        calculation: calculation,
-        resource: User
-      }
+    vertex = %Calculation{
+      calculation: calculation,
+      resource: User
+    }
 
-      {:ok, vertex: vertex, calculation: calculation}
+    {:ok, vertex: vertex, calculation: calculation}
+  end
+
+  describe inspect(&Vertex.id/1) do
+    test "returns correct unique identifier", %{vertex: vertex} do
+      assert Vertex.id(vertex) == "ash-calculation:demo-accounts-user:is-super-admin"
     end
+  end
 
-    test "unique_id/1 returns correct unique identifier", %{vertex: vertex, calculation: calculation} do
-      assert Vertex.unique_id(vertex) == "calculation:Demo.Accounts.User:#{calculation.name}"
-    end
-
-    test "graph_id/1 returns correct graph identifier", %{vertex: vertex, calculation: calculation} do
-      result = Vertex.graph_id(vertex)
-      assert IO.iodata_to_binary(result) == "Demo.Accounts.User_#{calculation.name}"
-    end
-
-    test "graph_group/1 returns resource and calculation group", %{vertex: vertex} do
-      result = Vertex.graph_group(vertex)
-      assert result == ["Demo.Accounts.User", "Ash.Resource.Calculation"]
-    end
-
-    test "type_label/1 returns calculation module name", %{vertex: vertex} do
+  describe inspect(&Vertex.type_label/1) do
+    test "returns calculation module name", %{vertex: vertex} do
       assert Vertex.type_label(vertex) == "Ash.Resource.Calculation"
     end
+  end
 
-    test "render_name/1 returns calculation name", %{vertex: vertex, calculation: calculation} do
-      assert Vertex.render_name(vertex) == to_string(calculation.name)
+  describe inspect(&Vertex.name/1) do
+    test "returns calculation name", %{vertex: vertex, calculation: calculation} do
+      assert Vertex.name(vertex) == to_string(calculation.name)
     end
+  end
 
-    test "dot_shape/1 returns correct shape", %{vertex: vertex} do
-      assert Vertex.dot_shape(vertex) == "promoter"
+  describe inspect(&Clarity.Vertex.GraphGroupProvider.graph_group/1) do
+    test "returns resource and calculation group", %{vertex: vertex} do
+      result = Vertex.GraphGroupProvider.graph_group(vertex)
+      assert result == ["Demo.Accounts.User", "Ash.Resource.Calculation"]
     end
+  end
 
-    test "markdown_overview/1 returns formatted overview with description", %{vertex: vertex, calculation: calculation} do
-      overview = Vertex.markdown_overview(vertex)
-      overview_string = IO.iodata_to_binary(overview)
-
-      assert overview_string =~ "Attribute: `:#{calculation.name}`"
-      assert overview_string =~ "Resource: `Demo.Accounts.User`"
+  describe inspect(&Clarity.Vertex.GraphShapeProvider.shape/1) do
+    test "returns correct shape", %{vertex: vertex} do
+      assert Vertex.GraphShapeProvider.shape(vertex) == "promoter"
     end
+  end
 
-    test "source_location/1 returns SourceLocation from calculation entity", %{vertex: vertex, calculation: calculation} do
-      source_location = Vertex.source_location(vertex)
+  describe inspect(&Clarity.Vertex.SourceLocationProvider.source_location/1) do
+    test "returns SourceLocation from calculation entity", %{vertex: vertex, calculation: calculation} do
+      source_location = Vertex.SourceLocationProvider.source_location(vertex)
 
       assert %Clarity.SourceLocation{} = source_location
       assert source_location.anno == Entity.anno(calculation)
@@ -64,23 +60,15 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
     end
   end
 
-  describe "Calculation struct" do
-    test "enforces required keys" do
-      assert_raise ArgumentError, fn ->
-        struct!(Calculation, %{})
-      end
+  describe inspect(&Clarity.Vertex.TooltipProvider.tooltip/1) do
+    test "returns formatted overview with description", %{vertex: vertex, calculation: calculation} do
+      overview = Vertex.TooltipProvider.tooltip(vertex)
+      overview_string = IO.iodata_to_binary(overview)
+
+      assert overview_string =~ "Attribute: `:#{calculation.name}`"
+      assert overview_string =~ "Resource: `Demo.Accounts.User`"
     end
 
-    test "creates struct with required calculation and resource fields" do
-      calculation = %Ash.Resource.Calculation{name: :full_name, type: :string}
-      vertex = %Calculation{calculation: calculation, resource: User}
-
-      assert vertex.calculation == calculation
-      assert vertex.resource == User
-    end
-  end
-
-  describe "markdown_overview with different calculation types" do
     test "handles calculation without description" do
       calculation = %Ash.Resource.Calculation{
         name: :computed_value,
@@ -90,13 +78,12 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
       }
 
       vertex = %Calculation{calculation: calculation, resource: User}
-      overview = Vertex.markdown_overview(vertex)
+      overview = Vertex.TooltipProvider.tooltip(vertex)
       overview_string = IO.iodata_to_binary(overview)
 
       assert overview_string =~ "Attribute: `:computed_value`"
       assert overview_string =~ "Type: `:integer`"
       assert overview_string =~ "Public: `false`"
-      # Should not contain extra newlines from missing description
       refute overview_string =~ "\n\n\n"
     end
 
@@ -109,7 +96,7 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
       }
 
       vertex = %Calculation{calculation: calculation, resource: User}
-      overview = Vertex.markdown_overview(vertex)
+      overview = Vertex.TooltipProvider.tooltip(vertex)
       overview_string = IO.iodata_to_binary(overview)
 
       assert overview_string =~ "Public: `false`"

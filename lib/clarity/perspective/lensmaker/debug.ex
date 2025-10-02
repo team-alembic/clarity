@@ -11,6 +11,7 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
 
   import Phoenix.Component
 
+  alias Clarity.Content
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
@@ -28,8 +29,8 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
       end,
       filter: &filter/1,
       content_sorter: fn
-        %Vertex.Content{id: "graph"}, _b -> true
-        _a, %Vertex.Content{id: "graph"} -> false
+        %Content{provider: Content.Graph}, _b -> true
+        _a, %Content{provider: Content.Graph} -> false
         a, b -> Lens.sort_alphabetically_by_id(a, b)
       end
     }

@@ -32,26 +32,26 @@ defmodule Clarity.Vertex.Application do
   end
 
   defimpl Clarity.Vertex do
-    @impl Clarity.Vertex
-    def unique_id(%{app: app}), do: "application:#{app}"
+    alias Clarity.Vertex.Util
 
     @impl Clarity.Vertex
-    def graph_id(%{app: app}), do: Atom.to_string(app)
-
-    @impl Clarity.Vertex
-    def graph_group(_vertex), do: []
+    def id(%@for{app: app}), do: Util.id(@for, [app])
 
     @impl Clarity.Vertex
     def type_label(_vertex), do: inspect(Application)
 
     @impl Clarity.Vertex
-    def render_name(%{app: app}), do: Atom.to_string(app)
+    def name(%@for{app: app}), do: Atom.to_string(app)
+  end
 
-    @impl Clarity.Vertex
-    def dot_shape(_vertex), do: "house"
+  defimpl Clarity.Vertex.GraphShapeProvider do
+    @impl Clarity.Vertex.GraphShapeProvider
+    def shape(_vertex), do: "house"
+  end
 
-    @impl Clarity.Vertex
-    def markdown_overview(vertex),
+  defimpl Clarity.Vertex.TooltipProvider do
+    @impl Clarity.Vertex.TooltipProvider
+    def tooltip(vertex),
       do: [
         "`",
         inspect(vertex.app),
@@ -62,8 +62,5 @@ defmodule Clarity.Vertex.Application do
         to_string(vertex.version),
         "`"
       ]
-
-    @impl Clarity.Vertex
-    def source_location(_vertex), do: nil
   end
 end

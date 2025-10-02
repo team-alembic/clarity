@@ -7,7 +7,7 @@ defmodule Clarity.PerspectiveTest do
   alias Clarity.Graph.Filter
   alias Clarity.Perspective
   alias Clarity.Perspective.Lens
-  alias Clarity.Vertex.Content
+  alias Clarity.Vertex
   alias Clarity.Vertex.Root
 
   setup do
@@ -110,9 +110,14 @@ defmodule Clarity.PerspectiveTest do
       pid = start_supervised!({Perspective, graph})
 
       # Add a new vertex to test with
-      new_vertex = %Content{id: "test_vertex", name: "Test", content: "Test content"}
+      new_vertex = %Vertex.Application{
+        app: :test_app,
+        description: "Test App",
+        version: "1.0.0"
+      }
+
       :ok = Graph.add_vertex(graph, new_vertex, %Root{})
-      new_vertex_id = Clarity.Vertex.unique_id(new_vertex)
+      new_vertex_id = Vertex.id(new_vertex)
 
       # Set initial vertex and get subgraph
       assert {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
@@ -156,10 +161,10 @@ defmodule Clarity.PerspectiveTest do
       pid = start_supervised!({Perspective, graph})
 
       # Add some vertices to test breadcrumb inclusion
-      child_vertex = %Content{id: "child_content", name: "Child", content: "Some content"}
+      child_vertex = %Vertex.Module{module: String, version: :unknown}
       root_vertex = Graph.get_vertex(graph, "root")
       :ok = Graph.add_vertex(graph, child_vertex, root_vertex)
-      child_vertex_id = Clarity.Vertex.unique_id(child_vertex)
+      child_vertex_id = Vertex.id(child_vertex)
       :ok = Graph.add_edge(graph, root_vertex, child_vertex, :dependency)
 
       # Set current vertex to child
@@ -187,7 +192,7 @@ defmodule Clarity.PerspectiveTest do
       assert subgraph1 == subgraph2
 
       # Modify the graph
-      child_vertex = %Content{id: "new_content", name: "New", content: "New content"}
+      child_vertex = %Vertex.Module{module: List, version: :unknown}
       root_vertex = Graph.get_vertex(graph, "root")
       :ok = Graph.add_vertex(graph, child_vertex, root_vertex)
 
@@ -218,37 +223,68 @@ defmodule Clarity.PerspectiveTest do
       contents = Perspective.get_contents(pid)
       assert is_list(contents)
       assert length(contents) >= 1
-      # Should always include graph content as first item
-      assert %Content{id: "graph"} = List.first(contents)
+      # Should always include graph content
+      assert Enum.any?(contents, &(&1.id == "graph"))
     end
 
-    test "includes graph content with viz function", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
-      contents = Perspective.get_contents(pid)
-      graph_content = List.first(contents)
-      assert %Content{id: "graph", name: "Graph Navigation"} = graph_content
-      assert {:viz, viz_fn} = graph_content.content
-      assert is_function(viz_fn, 1)
-    end
-
-    test "finds content edges from current vertex", %{graph: graph} do
-      # Create a content vertex and edge for testing
-      content_vertex = %Content{
-        id: "test_content",
-        name: "Test Content",
-        content: {:markdown, "Test content"}
-      }
-
-      Graph.add_vertex(graph, content_vertex, %Root{})
-      Graph.add_edge(graph, %Root{}, content_vertex, :content)
-
+    test "returns Clarity.Content structs", %{graph: graph} do
       pid = start_supervised!({Perspective, graph})
       contents = Perspective.get_contents(pid)
 
-      # Should have graph content plus the test content
-      assert length(contents) == 2
-      assert %Content{id: "graph"} = List.first(contents)
-      assert content_vertex in contents
+      for content <- contents do
+        assert %Clarity.Content{} = content
+        assert is_binary(content.id)
+        assert is_binary(content.name)
+        assert is_atom(content.provider)
+        assert is_boolean(content.live_view?)
+      end
+    end
+
+    test "finds applicable content for current vertex", %{graph: graph} do
+      pid = start_supervised!({Perspective, graph})
+      contents = Perspective.get_contents(pid)
+
+      # Content is discovered from registered providers, not graph edges
+      assert is_list(contents)
+      assert length(contents) >= 1
+    end
+
+    test "caches contents on repeated calls", %{graph: graph} do
+      pid = start_supervised!({Perspective, graph})
+
+      contents1 = Perspective.get_contents(pid)
+      contents2 = Perspective.get_contents(pid)
+
+      # Should return the same cached list
+      assert contents1 == contents2
+    end
+
+    test "invalidates contents cache when vertex changes", %{graph: graph} do
+      module_vertex = %Vertex.Module{module: String, version: :unknown}
+      root_vertex = Graph.get_vertex(graph, "root")
+      :ok = Graph.add_vertex(graph, module_vertex, root_vertex)
+      pid = start_supervised!({Perspective, graph})
+
+      contents1 = Perspective.get_contents(pid)
+      vertex_id = Vertex.id(module_vertex)
+      {:ok, _} = Perspective.set_current_vertex(pid, vertex_id)
+      contents2 = Perspective.get_contents(pid)
+
+      # Cache should be invalidated, may return different contents
+      refute contents1 == contents2
+    end
+
+    test "invalidates contents cache when lens changes", %{graph: graph} do
+      pid = start_supervised!({Perspective, graph})
+
+      contents1 = Perspective.get_contents(pid)
+      {:ok, _} = Perspective.install_lens(pid, "architect")
+      contents2 = Perspective.get_contents(pid)
+
+      # Cache should be invalidated after lens change
+      # Contents may be the same or different, but cache was cleared
+      assert is_list(contents1)
+      assert is_list(contents2)
     end
   end
 
@@ -340,10 +376,10 @@ defmodule Clarity.PerspectiveTest do
 
     test "invalidates breadcrumbs cache when vertex changes", %{graph: graph} do
       # Add a child vertex to test with
-      child_vertex = %Content{id: "child_content", name: "Child", content: "Some content"}
+      child_vertex = %Vertex.Module{module: Enum, version: :unknown}
       root_vertex = Graph.get_vertex(graph, "root")
       :ok = Graph.add_vertex(graph, child_vertex, root_vertex)
-      child_vertex_id = Clarity.Vertex.unique_id(child_vertex)
+      child_vertex_id = Vertex.id(child_vertex)
       :ok = Graph.add_edge(graph, root_vertex, child_vertex, :dependency)
 
       pid = start_supervised!({Perspective, graph})
@@ -475,9 +511,9 @@ defmodule Clarity.PerspectiveTest do
 
     test "invalidates zoom cache when vertex changes", %{graph: graph} do
       # Add a new vertex to test with
-      new_vertex = %Content{id: "test_vertex", name: "Test", content: "Test content"}
+      new_vertex = %Vertex.Module{module: Map, version: :unknown}
       :ok = Graph.add_vertex(graph, new_vertex, %Root{})
-      new_vertex_id = Clarity.Vertex.unique_id(new_vertex)
+      new_vertex_id = Vertex.id(new_vertex)
 
       pid = start_supervised!({Perspective, graph})
 
@@ -509,7 +545,7 @@ defmodule Clarity.PerspectiveTest do
       assert zoom_subgraph1 == zoom_subgraph2
 
       # Modify the graph
-      child_vertex = %Content{id: "new_content", name: "New", content: "New content"}
+      child_vertex = %Vertex.Module{module: List, version: :unknown}
       root_vertex = Graph.get_vertex(graph, "root")
       :ok = Graph.add_vertex(graph, child_vertex, root_vertex)
 

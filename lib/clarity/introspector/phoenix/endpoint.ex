@@ -27,7 +27,6 @@ case Code.ensure_loaded(Phoenix.Endpoint) do
              {:vertex, endpoint_vertex},
              {:edge, module_vertex, endpoint_vertex, "endpoint"},
              {:edge, app_vertex, endpoint_vertex, "endpoint"}
-             | Clarity.Introspector.moduledoc_content(module, endpoint_vertex)
            ]}
         else
           {:ok, []}

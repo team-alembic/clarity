@@ -75,18 +75,26 @@ defmodule Clarity do
       # Unsubscribe later
       unsubscribe.()
   """
-  @spec subscribe(GenServer.server(), subscription_topic() | [subscription_topic()]) ::
+  @spec subscribe(
+          GenServer.server(),
+          subscription_topic() | [subscription_topic()],
+          reference() | nil
+        ) ::
           unsubscribe()
-  def subscribe(server \\ Clarity.Server, topics) do
+  def subscribe(server \\ Clarity.Server, topics, ref \\ nil) do
     topics = List.wrap(topics)
 
     Enum.each(topics, fn topic ->
-      {:ok, _} = Registry.register(Clarity.PubSub, {server, topic}, [])
+      {:ok, _} = Registry.register(Clarity.PubSub, {server, topic}, ref)
     end)
 
     fn ->
-      Enum.each(topics, fn topic ->
-        Registry.unregister(Clarity.PubSub, {server, topic})
+      Enum.each(topics, fn
+        topic when ref == nil ->
+          Registry.unregister(Clarity.PubSub, {server, topic})
+
+        topic ->
+          Registry.unregister_match(Clarity.PubSub, {server, topic}, ref)
       end)
     end
   end
@@ -122,7 +130,9 @@ defmodule Clarity do
   end
 
   def get(server, :complete) do
-    unsubscribe = subscribe(server, :work_completed)
+    ref = make_ref()
+
+    unsubscribe = subscribe(server, :work_completed, ref)
 
     try do
       case GenServer.call(server, :get) do
@@ -131,7 +141,7 @@ defmodule Clarity do
 
         _clarity ->
           receive do
-            {:clarity, :work_completed} ->
+            {:clarity, ^ref, :work_completed} ->
               GenServer.call(server, :get)
           after
             60_000 ->

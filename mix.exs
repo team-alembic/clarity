@@ -68,6 +68,12 @@ defmodule Clarity.MixProject do
           Clarity.Perspective.Lensmaker.Security,
           Clarity.Perspective.Lensmaker.Debug
         ],
+        clarity_content_providers: [
+          Clarity.Content.Graph,
+          Clarity.Content.Moduledoc,
+          Clarity.Content.Ash.DomainOverview,
+          Clarity.Content.Ash.ResourceOverview
+        ],
         default_perspective_lens: "architect"
       ]
     ]
@@ -149,6 +155,7 @@ defmodule Clarity.MixProject do
       logo: "priv/static/images/logo.svg",
       assets: %{"docs/assets" => "docs/assets", "priv/static/images" => "priv/static/images"},
       source_ref: "v#{@version}",
+      nesting: [Clarity.Perspective, Clarity.Vertex],
       groups_for_modules: [
         Perspective: [
           ~r/^Clarity\.Perspective/
@@ -156,8 +163,27 @@ defmodule Clarity.MixProject do
         Graph: [
           ~r/^Clarity\.Graph/
         ],
+        "Vertex Protocols": [
+          Clarity.Vertex,
+          ~r/^Clarity\.Vertex\.(.+)Provider$/
+        ],
         Vertices: [
-          ~r/^Clarity\.Vertex/
+          ~r/^Clarity\.Vertex(?!\.(Ash|Spark|Phoenix))/
+        ],
+        Content: [
+          ~r/^Clarity\.Content/
+        ],
+        Components: [
+          ~r/^Clarity\..+Component/
+        ],
+        "Ash Integration": [
+          ~r/\.Ash\./
+        ],
+        "Spark Integration": [
+          ~r/\.Spark\./
+        ],
+        "Phoenix Integration": [
+          ~r/\.Phoenix\./
         ]
       ]
     ]

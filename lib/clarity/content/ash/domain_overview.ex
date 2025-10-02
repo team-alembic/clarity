@@ -1,18 +1,30 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
-  defmodule Clarity.Introspector.Ash.Domain.OverviewContent do
-    @moduledoc false
+  defmodule Clarity.Content.Ash.DomainOverview do
+    @moduledoc """
+    Content provider for Ash Domain overview.
+
+    Displays comprehensive information about an Ash domain including its resources.
+    """
+
+    @behaviour Clarity.Content
 
     alias Ash.Domain.Info
-    alias Clarity.Vertex.Content
+    alias Clarity.Vertex.Ash.Domain
+    alias Clarity.Vertex.Util
 
-    @doc false
-    @spec generate_content(Ash.Domain.t()) :: Content.t()
-    def generate_content(domain) do
-      %Content{
-        id: "#{inspect(domain)}_overview",
-        name: "Domain Overview",
-        content: {:markdown, fn -> generate_markdown(domain) end}
-      }
+    @impl Clarity.Content
+    def name, do: "Domain Overview"
+
+    @impl Clarity.Content
+    def description, do: "Overview of this Ash domain"
+
+    @impl Clarity.Content
+    def applies?(%Domain{}, _lens), do: true
+    def applies?(_vertex, _lens), do: false
+
+    @impl Clarity.Content
+    def render_static(%Domain{domain: domain}, _lens) do
+      {:markdown, fn _props -> generate_markdown(domain) end}
     end
 
     @spec generate_markdown(Ash.Domain.t()) :: iodata()
@@ -31,8 +43,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         "| --- | --- |\n",
         "| **Domain** | [",
         inspect(domain),
-        "](vertex://domain:",
-        inspect(domain),
+        "](vertex://",
+        Util.id(Domain, [domain]),
         ") |\n",
         case get_domain_description(domain) do
           nil -> []
@@ -68,8 +80,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       [
         "| [",
         inspect(resource),
-        "](vertex://resource:",
-        inspect(resource),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Resource, [resource]),
         ") | ",
         clean_description(description),
         " |\n"

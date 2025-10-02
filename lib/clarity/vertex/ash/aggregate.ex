@@ -14,31 +14,32 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:aggregate, :resource]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{aggregate: %{name: name}, resource: resource}),
-        do: "aggregate:#{inspect(resource)}:#{name}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{aggregate: %{name: name}, resource: resource}),
-        do: [inspect(resource), "_", Atom.to_string(name)]
-
-      @impl Clarity.Vertex
-      def graph_group(%{resource: resource}), do: [inspect(resource), inspect(Aggregate)]
+      def id(%@for{aggregate: %{name: name}, resource: resource}),
+        do: Util.id(@for, [resource, name])
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: inspect(Aggregate)
 
       @impl Clarity.Vertex
-      def render_name(%{aggregate: %{name: name}}), do: Atom.to_string(name)
+      def name(%@for{aggregate: %{name: name}}), do: Atom.to_string(name)
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "Mdiamond"
+    defimpl Clarity.Vertex.GraphGroupProvider do
+      @impl Clarity.Vertex.GraphGroupProvider
+      def graph_group(%@for{resource: resource}), do: [inspect(resource), inspect(Aggregate)]
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(_vertex), do: []
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "Mdiamond"
+    end
 
-      @impl Clarity.Vertex
-      def source_location(%{aggregate: aggregate, resource: resource}) do
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{aggregate: aggregate, resource: resource}) do
         SourceLocation.from_spark_entity(resource, aggregate)
       end
     end

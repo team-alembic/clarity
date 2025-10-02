@@ -54,17 +54,32 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
     end
 
     test "architect lens uses default alphabetical content sorter" do
-      alias Clarity.Vertex.Content
-
       lens = Architect.make_lens()
 
       # Should use the default sorter function
       assert lens.content_sorter == (&Lens.sort_alphabetically_by_id/2)
 
-      # Create test content
-      content_a = %Content{id: "content_a", name: "Content A", content: {:markdown, "test"}}
-      content_z = %Content{id: "content_z", name: "Content Z", content: {:markdown, "test"}}
-      content_b = %Content{id: "content_b", name: "Content B", content: {:markdown, "test"}}
+      # Create test content (using the Registry.Content struct)
+      content_a = %Clarity.Content{
+        id: "content_a",
+        name: "Content A",
+        provider: __MODULE__,
+        live_view?: false
+      }
+
+      content_z = %Clarity.Content{
+        id: "content_z",
+        name: "Content Z",
+        provider: __MODULE__,
+        live_view?: false
+      }
+
+      content_b = %Clarity.Content{
+        id: "content_b",
+        name: "Content B",
+        provider: __MODULE__,
+        live_view?: false
+      }
 
       # Test alphabetical sorting using the default function
       assert Lens.sort_alphabetically_by_id(content_a, content_z) == true

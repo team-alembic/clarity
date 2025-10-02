@@ -5,7 +5,6 @@ case Code.ensure_loaded(Ash) do
 
       @behaviour Clarity.Introspector
 
-      alias Clarity.Introspector.Ash.Domain.OverviewContent
       alias Clarity.Vertex
       alias Clarity.Vertex.Ash.Domain
       alias Clarity.Vertex.Module
@@ -24,16 +23,12 @@ case Code.ensure_loaded(Ash) do
             |> List.first()
 
           domain_vertex = %Domain{domain: module}
-          overview_content = OverviewContent.generate_content(module)
 
           {:ok,
            [
              {:vertex, domain_vertex},
-             {:vertex, overview_content},
              {:edge, app_vertex, domain_vertex, :domain},
-             {:edge, module_vertex, domain_vertex, :module},
-             {:edge, domain_vertex, overview_content, :content}
-             | Clarity.Introspector.moduledoc_content(module, domain_vertex)
+             {:edge, module_vertex, domain_vertex, :module}
            ]}
         else
           {:ok, []}
