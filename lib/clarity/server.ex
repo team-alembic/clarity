@@ -100,6 +100,8 @@ defmodule Clarity.Server do
         introspectors: introspectors
     }
 
+    broadcast_event(state, :work_started)
+
     {:ok, state}
   end
 
@@ -110,16 +112,16 @@ defmodule Clarity.Server do
     {future_queue, introspectors} =
       reset_queue_and_introspectors(state.graph, state.custom_introspectors)
 
-    new_state = %{
+    state = %{
       state
       | future_queue: future_queue,
         introspectors: introspectors
     }
 
-    broadcast_event(new_state, :work_started)
-    broadcast_event(new_state, {:work_progress, queue_info(new_state)})
+    broadcast_event(state, :work_started)
+    broadcast_event(state, {:work_progress, queue_info(state)})
 
-    {:noreply, new_state}
+    {:noreply, state}
   end
 
   def handle_cast({:introspect, {:incremental, app, modules_diff}}, state) do
