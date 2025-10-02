@@ -19,8 +19,8 @@ case Code.ensure_loaded(Spark) do
 
           app_vertex =
             graph
-            |> Clarity.Graph.vertices()
-            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
+            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
+            |> List.first()
 
           extension_vertex = %Extension{extension: module}
 

@@ -21,13 +21,13 @@ case Code.ensure_loaded(Ash) do
 
         app_vertex =
           graph
-          |> Clarity.Graph.vertices()
-          |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
+          |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
+          |> List.first()
 
         module_vertex =
           graph
-          |> Clarity.Graph.vertices()
-          |> Enum.find(&match?(%Vertex.Module{module: ^data_layer}, &1))
+          |> Clarity.Graph.vertices(type: Vertex.Module, field_equal: {:module, data_layer})
+          |> List.first()
 
         {:ok,
          [

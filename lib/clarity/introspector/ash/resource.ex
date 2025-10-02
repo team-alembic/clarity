@@ -59,10 +59,12 @@ case Code.ensure_loaded(Ash) do
       defp get_domain_vertex(_graph, nil), do: {:ok, nil}
 
       defp get_domain_vertex(graph, domain) do
-        Enum.find_value(Graph.vertices(graph), {:error, :unmet_dependencies}, fn
-          %Domain{domain: ^domain} = vertex -> {:ok, vertex}
-          _ -> false
-        end)
+        graph
+        |> Graph.vertices(type: Domain, field_equal: {:domain, domain})
+        |> case do
+          [%Domain{} = vertex] -> {:ok, vertex}
+          [] -> {:error, :unmet_dependencies}
+        end
       end
     end
 

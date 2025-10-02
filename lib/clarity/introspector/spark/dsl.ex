@@ -20,8 +20,8 @@ case Code.ensure_loaded(Spark) do
 
           app_vertex =
             graph
-            |> Clarity.Graph.vertices()
-            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
+            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
+            |> List.first()
 
           dsl_vertex = %Dsl{dsl: module}
 
@@ -62,21 +62,9 @@ case Code.ensure_loaded(Spark) do
               module() => Extension.t()
             }
       defp build_extension_lookup(graph, needed_extensions) do
-        needed_set = MapSet.new(needed_extensions)
-
         graph
-        |> Clarity.Graph.vertices()
-        |> Enum.reduce(%{}, fn
-          %Extension{extension: ext} = vertex, acc ->
-            if MapSet.member?(needed_set, ext) do
-              Map.put(acc, ext, vertex)
-            else
-              acc
-            end
-
-          _, acc ->
-            acc
-        end)
+        |> Clarity.Graph.vertices(type: Extension, field_in: {:extension, needed_extensions})
+        |> Map.new(&{&1.extension, &1})
       end
 
       @spec create_extension_edges(Dsl.t(), [module()], %{module() => Extension.t()}) ::

@@ -20,8 +20,8 @@ case Code.ensure_loaded(Ash) do
 
           app_vertex =
             graph
-            |> Clarity.Graph.vertices()
-            |> Enum.find(&match?(%Vertex.Application{app: ^app}, &1))
+            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
+            |> List.first()
 
           domain_vertex = %Domain{domain: module}
           overview_content = OverviewContent.generate_content(module)

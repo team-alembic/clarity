@@ -88,12 +88,11 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @spec fetch_resource_vertex(Graph.t(), module()) ::
             {:ok, Resource.t()} | {:error, :unmet_dependencies}
     defp fetch_resource_vertex(graph, module) do
-      case Enum.find(Graph.vertices(graph), fn
-             %Resource{resource: ^module} -> true
-             _ -> false
-           end) do
-        nil -> {:error, :unmet_dependencies}
-        vertex -> {:ok, vertex}
+      graph
+      |> Graph.vertices(type: Resource, field_equal: {:resource, module})
+      |> case do
+        [] -> {:error, :unmet_dependencies}
+        [vertex] -> {:ok, vertex}
       end
     end
 
