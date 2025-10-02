@@ -46,21 +46,18 @@ defmodule Clarity.Content.Registry do
 
   @spec build_content_struct(module(), Vertex.t(), Lens.t()) :: Content.t()
   defp build_content_struct(provider, vertex, lens) do
-    is_live_view = live_view?(provider)
+    live_view? = implements_behaviour?(provider, Phoenix.LiveView)
+    live_component? = implements_behaviour?(provider, Phoenix.LiveComponent)
 
-    render_static =
-      if is_live_view do
-        nil
-      else
-        normalize_static_content(provider.render_static(vertex, lens))
-      end
+    render_static = normalize_static_content(provider.render_static(vertex, lens))
 
     %Content{
       id: content_id(provider),
       name: provider.name(),
       description: if(function_exported?(provider, :description, 0), do: provider.description()),
       provider: provider,
-      live_view?: is_live_view,
+      live_view?: live_view?,
+      live_component?: live_component?,
       render_static: render_static
     }
   end
@@ -82,9 +79,14 @@ defmodule Clarity.Content.Registry do
     |> String.replace_prefix("clarity-content-", "")
   end
 
-  @spec live_view?(module()) :: boolean()
-  defp live_view?(provider) do
-    {:module, provider} = Code.ensure_loaded(provider)
-    function_exported?(provider, :__live__, 0)
+  @spec implements_behaviour?(module(), module()) :: boolean()
+  defp implements_behaviour?(module, behaviour) do
+    {:module, ^module} = Code.ensure_loaded(module)
+
+    :attributes
+    |> module.module_info()
+    |> Keyword.get_values(:behaviour)
+    |> Enum.concat()
+    |> Enum.member?(behaviour)
   end
 end

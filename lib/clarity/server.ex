@@ -402,10 +402,6 @@ defmodule Clarity.Server do
     for name <- [state.name, self()] do
       Registry.dispatch(Clarity.PubSub, {name, topic}, fn entries ->
         for {pid, ref} <- entries do
-          if topic == :work_completed do
-            Logger.debug("Broadcasting work_completed to #{inspect(pid)} #{inspect(ref)}")
-          end
-
           case ref do
             nil -> send(pid, {:clarity, event})
             _ -> send(pid, {:clarity, ref, event})

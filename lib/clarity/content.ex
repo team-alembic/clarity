@@ -106,11 +106,12 @@ defmodule Clarity.Content do
           description: String.t() | nil,
           provider: provider(),
           live_view?: boolean(),
+          live_component?: boolean(),
           render_static: rendered_static_content() | nil
         }
 
-  @enforce_keys [:id, :name, :provider, :live_view?]
-  defstruct [:id, :name, :description, :provider, :live_view?, :render_static]
+  @enforce_keys [:id, :name, :provider, :live_view?, :live_component?]
+  defstruct [:id, :name, :description, :provider, :live_view?, :live_component?, :render_static]
 
   @doc """
   Returns the name of this content provider.

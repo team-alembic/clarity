@@ -49,11 +49,9 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
              Vertex.Ash.Action.Vertex.Ash.Aggregate,
              Vertex.Ash.Attribute,
              Vertex.Ash.Calculation,
-             Vertex.Ash.DataLayer,
              Vertex.Ash.Domain,
              Vertex.Ash.Relationship,
              Vertex.Ash.Resource,
-             Vertex.Ash.Type,
              Vertex.Phoenix.Endpoint,
              Vertex.Phoenix.Router
            ] ->

@@ -64,21 +64,24 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
         id: "content_a",
         name: "Content A",
         provider: __MODULE__,
-        live_view?: false
+        live_view?: false,
+        live_component?: false
       }
 
       content_z = %Clarity.Content{
         id: "content_z",
         name: "Content Z",
         provider: __MODULE__,
-        live_view?: false
+        live_view?: false,
+        live_component?: false
       }
 
       content_b = %Clarity.Content{
         id: "content_b",
         name: "Content B",
         provider: __MODULE__,
-        live_view?: false
+        live_view?: false,
+        live_component?: false
       }
 
       # Test alphabetical sorting using the default function
