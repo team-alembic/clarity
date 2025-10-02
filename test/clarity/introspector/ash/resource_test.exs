@@ -20,9 +20,9 @@ defmodule Clarity.Introspector.Ash.ResourceTest do
               [
                 {:vertex, %Resource{resource: User}},
                 {:vertex, %Content{id: "Demo.Accounts.User_overview"}},
-                {:edge, ^domain_vertex, %Resource{resource: User}, :resource},
                 {:edge, ^module_vertex, %Resource{resource: User}, :resource},
-                {:edge, %Resource{resource: User}, %Content{id: "Demo.Accounts.User_overview"}, :content}
+                {:edge, %Resource{resource: User}, %Content{id: "Demo.Accounts.User_overview"}, :content},
+                {:edge, ^domain_vertex, %Resource{resource: User}, :resource}
                 | _
               ]} = ResourceIntrospector.introspect_vertex(module_vertex, graph)
     end
