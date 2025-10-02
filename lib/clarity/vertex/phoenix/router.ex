@@ -10,26 +10,38 @@ defmodule Clarity.Vertex.Phoenix.Router do
   defstruct [:router]
 
   defimpl Clarity.Vertex do
-    @impl Clarity.Vertex
-    def unique_id(%{router: module}), do: "router:#{inspect(module)}"
+    alias Clarity.Vertex.Util
 
     @impl Clarity.Vertex
-    def graph_id(%{router: module}), do: inspect(module)
-
-    @impl Clarity.Vertex
-    def graph_group(_vertex), do: []
+    def id(%@for{router: module}), do: Util.id(@for, [module])
 
     @impl Clarity.Vertex
     def type_label(_vertex), do: "Clarity.Vertex.Phoenix.Router"
 
     @impl Clarity.Vertex
-    def render_name(%{router: module}), do: inspect(module)
+    def name(%@for{router: module}), do: inspect(module)
+  end
 
-    @impl Clarity.Vertex
-    def dot_shape(_vertex), do: "foo"
+  defimpl Clarity.Vertex.GraphShapeProvider do
+    @impl Clarity.Vertex.GraphShapeProvider
+    def shape(_vertex), do: "foo"
+  end
 
-    @impl Clarity.Vertex
-    def markdown_overview(%{router: module}),
+  defimpl Clarity.Vertex.ModuleProvider do
+    @impl Clarity.Vertex.ModuleProvider
+    def module(%@for{router: router}), do: router
+  end
+
+  defimpl Clarity.Vertex.SourceLocationProvider do
+    @impl Clarity.Vertex.SourceLocationProvider
+    def source_location(%@for{router: module}) do
+      SourceLocation.from_module(module)
+    end
+  end
+
+  defimpl Clarity.Vertex.TooltipProvider do
+    @impl Clarity.Vertex.TooltipProvider
+    def tooltip(%@for{router: module}),
       do: [
         "`",
         inspect(module),
@@ -61,10 +73,5 @@ defmodule Clarity.Vertex.Phoenix.Router do
           ]
         end)
       ]
-
-    @impl Clarity.Vertex
-    def source_location(%{router: module}) do
-      SourceLocation.from_module(module)
-    end
   end
 end

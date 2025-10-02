@@ -33,12 +33,13 @@ defmodule Clarity.Perspective do
 
   use Agent
 
+  alias Clarity.Content
+  alias Clarity.Content.Registry, as: ContentRegistry
   alias Clarity.Graph
   alias Clarity.Graph.Tree
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Registry
   alias Clarity.Vertex
-  alias Clarity.Vertex.Content
   alias Clarity.Vertex.Root
 
   @type zoom() :: {non_neg_integer(), non_neg_integer()}
@@ -52,6 +53,7 @@ defmodule Clarity.Perspective do
               %{lens_id: String.t(), vertex_id: String.t(), update_count: pos_integer()} | nil,
             cached_tree: Tree.t() | nil,
             cached_breadcrumbs: [Vertex.t()] | nil,
+            cached_contents: [Content.t()] | nil,
             zoom_level: zoom(),
             cached_zoom_subgraph: Graph.t() | nil
           }
@@ -65,6 +67,7 @@ defmodule Clarity.Perspective do
     cache_params: nil,
     cached_tree: nil,
     cached_breadcrumbs: nil,
+    cached_contents: nil,
     zoom_level: {1, 1},
     cached_zoom_subgraph: nil,
     zoom_cache_params: nil
@@ -153,7 +156,7 @@ defmodule Clarity.Perspective do
   @spec invalidate_outdated_caches(t()) :: t()
   defp invalidate_outdated_caches(%__MODULE__{current_lens: lens, current_vertex: vertex} = state) do
     # Compute current cache parameters
-    vertex_id = Vertex.unique_id(vertex)
+    vertex_id = Vertex.id(vertex)
     update_count = Graph.get_update_count(state.graph)
 
     current_params = %{
@@ -175,6 +178,7 @@ defmodule Clarity.Perspective do
             cached_subgraph: nil,
             cached_tree: nil,
             cached_breadcrumbs: nil,
+            cached_contents: nil,
             cached_zoom_subgraph: nil
         }
 
@@ -288,7 +292,7 @@ defmodule Clarity.Perspective do
   end
 
   @doc """
-  Gets the content list for the current vertex, with "graph" content prepended.
+  Gets the content list for the current vertex using registered content providers.
   """
   @spec get_contents(Agent.agent()) :: [Content.t()]
   def get_contents(agent) do
@@ -296,7 +300,7 @@ defmodule Clarity.Perspective do
   end
 
   @doc """
-  Gets a specific content vertex by ID for the current vertex context.
+  Gets a specific content by ID for the current vertex context.
   """
   @spec get_content(Agent.agent(), String.t()) ::
           {:ok, Content.t()} | {:error, :content_not_found}
@@ -311,33 +315,19 @@ defmodule Clarity.Perspective do
 
   @spec handle_contents_request(t()) :: {[Content.t()], t()}
   defp handle_contents_request(state) do
-    {subgraph, state} = handle_subgraph_request(state)
-    pid = self()
+    state = invalidate_outdated_caches(state)
 
-    graph_content = %Content{
-      id: "graph",
-      name: "Graph Navigation",
-      content:
-        {:viz,
-         fn %{theme: theme} ->
-           Graph.DOT.to_dot(
-             get_zoom_subgraph(pid),
-             theme: theme,
-             highlight: state.current_vertex
-           )
-         end}
-    }
+    case state.cached_contents do
+      nil ->
+        contents =
+          ContentRegistry.get_contents_for_vertex(state.current_vertex, state.current_lens)
 
-    contents =
-      subgraph
-      |> Graph.out_edges(state.current_vertex)
-      |> Enum.map(&Graph.edge(subgraph, &1))
-      |> Enum.filter(fn {_, _, _, label} -> label == :content end)
-      |> Enum.map(fn {_, _, to_vertex, _} -> to_vertex end)
-      |> then(&[graph_content | &1])
-      |> Enum.sort(state.current_lens.content_sorter)
+        state = %{state | cached_contents: contents}
+        {contents, state}
 
-    {contents, state}
+      cached_contents ->
+        {cached_contents, state}
+    end
   end
 
   @doc """
@@ -346,20 +336,6 @@ defmodule Clarity.Perspective do
   The zoom level determines how many steps to include when filtering
   the subgraph for graph content visualization. This does not affect
   tree or breadcrumb navigation.
-
-  ## Parameters
-
-  - `agent` - The agent process
-  - `zoom` - Tuple of {max_outgoing_steps, max_incoming_steps}
-
-  ## Returns
-
-  - `:ok` - Zoom level set successfully
-
-  ## Examples
-
-      :ok = Perspective.set_zoom(agent, {3, 2})
-      :ok = Perspective.set_zoom(agent, {1, 1})
   """
   @spec set_zoom(Agent.agent(), zoom()) :: :ok
   def set_zoom(agent, zoom) do
@@ -368,18 +344,6 @@ defmodule Clarity.Perspective do
 
   @doc """
   Gets the current zoom level.
-
-  ## Parameters
-
-  - `agent` - The agent process
-
-  ## Returns
-
-  - Current zoom level as {max_outgoing_steps, max_incoming_steps}
-
-  ## Examples
-
-      {1, 1} = Perspective.get_zoom(agent)
   """
   @spec get_zoom(Agent.agent()) :: zoom()
   def get_zoom(agent) do
@@ -393,19 +357,6 @@ defmodule Clarity.Perspective do
   within the specified zoom steps, filtered by the current lens and
   including the breadcrumb path. This is intended for graph content
   visualization and is separate from tree/breadcrumb navigation.
-
-  ## Parameters
-
-  - `agent` - The agent process
-
-  ## Returns
-
-  - Zoom-filtered subgraph
-
-  ## Examples
-
-      subgraph = Perspective.get_zoom_subgraph(agent)
-      # Remember to call Graph.delete(subgraph) when done
   """
   @spec get_zoom_subgraph(Agent.agent()) :: Graph.t()
   def get_zoom_subgraph(agent) do
@@ -447,7 +398,7 @@ defmodule Clarity.Perspective do
 
   @spec extract_vertex_id(String.t() | Vertex.t()) :: String.t()
   defp extract_vertex_id(vertex_id) when is_binary(vertex_id), do: vertex_id
-  defp extract_vertex_id(vertex), do: Vertex.unique_id(vertex)
+  defp extract_vertex_id(vertex), do: Vertex.id(vertex)
 
   @spec compute_subgraph(Graph.t(), Lens.t(), Vertex.t()) :: Graph.t()
   defp compute_subgraph(graph, lens, vertex) do

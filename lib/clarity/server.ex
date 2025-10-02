@@ -118,9 +118,6 @@ defmodule Clarity.Server do
         introspectors: introspectors
     }
 
-    broadcast_event(state, :work_started)
-    broadcast_event(state, {:work_progress, queue_info(state)})
-
     {:noreply, state}
   end
 
@@ -162,7 +159,6 @@ defmodule Clarity.Server do
           graph: state.graph
         }
 
-        broadcast_event(state, :work_started)
         state = process_task_results(task, introspection_results, state)
 
         {:noreply, state}
@@ -277,10 +273,45 @@ defmodule Clarity.Server do
 
             handle_call(:pull_task, from, state)
 
-          # No in-progress, no requeued tasks - truly empty
           true ->
             {:reply, :empty, state}
         end
+    end
+  end
+
+  defoverridable handle_cast: 2, handle_call: 3
+
+  @impl GenServer
+  def handle_cast(msg, state) do
+    {:noreply, new_state} = super(msg, state)
+
+    handle_state_change(state, new_state)
+
+    {:noreply, new_state}
+  end
+
+  @impl GenServer
+  def handle_call(msg, from, state) do
+    {:reply, reply, new_state} = super(msg, from, state)
+    handle_state_change(state, new_state)
+    {:reply, reply, new_state}
+  end
+
+  @spec handle_state_change(old :: State.t(), new :: State.t()) :: :ok
+  def handle_state_change(old, new)
+  def handle_state_change(state, state), do: :ok
+
+  def handle_state_change(old, new) do
+    cond do
+      queue_empty_and_no_progress?(old) and not queue_empty_and_no_progress?(new) ->
+        broadcast_event(new, :work_started)
+        broadcast_event(new, {:work_progress, queue_info(new)})
+
+      not queue_empty_and_no_progress?(old) and queue_empty_and_no_progress?(new) ->
+        broadcast_event(new, :work_completed)
+
+      true ->
+        broadcast_event(new, {:work_progress, queue_info(new)})
     end
   end
 
@@ -351,15 +382,6 @@ defmodule Clarity.Server do
     # Tree is maintained incrementally, no rebuild needed
     state = %{state | future_queue: new_queue}
 
-    # Broadcast work_progress for both progress updates and content changes
-    # (digraph reference automatically reflects new vertices to UI)
-    broadcast_event(state, {:work_progress, queue_info(state)})
-
-    # Broadcast work_completed when all work is done
-    if queue_empty_and_no_progress?(state) do
-      broadcast_event(state, :work_completed)
-    end
-
     state
   end
 
@@ -379,7 +401,16 @@ defmodule Clarity.Server do
 
     for name <- [state.name, self()] do
       Registry.dispatch(Clarity.PubSub, {name, topic}, fn entries ->
-        for {pid, _} <- entries, do: send(pid, {:clarity, event})
+        for {pid, ref} <- entries do
+          if topic == :work_completed do
+            Logger.debug("Broadcasting work_completed to #{inspect(pid)} #{inspect(ref)}")
+          end
+
+          case ref do
+            nil -> send(pid, {:clarity, event})
+            _ -> send(pid, {:clarity, ref, event})
+          end
+        end
       end)
     end
 

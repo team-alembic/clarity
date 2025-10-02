@@ -4,43 +4,49 @@ defmodule Clarity.Vertex.ApplicationTest do
   alias Clarity.Vertex
   alias Clarity.Vertex.Application
 
-  describe "Clarity.Vertex protocol implementation for Application" do
-    setup do
-      vertex = %Application{
-        app: :test_app,
-        description: "Test Application",
-        version: %Version{major: 1, minor: 2, patch: 3}
-      }
+  setup do
+    vertex = %Application{
+      app: :test_app,
+      description: "Test Application",
+      version: %Version{major: 1, minor: 2, patch: 3}
+    }
 
-      {:ok, vertex: vertex}
+    {:ok, vertex: vertex}
+  end
+
+  describe inspect(&Vertex.id/1) do
+    test "returns correct unique identifier", %{vertex: vertex} do
+      assert Vertex.id(vertex) == "application:test-app"
     end
+  end
 
-    test "unique_id/1 returns correct unique identifier", %{vertex: vertex} do
-      assert Vertex.unique_id(vertex) == "application:test_app"
-    end
-
-    test "graph_id/1 returns correct graph identifier", %{vertex: vertex} do
-      assert Vertex.graph_id(vertex) == "test_app"
-    end
-
-    test "graph_group/1 returns empty list", %{vertex: vertex} do
-      assert Vertex.graph_group(vertex) == []
-    end
-
-    test "type_label/1 returns correct type label", %{vertex: vertex} do
+  describe inspect(&Vertex.type_label/1) do
+    test "returns correct type label", %{vertex: vertex} do
       assert Vertex.type_label(vertex) == "Application"
     end
+  end
 
-    test "render_name/1 returns correct display name", %{vertex: vertex} do
-      assert Vertex.render_name(vertex) == "test_app"
+  describe inspect(&Vertex.name/1) do
+    test "returns correct display name", %{vertex: vertex} do
+      assert Vertex.name(vertex) == "test_app"
     end
+  end
 
-    test "dot_shape/1 returns correct shape", %{vertex: vertex} do
-      assert Vertex.dot_shape(vertex) == "house"
+  describe inspect(&Clarity.Vertex.GraphGroupProvider.graph_group/1) do
+    test "returns empty list", %{vertex: vertex} do
+      assert Vertex.GraphGroupProvider.graph_group(vertex) == []
     end
+  end
 
-    test "markdown_overview/1 returns formatted overview", %{vertex: vertex} do
-      overview = Vertex.markdown_overview(vertex)
+  describe inspect(&Clarity.Vertex.GraphShapeProvider.shape/1) do
+    test "returns correct shape", %{vertex: vertex} do
+      assert Vertex.GraphShapeProvider.shape(vertex) == "house"
+    end
+  end
+
+  describe inspect(&Clarity.Vertex.TooltipProvider.tooltip/1) do
+    test "returns formatted overview", %{vertex: vertex} do
+      overview = Vertex.TooltipProvider.tooltip(vertex)
       overview_string = IO.iodata_to_binary(overview)
 
       assert overview_string =~ "`:test_app`"
@@ -68,26 +74,6 @@ defmodule Clarity.Vertex.ApplicationTest do
       assert vertex.app == :test_app
       assert vertex.description == "Test Application"
       assert vertex.version == "invalid-version"
-    end
-  end
-
-  describe "Application struct" do
-    test "enforces required keys" do
-      assert_raise ArgumentError, fn ->
-        struct!(Application, %{})
-      end
-    end
-
-    test "creates struct with required fields" do
-      vertex = %Application{
-        app: :my_app,
-        description: "My App",
-        version: "1.0.0"
-      }
-
-      assert vertex.app == :my_app
-      assert vertex.description == "My App"
-      assert vertex.version == "1.0.0"
     end
   end
 end

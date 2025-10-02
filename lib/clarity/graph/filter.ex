@@ -14,7 +14,7 @@ defmodule Clarity.Graph.Filter do
       filters = [
         Filter.within_steps(vertex, 2, 1),
         Filter.reachable_from(root_vertex),
-        Filter.custom(fn v -> String.contains?(Vertex.render_name(v), "MyApp") end)
+        Filter.custom(fn v -> String.contains?(Vertex.name(v), "MyApp") end)
       ]
       subgraph = Graph.filter(graph, filters)
   """
@@ -34,7 +34,7 @@ defmodule Clarity.Graph.Filter do
   @spec within_steps(Vertex.t(), non_neg_integer(), non_neg_integer()) :: filter_fn()
   def within_steps(center_vertex, max_outgoing_steps, max_incoming_steps) do
     fn graph ->
-      center_vertex_id = Vertex.unique_id(center_vertex)
+      center_vertex_id = Vertex.id(center_vertex)
 
       # Use existing logic to get vertices within steps
       temp_subgraph =
@@ -49,7 +49,7 @@ defmodule Clarity.Graph.Filter do
       :digraph.delete(temp_subgraph)
 
       fn vertex ->
-        vertex_id = Vertex.unique_id(vertex)
+        vertex_id = Vertex.id(vertex)
         MapSet.member?(allowed_vertex_ids, vertex_id)
       end
     end
@@ -61,7 +61,7 @@ defmodule Clarity.Graph.Filter do
   @spec reachable_from([Vertex.t()]) :: filter_fn()
   def reachable_from(source_vertices) do
     fn graph ->
-      source_vertex_ids = MapSet.new(source_vertices, &Vertex.unique_id/1)
+      source_vertex_ids = MapSet.new(source_vertices, &Vertex.id/1)
 
       # Find all vertices reachable from any source vertex
       for_result =
@@ -76,7 +76,7 @@ defmodule Clarity.Graph.Filter do
       reachable_vertex_ids = MapSet.new(for_result)
 
       fn vertex ->
-        vertex_id = Vertex.unique_id(vertex)
+        vertex_id = Vertex.id(vertex)
         MapSet.member?(reachable_vertex_ids, vertex_id)
       end
     end

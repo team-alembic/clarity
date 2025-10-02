@@ -17,32 +17,40 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
     defstruct [:module, :path]
 
     defimpl Clarity.Vertex do
-      alias Spark.Dsl.Extension
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def unique_id(%{module: module, path: path}) do
-        "spark_section:#{inspect(module)}:#{inspect(path)}"
+      def id(%@for{module: module, path: path}) do
+        Util.id(@for, [module, inspect(path)])
       end
-
-      @impl Clarity.Vertex
-      def graph_id(%{module: module, path: path}) do
-        "#{inspect(module)}.#{Enum.join(path, ".")}"
-      end
-
-      @impl Clarity.Vertex
-      def graph_group(_vertex), do: []
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: "Spark Section"
 
       @impl Clarity.Vertex
-      def render_name(%{path: path}), do: Enum.join(path, " > ")
+      def name(%@for{path: path}), do: Enum.join(path, " > ")
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "note"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "note"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(%{module: module, path: path}) do
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      alias Spark.Dsl.Extension
+
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{module: module, path: path}) do
+        case Extension.get_section_anno(module, path) do
+          nil -> SourceLocation.from_module(module)
+          anno -> SourceLocation.from_module_anno(module, anno)
+        end
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(%@for{module: module, path: path}) do
         [
           "**Module:** `",
           inspect(module),
@@ -51,14 +59,6 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
           inspect(path),
           "`"
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{module: module, path: path}) do
-        case Extension.get_section_anno(module, path) do
-          nil -> SourceLocation.from_module(module)
-          anno -> SourceLocation.from_module_anno(module, anno)
-        end
       end
     end
   end

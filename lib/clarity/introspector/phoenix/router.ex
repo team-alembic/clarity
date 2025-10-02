@@ -27,7 +27,6 @@ case Code.ensure_loaded(Phoenix.Router) do
              {:vertex, router_vertex},
              {:edge, module_vertex, router_vertex, "router"},
              {:edge, app_vertex, router_vertex, "router"}
-             | Clarity.Introspector.moduledoc_content(module, router_vertex)
            ]}
         else
           {:ok, []}

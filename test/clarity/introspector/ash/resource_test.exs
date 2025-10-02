@@ -5,7 +5,6 @@ defmodule Clarity.Introspector.Ash.ResourceTest do
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Ash.Resource
-  alias Clarity.Vertex.Content
   alias Demo.Accounts.User
 
   describe inspect(&ResourceIntrospector.introspect_vertex/2) do
@@ -19,11 +18,8 @@ defmodule Clarity.Introspector.Ash.ResourceTest do
       assert {:ok,
               [
                 {:vertex, %Resource{resource: User}},
-                {:vertex, %Content{id: "Demo.Accounts.User_overview"}},
-                {:edge, ^module_vertex, %Resource{resource: User}, :resource},
-                {:edge, %Resource{resource: User}, %Content{id: "Demo.Accounts.User_overview"}, :content},
-                {:edge, ^domain_vertex, %Resource{resource: User}, :resource}
-                | _
+                {:edge, ^domain_vertex, %Resource{resource: User}, :resource},
+                {:edge, ^module_vertex, %Resource{resource: User}, :resource}
               ]} = ResourceIntrospector.introspect_vertex(module_vertex, graph)
     end
   end

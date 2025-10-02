@@ -113,8 +113,8 @@ defmodule Clarity.Graph do
   @spec add_vertex(t(), Vertex.t(), Vertex.t()) :: result()
   def add_vertex(%__MODULE__{} = graph, vertex, caused_by) do
     with :ok <- check_writable(graph) do
-      vertex_id = Vertex.unique_id(vertex)
-      caused_by_id = Vertex.unique_id(caused_by)
+      vertex_id = Vertex.id(vertex)
+      caused_by_id = Vertex.id(caused_by)
 
       # Store vertex in ETS table
       :ets.insert(graph.vertices, {vertex_id, vertex.__struct__, vertex})
@@ -141,8 +141,8 @@ defmodule Clarity.Graph do
   def add_edge(%__MODULE__{} = graph, from_vertex, to_vertex, label) do
     with :ok <- check_writable(graph) do
       # Convert vertices to IDs
-      from_id = Vertex.unique_id(from_vertex)
-      to_id = Vertex.unique_id(to_vertex)
+      from_id = Vertex.id(from_vertex)
+      to_id = Vertex.id(to_vertex)
 
       # Add edge to main graph using vertex IDs
       :digraph.add_edge(graph.main_graph, from_id, to_id, label)
@@ -188,7 +188,7 @@ defmodule Clarity.Graph do
 
     graph.vertices
     |> :ets.select(vertex_query_to_ets_match_spec(query))
-    |> Enum.filter(&MapSet.member?(all_vertices, Vertex.unique_id(&1)))
+    |> Enum.filter(&MapSet.member?(all_vertices, Vertex.id(&1)))
   end
 
   @spec vertex_query_to_ets_match_spec(query :: query()) :: :ets.match_spec()
@@ -227,7 +227,7 @@ defmodule Clarity.Graph do
   """
   @spec out_edges(t(), Vertex.t()) :: [:digraph.edge()]
   def out_edges(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.unique_id(vertex)
+    vertex_id = Vertex.id(vertex)
     :digraph.out_edges(graph.main_graph, vertex_id)
   end
 
@@ -236,7 +236,7 @@ defmodule Clarity.Graph do
   """
   @spec in_edges(t(), Vertex.t()) :: [:digraph.edge()]
   def in_edges(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.unique_id(vertex)
+    vertex_id = Vertex.id(vertex)
     :digraph.in_edges(graph.main_graph, vertex_id)
   end
 
@@ -271,7 +271,7 @@ defmodule Clarity.Graph do
   """
   @spec out_neighbors(t(), Vertex.t()) :: [Vertex.t()]
   def out_neighbors(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.unique_id(vertex)
+    vertex_id = Vertex.id(vertex)
 
     graph.main_graph
     |> :digraph.out_neighbours(vertex_id)
@@ -283,7 +283,7 @@ defmodule Clarity.Graph do
   """
   @spec in_neighbors(t(), Vertex.t()) :: [Vertex.t()]
   def in_neighbors(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.unique_id(vertex)
+    vertex_id = Vertex.id(vertex)
 
     graph.main_graph
     |> :digraph.in_neighbours(vertex_id)
@@ -319,7 +319,7 @@ defmodule Clarity.Graph do
   @spec purge(t(), Vertex.t()) :: result([Vertex.t()])
   def purge(%__MODULE__{} = graph, vertex) do
     with :ok <- check_writable(graph) do
-      vertex_id = Vertex.unique_id(vertex)
+      vertex_id = Vertex.id(vertex)
 
       # Find all vertices reachable from this vertex (including itself)
       reachable_ids = :digraph_utils.reachable([vertex_id], graph.provenance_graph)
@@ -356,7 +356,7 @@ defmodule Clarity.Graph do
   """
   @spec breadcrumbs(t(), Vertex.t()) :: [Vertex.t()] | false
   def breadcrumbs(%__MODULE__{} = graph, vertex) do
-    to_id = Vertex.unique_id(vertex)
+    to_id = Vertex.id(vertex)
 
     case :digraph.get_short_path(graph.tree_graph, "root", to_id) do
       false -> false
@@ -371,8 +371,8 @@ defmodule Clarity.Graph do
   @spec get_short_path(t(), Vertex.t(), Vertex.t()) ::
           [Vertex.t()] | false
   def get_short_path(%__MODULE__{} = graph, from_vertex, to_vertex) do
-    from_id = Vertex.unique_id(from_vertex)
-    to_id = Vertex.unique_id(to_vertex)
+    from_id = Vertex.id(from_vertex)
+    to_id = Vertex.id(to_vertex)
 
     case :digraph.get_short_path(graph.main_graph, from_id, to_id) do
       false -> false
@@ -386,7 +386,7 @@ defmodule Clarity.Graph do
   """
   @spec to_tree(t()) :: Tree.t()
   def to_tree(%__MODULE__{} = graph) do
-    vertices = graph |> vertices() |> Map.new(&{Vertex.unique_id(&1), &1})
+    vertices = graph |> vertices() |> Map.new(&{Vertex.id(&1), &1})
     Tree.build_tree_from_vertex(graph, "root", vertices)
   end
 
@@ -428,7 +428,7 @@ defmodule Clarity.Graph do
       graph
       |> vertices()
       |> Enum.filter(predicate)
-      |> Enum.map(&Vertex.unique_id/1)
+      |> Enum.map(&Vertex.id/1)
 
     # Create subgraphs using digraph_utils.subgraph
     filtered_main_graph = :digraph_utils.subgraph(graph.main_graph, included_vertex_ids)
@@ -447,7 +447,7 @@ defmodule Clarity.Graph do
   @spec add_root_vertex(t()) :: :ok
   defp add_root_vertex(graph) do
     root_vertex = %Root{}
-    root_id = Vertex.unique_id(root_vertex)
+    root_id = Vertex.id(root_vertex)
 
     # Store root vertex in ETS table
     :ets.insert(graph.vertices, {root_id, Root, root_vertex})

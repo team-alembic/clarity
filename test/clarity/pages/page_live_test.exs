@@ -152,7 +152,7 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "nav.tabs")
 
       # Test domain vertex content
-      {:ok, view2, _html} = live(conn, "/debug/domain:Demo.Accounts.Domain/graph")
+      {:ok, view2, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
       assert has_element?(view2, ".content")
       assert has_element?(view2, "nav.tabs")
     end

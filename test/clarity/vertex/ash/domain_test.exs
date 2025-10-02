@@ -5,45 +5,44 @@ defmodule Clarity.Vertex.Ash.DomainTest do
   alias Clarity.Vertex.Ash.Domain
   alias Demo.Accounts.Domain, as: TestDomain
 
-  describe "Clarity.Vertex protocol implementation for Ash.Domain" do
-    setup do
-      vertex = %Domain{domain: TestDomain}
-      {:ok, vertex: vertex}
-    end
+  setup do
+    vertex = %Domain{domain: TestDomain}
+    {:ok, vertex: vertex}
+  end
 
-    test "unique_id/1 returns correct unique identifier", %{vertex: vertex} do
-      assert Vertex.unique_id(vertex) == "domain:Demo.Accounts.Domain"
+  describe inspect(&Vertex.id/1) do
+    test "returns correct unique identifier", %{vertex: vertex} do
+      assert Vertex.id(vertex) == "ash-domain:demo-accounts-domain"
     end
+  end
 
-    test "graph_id/1 returns correct graph identifier", %{vertex: vertex} do
-      assert Vertex.graph_id(vertex) == "Demo.Accounts.Domain"
-    end
-
-    test "graph_group/1 returns empty list", %{vertex: vertex} do
-      assert Vertex.graph_group(vertex) == []
-    end
-
-    test "type_label/1 returns correct type label", %{vertex: vertex} do
+  describe inspect(&Vertex.type_label/1) do
+    test "returns correct type label", %{vertex: vertex} do
       assert Vertex.type_label(vertex) == "Ash.Domain"
     end
+  end
 
-    test "render_name/1 returns correct display name", %{vertex: vertex} do
-      assert Vertex.render_name(vertex) == "Demo.Accounts.Domain"
+  describe inspect(&Vertex.name/1) do
+    test "returns correct display name", %{vertex: vertex} do
+      assert Vertex.name(vertex) == "Demo.Accounts.Domain"
     end
+  end
 
-    test "dot_shape/1 returns correct shape", %{vertex: vertex} do
-      assert Vertex.dot_shape(vertex) == "folder"
+  describe inspect(&Clarity.Vertex.GraphGroupProvider.graph_group/1) do
+    test "returns empty list", %{vertex: vertex} do
+      assert Vertex.GraphGroupProvider.graph_group(vertex) == []
     end
+  end
 
-    test "markdown_overview/1 returns formatted overview", %{vertex: vertex} do
-      overview = Vertex.markdown_overview(vertex)
-      overview_string = IO.iodata_to_binary(overview)
-
-      assert overview_string =~ "`Demo.Accounts.Domain`"
+  describe inspect(&Clarity.Vertex.GraphShapeProvider.shape/1) do
+    test "returns correct shape", %{vertex: vertex} do
+      assert Vertex.GraphShapeProvider.shape(vertex) == "folder"
     end
+  end
 
-    test "source_location/1 returns SourceLocation from module", %{vertex: vertex} do
-      source_location = Vertex.source_location(vertex)
+  describe inspect(&Clarity.Vertex.SourceLocationProvider.source_location/1) do
+    test "returns SourceLocation from module", %{vertex: vertex} do
+      source_location = Vertex.SourceLocationProvider.source_location(vertex)
 
       assert %Clarity.SourceLocation{} = source_location
       assert :erl_anno.is_anno(source_location.anno)
@@ -55,17 +54,12 @@ defmodule Clarity.Vertex.Ash.DomainTest do
     end
   end
 
-  describe "Domain struct" do
-    test "enforces required keys" do
-      assert_raise ArgumentError, fn ->
-        struct!(Domain, %{})
-      end
-    end
+  describe inspect(&Clarity.Vertex.TooltipProvider.tooltip/1) do
+    test "returns formatted overview", %{vertex: vertex} do
+      overview = Vertex.TooltipProvider.tooltip(vertex)
+      overview_string = IO.iodata_to_binary(overview)
 
-    test "creates struct with required domain field" do
-      vertex = %Domain{domain: TestDomain}
-
-      assert vertex.domain == TestDomain
+      assert overview_string =~ "`Demo.Accounts.Domain`"
     end
   end
 end

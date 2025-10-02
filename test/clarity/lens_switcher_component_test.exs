@@ -25,7 +25,7 @@ defmodule Clarity.LensSwitcherComponentTest do
         render_component(LensSwitcherComponent,
           id: "test-switcher",
           prefix: "/test",
-          current_lens: lens
+          lens: lens
         )
 
       # Should show aperture icon
@@ -54,7 +54,7 @@ defmodule Clarity.LensSwitcherComponentTest do
         render_component(LensSwitcherComponent,
           id: "test-switcher",
           prefix: "/test",
-          current_lens: lens
+          lens: lens
         )
 
       # Should have relative container for dropdown positioning
@@ -83,7 +83,7 @@ defmodule Clarity.LensSwitcherComponentTest do
         render_component(LensSwitcherComponent,
           id: "test-switcher",
           prefix: "/test",
-          current_lens: architect_lens
+          lens: architect_lens
         )
 
       # Should show current lens icon in button
@@ -110,7 +110,7 @@ defmodule Clarity.LensSwitcherComponentTest do
         render_component(LensSwitcherComponent,
           id: "test-switcher",
           prefix: "/custom",
-          current_lens: lens
+          lens: lens
         )
 
       # Should render without errors and show current lens icon

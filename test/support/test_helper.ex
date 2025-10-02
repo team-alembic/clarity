@@ -27,16 +27,6 @@ defmodule Clarity.Test.Helper do
     Clarity.Graph.add_edge(clarity_graph, %Vertex.Root{}, app_vertex, :child)
     Clarity.Graph.add_edge(clarity_graph, app_vertex, domain_vertex, :child)
 
-    # Create content vertices
-    content_vertex = %Vertex.Content{
-      id: "graph",
-      name: "Graph Navigation",
-      content: {:viz, fn %{theme: _theme} -> "digraph G { a -> b; }" end}
-    }
-
-    Clarity.Graph.add_vertex(clarity_graph, content_vertex, domain_vertex)
-    Clarity.Graph.add_edge(clarity_graph, domain_vertex, content_vertex, :content)
-
     %Clarity{
       graph: clarity_graph,
       status: :done,

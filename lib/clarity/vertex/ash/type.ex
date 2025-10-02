@@ -13,26 +13,38 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:type]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{type: type}), do: "type:#{inspect(type)}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{type: type}), do: inspect(type)
-
-      @impl Clarity.Vertex
-      def graph_group(_vertex), do: []
+      def id(%@for{type: type}), do: Util.id(@for, [type])
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: inspect(Ash.Type)
 
       @impl Clarity.Vertex
-      def render_name(%{type: type}), do: inspect(type)
+      def name(%@for{type: type}), do: inspect(type)
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "plain"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "plain"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(vertex) do
+    defimpl Clarity.Vertex.ModuleProvider do
+      @impl Clarity.Vertex.ModuleProvider
+      def module(%@for{type: type}), do: type
+    end
+
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{type: module}) do
+        SourceLocation.from_module(module)
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(vertex) do
         [
           "`",
           inspect(vertex.type),
@@ -46,11 +58,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               []
           end
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{type: module}) do
-        SourceLocation.from_module(module)
       end
 
       @spec truncate_markdown(content :: String.t(), length :: pos_integer()) :: String.t()

@@ -310,7 +310,7 @@ defmodule Clarity.GraphTest do
 
     test "get_vertex/2 retrieves vertex by ID", %{graph: graph, app: app} do
       Graph.add_vertex(graph, app, %Root{})
-      vertex_id = Clarity.Vertex.unique_id(app)
+      vertex_id = Clarity.Vertex.id(app)
 
       assert Graph.get_vertex(graph, vertex_id) == app
       assert Graph.get_vertex(graph, "nonexistent") == nil

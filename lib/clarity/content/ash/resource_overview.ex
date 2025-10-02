@@ -1,19 +1,33 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
-  defmodule Clarity.Introspector.Ash.Resource.OverviewContent do
-    @moduledoc false
+  defmodule Clarity.Content.Ash.ResourceOverview do
+    @moduledoc """
+    Content provider for Ash Resource overview.
+
+    Displays comprehensive information about an Ash resource including attributes,
+    relationships, actions, aggregates, and calculations.
+    """
+
+    @behaviour Clarity.Content
 
     alias Ash.Resource.Actions
     alias Ash.Resource.Info
-    alias Clarity.Vertex.Content
+    alias Clarity.Vertex.Ash.Resource
+    alias Clarity.Vertex.Ash.Type
+    alias Clarity.Vertex.Util
 
-    @doc false
-    @spec generate_content(Ash.Resource.t()) :: Content.t()
-    def generate_content(resource) do
-      %Content{
-        id: "#{inspect(resource)}_overview",
-        name: "Resource Overview",
-        content: {:markdown, fn -> generate_markdown(resource) end}
-      }
+    @impl Clarity.Content
+    def name, do: "Resource Overview"
+
+    @impl Clarity.Content
+    def description, do: "Overview of this Ash resource"
+
+    @impl Clarity.Content
+    def applies?(%Resource{}, _lens), do: true
+    def applies?(_vertex, _lens), do: false
+
+    @impl Clarity.Content
+    def render_static(%Resource{resource: resource}, _lens) do
+      {:markdown, fn _props -> generate_markdown(resource) end}
     end
 
     @spec generate_markdown(Ash.Resource.t()) :: iodata()
@@ -38,13 +52,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         "| --- | --- |\n",
         "| **Resource** | [",
         inspect(resource),
-        "](vertex://resource:",
-        inspect(resource),
+        "](vertex://",
+        Util.id(Resource, [resource]),
         ") |\n",
         "| **Domain** | [",
         inspect(domain),
-        "](vertex://domain:",
-        inspect(domain),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Domain, [domain]),
         ") |\n",
         case Info.data_layer(resource) do
           nil ->
@@ -54,8 +68,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             [
               "| **Data Layer** | [",
               inspect(data_layer),
-              "](vertex://data_layer:",
-              inspect(data_layer),
+              "](vertex://",
+              Util.id(Clarity.Vertex.Ash.DataLayer, [data_layer]),
               ") |\n"
             ]
         end,
@@ -94,10 +108,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       [
         "| [",
         Atom.to_string(attribute.name),
-        "](vertex://attribute:",
-        inspect(resource),
-        ":",
-        Atom.to_string(attribute.name),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Attribute, [resource, attribute.name]),
         ")",
         " | ",
         type_display,
@@ -141,18 +153,16 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       [
         "| [",
         Atom.to_string(relationship.name),
-        "](vertex://relationship:",
-        inspect(resource),
-        ":",
-        Atom.to_string(relationship.name),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Relationship, [resource, relationship.name]),
         ")",
         " | `",
         Atom.to_string(relationship.type),
         "`",
         " | [",
         inspect(destination),
-        "](vertex://resource:",
-        inspect(destination),
+        "](vertex://",
+        Util.id(Resource, [destination]),
         ")",
         " | ",
         description,
@@ -201,10 +211,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       [
         "| [",
         Atom.to_string(action.name),
-        "](vertex://action:",
-        inspect(resource),
-        ":",
-        Atom.to_string(action.name),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Action, [resource, action.name]),
         ")",
         " | ",
         description,
@@ -244,10 +252,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       [
         "| [",
         Atom.to_string(aggregate.name),
-        "](vertex://aggregate:",
-        inspect(resource),
-        ":",
-        Atom.to_string(aggregate.name),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Aggregate, [resource, aggregate.name]),
         ")",
         " | `",
         Atom.to_string(aggregate.kind),
@@ -288,10 +294,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       [
         "| [",
         Atom.to_string(calculation.name),
-        "](vertex://calculation:",
-        inspect(resource),
-        ":",
-        Atom.to_string(calculation.name),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Calculation, [resource, calculation.name]),
         ")",
         " | ",
         type_display,
@@ -313,12 +317,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         |> String.replace_prefix("Elixir.", "")
         |> String.replace_prefix("Ash.Type.", "")
 
-      ["[", type_name, "](vertex://type:", inspect(type), ")"]
+      ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
     end
 
     defp format_type_with_link(type) do
       type_name = inspect(type)
-      ["[", type_name, "](vertex://type:", type_name, ")"]
+      ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
     end
 
     @spec clean_description(String.t() | nil | any()) :: String.t()

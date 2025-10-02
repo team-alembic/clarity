@@ -1,15 +1,27 @@
 # credo:disable-for-this-file Credo.Check.Warning.UnsafeToAtom
 defmodule Clarity.ServerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
 
   alias Clarity.Server
   alias Clarity.Server.Worker
   alias Clarity.Test.DummyIntrospector
-  alias Clarity.Vertex.Application
-  alias Clarity.Vertex.Module, as: ModuleVertex
-  alias Clarity.Vertex.Root
+  alias Clarity.Vertex
+
+  setup do
+    current_introspector_applications = Application.fetch_env(:clarity, :introspector_applications)
+    Application.put_env(:clarity, :introspector_applications, [:clarity, :ash, :spark])
+
+    on_exit(fn ->
+      case current_introspector_applications do
+        {:ok, apps} -> Application.put_env(:clarity, :introspector_applications, apps)
+        :error -> Application.delete_env(:clarity, :introspector_applications)
+      end
+    end)
+
+    :ok
+  end
 
   describe "Server initialization and basic operations" do
     test "starts with root vertex and initial tasks queued", %{test: test} do
@@ -18,13 +30,13 @@ defmodule Clarity.ServerTest do
       # Get initial state
       clarity = Clarity.get(server, :partial)
 
-      assert [%Root{}] = Clarity.Graph.vertices(clarity.graph)
+      assert [%Vertex.Root{}] = Clarity.Graph.vertices(clarity.graph)
 
-      # Should be able to pull initial task (only Application introspector handles Root)
+      # Should be able to pull initial task (only Application introspector handles Vertex.Root)
       assert {:ok, task1} = Server.pull_task(server)
 
       # Task should be for root vertex with Application introspector
-      assert task1.vertex == %Root{}
+      assert task1.vertex == %Vertex.Root{}
       assert task1.introspector == Clarity.Introspector.Application
 
       # No more tasks should be available for root vertex
@@ -49,7 +61,7 @@ defmodule Clarity.ServerTest do
       assert {:ok, task1} = Server.pull_task(server)
 
       # Process task1 to create more vertices/tasks
-      app_vertex = %ModuleVertex{module: __MODULE__}
+      app_vertex = %Vertex.Module{module: __MODULE__}
       Server.ack_task(server, task1.id, [{:vertex, app_vertex}])
 
       # Force synchronization since ack_task is async
@@ -69,12 +81,12 @@ defmodule Clarity.ServerTest do
     test "vertex type filtering creates only relevant tasks", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
-      # Initially should only have 1 task for Root vertex (Application introspector)
+      # Initially should only have 1 task for Vertex.Root vertex (Application introspector)
       assert {:ok, root_task} = Server.pull_task(server)
       assert root_task.introspector == Clarity.Introspector.Application
       assert :empty = Server.pull_task(server)
 
-      app_vertex = %Application{app: :kernel, description: "Kernel", version: "1.0.0"}
+      app_vertex = %Vertex.Application{app: :kernel, description: "Kernel", version: "1.0.0"}
       Server.ack_task(server, root_task.id, [{:vertex, app_vertex}])
 
       # Force synchronization since ack_task is async
@@ -101,7 +113,7 @@ defmodule Clarity.ServerTest do
       {:ok, task} = find_task_for_introspector(server, Clarity.Introspector.Application)
 
       # Create mock result with new vertex and edge
-      app_vertex = %Application{app: :test_app, description: "Test App", version: "1.0.0"}
+      app_vertex = %Vertex.Application{app: :test_app, description: "Test App", version: "1.0.0"}
 
       result = [
         {:vertex, app_vertex},
@@ -113,7 +125,7 @@ defmodule Clarity.ServerTest do
 
       # Verify graph was updated
       clarity = Clarity.get(server, :partial)
-      app_vertex_id = Clarity.Vertex.unique_id(app_vertex)
+      app_vertex_id = Vertex.id(app_vertex)
       retrieved_app_vertex = Clarity.Graph.get_vertex(clarity.graph, app_vertex_id)
       assert retrieved_app_vertex == app_vertex
 
@@ -138,7 +150,7 @@ defmodule Clarity.ServerTest do
       # Pull and ack a task that creates a new vertex
       {:ok, task} = find_task_for_introspector(server, Clarity.Introspector.Application)
 
-      app_vertex = %Application{app: :test_app, description: "Test App", version: "1.0.0"}
+      app_vertex = %Vertex.Application{app: :test_app, description: "Test App", version: "1.0.0"}
 
       result = [
         {:vertex, app_vertex},
@@ -172,8 +184,8 @@ defmodule Clarity.ServerTest do
       assert {:ok, task} = Server.pull_task(server)
 
       # Create vertices for testing edge provenance
-      valid_vertex = %Application{app: :valid_app, description: "Valid App", version: "1.0.0"}
-      invalid_vertex = %Application{app: :invalid_app, description: "Invalid App", version: "1.0.0"}
+      valid_vertex = %Vertex.Application{app: :valid_app, description: "Valid App", version: "1.0.0"}
+      invalid_vertex = %Vertex.Application{app: :invalid_app, description: "Invalid App", version: "1.0.0"}
 
       # Create a result with both valid and invalid edges
       result = [
@@ -249,7 +261,7 @@ defmodule Clarity.ServerTest do
     test "Module.introspect_modules creates correct vertices and edges", %{test: _test} do
       # Test the new introspect_modules function directly
       graph = Clarity.Graph.new()
-      app_vertex = %Application{app: :test_app, description: "Test App", version: "1.0.0"}
+      app_vertex = %Vertex.Application{app: :test_app, description: "Test App", version: "1.0.0"}
       modules = [String, Enum]
 
       results = Clarity.Introspector.Module.introspect_modules(app_vertex, modules, graph)
@@ -270,7 +282,7 @@ defmodule Clarity.ServerTest do
       module_vertex_modules =
         module_vertices
         |> Enum.map(fn
-          %ModuleVertex{module: m} -> m
+          %Vertex.Module{module: m} -> m
           _ -> nil
         end)
         |> Enum.reject(&is_nil/1)
@@ -360,14 +372,14 @@ defmodule Clarity.ServerTest do
       final_edges = Clarity.Graph.edges(final_state.graph)
 
       # Find the clarity app vertex
-      clarity_app_vertex = Enum.find(final_vertices, &match?(%Application{app: :clarity}, &1))
+      clarity_app_vertex = Enum.find(final_vertices, &match?(%Vertex.Application{app: :clarity}, &1))
       assert clarity_app_vertex, "Clarity app vertex should exist"
 
       # Check edges from app to modules
       app_to_module_edges =
         Enum.filter(final_edges, fn edge_id ->
           case Clarity.Graph.edge(final_state.graph, edge_id) do
-            {_, ^clarity_app_vertex, %ModuleVertex{}, :module} -> true
+            {_, ^clarity_app_vertex, %Vertex.Module{}, :module} -> true
             _ -> false
           end
         end)
@@ -375,7 +387,7 @@ defmodule Clarity.ServerTest do
       # Should have edges for changed and added modules
       app_to_module_edge_targets =
         Enum.map(app_to_module_edges, fn edge_id ->
-          {_, _, %ModuleVertex{module: m}, :module} = Clarity.Graph.edge(final_state.graph, edge_id)
+          {_, _, %Vertex.Module{module: m}, :module} = Clarity.Graph.edge(final_state.graph, edge_id)
           m
         end)
 
@@ -435,27 +447,28 @@ defmodule Clarity.ServerTest do
       assert final_state.queue_info.total_vertices == initial_vertex_count
     end
 
-    @spec get_module_names_from_vertices([Clarity.Vertex.t()]) :: [module()]
+    @spec get_module_names_from_vertices([Vertex.t()]) :: [module()]
     defp get_module_names_from_vertices(vertices) do
       vertices
-      |> Enum.filter(&match?(%ModuleVertex{}, &1))
-      |> Enum.map(fn %ModuleVertex{module: m} -> m end)
+      |> Enum.filter(&match?(%Vertex.Module{}, &1))
+      |> Enum.map(fn %Vertex.Module{module: m} -> m end)
     end
   end
 
   describe "Event broadcasting and subscriptions" do
     test "broadcasts work_started event on introspection start", %{test: test} do
-      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
+      name = Module.concat(__MODULE__, test)
 
       # Subscribe to events
-      unsubscribe = Clarity.subscribe(server, :work_started)
+      unsubscribe = Clarity.subscribe(name, [:work_started, :work_completed])
 
-      # Clear any initial events
-      receive do
-        {:clarity, _} -> :ok
-      after
-        100 -> :ok
+      server = start_supervised!({Server, name: name, introspectors: [Clarity.Introspector.Application]})
+
+      for task <- pull_all_tasks(server) do
+        Server.ack_task(server, task.id, [])
       end
+
+      assert_receive {:clarity, :work_completed}
 
       # Trigger full introspection
       Clarity.introspect(server, :full)
@@ -510,6 +523,8 @@ defmodule Clarity.ServerTest do
       Enum.each(tasks, fn task ->
         Server.ack_task(server, task.id, [])
       end)
+
+      pull_all_tasks(server)
 
       # Should eventually receive work_completed
       assert_receive {:clarity, :work_completed}, 1000
@@ -581,7 +596,7 @@ defmodule Clarity.ServerTest do
     end
   end
 
-  @spec find_task_for_vertex(GenServer.server(), Clarity.Vertex.t(), non_neg_integer()) ::
+  @spec find_task_for_vertex(GenServer.server(), Vertex.t(), non_neg_integer()) ::
           Server.Task.t() | :not_found
   defp find_task_for_vertex(server, vertex, attempts \\ 20) do
     case {attempts, Server.pull_task(server)} do

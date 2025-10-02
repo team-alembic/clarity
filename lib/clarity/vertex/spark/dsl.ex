@@ -13,26 +13,38 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
     defstruct [:dsl]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{dsl: dsl}), do: "spark_dsl:#{inspect(dsl)}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{dsl: dsl}), do: inspect(dsl)
-
-      @impl Clarity.Vertex
-      def graph_group(_vertex), do: []
+      def id(%@for{dsl: dsl}), do: Util.id(@for, [dsl])
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: "Spark DSL"
 
       @impl Clarity.Vertex
-      def render_name(%{dsl: dsl}), do: inspect(dsl)
+      def name(%@for{dsl: dsl}), do: inspect(dsl)
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "hexagon"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "hexagon"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(vertex) do
+    defimpl Clarity.Vertex.ModuleProvider do
+      @impl Clarity.Vertex.ModuleProvider
+      def module(%@for{dsl: dsl}), do: dsl
+    end
+
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{dsl: module}) do
+        SourceLocation.from_module(module)
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(vertex) do
         [
           "`",
           inspect(vertex.dsl),
@@ -46,11 +58,6 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
               []
           end
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{dsl: module}) do
-        SourceLocation.from_module(module)
       end
     end
   end

@@ -32,7 +32,6 @@ case Code.ensure_loaded(Ash) do
              {:vertex, type_vertex},
              {:edge, app_vertex, type_vertex, :type},
              {:edge, module_vertex, type_vertex, :type}
-             | Clarity.Introspector.moduledoc_content(module, type_vertex)
            ]}
         else
           {:ok, []}

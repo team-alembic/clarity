@@ -6,28 +6,20 @@ defmodule Clarity.Vertex.Root do
   defstruct []
 
   defimpl Clarity.Vertex do
-    @impl Clarity.Vertex
-    def unique_id(_vertex), do: "root"
+    alias Clarity.Vertex.Util
 
     @impl Clarity.Vertex
-    def graph_id(_vertex), do: "root"
+    def id(_vertex), do: Util.id(@for, [])
 
     @impl Clarity.Vertex
-    def graph_group(_vertex), do: []
+    def type_label(_vertex), do: "Root"
 
     @impl Clarity.Vertex
-    def type_label(_vertex), do: inspect(Clarity.Vertex.Root)
+    def name(_vertex), do: "Root"
+  end
 
-    @impl Clarity.Vertex
-    def render_name(_vertex), do: "Root"
-
-    @impl Clarity.Vertex
-    def dot_shape(_vertex), do: "point"
-
-    @impl Clarity.Vertex
-    def markdown_overview(_vertex), do: []
-
-    @impl Clarity.Vertex
-    def source_location(_vertex), do: nil
+  defimpl Clarity.Vertex.GraphShapeProvider do
+    @impl Clarity.Vertex.GraphShapeProvider
+    def shape(_vertex), do: "point"
   end
 end

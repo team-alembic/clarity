@@ -8,6 +8,7 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
     """
 
     alias Clarity.SourceLocation
+    alias Spark.Dsl.Entity
 
     @type t() :: %__MODULE__{
             module: module(),
@@ -18,36 +19,42 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
     defstruct [:module, :path, :entity]
 
     defimpl Clarity.Vertex do
-      alias Spark.Dsl.Entity, as: SparkEntity
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def unique_id(%{module: module, path: path, entity: entity}) do
-        entity_name = Map.get(entity, :name, inspect(entity))
-        "spark_entity:#{inspect(module)}:#{inspect(path)}:#{inspect(entity_name)}"
+      def id(%@for{module: module, path: path, entity: entity}) do
+        Util.id(@for, [module, inspect(path), entity])
       end
-
-      @impl Clarity.Vertex
-      def graph_id(%{module: module, path: path, entity: entity}) do
-        entity_name = Map.get(entity, :name, inspect(entity))
-        "#{inspect(module)}.#{Enum.join(path, ".")}.#{entity_name}"
-      end
-
-      @impl Clarity.Vertex
-      def graph_group(_vertex), do: []
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: "Spark Entity"
 
       @impl Clarity.Vertex
-      def render_name(%{entity: entity}) do
+      def name(%@for{entity: entity}) do
         entity |> Map.get(:name, inspect(entity)) |> to_string()
       end
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "box"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "box"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(%{module: module, path: path, entity: entity}) do
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      alias Entity, as: SparkEntity
+
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%{module: module, entity: entity}) do
+        case SparkEntity.anno(entity) do
+          nil -> SourceLocation.from_module(module)
+          anno -> SourceLocation.from_module_anno(module, anno)
+        end
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(%@for{module: module, path: path, entity: entity}) do
         entity_name = Map.get(entity, :name, inspect(entity))
 
         [
@@ -61,14 +68,6 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
           to_string(entity_name),
           "`"
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{module: module, entity: entity}) do
-        case SparkEntity.anno(entity) do
-          nil -> SourceLocation.from_module(module)
-          anno -> SourceLocation.from_module_anno(module, anno)
-        end
       end
     end
   end

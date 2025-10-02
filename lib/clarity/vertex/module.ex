@@ -7,41 +7,47 @@ defmodule Clarity.Vertex.Module do
 
   @type t() :: %__MODULE__{
           module: module(),
-          version: :unknown | String.t(),
+          version: :unknown | integer(),
           behaviour?: boolean()
         }
   @enforce_keys [:module]
   defstruct [:module, version: :unknown, behaviour?: false]
 
   defimpl Clarity.Vertex do
-    @impl Clarity.Vertex
-    def unique_id(%{module: module, version: version}) do
-      version_str =
-        case version do
-          :unknown -> "unknown"
-          v -> to_string(v)
-        end
+    alias Clarity.Vertex.Util
 
-      "module:#{inspect(module)}:#{version_str}"
+    @impl Clarity.Vertex
+    def id(%@for{module: module, version: version}) do
+      Util.id(@for, [module, version])
     end
-
-    @impl Clarity.Vertex
-    def graph_id(%{module: module}), do: inspect(module)
-
-    @impl Clarity.Vertex
-    def graph_group(_vertex), do: []
 
     @impl Clarity.Vertex
     def type_label(_vertex), do: inspect(Module)
 
     @impl Clarity.Vertex
-    def render_name(%{module: module}), do: inspect(module)
+    def name(%@for{module: module}), do: inspect(module)
+  end
 
-    @impl Clarity.Vertex
-    def dot_shape(_vertex), do: "box"
+  defimpl Clarity.Vertex.GraphShapeProvider do
+    @impl Clarity.Vertex.GraphShapeProvider
+    def shape(_vertex), do: "box"
+  end
 
-    @impl Clarity.Vertex
-    def markdown_overview(%{module: module}) do
+  defimpl Clarity.Vertex.ModuleProvider do
+    @impl Clarity.Vertex.ModuleProvider
+    def module(%{module: module}), do: module
+  end
+
+  defimpl Clarity.Vertex.SourceLocationProvider do
+    @impl Clarity.Vertex.SourceLocationProvider
+    def source_location(%{module: module}) do
+      SourceLocation.from_module(module)
+    end
+  end
+
+  defimpl Clarity.Vertex.TooltipProvider do
+    @impl Clarity.Vertex.TooltipProvider
+    def tooltip(%{module: module}) do
       [
         "`",
         inspect(module),
@@ -55,11 +61,6 @@ defmodule Clarity.Vertex.Module do
             []
         end
       ]
-    end
-
-    @impl Clarity.Vertex
-    def source_location(%{module: module}) do
-      SourceLocation.from_module(module)
     end
   end
 end

@@ -14,28 +14,39 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:attribute, :resource]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{attribute: %{name: name}, resource: resource}),
-        do: "attribute:#{inspect(resource)}:#{name}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{attribute: %{name: name}, resource: resource}),
-        do: [inspect(resource), "_", Atom.to_string(name)]
-
-      @impl Clarity.Vertex
-      def graph_group(%{resource: resource}), do: [inspect(resource), inspect(Attribute)]
+      def id(%@for{attribute: %{name: name}, resource: resource}),
+        do: Util.id(@for, [resource, name])
 
       @impl Clarity.Vertex
       def type_label(_vertex), do: inspect(Attribute)
 
       @impl Clarity.Vertex
-      def render_name(%{attribute: %{name: name}}), do: Atom.to_string(name)
+      def name(%@for{attribute: %{name: name}}), do: Atom.to_string(name)
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "rectangle"
+    defimpl Clarity.Vertex.GraphGroupProvider do
+      @impl Clarity.Vertex.GraphGroupProvider
+      def graph_group(%@for{resource: resource}), do: [inspect(resource), inspect(Attribute)]
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(vertex),
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "rectangle"
+    end
+
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%@for{attribute: attribute, resource: resource}) do
+        SourceLocation.from_spark_entity(resource, attribute)
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(vertex),
         do: [
           "Attribute: `",
           inspect(vertex.attribute.name),
@@ -54,11 +65,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           inspect(vertex.attribute.public?),
           "`\n"
         ]
-
-      @impl Clarity.Vertex
-      def source_location(%{attribute: attribute, resource: resource}) do
-        SourceLocation.from_spark_entity(resource, attribute)
-      end
     end
   end
 end

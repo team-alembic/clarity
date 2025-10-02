@@ -14,28 +14,39 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:action, :resource]
 
     defimpl Clarity.Vertex do
-      @impl Clarity.Vertex
-      def unique_id(%{action: %{name: name}, resource: resource}),
-        do: "action:#{inspect(resource)}:#{name}"
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Vertex
-      def graph_id(%{action: %{name: name}, resource: resource}),
-        do: [inspect(resource), "_", Atom.to_string(name)]
+      def id(%@for{action: %{name: name}, resource: resource}),
+        do: Util.id(@for, [resource, name])
 
       @impl Clarity.Vertex
-      def graph_group(%{resource: resource}), do: [inspect(resource), inspect(Actions)]
+      def type_label(%@for{action: %mod{}}), do: inspect(mod)
 
       @impl Clarity.Vertex
-      def type_label(%{action: %mod{}}), do: inspect(mod)
+      def name(%@for{action: %{name: name}}), do: Atom.to_string(name)
+    end
 
-      @impl Clarity.Vertex
-      def render_name(%{action: %{name: name}}), do: Atom.to_string(name)
+    defimpl Clarity.Vertex.GraphGroupProvider do
+      @impl Clarity.Vertex.GraphGroupProvider
+      def graph_group(%@for{resource: resource}), do: [inspect(resource), inspect(Actions)]
+    end
 
-      @impl Clarity.Vertex
-      def dot_shape(_vertex), do: "cds"
+    defimpl Clarity.Vertex.GraphShapeProvider do
+      @impl Clarity.Vertex.GraphShapeProvider
+      def shape(_vertex), do: "cds"
+    end
 
-      @impl Clarity.Vertex
-      def markdown_overview(%{action: action, resource: resource}) do
+    defimpl Clarity.Vertex.SourceLocationProvider do
+      @impl Clarity.Vertex.SourceLocationProvider
+      def source_location(%{action: action, resource: resource}) do
+        SourceLocation.from_spark_entity(resource, action)
+      end
+    end
+
+    defimpl Clarity.Vertex.TooltipProvider do
+      @impl Clarity.Vertex.TooltipProvider
+      def tooltip(%@for{action: action, resource: resource}) do
         [
           "Action: `",
           inspect(action.name),
@@ -76,11 +87,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               ]
           end
         ]
-      end
-
-      @impl Clarity.Vertex
-      def source_location(%{action: action, resource: resource}) do
-        SourceLocation.from_spark_entity(resource, action)
       end
     end
   end

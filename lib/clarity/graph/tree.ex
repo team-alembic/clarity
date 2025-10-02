@@ -164,7 +164,7 @@ defmodule Clarity.Graph.Tree do
         child_trees =
           vertex_ids
           |> Enum.map(&build_tree_from_vertex(graph, &1, vertices))
-          |> Enum.sort_by(&Vertex.render_name(&1.vertex))
+          |> Enum.sort_by(&Vertex.name(&1.vertex))
 
         {label, child_trees}
       end)

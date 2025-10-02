@@ -18,15 +18,15 @@ defmodule Clarity.Introspector.ModuleTest do
       module_vertices = result |> Enum.filter(&match?({:vertex, %Module{}}, &1)) |> Enum.map(&elem(&1, 1))
 
       assert Enum.any?(module_vertices, fn %Module{module: mod, version: version} ->
-               mod == Module and (version == :unknown or is_binary(version))
+               mod == Module and is_integer(version)
              end)
 
       assert Enum.any?(module_vertices, fn %Module{module: mod, version: version} ->
-               mod == Clarity.Server and (version == :unknown or is_binary(version))
+               mod == Clarity.Server and is_integer(version)
              end)
 
       assert Enum.any?(module_vertices, fn %Module{module: mod, version: version} ->
-               mod == Worker and (version == :unknown or is_binary(version))
+               mod == Worker and is_integer(version)
              end)
 
       # Check edges are still created correctly
@@ -52,7 +52,7 @@ defmodule Clarity.Introspector.ModuleTest do
 
       # All module vertices should have a version field (either :unknown or string)
       assert Enum.all?(module_vertices, fn %Module{version: version} ->
-               version == :unknown or is_binary(version)
+               version == :unknown or is_integer(version)
              end)
 
       # At least one module should exist

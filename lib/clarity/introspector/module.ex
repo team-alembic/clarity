@@ -14,6 +14,7 @@ defmodule Clarity.Introspector.Module do
     app
     |> modules()
     |> Task.async_stream(&Code.ensure_loaded/1, ordered: false)
+    |> Enum.to_list()
     |> Enum.filter(&match?({:ok, {:module, _}}, &1))
     |> Enum.flat_map(fn {:ok, {:module, module}} ->
       create_module_vertex_entries(module, app_vertex)
@@ -71,7 +72,6 @@ defmodule Clarity.Introspector.Module do
     [
       {:vertex, module_vertex},
       {:edge, app_vertex, module_vertex, :module}
-      | Clarity.Introspector.moduledoc_content(module, module_vertex)
     ]
   end
 
@@ -147,12 +147,8 @@ defmodule Clarity.Introspector.Module do
   defp get_module_version(module) do
     case module.module_info(:attributes)[:vsn] do
       nil -> :unknown
-      [version] when is_list(version) -> List.to_string(version)
-      version when is_list(version) -> List.to_string(version)
-      version -> to_string(version)
+      [version] -> version
     end
-  rescue
-    _ -> :unknown
   end
 
   @spec behaviour?(module :: module()) :: boolean()
