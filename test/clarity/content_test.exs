@@ -38,6 +38,9 @@ defmodule Clarity.ContentTest do
     def name, do: "Live View Content"
 
     @impl Content
+    def description, do: "Test LiveView content provider"
+
+    @impl Content
     def applies?(%Root{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 
@@ -62,6 +65,9 @@ defmodule Clarity.ContentTest do
     def name, do: "Live Component Content"
 
     @impl Content
+    def description, do: "Test LiveComponent content provider"
+
+    @impl Content
     def applies?(%Root{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 
@@ -82,6 +88,9 @@ defmodule Clarity.ContentTest do
 
     @impl Content
     def name, do: "Never Applies"
+
+    @impl Content
+    def description, do: "Content that never applies"
 
     @impl Content
     def applies?(_vertex, _lens), do: false
@@ -192,6 +201,8 @@ defmodule Clarity.ContentTest do
         @impl Content
         def name, do: "Z Content"
         @impl Content
+        def description, do: "Z content provider"
+        @impl Content
         def applies?(%Root{}, _lens), do: true
         def applies?(_vertex, _lens), do: false
         @impl Content
@@ -204,6 +215,8 @@ defmodule Clarity.ContentTest do
 
         @impl Content
         def name, do: "A Content"
+        @impl Content
+        def description, do: "A content provider"
         @impl Content
         def applies?(%Root{}, _lens), do: true
         def applies?(_vertex, _lens), do: false
@@ -251,6 +264,8 @@ defmodule Clarity.ContentTest do
 
         @impl Content
         def name, do: "No Desc"
+        @impl Content
+        def description, do: nil
         @impl Content
         def applies?(%Root{}, _lens), do: true
         def applies?(_vertex, _lens), do: false

@@ -50,6 +50,7 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
              Vertex.Ash.Attribute,
              Vertex.Ash.Calculation,
              Vertex.Ash.Domain,
+             Vertex.Ash.Policy,
              Vertex.Ash.Relationship,
              Vertex.Ash.Resource,
              Vertex.Phoenix.Endpoint,
