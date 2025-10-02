@@ -15,7 +15,7 @@ defmodule Clarity.PageLive do
   def mount(params, _session, socket) do
     if connected?(socket) do
       Clarity.subscribe(socket.assigns.clarity_pid, [:work_started, :work_completed])
-      :timer.send_interval(1000, self(), :refresh_interval)
+      Process.send_after(self(), :refresh_interval, to_timeout(second: 1))
     end
 
     clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
@@ -246,11 +246,16 @@ defmodule Clarity.PageLive do
 
   def handle_info(:refresh_interval, socket) do
     # Only refresh if work is in progress to avoid unnecessary calls
-    if socket.assigns.clarity.status == :working do
-      {:noreply, handle_routing(socket, socket.assigns.params, &push_patch/2)}
-    else
-      {:noreply, socket}
-    end
+    socket =
+      if socket.assigns.clarity.status == :working do
+        handle_routing(socket, socket.assigns.params, &push_patch/2)
+      else
+        socket
+      end
+
+    Process.send_after(self(), :refresh_interval, to_timeout(second: 1))
+
+    {:noreply, socket}
   end
 
   @spec tabs(assigns :: Socket.assigns()) :: Rendered.t()
