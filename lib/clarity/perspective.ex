@@ -404,6 +404,9 @@ defmodule Clarity.Perspective do
     context_filter =
       Graph.Filter.any([
         lens.filter,
+        # Always include the root since the root is required for navigation
+        Graph.Filter.vertex_type([Root]),
+        # Always include the currently viewed vertex and its breadcrumbs
         fn graph ->
           breadcrumbs =
             graph
