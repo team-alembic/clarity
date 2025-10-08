@@ -932,4 +932,167 @@ defmodule Clarity.GraphTest do
       Graph.delete(loaded_graph)
     end
   end
+
+  describe "degree tracking" do
+    test "tracks in_degree and out_degree for vertices" do
+      graph = Graph.new()
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+      app3 = %Application{app: :app3, description: "App 3", version: "1.0.0"}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, app3, %Root{})
+
+      assert Graph.in_degree(graph, app1) == 0
+      assert Graph.out_degree(graph, app1) == 0
+
+      Graph.add_edge(graph, app1, app2, :label_a)
+
+      assert Graph.out_degree(graph, app1) == 1
+      assert Graph.out_degree(graph, app1, :label_a) == 1
+      assert Graph.out_degree(graph, app1, :label_b) == 0
+      assert Graph.in_degree(graph, app2) == 1
+      assert Graph.in_degree(graph, app2, :label_a) == 1
+      assert Graph.in_degree(graph, app2, :label_b) == 0
+
+      Graph.add_edge(graph, app1, app3, :label_b)
+
+      assert Graph.out_degree(graph, app1) == 2
+      assert Graph.out_degree(graph, app1, :label_a) == 1
+      assert Graph.out_degree(graph, app1, :label_b) == 1
+      assert Graph.in_degree(graph, app3) == 1
+      assert Graph.in_degree(graph, app3, :label_b) == 1
+
+      Graph.add_edge(graph, app2, app3, :label_a)
+
+      assert Graph.out_degree(graph, app2) == 1
+      assert Graph.in_degree(graph, app3) == 2
+      assert Graph.in_degree(graph, app3, :label_a) == 1
+      assert Graph.in_degree(graph, app3, :label_b) == 1
+    end
+
+    test "updates degrees when vertices are purged" do
+      graph = Graph.new()
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+      app3 = %Application{app: :app3, description: "App 3", version: "1.0.0"}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, app3, %Root{})
+
+      Graph.add_edge(graph, app1, app2, :label_a)
+      Graph.add_edge(graph, app1, app3, :label_b)
+      Graph.add_edge(graph, app2, app3, :label_a)
+
+      assert Graph.out_degree(graph, app1) == 2
+      assert Graph.in_degree(graph, app2) == 1
+      assert Graph.in_degree(graph, app3) == 2
+
+      {:ok, _purged} = Graph.purge(graph, app2)
+
+      assert Graph.out_degree(graph, app1) == 1
+      assert Graph.out_degree(graph, app1, :label_a) == 0
+      assert Graph.out_degree(graph, app1, :label_b) == 1
+      assert Graph.in_degree(graph, app3) == 1
+      assert Graph.in_degree(graph, app3, :label_a) == 0
+      assert Graph.in_degree(graph, app3, :label_b) == 1
+    end
+
+    test "clears degrees when graph is cleared" do
+      graph = Graph.new()
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+
+      Graph.add_edge(graph, app1, app2, :label_a)
+
+      assert Graph.out_degree(graph, app1) == 1
+      assert Graph.in_degree(graph, app2) == 1
+
+      Graph.clear(graph)
+
+      app3 = %Application{app: :app3, description: "App 3", version: "1.0.0"}
+      app4 = %Application{app: :app4, description: "App 4", version: "1.0.0"}
+
+      Graph.add_vertex(graph, app3, %Root{})
+      Graph.add_vertex(graph, app4, %Root{})
+
+      assert Graph.out_degree(graph, app3) == 0
+      assert Graph.in_degree(graph, app4) == 0
+    end
+
+    @tag :tmp_dir
+    test "preserves degree indexes through persist and load", %{tmp_dir: tmp_dir} do
+      graph = Graph.new()
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+      app3 = %Application{app: :app3, description: "App 3", version: "1.0.0"}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, app3, %Root{})
+
+      Graph.add_edge(graph, app1, app2, :label_a)
+      Graph.add_edge(graph, app1, app3, :label_b)
+      Graph.add_edge(graph, app2, app3, :label_a)
+
+      path = Path.join(tmp_dir, "test_graph_indexes")
+
+      assert :ok = Graph.persist(graph, path)
+
+      {:ok, loaded_graph} = Graph.load(path)
+
+      [loaded_v1, loaded_v2, loaded_v3] =
+        loaded_graph
+        |> Graph.vertices()
+        |> Enum.reject(&match?(%Root{}, &1))
+        |> Enum.sort_by(& &1.app)
+
+      assert Graph.out_degree(loaded_graph, loaded_v1) == 2
+      assert Graph.out_degree(loaded_graph, loaded_v1, :label_a) == 1
+      assert Graph.out_degree(loaded_graph, loaded_v1, :label_b) == 1
+      assert Graph.in_degree(loaded_graph, loaded_v2) == 1
+      assert Graph.in_degree(loaded_graph, loaded_v2, :label_a) == 1
+      assert Graph.in_degree(loaded_graph, loaded_v3) == 2
+      assert Graph.in_degree(loaded_graph, loaded_v3, :label_a) == 1
+      assert Graph.in_degree(loaded_graph, loaded_v3, :label_b) == 1
+    end
+
+    test "shares indexes between main graph and subgraphs" do
+      graph = Graph.new()
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+      app3 = %Application{app: :app3, description: "App 3", version: "1.0.0"}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, app3, %Root{})
+
+      Graph.add_edge(graph, app1, app2, :label_a)
+      Graph.add_edge(graph, app1, app3, :label_b)
+
+      subgraph =
+        Graph.filter(graph, fn _graph ->
+          fn
+            %Application{app: app} when app in [:app1, :app2] -> true
+            %Root{} -> true
+            _ -> false
+          end
+        end)
+
+      assert Graph.out_degree(subgraph, app1) == 1
+      assert Graph.out_degree(subgraph, app1, :label_a) == 1
+      assert Graph.in_degree(subgraph, app2) == 1
+
+      Graph.add_edge(graph, app2, app3, :label_a)
+
+      assert Graph.out_degree(graph, app2) == 1
+      assert Graph.out_degree(graph, app2, :label_a) == 1
+      assert Graph.in_degree(subgraph, app2, :label_a) == 1
+    end
+  end
 end

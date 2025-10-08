@@ -36,17 +36,13 @@ defmodule Clarity.Graph.Filter do
     fn graph ->
       center_vertex_id = Vertex.id(center_vertex)
 
-      # Use existing logic to get vertices within steps
-      temp_subgraph =
-        Util.subgraph_within_steps(
+      allowed_vertex_ids =
+        Util.vertices_within_steps(
           graph.main_graph,
           center_vertex_id,
           max_outgoing_steps,
           max_incoming_steps
         )
-
-      allowed_vertex_ids = temp_subgraph |> :digraph.vertices() |> MapSet.new()
-      :digraph.delete(temp_subgraph)
 
       fn vertex ->
         vertex_id = Vertex.id(vertex)

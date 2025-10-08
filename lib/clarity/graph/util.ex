@@ -3,13 +3,11 @@ defmodule Clarity.Graph.Util do
   @moduledoc false
 
   @doc """
-  Create and return a *new* digraph that contains every vertex reachable from
-  `root_vertex` within **`max_outgoing_steps` forward hops** *or*
-  **`max_incoming_steps` backward hops**, together with every edge that connects
-  those vertices.
+  Return a MapSet of all vertices reachable from `root_vertex` within
+  **`max_outgoing_steps` forward hops** *or* **`max_incoming_steps` backward hops**.
 
   The traversal is breadth‑first in each direction, so the overall complexity
-  remains linear in the size of the resulting sub‑graph (`O(Vₛ + Eₛ)`).
+  remains linear in the size of the resulting vertex set (`O(Vₛ)`).
 
   ## Parameters
 
@@ -19,70 +17,57 @@ defmodule Clarity.Graph.Util do
     * `max_incoming_steps` – how far to follow *incoming* edges.
 
   """
-  @spec subgraph_within_steps(
+  @spec vertices_within_steps(
           original_graph :: :digraph.graph(),
           root_vertex :: :digraph.vertex(),
           max_outgoing_steps :: non_neg_integer(),
           max_incoming_steps :: non_neg_integer()
-        ) :: :digraph.graph()
-  def subgraph_within_steps(original_graph, root_vertex, max_outgoing_steps, max_incoming_steps)
+        ) :: MapSet.t(:digraph.vertex())
+  def vertices_within_steps(original_graph, root_vertex, max_outgoing_steps, max_incoming_steps)
       when max_outgoing_steps >= 0 and max_incoming_steps >= 0 do
-    subgraph = :digraph.new()
-    copy_vertex(original_graph, subgraph, root_vertex)
-
-    {subgraph, visited_vertices} =
+    visited_vertices =
       bfs_direction(
         original_graph,
-        subgraph,
         MapSet.new([root_vertex]),
         root_vertex,
         max_outgoing_steps,
-        &:digraph.out_edges/2
+        &:digraph.out_neighbours/2
       )
 
-    {_subgraph, _} =
-      bfs_direction(
-        original_graph,
-        subgraph,
-        visited_vertices,
-        root_vertex,
-        max_incoming_steps,
-        &:digraph.in_edges/2
-      )
-
-    subgraph
+    bfs_direction(
+      original_graph,
+      visited_vertices,
+      root_vertex,
+      max_incoming_steps,
+      &:digraph.in_neighbours/2
+    )
   end
 
-  @spec bfs_direction(original_graph, subgraph, visited, start_vertex, max_steps, edges_fun) ::
-          {subgraph, visited}
-        when original_graph: :digraph.graph(),
-             subgraph: :digraph.graph(),
-             visited: MapSet.t(:digraph.vertex()),
-             start_vertex: :digraph.vertex(),
-             max_steps: non_neg_integer(),
-             edges_fun: (original_graph, :digraph.vertex() -> [:digraph.edge()])
-  defp bfs_direction(_original_graph, subgraph, visited, _start_vertex, 0, _),
-    do: {subgraph, visited}
+  @spec bfs_direction(
+          original_graph :: :digraph.graph(),
+          visited :: MapSet.t(:digraph.vertex()),
+          start_vertex :: :digraph.vertex(),
+          max_steps :: non_neg_integer(),
+          neighbours_fun :: (:digraph.graph(), :digraph.vertex() -> [:digraph.vertex()])
+        ) :: MapSet.t(:digraph.vertex())
+  defp bfs_direction(_original_graph, visited, _start_vertex, 0, _), do: visited
 
-  defp bfs_direction(original_graph, subgraph, visited, start_vertex, max_steps, edges_fun) do
+  defp bfs_direction(original_graph, visited, start_vertex, max_steps, neighbours_fun) do
     queue = :queue.in({start_vertex, 0}, :queue.new())
-    bfs_loop(queue, original_graph, subgraph, visited, max_steps, edges_fun)
+    bfs_loop(queue, original_graph, visited, max_steps, neighbours_fun)
   end
 
-  @spec bfs_loop(queue, original_graph, subgraph, visited, max_steps, edges_fun) ::
-          {subgraph, visited}
-        when queue: :queue.queue(),
-             original_graph: :digraph.graph(),
-             subgraph: :digraph.graph(),
-             visited: MapSet.t(vertex),
-             max_steps: non_neg_integer(),
-             edges_fun: (original_graph, vertex -> [edge]),
-             vertex: :digraph.vertex(),
-             edge: :digraph.edge()
-  defp bfs_loop(queue, original_graph, subgraph, visited, max_steps, edges_fun) do
+  @spec bfs_loop(
+          queue :: :queue.queue(),
+          original_graph :: :digraph.graph(),
+          visited :: MapSet.t(:digraph.vertex()),
+          max_steps :: non_neg_integer(),
+          neighbours_fun :: (:digraph.graph(), :digraph.vertex() -> [:digraph.vertex()])
+        ) :: MapSet.t(:digraph.vertex())
+  defp bfs_loop(queue, original_graph, visited, max_steps, neighbours_fun) do
     case :queue.out(queue) do
       {:empty, _} ->
-        {subgraph, visited}
+        visited
 
       {{:value, {current_vertex, current_depth}}, queue_tail} ->
         {updated_queue, updated_visited} =
@@ -91,10 +76,9 @@ defmodule Clarity.Graph.Util do
               current_vertex,
               current_depth,
               original_graph,
-              subgraph,
               visited,
               queue_tail,
-              edges_fun
+              neighbours_fun
             )
           else
             {queue_tail, visited}
@@ -103,69 +87,30 @@ defmodule Clarity.Graph.Util do
         bfs_loop(
           updated_queue,
           original_graph,
-          subgraph,
           updated_visited,
           max_steps,
-          edges_fun
+          neighbours_fun
         )
     end
   end
 
-  @spec expand(vertex, depth, original_graph, subgraph, visited, queue, edges_fun) ::
-          {queue, visited}
-        when vertex: :digraph.vertex(),
-             depth: non_neg_integer(),
-             original_graph: :digraph.graph(),
-             subgraph: :digraph.graph(),
-             visited: MapSet.t(:digraph.vertex()),
-             queue: :queue.queue(),
-             edges_fun: (original_graph, vertex -> [:digraph.edge()])
-  defp expand(vertex, depth, original_graph, subgraph, visited, queue, edges_fun) do
-    Enum.reduce(edges_fun.(original_graph, vertex), {queue, visited}, fn edge_id,
-                                                                         {q_acc, s_acc} ->
-      {_, from_vertex, to_vertex, edge_label} = :digraph.edge(original_graph, edge_id)
-      adjacent_vertex = if vertex == from_vertex, do: to_vertex, else: from_vertex
+  @spec expand(
+          vertex :: :digraph.vertex(),
+          depth :: non_neg_integer(),
+          original_graph :: :digraph.graph(),
+          visited :: MapSet.t(:digraph.vertex()),
+          queue :: :queue.queue(),
+          neighbours_fun :: (:digraph.graph(), :digraph.vertex() -> [:digraph.vertex()])
+        ) :: {:queue.queue(), MapSet.t(:digraph.vertex())}
+  defp expand(vertex, depth, original_graph, visited, queue, neighbours_fun) do
+    neighbours = neighbours_fun.(original_graph, vertex)
 
-      {updated_queue, updated_visited} =
-        if MapSet.member?(s_acc, adjacent_vertex) do
-          {q_acc, s_acc}
-        else
-          copy_vertex(original_graph, subgraph, adjacent_vertex)
-          {:queue.in({adjacent_vertex, depth + 1}, q_acc), MapSet.put(s_acc, adjacent_vertex)}
-        end
-
-      add_edge_if_absent(subgraph, edge_id, from_vertex, to_vertex, edge_label)
-      {updated_queue, updated_visited}
+    Enum.reduce(neighbours, {queue, visited}, fn neighbour, {q_acc, s_acc} ->
+      if MapSet.member?(s_acc, neighbour) do
+        {q_acc, s_acc}
+      else
+        {:queue.in({neighbour, depth + 1}, q_acc), MapSet.put(s_acc, neighbour)}
+      end
     end)
-  end
-
-  @spec copy_vertex(
-          src_graph :: :digraph.graph(),
-          dst_graph :: :digraph.graph(),
-          vertex :: :digraph.vertex()
-        ) :: :digraph.vertex()
-  defp copy_vertex(src_graph, dst_graph, vertex) do
-    case :digraph.vertex(src_graph, vertex) do
-      {^vertex, label} -> :digraph.add_vertex(dst_graph, vertex, label)
-      _ -> :digraph.add_vertex(dst_graph, vertex)
-    end
-  end
-
-  @spec add_edge_if_absent(
-          dst_graph :: :digraph.graph(),
-          edge_id :: :digraph.edge(),
-          from_vertex :: :digraph.vertex(),
-          to_vertex :: :digraph.vertex(),
-          edge_label :: :digraph.label()
-        ) :: :ok
-  defp add_edge_if_absent(dst_graph, edge_id, from_vertex, to_vertex, edge_label) do
-    case :digraph.edge(dst_graph, edge_id) do
-      false ->
-        :digraph.add_edge(dst_graph, edge_id, from_vertex, to_vertex, edge_label)
-        :ok
-
-      _ ->
-        :ok
-    end
   end
 end
