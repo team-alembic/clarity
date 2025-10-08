@@ -317,48 +317,18 @@ defmodule Clarity.CoreComponents do
     <div
       :if={@work_status == :working}
       class={"flex items-center space-x-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md #{@class}"}
+      title={"Vertices: #{@queue_info.total_vertices} | In Progress: #{@queue_info.in_progress} | Queued: #{@queue_info.future_queue} | Requeued: #{@queue_info.requeue_queue}"}
       {@rest}
     >
-      <!-- Spinner -->
-      <svg
-        class="animate-spin h-4 w-4 text-blue-600 dark:text-blue-400"
-        fill="none"
-        viewBox="0 0 24 24"
+      <progress
+        value={@queue_info.total_vertices}
+        max={
+          @queue_info.total_vertices + @queue_info.future_queue + @queue_info.in_progress +
+            @queue_info.requeue_queue
+        }
+        class="w-32 h-4 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-blue-200 dark:[&::-webkit-progress-bar]:bg-blue-700 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-blue-600 dark:[&::-webkit-progress-value]:bg-blue-400 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-blue-600 dark:[&::-moz-progress-bar]:bg-blue-400"
       >
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-        </circle>
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-        >
-        </path>
-      </svg>
-      
-    <!-- Progress text -->
-      <span class="text-sm text-blue-700 dark:text-blue-300 font-medium">
-        Processing...
-      </span>
-      
-    <!-- Queue info -->
-      <span class="text-xs text-blue-600 dark:text-blue-400">
-        <%= if @queue_info.in_progress > 0 or @queue_info.future_queue > 0 do %>
-          {@queue_info.in_progress} active, {@queue_info.future_queue + @queue_info.requeue_queue} queued
-        <% else %>
-          {@queue_info.total_vertices} items total
-        <% end %>
-      </span>
-      
-    <!-- Progress bar -->
-      <%= if @queue_info.total_vertices > 0 do %>
-        <div class="flex-1 bg-blue-200 dark:bg-blue-700 rounded-full h-2 max-w-32">
-          <div
-            class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
-            style={"width: #{progress_percentage(@queue_info)}%"}
-          >
-          </div>
-        </div>
-      <% end %>
+      </progress>
     </div>
     """
   end
@@ -526,18 +496,4 @@ defmodule Clarity.CoreComponents do
     </div>
     """
   end
-
-  # Calculate progress percentage based on completed work
-  @spec progress_percentage(queue_info :: map()) :: number()
-  defp progress_percentage(%{
-         future_queue: future,
-         in_progress: in_progress,
-         total_vertices: total
-       })
-       when total > 0 do
-    completed = max(0, total - future - in_progress)
-    Float.round(completed / total * 100, 1)
-  end
-
-  defp progress_percentage(_), do: 0
 end
