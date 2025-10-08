@@ -9,8 +9,16 @@ defmodule Clarity.Graph do
   alias Clarity.Vertex.Root
 
   @derive {Inspect, only: [:owner, :subgraph]}
-  @enforce_keys [:main_graph, :tree_graph, :provenance_graph, :vertices, :owner]
-  defstruct [:main_graph, :tree_graph, :provenance_graph, :vertices, :owner, subgraph: false]
+  @enforce_keys [:main_graph, :tree_graph, :provenance_graph, :vertices, :update_count, :owner]
+  defstruct [
+    :main_graph,
+    :tree_graph,
+    :provenance_graph,
+    :vertices,
+    :update_count,
+    :owner,
+    subgraph: false
+  ]
 
   @type error() :: :subgraphs_are_readonly | :not_owner
   @type result() :: :ok | {:error, error()}
@@ -26,6 +34,7 @@ defmodule Clarity.Graph do
             tree_graph: :digraph.graph(),
             provenance_graph: :digraph.graph(),
             vertices: :ets.tid(),
+            update_count: :ets.tid(),
             owner: pid(),
             subgraph: boolean()
           }
@@ -39,15 +48,16 @@ defmodule Clarity.Graph do
     tree_graph = :digraph.new([:acyclic])
     provenance_graph = :digraph.new([:acyclic])
     vertices = :ets.new(Vertex, [:set, :protected, read_concurrency: true])
+    update_count = :ets.new(:update_count, [:set, :protected, read_concurrency: true])
 
-    # Initialize update counter
-    :ets.insert(vertices, {:"$update_count", 0})
+    :ets.insert(update_count, {:count, 0})
 
     graph = %__MODULE__{
       main_graph: main_graph,
       tree_graph: tree_graph,
       provenance_graph: provenance_graph,
       vertices: vertices,
+      update_count: update_count,
       owner: self()
     }
 
@@ -64,11 +74,13 @@ defmodule Clarity.Graph do
       true = :digraph.delete(graph.main_graph)
       true = :digraph.delete(graph.tree_graph)
 
-      # Subgraphs shares the vertices ets table and the provenance graph
-      # with the main graph, so we only delete them for the main graph
+      # Subgraphs shares the vertices ets table, update_count table, and the
+      # provenance graph with the main graph, so we only delete them for the
+      # main graph
       if not graph.subgraph do
         true = :digraph.delete(graph.provenance_graph)
         true = :ets.delete(graph.vertices)
+        true = :ets.delete(graph.update_count)
       end
 
       :ok
@@ -83,24 +95,14 @@ defmodule Clarity.Graph do
   @spec clear(t()) :: result()
   def clear(%__MODULE__{} = graph) do
     with :ok <- check_writable(graph) do
-      # Save current counter value before clearing
-      current_count = get_update_count(graph)
-
-      # Delete all vertices from graphs using bulk operation
       :digraph.del_vertices(graph.main_graph, :digraph.vertices(graph.main_graph))
       :digraph.del_vertices(graph.tree_graph, :digraph.vertices(graph.tree_graph))
       :digraph.del_vertices(graph.provenance_graph, :digraph.vertices(graph.provenance_graph))
 
-      # Clear vertex table
       :ets.delete_all_objects(graph.vertices)
 
-      # Re-initialize update counter with preserved value
-      :ets.insert(graph.vertices, {:"$update_count", current_count})
-
-      # Reset graphs to empty state with root vertex
       add_root_vertex(graph)
 
-      # Increment update counter for the clear operation
       increment_update_count(graph)
 
       :ok
@@ -310,7 +312,7 @@ defmodule Clarity.Graph do
   """
   @spec get_update_count(t()) :: pos_integer()
   def get_update_count(%__MODULE__{} = graph) do
-    :ets.lookup_element(graph.vertices, :"$update_count", 2)
+    :ets.lookup_element(graph.update_count, :count, 2)
   end
 
   @doc """
@@ -423,14 +425,12 @@ defmodule Clarity.Graph do
 
     predicate = filter_fn.(graph)
 
-    # Apply predicate to all vertices and get their IDs
     included_vertex_ids =
       graph
       |> vertices()
       |> Enum.filter(predicate)
       |> Enum.map(&Vertex.id/1)
 
-    # Create subgraphs using digraph_utils.subgraph
     filtered_main_graph = :digraph_utils.subgraph(graph.main_graph, included_vertex_ids)
     filtered_tree_graph = :digraph_utils.subgraph(graph.tree_graph, included_vertex_ids)
 
@@ -439,6 +439,7 @@ defmodule Clarity.Graph do
       tree_graph: filtered_tree_graph,
       provenance_graph: graph.provenance_graph,
       vertices: graph.vertices,
+      update_count: graph.update_count,
       owner: self(),
       subgraph: true
     }
@@ -479,6 +480,6 @@ defmodule Clarity.Graph do
 
   @spec increment_update_count(t()) :: pos_integer()
   defp increment_update_count(%__MODULE__{} = graph) do
-    :ets.update_counter(graph.vertices, :"$update_count", 1, {:"$update_count", 0})
+    :ets.update_counter(graph.update_count, :count, 1, {:count, 0})
   end
 end
