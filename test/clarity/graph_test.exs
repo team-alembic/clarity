@@ -829,4 +829,107 @@ defmodule Clarity.GraphTest do
       assert count4 > count3
     end
   end
+
+  describe "persist and load" do
+    @tag :tmp_dir
+    test "persist/load roundtrip preserves graph structure", %{tmp_dir: tmp_dir} do
+      graph = Graph.new()
+      app = %Application{app: :test_app, description: "Test App", version: "1.0.0"}
+      mod1 = %Module{module: TestMod1}
+      mod2 = %Module{module: TestMod2}
+
+      Graph.add_vertex(graph, app, %Root{})
+      Graph.add_vertex(graph, mod1, app)
+      Graph.add_vertex(graph, mod2, mod1)
+      Graph.add_edge(graph, %Root{}, app, :application)
+      Graph.add_edge(graph, app, mod1, :module)
+      Graph.add_edge(graph, mod1, mod2, :dependency)
+
+      persist_path = Path.join(tmp_dir, "test_graph")
+      assert :ok = Graph.persist(graph, persist_path)
+
+      assert {:ok, loaded_graph} = Graph.load(persist_path)
+
+      assert Graph.vertex_count(loaded_graph) == Graph.vertex_count(graph)
+      assert length(Graph.edges(loaded_graph)) == length(Graph.edges(graph))
+
+      loaded_vertices = Graph.vertices(loaded_graph)
+      assert %Root{} in loaded_vertices
+      assert app in loaded_vertices
+      assert mod1 in loaded_vertices
+      assert mod2 in loaded_vertices
+
+      assert Graph.get_vertex(loaded_graph, Clarity.Vertex.id(app)) == app
+      assert Graph.get_vertex(loaded_graph, Clarity.Vertex.id(mod1)) == mod1
+
+      Graph.delete(loaded_graph)
+    end
+
+    @tag :tmp_dir
+    test "persist returns error for subgraphs", %{tmp_dir: tmp_dir} do
+      graph = Graph.new()
+      subgraph = Graph.filter(graph, Filter.custom(fn _ -> true end))
+
+      persist_path = Path.join(tmp_dir, "subgraph_test")
+      assert {:error, :subgraphs_are_readonly} = Graph.persist(subgraph, persist_path)
+
+      Graph.delete(subgraph)
+    end
+
+    @tag :tmp_dir
+    test "load handles missing files", %{tmp_dir: tmp_dir} do
+      persist_path = Path.join(tmp_dir, "nonexistent_graph")
+      assert {:error, _reason} = Graph.load(persist_path)
+    end
+
+    @tag :tmp_dir
+    test "persist/load preserves update_count", %{tmp_dir: tmp_dir} do
+      graph = Graph.new()
+      app = %Application{app: :test_app, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+      Graph.add_edge(graph, %Root{}, app, :application)
+
+      original_count = Graph.get_update_count(graph)
+
+      persist_path = Path.join(tmp_dir, "count_test")
+      assert :ok = Graph.persist(graph, persist_path)
+
+      assert {:ok, loaded_graph} = Graph.load(persist_path)
+      assert Graph.get_update_count(loaded_graph) == original_count
+
+      Graph.delete(loaded_graph)
+    end
+
+    @tag :tmp_dir
+    test "persist/load preserves relationships and edges", %{tmp_dir: tmp_dir} do
+      graph = Graph.new()
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+      mod = %Module{module: TestMod}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, mod, app1)
+      Graph.add_edge(graph, %Root{}, app1, :application)
+      Graph.add_edge(graph, %Root{}, app2, :application)
+      Graph.add_edge(graph, app1, mod, :module)
+
+      persist_path = Path.join(tmp_dir, "edges_test")
+      assert :ok = Graph.persist(graph, persist_path)
+
+      assert {:ok, loaded_graph} = Graph.load(persist_path)
+
+      assert loaded_graph |> Graph.out_neighbors(%Root{}) |> length() == 2
+      assert Graph.out_neighbors(loaded_graph, app1) == [mod]
+      assert Graph.in_neighbors(loaded_graph, mod) == [app1]
+
+      [edge_id | _] = Graph.out_edges(loaded_graph, %Root{})
+      {_, from_vertex, to_vertex, label} = Graph.edge(loaded_graph, edge_id)
+      assert from_vertex == %Root{}
+      assert to_vertex in [app1, app2]
+      assert label == :application
+
+      Graph.delete(loaded_graph)
+    end
+  end
 end

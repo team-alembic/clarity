@@ -20,7 +20,7 @@ defmodule Clarity.Graph do
     subgraph: false
   ]
 
-  @type error() :: :subgraphs_are_readonly | :not_owner
+  @type error() :: :subgraphs_are_readonly | :not_owner | :file.posix()
   @type result() :: :ok | {:error, error()}
   @type result(inner) :: {:ok, inner} | {:error, error()}
 
@@ -443,6 +443,105 @@ defmodule Clarity.Graph do
       owner: self(),
       subgraph: true
     }
+  end
+
+  @doc """
+  Persists a graph to disk.
+
+  The graph must not be a subgraph.
+
+  Returns `{:error, posix}` on file errors (e.g., `:enoent`, `:eacces`, `:enospc`).
+  """
+  @spec persist(t(), Path.t()) :: result()
+  def persist(%__MODULE__{subgraph: true}, _path), do: {:error, :subgraphs_are_readonly}
+
+  def persist(%__MODULE__{} = graph, path) do
+    with :ok <- File.mkdir_p(path),
+         :ok <- persist_ets_table(graph.vertices, Path.join(path, "vertices.ets")),
+         :ok <- persist_ets_table(graph.update_count, Path.join(path, "update_count.ets")),
+         :ok <- persist_digraph(graph.main_graph, path, "main"),
+         :ok <- persist_digraph(graph.tree_graph, path, "tree") do
+      persist_digraph(graph.provenance_graph, path, "provenance")
+    end
+  end
+
+  @doc """
+  Loads a persisted graph from disk.
+
+  > #### Security Warning {: .warning}
+  >
+  > Only load trusted graphs. ETS tables can contain arbitrary terms including
+  > atoms and functions that may crash the VM if malicious.
+
+  Returns `{:error, posix}` on file errors (e.g., `:enoent`, `:eacces`).
+  """
+  @spec load(Path.t()) :: result(t())
+  def load(path) do
+    with {:ok, vertices} <- load_ets_table(Path.join(path, "vertices.ets")),
+         {:ok, update_count} <- load_ets_table(Path.join(path, "update_count.ets")),
+         {:ok, main_graph} <- load_digraph(path, "main", true),
+         {:ok, tree_graph} <- load_digraph(path, "tree", false),
+         {:ok, provenance_graph} <- load_digraph(path, "provenance", false) do
+      graph = %__MODULE__{
+        main_graph: main_graph,
+        tree_graph: tree_graph,
+        provenance_graph: provenance_graph,
+        vertices: vertices,
+        update_count: update_count,
+        owner: self()
+      }
+
+      {:ok, graph}
+    end
+  end
+
+  @spec persist_ets_table(:ets.tid(), Path.t()) :: :ok | {:error, :file.posix()}
+  defp persist_ets_table(table, file_path) do
+    case :ets.tab2file(table, String.to_charlist(file_path)) do
+      :ok ->
+        :ok
+
+      {:error, {:file_error, _path, posix_error}} ->
+        {:error, posix_error}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @spec persist_digraph(:digraph.graph(), Path.t(), String.t()) :: :ok | {:error, :file.posix()}
+  defp persist_digraph(digraph, base_path, name) do
+    {:digraph, vtab, etab, ntab, _cyclic} = digraph
+
+    with :ok <- persist_ets_table(vtab, Path.join(base_path, "#{name}_vertices.ets")),
+         :ok <- persist_ets_table(etab, Path.join(base_path, "#{name}_edges.ets")) do
+      persist_ets_table(ntab, Path.join(base_path, "#{name}_neighbors.ets"))
+    end
+  end
+
+  @spec load_ets_table(Path.t()) :: {:ok, :ets.tid()} | {:error, :file.posix()}
+  defp load_ets_table(file_path) do
+    case :ets.file2tab(String.to_charlist(file_path)) do
+      {:ok, table} ->
+        {:ok, table}
+
+      {:error, {:read_error, {:file_error, _path, posix_error}}} ->
+        {:error, posix_error}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @spec load_digraph(Path.t(), String.t(), boolean()) ::
+          {:ok, :digraph.graph()} | {:error, :file.posix()}
+  defp load_digraph(base_path, name, cyclic) do
+    with {:ok, vtab} <- load_ets_table(Path.join(base_path, "#{name}_vertices.ets")),
+         {:ok, etab} <- load_ets_table(Path.join(base_path, "#{name}_edges.ets")),
+         {:ok, ntab} <- load_ets_table(Path.join(base_path, "#{name}_neighbors.ets")) do
+      digraph = {:digraph, vtab, etab, ntab, cyclic}
+      {:ok, digraph}
+    end
   end
 
   @spec add_root_vertex(t()) :: :ok
