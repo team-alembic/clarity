@@ -8,6 +8,7 @@ defmodule Clarity.PageLive do
   alias Clarity.Graph
   alias Clarity.Perspective
   alias Clarity.Vertex
+  alias Phoenix.LiveView.AsyncResult
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
@@ -23,7 +24,12 @@ defmodule Clarity.PageLive do
 
     socket =
       socket
-      |> assign(clarity: clarity, perspective_pid: perspective_pid, show_navigation: false)
+      |> assign(
+        clarity: clarity,
+        perspective_pid: perspective_pid,
+        show_navigation: false,
+        zoom_subgraph: AsyncResult.loading()
+      )
       |> handle_routing(params, &push_navigate/2)
 
     {:ok, socket}
@@ -93,7 +99,9 @@ defmodule Clarity.PageLive do
 
     socket = assign(socket, clarity: clarity, show_navigation: false)
 
-    case Perspective.install_lens(socket.assigns.perspective_pid, lens_id) do
+    perspective_id = socket.assigns.perspective_pid
+
+    case Perspective.install_lens(perspective_id, lens_id) do
       {:error, :lens_not_found} ->
         assign(socket,
           lens: nil,
@@ -106,11 +114,11 @@ defmodule Clarity.PageLive do
         )
 
       {:ok, lens} ->
-        tree = Perspective.get_tree(socket.assigns.perspective_pid)
+        tree = Perspective.get_tree(perspective_id)
 
         socket = assign(socket, lens: lens, tree: tree)
 
-        case Perspective.set_current_vertex(socket.assigns.perspective_pid, vertex_id) do
+        case Perspective.set_current_vertex(perspective_id, vertex_id) do
           {:error, :vertex_not_found} ->
             assign(socket,
               vertex: nil,
@@ -121,16 +129,23 @@ defmodule Clarity.PageLive do
             )
 
           {:ok, vertex} ->
-            breadcrumbs = Perspective.get_breadcrumbs(socket.assigns.perspective_pid)
-            contents = Perspective.get_contents(socket.assigns.perspective_pid)
+            breadcrumbs = Perspective.get_breadcrumbs(perspective_id)
+            contents = Perspective.get_contents(perspective_id)
 
             socket =
               socket
               |> assign(vertex: vertex, contents: contents, breadcrumbs: breadcrumbs)
+              |> assign_async(
+                :zoom_subgraph,
+                fn ->
+                  {:ok, %{zoom_subgraph: Perspective.get_zoom_subgraph(perspective_id)}}
+                end,
+                reset: true
+              )
               |> update_page_title()
 
             # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-            case Perspective.get_content(socket.assigns.perspective_pid, content_id) do
+            case Perspective.get_content(perspective_id, content_id) do
               {:error, :content_not_found} ->
                 assign(socket, content: nil, page_title: "Content Not Found")
 
@@ -212,6 +227,7 @@ defmodule Clarity.PageLive do
               theme={@theme}
               prefix={@prefix}
               lens={lens}
+              zoom_subgraph={@zoom_subgraph}
             />
           <% else %>
             <.vertex_not_found_error prefix={@prefix} lens={lens} />
@@ -298,49 +314,54 @@ defmodule Clarity.PageLive do
   @spec render_content(assigns :: Socket.assigns()) :: Rendered.t()
   defp render_content(assigns) do
     ~H"""
-    <% content_props = %{
-      theme: @theme,
-      zoom_subgraph: Clarity.Perspective.get_zoom_subgraph(@perspective_pid)
-    } %>
-    <%= cond do %>
-      <% @content == nil -> %>
-        <.content_not_found_error />
-      <% @content.live_component? -> %>
-        <.live_component
-          module={@content.provider}
-          id="content-view"
-          vertex={@vertex}
-          lens={@lens}
-          perspective_pid={@perspective_pid}
-          {content_props}
-        />
-      <% @content.live_view? -> %>
-        {live_render(@socket, @content.provider,
-          id: "content-view",
-          session: %{
-            "vertex" => @vertex,
-            "lens" => @lens,
-            "perspective_pid" => @perspective_pid
-          },
-          container: {:div, class: "content"}
-        )}
-      <% true -> %>
-        <%= case @content.render_static do %>
-          <% {:mermaid, content} -> %>
-            <.mermaid graph={content.(content_props)} class="content p-4" id="content-view-mermaid" />
-          <% {:viz, content} -> %>
-            <.viz graph={content.(content_props)} class="content p-4" id="content-view-viz" />
-          <% {:markdown, content} -> %>
-            <section class="content w-full flex justify-center">
-              <.markdown
-                content={content.(content_props)}
-                class="p-4 max-w-[100ch] w-full"
-                prefix={@prefix}
-                lens={@lens}
-              />
-            </section>
-        <% end %>
-    <% end %>
+    <.async_result :let={zoom_subgraph} assign={@zoom_subgraph}>
+      <:loading>
+        <.loading_spinner class="content" />
+      </:loading>
+      <% content_props = %{
+        theme: @theme,
+        zoom_subgraph: zoom_subgraph
+      } %>
+      <%= cond do %>
+        <% @content == nil -> %>
+          <.content_not_found_error />
+        <% @content.live_component? -> %>
+          <.live_component
+            module={@content.provider}
+            id="content-view"
+            vertex={@vertex}
+            lens={@lens}
+            perspective_pid={@perspective_pid}
+            {content_props}
+          />
+        <% @content.live_view? -> %>
+          {live_render(@socket, @content.provider,
+            id: "content-view",
+            session: %{
+              "vertex" => @vertex,
+              "lens" => @lens,
+              "perspective_pid" => @perspective_pid
+            },
+            container: {:div, class: "content"}
+          )}
+        <% true -> %>
+          <%= case @content.render_static do %>
+            <% {:mermaid, content} -> %>
+              <.mermaid graph={content.(content_props)} class="content p-4" id="content-view-mermaid" />
+            <% {:viz, content} -> %>
+              <.viz graph={content.(content_props)} class="content p-4" id="content-view-viz" />
+            <% {:markdown, content} -> %>
+              <section class="content w-full flex justify-center">
+                <.markdown
+                  content={content.(content_props)}
+                  class="p-4 max-w-[100ch] w-full"
+                  prefix={@prefix}
+                  lens={@lens}
+                />
+              </section>
+          <% end %>
+      <% end %>
+    </.async_result>
     """
   end
 

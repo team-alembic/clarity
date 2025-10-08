@@ -9,7 +9,8 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "loads root vertex with graph content", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      html = render_async(view)
 
       # Should show the page with navigation
       assert html =~ "Graph Navigation"
@@ -61,7 +62,8 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Breadcrumbs" do
     test "displays breadcrumbs for root vertex", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      html = render_async(view)
 
       # Root vertex is not shown in breadcrumbs since it's always the same
       # Just verify the page loads correctly
@@ -69,14 +71,16 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "displays breadcrumbs for nested vertices", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      html = render_async(view)
 
       # Should show breadcrumb for the application (root is not shown)
       assert html =~ "clarity"
     end
 
     test "displays breadcrumbs for domain vertices", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/debug/domain:Demo.Accounts.Domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/domain:Demo.Accounts.Domain/graph")
+      html = render_async(view)
 
       # Should show breadcrumb path (root not shown): clarity > Demo.Accounts.Domain
       assert html =~ "clarity"
@@ -127,7 +131,8 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Content Rendering" do
     test "renders graph navigation content by default", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      html = render_async(view)
 
       # Should render viz content by default (Graph Navigation)
       assert has_element?(view, "#content-view-viz")
@@ -204,7 +209,8 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "shows content 404 for invalid content", %{conn: conn} do
       # Test with valid vertex but invalid content should show content 404
-      {:ok, view, html} = live(conn, "/debug/root/invalid_content")
+      {:ok, view, _html} = live(conn, "/debug/root/invalid_content")
+      html = render_async(view)
 
       # Should show content not found error inside the content area
       assert html =~ "Content Not Found"

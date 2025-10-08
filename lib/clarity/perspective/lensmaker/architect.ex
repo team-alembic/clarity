@@ -36,13 +36,10 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       # Hide Applications from the navigation / graph. Without user
       # provided filters, this is too noisy to be useful.
       %Vertex.Application{} = vertex ->
-        graph
-        |> Graph.out_edges(vertex)
-        |> Enum.map(&Graph.edge(graph, &1))
-        |> Enum.any?(fn
-          {_id, ^vertex, _module, :module} -> false
-          _other -> true
-        end)
+        total = Graph.out_degree(graph, vertex)
+        module = Graph.out_degree(graph, vertex, :module)
+
+        total - module > 0
 
       %struct{}
       when struct in [

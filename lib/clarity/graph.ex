@@ -9,13 +9,22 @@ defmodule Clarity.Graph do
   alias Clarity.Vertex.Root
 
   @derive {Inspect, only: [:owner, :subgraph]}
-  @enforce_keys [:main_graph, :tree_graph, :provenance_graph, :vertices, :update_count, :owner]
+  @enforce_keys [
+    :main_graph,
+    :tree_graph,
+    :provenance_graph,
+    :vertices,
+    :update_count,
+    :indexes,
+    :owner
+  ]
   defstruct [
     :main_graph,
     :tree_graph,
     :provenance_graph,
     :vertices,
     :update_count,
+    :indexes,
     :owner,
     subgraph: false
   ]
@@ -35,6 +44,7 @@ defmodule Clarity.Graph do
             provenance_graph: :digraph.graph(),
             vertices: :ets.tid(),
             update_count: :ets.tid(),
+            indexes: :ets.tid(),
             owner: pid(),
             subgraph: boolean()
           }
@@ -49,6 +59,7 @@ defmodule Clarity.Graph do
     provenance_graph = :digraph.new([:acyclic])
     vertices = :ets.new(Vertex, [:set, :protected, read_concurrency: true])
     update_count = :ets.new(:update_count, [:set, :protected, read_concurrency: true])
+    indexes = :ets.new(:indexes, [:set, :protected, read_concurrency: true])
 
     :ets.insert(update_count, {:count, 0})
 
@@ -58,6 +69,7 @@ defmodule Clarity.Graph do
       provenance_graph: provenance_graph,
       vertices: vertices,
       update_count: update_count,
+      indexes: indexes,
       owner: self()
     }
 
@@ -74,13 +86,14 @@ defmodule Clarity.Graph do
       true = :digraph.delete(graph.main_graph)
       true = :digraph.delete(graph.tree_graph)
 
-      # Subgraphs shares the vertices ets table, update_count table, and the
-      # provenance graph with the main graph, so we only delete them for the
-      # main graph
+      # Subgraphs shares the vertices ets table, update_count table,
+      # indexes table, and the provenance graph with the main graph, so we only
+      # delete them for the main graph
       if not graph.subgraph do
         true = :digraph.delete(graph.provenance_graph)
         true = :ets.delete(graph.vertices)
         true = :ets.delete(graph.update_count)
+        true = :ets.delete(graph.indexes)
       end
 
       :ok
@@ -100,6 +113,7 @@ defmodule Clarity.Graph do
       :digraph.del_vertices(graph.provenance_graph, :digraph.vertices(graph.provenance_graph))
 
       :ets.delete_all_objects(graph.vertices)
+      :ets.delete_all_objects(graph.indexes)
 
       add_root_vertex(graph)
 
@@ -142,17 +156,16 @@ defmodule Clarity.Graph do
   @spec add_edge(t(), Vertex.t(), Vertex.t(), :digraph.label()) :: result()
   def add_edge(%__MODULE__{} = graph, from_vertex, to_vertex, label) do
     with :ok <- check_writable(graph) do
-      # Convert vertices to IDs
       from_id = Vertex.id(from_vertex)
       to_id = Vertex.id(to_vertex)
 
-      # Add edge to main graph using vertex IDs
       :digraph.add_edge(graph.main_graph, from_id, to_id, label)
 
-      # Add edge to tree graph if it creates a shorter path
       Tree.add_edge(graph.tree_graph, from_id, to_id, label)
 
-      # Increment update counter
+      update_degree_index(graph, from_id, label, :out_degree, 1)
+      update_degree_index(graph, to_id, label, :in_degree, 1)
+
       increment_update_count(graph)
 
       :ok
@@ -316,6 +329,50 @@ defmodule Clarity.Graph do
   end
 
   @doc """
+  Gets the total in-degree for a vertex across all edge types.
+  """
+  @spec in_degree(t(), Vertex.t()) :: non_neg_integer()
+  def in_degree(%__MODULE__{} = graph, vertex) do
+    vertex_id = Vertex.id(vertex)
+
+    graph.main_graph
+    |> :digraph.in_edges(vertex_id)
+    |> length()
+  end
+
+  @doc """
+  Gets the in-degree for a vertex for a specific edge type.
+  """
+  @spec in_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
+  def in_degree(%__MODULE__{} = graph, vertex, label) do
+    vertex_id = Vertex.id(vertex)
+    key = {vertex_id, label, :in_degree}
+    :ets.lookup_element(graph.indexes, key, 2, 0)
+  end
+
+  @doc """
+  Gets the total out-degree for a vertex across all edge types.
+  """
+  @spec out_degree(t(), Vertex.t()) :: non_neg_integer()
+  def out_degree(%__MODULE__{} = graph, vertex) do
+    vertex_id = Vertex.id(vertex)
+
+    graph.main_graph
+    |> :digraph.out_edges(vertex_id)
+    |> length()
+  end
+
+  @doc """
+  Gets the out-degree for a vertex for a specific edge type.
+  """
+  @spec out_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
+  def out_degree(%__MODULE__{} = graph, vertex, label) do
+    vertex_id = Vertex.id(vertex)
+    key = {vertex_id, label, :out_degree}
+    :ets.lookup_element(graph.indexes, key, 2, 0)
+  end
+
+  @doc """
   Purges a vertex and all vertices that were caused by it.
   """
   @spec purge(t(), Vertex.t()) :: result([Vertex.t()])
@@ -323,10 +380,8 @@ defmodule Clarity.Graph do
     with :ok <- check_writable(graph) do
       vertex_id = Vertex.id(vertex)
 
-      # Find all vertices reachable from this vertex (including itself)
       reachable_ids = :digraph_utils.reachable([vertex_id], graph.provenance_graph)
 
-      # Get the vertex structs before deleting them
       purged_vertices =
         reachable_ids
         |> Enum.map(fn id ->
@@ -337,15 +392,14 @@ defmodule Clarity.Graph do
         end)
         |> Enum.reject(&is_nil/1)
 
-      # Remove vertices from all graphs and ETS table
       Enum.each(reachable_ids, fn id ->
+        purge_vertex_indexes(graph, id)
         :ets.delete(graph.vertices, id)
         :digraph.del_vertex(graph.main_graph, id)
         :digraph.del_vertex(graph.tree_graph, id)
         :digraph.del_vertex(graph.provenance_graph, id)
       end)
 
-      # Increment update counter
       increment_update_count(graph)
 
       {:ok, purged_vertices}
@@ -440,6 +494,7 @@ defmodule Clarity.Graph do
       provenance_graph: graph.provenance_graph,
       vertices: graph.vertices,
       update_count: graph.update_count,
+      indexes: graph.indexes,
       owner: self(),
       subgraph: true
     }
@@ -459,6 +514,7 @@ defmodule Clarity.Graph do
     with :ok <- File.mkdir_p(path),
          :ok <- persist_ets_table(graph.vertices, Path.join(path, "vertices.ets")),
          :ok <- persist_ets_table(graph.update_count, Path.join(path, "update_count.ets")),
+         :ok <- persist_ets_table(graph.indexes, Path.join(path, "indexes.ets")),
          :ok <- persist_digraph(graph.main_graph, path, "main"),
          :ok <- persist_digraph(graph.tree_graph, path, "tree") do
       persist_digraph(graph.provenance_graph, path, "provenance")
@@ -479,6 +535,7 @@ defmodule Clarity.Graph do
   def load(path) do
     with {:ok, vertices} <- load_ets_table(Path.join(path, "vertices.ets")),
          {:ok, update_count} <- load_ets_table(Path.join(path, "update_count.ets")),
+         {:ok, indexes} <- load_ets_table(Path.join(path, "indexes.ets")),
          {:ok, main_graph} <- load_digraph(path, "main", true),
          {:ok, tree_graph} <- load_digraph(path, "tree", false),
          {:ok, provenance_graph} <- load_digraph(path, "provenance", false) do
@@ -488,6 +545,7 @@ defmodule Clarity.Graph do
         provenance_graph: provenance_graph,
         vertices: vertices,
         update_count: update_count,
+        indexes: indexes,
         owner: self()
       }
 
@@ -544,20 +602,47 @@ defmodule Clarity.Graph do
     end
   end
 
+  @spec update_degree_index(
+          t(),
+          String.t(),
+          :digraph.label(),
+          :in_degree | :out_degree,
+          integer()
+        ) :: :ok
+  defp update_degree_index(graph, vertex_id, label, direction, delta) do
+    key = {vertex_id, label, direction}
+    :ets.update_counter(graph.indexes, key, delta, {key, 0})
+    :ok
+  end
+
+  @spec purge_vertex_indexes(t(), String.t()) :: :ok
+  defp purge_vertex_indexes(graph, vertex_id) do
+    for edge_id <- :digraph.out_edges(graph.main_graph, vertex_id) do
+      {^edge_id, ^vertex_id, to_id, label} = :digraph.edge(graph.main_graph, edge_id)
+      update_degree_index(graph, to_id, label, :in_degree, -1)
+    end
+
+    for edge_id <- :digraph.in_edges(graph.main_graph, vertex_id) do
+      {^edge_id, from_id, ^vertex_id, label} = :digraph.edge(graph.main_graph, edge_id)
+      update_degree_index(graph, from_id, label, :out_degree, -1)
+    end
+
+    :ets.match_delete(graph.indexes, {{vertex_id, :_, :_}, :_})
+
+    :ok
+  end
+
   @spec add_root_vertex(t()) :: :ok
   defp add_root_vertex(graph) do
     root_vertex = %Root{}
     root_id = Vertex.id(root_vertex)
 
-    # Store root vertex in ETS table
     :ets.insert(graph.vertices, {root_id, Root, root_vertex})
 
-    # Add root vertex ID to graphs (special case - root has no provenance)
     :digraph.add_vertex(graph.main_graph, root_id)
     Tree.add_vertex(graph.tree_graph, root_id)
     :digraph.add_vertex(graph.provenance_graph, root_id)
 
-    # Increment update counter
     increment_update_count(graph)
 
     :ok
