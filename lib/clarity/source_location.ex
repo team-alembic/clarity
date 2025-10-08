@@ -24,7 +24,7 @@ defmodule Clarity.SourceLocation do
 
   """
 
-  alias Spark.Dsl.Entity
+  alias Spark.Dsl.Entity, warn: false
 
   @enforce_keys [:anno]
   defstruct [:application, :module, :anno]
