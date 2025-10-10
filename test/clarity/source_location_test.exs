@@ -101,6 +101,17 @@ defmodule Clarity.SourceLocationTest do
       assert source_location.module == User
       assert source_location.application == :clarity
     end
+
+    test "creates source location from entity without annotation" do
+      entity_without_anno = %Ash.Policy.Policy{}
+
+      source_location = SourceLocation.from_spark_entity(Enum, entity_without_anno)
+
+      assert source_location.anno
+      assert source_location.module == Enum
+      assert source_location.application == :elixir
+      assert SourceLocation.line(source_location) == 1
+    end
   end
 
   describe "file_path/1 and file_path/2" do
