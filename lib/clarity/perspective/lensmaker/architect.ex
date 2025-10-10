@@ -44,6 +44,7 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       %struct{}
       when struct in [
              Vertex.Ash.Action.Vertex.Ash.Aggregate,
+             Vertex.Ash.Action,
              Vertex.Ash.Attribute,
              Vertex.Ash.Calculation,
              Vertex.Ash.Domain,

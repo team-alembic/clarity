@@ -43,8 +43,10 @@ defmodule Clarity.Perspective.Lensmaker.Security do
 
       %struct{}
       when struct in [
+             Vertex.Ash.Action,
              Vertex.Ash.DataLayer,
              Vertex.Ash.Domain,
+             Vertex.Ash.Policy,
              Vertex.Ash.Relationship,
              Vertex.Ash.Resource,
              Vertex.Phoenix.Router
