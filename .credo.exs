@@ -96,7 +96,6 @@
           {Credo.Check.Readability.AliasOrder, []},
           {Credo.Check.Readability.FunctionNames, []},
           {Credo.Check.Readability.LargeNumbers, []},
-          {Credo.Check.Readability.MaxLineLength, [priority: :low, max_length: 120]},
           {Credo.Check.Readability.ModuleAttributeNames, []},
           {Credo.Check.Readability.ModuleDoc, []},
           {Credo.Check.Readability.ModuleNames, []},
@@ -169,6 +168,9 @@
           {Credo.Check.Warning.UnsafeToAtom, []}
         ],
         disabled: [
+          # Disabled since it's handled by the formatter.
+          {Credo.Check.Readability.MaxLineLength, [priority: :low, max_length: 120]},
+
           #
           # Checks scheduled for next check update (opt-in for now)
           {Credo.Check.Refactor.UtcNowTruncate, []},

@@ -51,7 +51,24 @@ defmodule Clarity.Introspector do
   """
   @type t() :: module()
 
-  @type entry() :: {:vertex, Vertex.t()} | {:edge, Vertex.t(), Vertex.t(), term()}
+  @typedoc """
+  An introspection entry returned by introspectors.
+
+  - `{:vertex, vertex}` - Adds a new vertex to the graph
+  - `{:edge, from_vertex, to_vertex, label}` - Adds an edge between vertices
+  - `{:purge, vertex}` - Removes a vertex and all vertices caused by it
+
+  > #### Warning - Internal API {: .warning}
+  >
+  > The `{:purge, vertex}` entry type is for internal use by Clarity's
+  > Application and Module introspectors only. Custom introspectors
+  > must not emit purge entries.
+  """
+  @type entry() ::
+          {:vertex, Vertex.t()}
+          | {:edge, Vertex.t(), Vertex.t(), term()}
+          | {:purge, Vertex.t()}
+
   @type result() :: {:ok, [entry()]} | {:error, :unmet_dependencies | term()}
 
   @doc """

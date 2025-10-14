@@ -68,6 +68,16 @@ defmodule Clarity.Config do
   config :clarity, :default_perspective_lens, "debug"
   ```
 
+  ### Cache Path (`:cache_path`)
+
+  Sets the directory where the graph cache is stored:
+
+  ```elixir
+  config :clarity, :cache_path, "/custom/cache/path"
+  ```
+
+  Defaults to `Application.app_dir(:clarity, "priv/cache")` if not configured.
+
   ## Per-Application Extension Settings
 
   These settings are configured on individual applications:
@@ -192,6 +202,12 @@ defmodule Clarity.Config do
   @spec fetch_default_perspective_lens!() :: String.t()
   def fetch_default_perspective_lens! do
     Application.fetch_env!(:clarity, :default_perspective_lens)
+  end
+
+  @doc false
+  @spec cache_path() :: Path.t()
+  def cache_path do
+    Application.get_env(:clarity, :cache_path, Application.app_dir(:clarity, "priv/cache"))
   end
 
   @spec filter_by_config([application_details()]) :: [application_details()]
