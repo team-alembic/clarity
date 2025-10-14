@@ -101,6 +101,40 @@ defmodule Clarity.Graph do
   end
 
   @doc """
+  Transfers ownership of all ETS tables to another process.
+
+  Used to hand over a loaded graph from the Cache process to the Server process.
+  Returns an updated graph struct with the new owner.
+  """
+  @spec handover(t(), pid()) :: result(t())
+  def handover(%__MODULE__{} = graph, pid) do
+    with :ok <- check_writable(graph) do
+      # Transfer 3 direct ETS tables
+      :ets.give_away(graph.vertices, pid, :graph_handover)
+      :ets.give_away(graph.update_count, pid, :graph_handover)
+      :ets.give_away(graph.indexes, pid, :graph_handover)
+
+      # Transfer 9 digraph ETS tables (3 per digraph)
+      {vtab1, etab1, ntab1, _} = unpack_digraph(graph.main_graph)
+      :ets.give_away(vtab1, pid, :graph_handover)
+      :ets.give_away(etab1, pid, :graph_handover)
+      :ets.give_away(ntab1, pid, :graph_handover)
+
+      {vtab2, etab2, ntab2, _} = unpack_digraph(graph.tree_graph)
+      :ets.give_away(vtab2, pid, :graph_handover)
+      :ets.give_away(etab2, pid, :graph_handover)
+      :ets.give_away(ntab2, pid, :graph_handover)
+
+      {vtab3, etab3, ntab3, _} = unpack_digraph(graph.provenance_graph)
+      :ets.give_away(vtab3, pid, :graph_handover)
+      :ets.give_away(etab3, pid, :graph_handover)
+      :ets.give_away(ntab3, pid, :graph_handover)
+
+      {:ok, %{graph | owner: pid}}
+    end
+  end
+
+  @doc """
   Clears all vertices and edges from the graph.
 
   Resets graphs to empty state with root vertex.
@@ -569,7 +603,7 @@ defmodule Clarity.Graph do
 
   @spec persist_digraph(:digraph.graph(), Path.t(), String.t()) :: :ok | {:error, :file.posix()}
   defp persist_digraph(digraph, base_path, name) do
-    {:digraph, vtab, etab, ntab, _cyclic} = digraph
+    {vtab, etab, ntab, _cyclic} = unpack_digraph(digraph)
 
     with :ok <- persist_ets_table(vtab, Path.join(base_path, "#{name}_vertices.ets")),
          :ok <- persist_ets_table(etab, Path.join(base_path, "#{name}_edges.ets")) do
@@ -597,8 +631,7 @@ defmodule Clarity.Graph do
     with {:ok, vtab} <- load_ets_table(Path.join(base_path, "#{name}_vertices.ets")),
          {:ok, etab} <- load_ets_table(Path.join(base_path, "#{name}_edges.ets")),
          {:ok, ntab} <- load_ets_table(Path.join(base_path, "#{name}_neighbors.ets")) do
-      digraph = {:digraph, vtab, etab, ntab, cyclic}
-      {:ok, digraph}
+      {:ok, pack_digraph(vtab, etab, ntab, cyclic)}
     end
   end
 
@@ -665,5 +698,19 @@ defmodule Clarity.Graph do
   @spec increment_update_count(t()) :: pos_integer()
   defp increment_update_count(%__MODULE__{} = graph) do
     :ets.update_counter(graph.update_count, :count, 1, {:count, 0})
+  end
+
+  @dialyzer {:nowarn_function, unpack_digraph: 1}
+  @spec unpack_digraph(:digraph.graph()) ::
+          {:ets.tid(), :ets.tid(), :ets.tid(), boolean()}
+  def unpack_digraph(digraph) do
+    {:digraph, vtab, etab, ntab, cyclic} = digraph
+    {vtab, etab, ntab, cyclic}
+  end
+
+  @dialyzer {:nowarn_function, pack_digraph: 4}
+  @spec pack_digraph(:ets.tid(), :ets.tid(), :ets.tid(), boolean()) :: :digraph.graph()
+  def pack_digraph(vtab, etab, ntab, cyclic) do
+    {:digraph, vtab, etab, ntab, cyclic}
   end
 end

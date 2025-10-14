@@ -1095,4 +1095,137 @@ defmodule Clarity.GraphTest do
       assert Graph.in_degree(subgraph, app2, :label_a) == 1
     end
   end
+
+  describe "handover/2" do
+    test "transfers ownership of all ETS tables to target process" do
+      graph = Graph.new()
+      test_pid = self()
+
+      task =
+        Task.async(fn ->
+          receive do
+            {:graph, graph} ->
+              assert graph.owner == self()
+              send(test_pid, {:ets_owner, :ets.info(graph.vertices, :owner)})
+
+              receive do
+                :continue -> :ok
+              end
+          end
+        end)
+
+      assert {:ok, new_graph} = Graph.handover(graph, task.pid)
+      assert new_graph.owner == task.pid
+
+      send(task.pid, {:graph, new_graph})
+
+      assert_receive {:ets_owner, owner}, 1000
+      assert owner == task.pid
+
+      send(task.pid, :continue)
+      Task.await(task)
+    end
+
+    test "returns error when called from non-owner process" do
+      graph = Graph.new()
+      original_owner = self()
+
+      task =
+        Task.async(fn ->
+          receive do
+            {:test_graph, graph} ->
+              assert graph.owner == original_owner
+
+              assert {:error, :not_owner} = Graph.handover(graph, self())
+          end
+        end)
+
+      send(task.pid, {:test_graph, graph})
+      Task.await(task)
+    end
+
+    test "transfers all 12 ETS tables (3 direct + 9 from digraphs)" do
+      graph = Graph.new()
+      test_pid = self()
+
+      task =
+        Task.async(fn ->
+          receive do
+            {:graph, _graph} ->
+              owned_tables =
+                :ets.all()
+                |> Enum.filter(fn table -> :ets.info(table, :owner) == self() end)
+                |> length()
+
+              send(test_pid, {:owned_count, owned_tables})
+
+              receive do
+                :continue -> :ok
+              end
+          end
+        end)
+
+      assert {:ok, new_graph} = Graph.handover(graph, task.pid)
+      send(task.pid, {:graph, new_graph})
+
+      assert_receive {:owned_count, count}, 1000
+      assert count >= 12
+
+      send(task.pid, :continue)
+      Task.await(task)
+    end
+
+    test "allows operations on graph after handover in new owner process" do
+      graph = Graph.new()
+      app = %Application{app: :test, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+      test_pid = self()
+
+      task =
+        Task.async(fn ->
+          receive do
+            {:graph, graph} ->
+              mod = %Module{module: TestModule}
+              assert :ok = Graph.add_vertex(graph, mod, app)
+              assert :ok = Graph.add_edge(graph, app, mod, :module)
+
+              vertices = Graph.vertices(graph)
+              assert mod in vertices
+
+              send(test_pid, :success)
+
+              receive do
+                :continue -> :ok
+              end
+          end
+        end)
+
+      assert {:ok, new_graph} = Graph.handover(graph, task.pid)
+      send(task.pid, {:graph, new_graph})
+
+      assert_receive :success, 1000
+
+      send(task.pid, :continue)
+      Task.await(task)
+    end
+
+    test "returns error when trying to operate on graph after handover from original owner" do
+      graph = Graph.new()
+      app = %Application{app: :test, description: "Test", version: "1.0.0"}
+
+      task =
+        Task.async(fn ->
+          receive do
+            {:continue, _graph} -> :ok
+          end
+        end)
+
+      assert {:ok, graph} = Graph.handover(graph, task.pid)
+
+      assert {:error, :not_owner} = Graph.add_vertex(graph, app, %Root{})
+
+      send(task.pid, {:continue, graph})
+      Task.await(task)
+    end
+  end
 end
