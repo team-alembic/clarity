@@ -3,6 +3,8 @@ defmodule Clarity.Server do
 
   use GenServer
 
+  alias Clarity.Graph
+  alias Clarity.Graph.Cache
   alias Clarity.Vertex.Root
 
   require Logger
@@ -25,7 +27,7 @@ defmodule Clarity.Server do
             future_queue: :queue.queue(Clarity.Server.Task.t()),
             requeue_queue: :queue.queue(Clarity.Server.Task.t()),
             in_progress: %{reference() => Clarity.Server.Task.t()},
-            graph: Clarity.Graph.t(),
+            graph: Graph.t(),
             introspectors: [module()],
             custom_introspectors: [module()] | nil,
             name: GenServer.name()
@@ -35,8 +37,8 @@ defmodule Clarity.Server do
   @doc false
   @spec start_link(opts :: GenServer.options()) :: GenServer.on_start()
   def start_link(opts \\ []) do
-    {introspectors, gen_server_opts} = Keyword.pop(opts, :introspectors)
-    init_opts = if introspectors, do: [introspectors: introspectors], else: []
+    {init_opts, gen_server_opts} = Keyword.split(opts, [:introspectors, :cache])
+
     gen_server_opts = Keyword.put_new(gen_server_opts, :name, __MODULE__)
 
     GenServer.start_link(__MODULE__, init_opts ++ gen_server_opts, gen_server_opts)
@@ -77,13 +79,28 @@ defmodule Clarity.Server do
 
   @impl GenServer
   def init(opts) do
-    # Create new graph
-    graph = Clarity.Graph.new()
+    # Try to load cached graph if cache option is provided, fall back to creating new one
+    cache = Keyword.get(opts, :cache)
+
+    graph =
+      if cache do
+        case Cache.load(cache) do
+          {:ok, cached_graph} ->
+            Logger.info("Loaded graph from cache")
+            cached_graph
+
+          {:error, reason} ->
+            Logger.debug("Cache not available (#{inspect(reason)}), creating new graph")
+            Graph.new()
+        end
+      else
+        Graph.new()
+      end
 
     # Get introspectors from options or use defaults
     custom_introspectors = Keyword.get(opts, :introspectors)
 
-    # Create initial state with empty graph
+    # Create initial state with graph (cached or new)
     initial_state = %State{
       graph: graph,
       custom_introspectors: custom_introspectors,
@@ -109,7 +126,7 @@ defmodule Clarity.Server do
 
   @impl GenServer
   def handle_cast({:introspect, :full}, state) do
-    :ok = Clarity.Graph.clear(state.graph)
+    :ok = Graph.clear(state.graph)
 
     {future_queue, introspectors} =
       reset_queue_and_introspectors(state.graph, state.custom_introspectors)
@@ -143,7 +160,7 @@ defmodule Clarity.Server do
 
         # 1. Find and purge vertices for changed + removed modules
         module_vertices = find_module_vertices(state.graph, modules_to_purge)
-        Enum.each(module_vertices, &Clarity.Graph.purge(state.graph, &1))
+        Enum.each(module_vertices, &Graph.purge(state.graph, &1))
 
         # 2. Create new vertices and edges for changed + added modules
         introspection_results =
@@ -317,7 +334,7 @@ defmodule Clarity.Server do
     end
   end
 
-  @spec create_tasks_for_vertex(Clarity.Vertex.t(), [module()], Clarity.Graph.t()) :: [
+  @spec create_tasks_for_vertex(Clarity.Vertex.t(), [module()], Graph.t()) :: [
           Clarity.Server.Task.t()
         ]
   defp create_tasks_for_vertex(vertex, introspectors, graph) do
@@ -346,7 +363,7 @@ defmodule Clarity.Server do
       Enum.flat_map(results, fn
         {:vertex, vertex} ->
           # Add vertex using Graph with provenance tracking
-          Clarity.Graph.add_vertex(state.graph, vertex, task.vertex)
+          Graph.add_vertex(state.graph, vertex, task.vertex)
 
           # Create tasks for this new vertex
           create_tasks_for_vertex(
@@ -366,12 +383,27 @@ defmodule Clarity.Server do
           if MapSet.member?(allowed_edge_vertices, from_vertex) or
                MapSet.member?(allowed_edge_vertices, to_vertex) do
             # Add edge using Graph
-            Clarity.Graph.add_edge(state.graph, from_vertex, to_vertex, label)
+            Graph.add_edge(state.graph, from_vertex, to_vertex, label)
           else
             Logger.warning(
               "Discarding invalid edge: neither from_vertex #{inspect(from_vertex)} nor to_vertex #{inspect(to_vertex)} " <>
                 "were created by this introspection or are the causing vertex #{inspect(task.vertex)}. " <>
                 "Introspectors should only create edges that reference the causing vertex or vertices they create."
+            )
+          end
+
+          []
+
+        {:purge, vertex} ->
+          if task.introspector in [
+               Clarity.Introspector.Application,
+               Clarity.Introspector.Module
+             ] do
+            Graph.purge(state.graph, vertex)
+          else
+            Logger.error(
+              "Introspector #{inspect(task.introspector)} attempted to emit a purge entry. " <>
+                "Only Clarity.Introspector.Application and Clarity.Introspector.Module may emit purge entries."
             )
           end
 
@@ -421,11 +453,11 @@ defmodule Clarity.Server do
       future_queue: :queue.len(state.future_queue),
       requeue_queue: :queue.len(state.requeue_queue),
       in_progress: map_size(state.in_progress),
-      total_vertices: Clarity.Graph.vertex_count(state.graph)
+      total_vertices: Graph.vertex_count(state.graph)
     }
   end
 
-  @spec reset_queue_and_introspectors(Clarity.Graph.t(), [module()] | nil) ::
+  @spec reset_queue_and_introspectors(Graph.t(), [module()] | nil) ::
           {:queue.queue(Clarity.Server.Task.t()), [module()]}
   defp reset_queue_and_introspectors(graph, custom_introspectors) do
     root_vertex = %Root{}
@@ -449,21 +481,21 @@ defmodule Clarity.Server do
     not MapSet.disjoint?(MapSet.new(all_changed), MapSet.new(introspector_modules))
   end
 
-  @spec find_module_vertices(Clarity.Graph.t(), [module()]) :: [Clarity.Vertex.Module.t()]
+  @spec find_module_vertices(Graph.t(), [module()]) :: [Clarity.Vertex.Module.t()]
   defp find_module_vertices(graph, module_names) do
     graph
-    |> Clarity.Graph.vertices()
+    |> Graph.vertices()
     |> Enum.filter(fn
       %Clarity.Vertex.Module{module: mod} -> mod in module_names
       _ -> false
     end)
   end
 
-  @spec find_application_vertex(Clarity.Graph.t(), Application.app()) ::
+  @spec find_application_vertex(Graph.t(), Application.app()) ::
           Clarity.Vertex.Application.t() | nil
   defp find_application_vertex(graph, app) do
     graph
-    |> Clarity.Graph.vertices()
+    |> Graph.vertices()
     |> Enum.find(fn
       %Clarity.Vertex.Application{app: ^app} -> true
       _ -> false

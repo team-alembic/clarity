@@ -25,6 +25,9 @@ clarity-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
+# Ingore Clarity Graph Caches
+/priv/cache
+
 # Assets
 /assets/node_modules/
 # TODO: Priv/Static...

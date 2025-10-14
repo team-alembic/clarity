@@ -10,16 +10,37 @@ defmodule Clarity.Introspector.Module do
   def source_vertex_types, do: [Clarity.Vertex.Application, ModuleVertex]
 
   @impl Clarity.Introspector
-  def introspect_vertex(%Vertex.Application{app: app} = app_vertex, _graph) do
-    app
-    |> modules()
-    |> Task.async_stream(&Code.ensure_loaded/1, ordered: false)
-    |> Enum.to_list()
-    |> Enum.filter(&match?({:ok, {:module, _}}, &1))
-    |> Enum.flat_map(fn {:ok, {:module, module}} ->
-      create_module_vertex_entries(module, app_vertex)
-    end)
-    |> then(&{:ok, &1})
+  def introspect_vertex(%Vertex.Application{app: app} = app_vertex, graph) do
+    current_modules =
+      app
+      |> modules()
+      |> Task.async_stream(&Code.ensure_loaded/1, ordered: false)
+      |> Enum.filter(&match?({:ok, {:module, _}}, &1))
+      |> Enum.map(fn {:ok, {:module, module}} -> module end)
+
+    cached_modules = get_cached_modules(graph, app_vertex)
+
+    current_modules_map =
+      Map.new(current_modules, fn module ->
+        {module, get_module_version(module)}
+      end)
+
+    cached_modules_map =
+      Map.new(cached_modules, fn vertex ->
+        {vertex.module, vertex.version}
+      end)
+
+    purge_entries =
+      Enum.flat_map(cached_modules, fn cached_vertex ->
+        purge_module_if_changed(cached_vertex, current_modules_map)
+      end)
+
+    add_entries =
+      Enum.flat_map(current_modules, fn module ->
+        add_module_entries(module, cached_modules_map, app_vertex)
+      end)
+
+    {:ok, purge_entries ++ add_entries}
   end
 
   @impl Clarity.Introspector
@@ -58,6 +79,50 @@ defmodule Clarity.Introspector.Module do
     |> Enum.flat_map(fn {:ok, {:module, module}} ->
       create_module_vertex_entries(module, app_vertex)
     end)
+  end
+
+  @spec get_cached_modules(Clarity.Graph.t(), Vertex.Application.t()) :: [ModuleVertex.t()]
+  defp get_cached_modules(graph, app_vertex) do
+    graph
+    |> Clarity.Graph.out_neighbors(app_vertex)
+    |> Enum.filter(&match?(%ModuleVertex{}, &1))
+  end
+
+  @spec purge_module_if_changed(ModuleVertex.t(), %{module() => :unknown | integer()}) ::
+          [Clarity.Introspector.entry()]
+  defp purge_module_if_changed(cached_vertex, current_modules_map) do
+    case Map.fetch(current_modules_map, cached_vertex.module) do
+      {:ok, current_version} ->
+        if cached_vertex.version == current_version do
+          []
+        else
+          [{:purge, cached_vertex}]
+        end
+
+      :error ->
+        [{:purge, cached_vertex}]
+    end
+  end
+
+  @spec add_module_entries(
+          module(),
+          %{module() => :unknown | integer()},
+          Vertex.Application.t()
+        ) :: [Clarity.Introspector.entry()]
+  defp add_module_entries(module, cached_modules_map, app_vertex) do
+    case Map.fetch(cached_modules_map, module) do
+      {:ok, cached_version} ->
+        current_version = get_module_version(module)
+
+        if cached_version == current_version do
+          []
+        else
+          create_module_vertex_entries(module, app_vertex)
+        end
+
+      :error ->
+        create_module_vertex_entries(module, app_vertex)
+    end
   end
 
   @spec create_module_vertex_entries(module(), Vertex.Application.t()) ::

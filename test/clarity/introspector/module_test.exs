@@ -205,4 +205,141 @@ defmodule Clarity.Introspector.ModuleTest do
       assert {:edge, ^module_vertex, ^for_vertex, :protocol_subject} = for_edge
     end
   end
+
+  describe "cache rehydration" do
+    test "purges modules that were removed" do
+      graph = Clarity.Graph.new()
+      root = %Vertex.Root{}
+      app_vertex = %Vertex.Application{app: :clarity, description: "Clarity", version: "1.0.0"}
+
+      Clarity.Graph.add_vertex(graph, root, root)
+      Clarity.Graph.add_vertex(graph, app_vertex, root)
+
+      # Create cached module vertex for a module that doesn't exist
+      cached_module = %Module{
+        module: NonexistentRemovedModule,
+        version: 123,
+        behaviour?: false
+      }
+
+      Clarity.Graph.add_vertex(graph, cached_module, app_vertex)
+      Clarity.Graph.add_edge(graph, app_vertex, cached_module, :module)
+
+      {:ok, result} = ModuleIntrospector.introspect_vertex(app_vertex, graph)
+
+      # Should have purge entry for removed module
+      purge_entries = Enum.filter(result, &match?({:purge, %Module{}}, &1))
+
+      assert Enum.any?(purge_entries, fn {:purge, vertex} ->
+               vertex.module == NonexistentRemovedModule
+             end)
+    end
+
+    test "purges and re-adds modules with changed versions" do
+      graph = Clarity.Graph.new()
+      root = %Vertex.Root{}
+      app_vertex = %Vertex.Application{app: :clarity, description: "Clarity", version: "1.0.0"}
+
+      Clarity.Graph.add_vertex(graph, root, root)
+      Clarity.Graph.add_vertex(graph, app_vertex, root)
+
+      # Create cached module with old version
+      cached_module = %Module{
+        module: Clarity.Server,
+        version: 999,
+        behaviour?: false
+      }
+
+      Clarity.Graph.add_vertex(graph, cached_module, app_vertex)
+      Clarity.Graph.add_edge(graph, app_vertex, cached_module, :module)
+
+      {:ok, result} = ModuleIntrospector.introspect_vertex(app_vertex, graph)
+
+      # Should have purge entry for old version
+      purge_entries = Enum.filter(result, &match?({:purge, %Module{}}, &1))
+
+      assert Enum.any?(purge_entries, fn {:purge, vertex} ->
+               vertex.module == Clarity.Server and vertex.version == 999
+             end)
+
+      # Should have add entry for new version
+      add_vertices = Enum.filter(result, &match?({:vertex, %Module{}}, &1))
+
+      new_module =
+        Enum.find(add_vertices, fn {:vertex, vertex} ->
+          vertex.module == Clarity.Server
+        end)
+
+      assert new_module
+      {:vertex, new_module_vertex} = new_module
+      assert new_module_vertex.version != 999
+    end
+
+    test "skips modules with unchanged versions" do
+      graph = Clarity.Graph.new()
+      root = %Vertex.Root{}
+      app_vertex = %Vertex.Application{app: :clarity, description: "Clarity", version: "1.0.0"}
+
+      Clarity.Graph.add_vertex(graph, root, root)
+      Clarity.Graph.add_vertex(graph, app_vertex, root)
+
+      # Get current version for Clarity.Server
+      current_version =
+        case Clarity.Server.module_info(:attributes)[:vsn] do
+          nil -> :unknown
+          [version] -> version
+        end
+
+      # Create cached module with same version
+      cached_module = %Module{
+        module: Clarity.Server,
+        version: current_version,
+        behaviour?: false
+      }
+
+      Clarity.Graph.add_vertex(graph, cached_module, app_vertex)
+      Clarity.Graph.add_edge(graph, app_vertex, cached_module, :module)
+
+      {:ok, result} = ModuleIntrospector.introspect_vertex(app_vertex, graph)
+
+      # Should not have purge or add entries for Clarity.Server (unchanged)
+      server_purges =
+        Enum.filter(result, fn
+          {:purge, %Module{module: Clarity.Server}} -> true
+          _ -> false
+        end)
+
+      server_adds =
+        Enum.filter(result, fn
+          {:vertex, %Module{module: Clarity.Server}} -> true
+          _ -> false
+        end)
+
+      assert server_purges == []
+      assert server_adds == []
+    end
+
+    test "adds new modules" do
+      graph = Clarity.Graph.new()
+      root = %Vertex.Root{}
+      app_vertex = %Vertex.Application{app: :clarity, description: "Clarity", version: "1.0.0"}
+
+      Clarity.Graph.add_vertex(graph, root, root)
+      Clarity.Graph.add_vertex(graph, app_vertex, root)
+
+      # Don't add any cached modules to graph
+
+      {:ok, result} = ModuleIntrospector.introspect_vertex(app_vertex, graph)
+
+      # All current modules should have add entries
+      clarity_modules = Application.spec(:clarity, :modules) || []
+      add_vertices = Enum.filter(result, &match?({:vertex, %Module{}}, &1))
+
+      assert length(add_vertices) == length(clarity_modules)
+
+      # No purge entries since graph was empty
+      purge_entries = Enum.filter(result, &match?({:purge, %Module{}}, &1))
+      assert purge_entries == []
+    end
+  end
 end

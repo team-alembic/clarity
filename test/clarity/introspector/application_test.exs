@@ -86,4 +86,128 @@ defmodule Clarity.Introspector.ApplicationTest do
       end
     end
   end
+
+  describe "cache rehydration" do
+    test "purges applications that were removed" do
+      graph = Clarity.Graph.new()
+      root_vertex = %Vertex.Root{}
+
+      # Add root to graph
+      Clarity.Graph.add_vertex(graph, root_vertex, root_vertex)
+
+      # Create cached application vertex for an app that doesn't exist in current filtered applications
+      cached_app = %Vertex.Application{
+        app: :nonexistent_removed_app,
+        description: "Removed App",
+        version: "1.0.0"
+      }
+
+      Clarity.Graph.add_vertex(graph, cached_app, root_vertex)
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
+
+      # Should have purge entry for removed app
+      purge_entries = Enum.filter(result, &match?({:purge, %Vertex.Application{}}, &1))
+
+      assert Enum.any?(purge_entries, fn {:purge, vertex} ->
+               vertex.app == :nonexistent_removed_app
+             end)
+    end
+
+    test "purges and re-adds applications with changed versions" do
+      graph = Clarity.Graph.new()
+      root_vertex = %Vertex.Root{}
+
+      Clarity.Graph.add_vertex(graph, root_vertex, root_vertex)
+
+      # Get current clarity version
+      current_filtered = Config.filtered_applications()
+      {:clarity, desc, vsn} = Enum.find(current_filtered, fn {app, _, _} -> app == :clarity end)
+      current_version = vsn |> to_string() |> Version.parse!()
+
+      # Create cached application with different version
+      cached_app = %Vertex.Application{
+        app: :clarity,
+        description: to_string(desc),
+        version: "0.0.1"
+      }
+
+      Clarity.Graph.add_vertex(graph, cached_app, root_vertex)
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
+
+      # Should have purge entry for old version
+      purge_entries = Enum.filter(result, &match?({:purge, %Vertex.Application{}}, &1))
+
+      assert Enum.any?(purge_entries, fn {:purge, vertex} ->
+               vertex.app == :clarity and vertex.version == "0.0.1"
+             end)
+
+      # Should have add entry for new version
+      add_vertices = Enum.filter(result, &match?({:vertex, %Vertex.Application{}}, &1))
+
+      assert Enum.any?(add_vertices, fn {:vertex, vertex} ->
+               vertex.app == :clarity and vertex.version == current_version
+             end)
+    end
+
+    test "skips applications with unchanged versions" do
+      graph = Clarity.Graph.new()
+      root_vertex = %Vertex.Root{}
+
+      Clarity.Graph.add_vertex(graph, root_vertex, root_vertex)
+
+      # Get current clarity version
+      current_filtered = Config.filtered_applications()
+      {:clarity, desc, vsn} = Enum.find(current_filtered, fn {app, _, _} -> app == :clarity end)
+
+      # Create cached application with same version
+      cached_app = %Vertex.Application{
+        app: :clarity,
+        description: to_string(desc),
+        version: Version.parse!(to_string(vsn))
+      }
+
+      Clarity.Graph.add_vertex(graph, cached_app, root_vertex)
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
+
+      # Should not have purge or add entries for clarity (unchanged)
+      clarity_purges =
+        Enum.filter(result, fn
+          {:purge, %Vertex.Application{app: :clarity}} -> true
+          _ -> false
+        end)
+
+      clarity_adds =
+        Enum.filter(result, fn
+          {:vertex, %Vertex.Application{app: :clarity}} -> true
+          _ -> false
+        end)
+
+      assert clarity_purges == []
+      assert clarity_adds == []
+    end
+
+    test "adds new applications" do
+      graph = Clarity.Graph.new()
+      root_vertex = %Vertex.Root{}
+
+      Clarity.Graph.add_vertex(graph, root_vertex, root_vertex)
+
+      # Don't add any cached applications to graph
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
+
+      # All current applications should have add entries
+      filtered_apps = Config.filtered_applications()
+      add_vertices = Enum.filter(result, &match?({:vertex, %Vertex.Application{}}, &1))
+
+      assert length(add_vertices) == length(filtered_apps)
+
+      # No purge entries since graph was empty
+      purge_entries = Enum.filter(result, &match?({:purge, %Vertex.Application{}}, &1))
+      assert purge_entries == []
+    end
+  end
 end
