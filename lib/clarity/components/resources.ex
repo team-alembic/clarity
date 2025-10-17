@@ -50,6 +50,15 @@ defmodule Clarity.Resources do
                            "images/logo.svg"
                          )
                        ])
+  @external_resource splash_path =
+                       Path.join([
+                         static_path,
+                         Map.get(
+                           manifest,
+                           "images/splash.svg",
+                           "images/splash.svg"
+                         )
+                       ])
 
   @doc """
   Renders the CSS required for Clarity.
@@ -81,6 +90,13 @@ defmodule Clarity.Resources do
   @spec logo_uri() :: iodata()
   # sobelow_skip ["Traversal"]
   def logo_uri, do: ["data:image/svg+xml;base64,", unquote(Base.encode64(File.read!(logo_path)))]
+
+  @doc """
+  Returns the splash screen logo SVG content for Clarity.
+  """
+  @spec splash() :: String.t()
+  # sobelow_skip ["Traversal"]
+  def splash, do: unquote(File.read!(splash_path))
 
   @spec resource(:js | :css) :: String.t()
   defp resource(type)

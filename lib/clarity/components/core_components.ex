@@ -3,6 +3,8 @@ defmodule Clarity.CoreComponents do
 
   use Phoenix.Component
 
+  import Phoenix.HTML
+
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
   alias Phoenix.LiveView.JS
@@ -493,6 +495,27 @@ defmodule Clarity.CoreComponents do
         >
         </path>
       </svg>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders the Clarity splash screen with animated logo.
+  """
+  attr :class, :string, default: nil
+  attr :rest, :global
+
+  @spec splash_screen(map()) :: Rendered.t()
+  def splash_screen(assigns) do
+    ~H"""
+    <div
+      id="splash"
+      class={"min-h-screen w-full flex flex-col items-center justify-center bg-base-light-50 dark:bg-base-dark-900 #{@class}"}
+      {@rest}
+    >
+      {raw(Clarity.Resources.splash())}
+
+      <.loading_spinner class="mt-8" />
     </div>
     """
   end
