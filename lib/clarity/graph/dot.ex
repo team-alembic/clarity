@@ -43,6 +43,13 @@ defmodule Clarity.Graph.DOT do
       else
         []
       end,
+      "  graph [\n",
+      "    splines=curved,\n",
+      "    concentrate=false,\n",
+      "    nodesep=0.55,\n",
+      "    ranksep=0.7,\n",
+      "    bgcolor=transparent\n,
+      ];\n",
       "  node [\n",
       "    tooltip = \" \";\n",
       "    fontname = \"system-ui\";\n",

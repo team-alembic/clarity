@@ -4,10 +4,11 @@ defmodule Clarity.Introspector.Application do
   @behaviour Clarity.Introspector
 
   alias Clarity.Config
+  alias Clarity.Graph
   alias Clarity.Vertex
 
   @impl Clarity.Introspector
-  def source_vertex_types, do: [Clarity.Vertex.Root]
+  def source_vertex_types, do: [Vertex.Root, Vertex.Application]
 
   @impl Clarity.Introspector
   def introspect_vertex(%Vertex.Root{} = root_vertex, graph) do
@@ -30,9 +31,58 @@ defmodule Clarity.Introspector.Application do
     {:ok, purge_entries ++ add_entries}
   end
 
-  @spec get_cached_applications(Clarity.Graph.t()) :: [Vertex.Application.t()]
+  def introspect_vertex(%Vertex.Application{app: app} = app_vertex, graph) do
+    all_applications =
+      graph
+      |> Graph.vertices(type: Vertex.Application)
+      |> Map.new(&{&1.app, &1})
+
+    app_spec = Application.spec(app)
+
+    included_app_vertices =
+      app_spec[:included_applications]
+      |> List.wrap()
+      |> Enum.flat_map(fn app ->
+        case Map.fetch(all_applications, app) do
+          {:ok, vertex} -> [vertex]
+          :error -> []
+        end
+      end)
+
+    optional_app_vertices =
+      app_spec[:optional_applications]
+      |> List.wrap()
+      |> Enum.flat_map(fn app ->
+        case Map.fetch(all_applications, app) do
+          {:ok, vertex} -> [vertex]
+          :error -> []
+        end
+      end)
+
+    app_vertices =
+      app_spec[:applications]
+      |> List.wrap()
+      |> Enum.flat_map(fn app ->
+        case Map.fetch(all_applications, app) do
+          {:ok, vertex} -> [vertex]
+          :error -> []
+        end
+      end)
+
+    [
+      included_app_vertices,
+      optional_app_vertices,
+      app_vertices
+    ]
+    |> Enum.concat()
+    |> Enum.map(&{:edge, app_vertex, &1, :dependency})
+    |> Enum.uniq()
+    |> then(&{:ok, &1})
+  end
+
+  @spec get_cached_applications(Graph.t()) :: [Vertex.Application.t()]
   defp get_cached_applications(graph) do
-    Clarity.Graph.vertices(graph, type: Vertex.Application)
+    Graph.vertices(graph, type: Vertex.Application)
   end
 
   @spec purge_app_if_changed(

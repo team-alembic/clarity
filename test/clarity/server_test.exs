@@ -93,10 +93,11 @@ defmodule Clarity.ServerTest do
       Clarity.get(server, :partial)
 
       tasks = pull_all_tasks(server)
-      assert length(tasks) == 1
+      assert length(tasks) == 2
       assert Enum.all?(tasks, &(&1.vertex == app_vertex))
 
       expected_introspectors = [
+        Clarity.Introspector.Application,
         Clarity.Introspector.Module
       ]
 

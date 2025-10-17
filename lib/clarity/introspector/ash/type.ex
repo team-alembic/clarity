@@ -5,6 +5,7 @@ case Code.ensure_loaded(Ash) do
 
       @behaviour Clarity.Introspector
 
+      alias Clarity.Config
       alias Clarity.Vertex
       alias Clarity.Vertex.Ash.Aggregate
       alias Clarity.Vertex.Ash.Attribute
@@ -59,12 +60,16 @@ case Code.ensure_loaded(Ash) do
         simplified_type = simplify_type(type)
         Code.ensure_loaded(simplified_type)
 
-        # Check if the type vertex already exists in the graph
-        graph
-        |> Clarity.Graph.vertices(type: Type, field_equal: {:type, simplified_type})
-        |> case do
-          [] -> {:error, :unmet_dependencies}
-          [vertex] -> {:ok, [{:edge, field_vertex, vertex, :type}]}
+        if Config.should_process_module?(simplified_type) do
+          # Check if the type vertex already exists in the graph
+          graph
+          |> Clarity.Graph.vertices(type: Type, field_equal: {:type, simplified_type})
+          |> case do
+            [] -> {:error, :unmet_dependencies}
+            [vertex] -> {:ok, [{:edge, field_vertex, vertex, :type}]}
+          end
+        else
+          {:ok, []}
         end
       end
 

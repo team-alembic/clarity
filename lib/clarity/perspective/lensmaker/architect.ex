@@ -38,8 +38,9 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       %Vertex.Application{} = vertex ->
         total = Graph.out_degree(graph, vertex)
         module = Graph.out_degree(graph, vertex, :module)
+        dependency = Graph.out_degree(graph, vertex, :dependency)
 
-        total - module > 0
+        total - module - dependency > 0
 
       %struct{}
       when struct in [
