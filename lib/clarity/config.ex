@@ -78,6 +78,25 @@ defmodule Clarity.Config do
 
   Defaults to `Application.app_dir(:clarity, "priv/cache")` if not configured.
 
+  ### Auto Start (`:auto_start?`)
+
+  Controls whether Clarity automatically starts introspection on application startup:
+
+  ```elixir
+  config :clarity, :auto_start?, false
+  ```
+
+  When `true` (default), Clarity loads the cache and starts introspection immediately on startup.
+
+  When `false`, Clarity defers initialization until the first call to `Clarity.get/1` or
+  `Clarity.introspect(:full)`. This is useful for:
+  - Faster application startup in development
+  - Avoiding unnecessary introspection in test environment
+  - Manual control over when introspection begins
+
+  **Note:** When auto-start is disabled, incremental rebuild calls (triggered by code
+  reloading) are silently ignored until initialization is triggered.
+
   ## Per-Application Extension Settings
 
   These settings are configured on individual applications:
@@ -208,6 +227,12 @@ defmodule Clarity.Config do
   @spec cache_path() :: Path.t()
   def cache_path do
     Application.get_env(:clarity, :cache_path, Application.app_dir(:clarity, "priv/cache"))
+  end
+
+  @doc false
+  @spec auto_start?() :: boolean()
+  def auto_start? do
+    Application.get_env(:clarity, :auto_start?, true)
   end
 
   @spec filter_by_config([application_details()]) :: [application_details()]
