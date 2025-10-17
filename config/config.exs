@@ -1,6 +1,8 @@
 import Config
 
-config :clarity, introspector_applications: [:clarity, :ash, :spark]
+config :clarity,
+  introspector_applications: [:clarity, :ash, :spark],
+  auto_start?: false
 
 config :esbuild,
   version: "0.25.10",

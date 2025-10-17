@@ -19,8 +19,10 @@ defmodule Clarity.Server do
       :name,
       :future_queue,
       :requeue_queue,
+      :cache,
       in_progress: %{},
-      custom_introspectors: nil
+      custom_introspectors: nil,
+      started?: false
     ]
 
     @type t() :: %__MODULE__{
@@ -30,7 +32,9 @@ defmodule Clarity.Server do
             graph: Graph.t(),
             introspectors: [module()],
             custom_introspectors: [module()] | nil,
-            name: GenServer.name()
+            name: GenServer.name(),
+            cache: GenServer.server() | nil,
+            started?: boolean()
           }
   end
 
@@ -79,53 +83,38 @@ defmodule Clarity.Server do
 
   @impl GenServer
   def init(opts) do
-    # Try to load cached graph if cache option is provided, fall back to creating new one
-    cache = Keyword.get(opts, :cache)
-
-    graph =
-      if cache do
-        case Cache.load(cache) do
-          {:ok, cached_graph} ->
-            Logger.info("Loaded graph from cache")
-            cached_graph
-
-          {:error, reason} ->
-            Logger.debug("Cache not available (#{inspect(reason)}), creating new graph")
-            Graph.new()
-        end
-      else
-        Graph.new()
-      end
-
-    # Get introspectors from options or use defaults
     custom_introspectors = Keyword.get(opts, :introspectors)
+    name = Keyword.fetch!(opts, :name)
+    cache = Keyword.get(opts, :cache)
+    auto_start? = Keyword.get(opts, :auto_start?, true)
 
-    # Create initial state with graph (cached or new)
-    initial_state = %State{
-      graph: graph,
+    state = %State{
+      graph: Graph.new(),
       custom_introspectors: custom_introspectors,
       introspectors: custom_introspectors || [],
-      name: Keyword.fetch!(opts, :name),
+      name: name,
+      cache: cache,
       future_queue: :queue.new(),
-      requeue_queue: :queue.new()
+      requeue_queue: :queue.new(),
+      started?: false
     }
 
-    {future_queue, introspectors} =
-      reset_queue_and_introspectors(initial_state.graph, custom_introspectors)
+    if auto_start? do
+      {:ok, state, {:continue, :auto_start}}
+    else
+      {:ok, state}
+    end
+  end
 
-    state = %{
-      initial_state
-      | future_queue: future_queue,
-        introspectors: introspectors
-    }
-
-    broadcast_event(state, :work_started)
-
-    {:ok, state}
+  @impl GenServer
+  def handle_continue(:auto_start, state) do
+    {:noreply, ensure_started(state)}
   end
 
   @impl GenServer
   def handle_cast({:introspect, :full}, state) do
+    state = ensure_started(state)
+
     :ok = Graph.clear(state.graph)
 
     {future_queue, introspectors} =
@@ -137,6 +126,13 @@ defmodule Clarity.Server do
         introspectors: introspectors
     }
 
+    {:noreply, state}
+  end
+
+  def handle_cast(
+        {:introspect, {:incremental, _app, _modules_diff}},
+        %State{started?: false} = state
+      ) do
     {:noreply, state}
   end
 
@@ -256,6 +252,8 @@ defmodule Clarity.Server do
 
   @impl GenServer
   def handle_call(:get, _from, state) do
+    state = ensure_started(state)
+
     status = if queue_empty_and_no_progress?(state), do: :done, else: :working
 
     clarity = %Clarity{
@@ -457,6 +455,21 @@ defmodule Clarity.Server do
     }
   end
 
+  @spec load_graph_or_fallback(GenServer.server() | nil, Graph.t()) :: Graph.t()
+  defp load_graph_or_fallback(nil, fallback_graph), do: fallback_graph
+
+  defp load_graph_or_fallback(cache, fallback_graph) do
+    case Cache.load(cache) do
+      {:ok, cached_graph} ->
+        Logger.info("Loaded graph from cache")
+        cached_graph
+
+      {:error, reason} ->
+        Logger.debug("Cache not available (#{inspect(reason)}), using empty graph")
+        fallback_graph
+    end
+  end
+
   @spec reset_queue_and_introspectors(Graph.t(), [module()] | nil) ::
           {:queue.queue(Clarity.Server.Task.t()), [module()]}
   defp reset_queue_and_introspectors(graph, custom_introspectors) do
@@ -469,6 +482,30 @@ defmodule Clarity.Server do
 
     queue = Enum.reduce(initial_tasks, :queue.new(), &:queue.in(&1, &2))
     {queue, introspectors}
+  end
+
+  @spec ensure_started(State.t()) :: State.t()
+  defp ensure_started(%State{started?: true} = state), do: state
+
+  defp ensure_started(%State{started?: false} = state) do
+    # Load cache if configured, fallback to existing graph
+    graph = load_graph_or_fallback(state.cache, state.graph)
+
+    # Setup introspection queue and introspectors
+    {future_queue, introspectors} =
+      reset_queue_and_introspectors(graph, state.custom_introspectors)
+
+    new_state = %{
+      state
+      | graph: graph,
+        future_queue: future_queue,
+        introspectors: introspectors,
+        started?: true
+    }
+
+    broadcast_event(new_state, :work_started)
+
+    new_state
   end
 
   @spec contains_introspector_modules?(Clarity.modules_diff(), [Clarity.Introspector.t()]) ::
