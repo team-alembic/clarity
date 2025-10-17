@@ -17,27 +17,34 @@ defmodule Clarity.PageLive do
     if connected?(socket) do
       Clarity.subscribe(socket.assigns.clarity_pid, [:work_started, :work_completed])
       Process.send_after(self(), :refresh_interval, to_timeout(second: 1))
+
+      clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
+      {:ok, perspective_pid} = Perspective.start_link(clarity.graph)
+
+      socket =
+        socket
+        |> assign(
+          clarity: clarity,
+          perspective_pid: perspective_pid,
+          show_navigation: false,
+          zoom_subgraph: AsyncResult.loading(),
+          loaded?: true
+        )
+        |> handle_routing(params, &push_navigate/2)
+
+      {:ok, socket}
+    else
+      {:ok, assign(socket, loaded?: false)}
     end
-
-    clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
-    {:ok, perspective_pid} = Perspective.start_link(clarity.graph)
-
-    socket =
-      socket
-      |> assign(
-        clarity: clarity,
-        perspective_pid: perspective_pid,
-        show_navigation: false,
-        zoom_subgraph: AsyncResult.loading()
-      )
-      |> handle_routing(params, &push_navigate/2)
-
-    {:ok, socket}
   end
 
   @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
-    {:noreply, handle_routing(socket, params, &push_patch/2)}
+    if socket.assigns.loaded? do
+      {:noreply, handle_routing(socket, params, &push_patch/2)}
+    else
+      {:noreply, socket}
+    end
   end
 
   @spec handle_routing(Socket.t(), map(), (Socket.t(), keyword() -> Socket.t())) :: Socket.t()
@@ -159,81 +166,85 @@ defmodule Clarity.PageLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <.flash_group flash={@flash} />
-    <%= case @lens do %>
-      <% nil -> %>
-        <.lens_not_found_error prefix={@prefix} />
-      <% lens -> %>
-        <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
-          <.header
-            prefix={@prefix}
-            lens={@lens}
-            theme={@theme}
-            refreshing={@clarity.status == :working}
-            work_status={@clarity.status}
-            queue_info={@clarity.queue_info}
-            class="header z-10"
-          />
-
-          <.navigation
-            tree={@tree}
-            prefix={@prefix}
-            lens={lens}
-            node={@vertex}
-            breadcrumbs={@breadcrumbs}
-            class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
-          />
-
-          <%= if @vertex do %>
-            <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
-              <nav class="breadcrumbs mr-3">
-                <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
-                  <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)), idx > 0 do %>
-                    <li class="flex items-center">
-                      <span :if={idx > 1} class="mx-1 text-base-light-500 dark:text-base-dark-600">
-                        →
-                      </span>
-                      <.link
-                        patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
-                        class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
-                      >
-                        <.vertex_name vertex={breadcrumb} />
-                      </.link>
-                    </li>
-                  <% end %>
-                  <%= if length(@breadcrumbs) > 1 do %>
-                    <li class="flex items-center">
-                      <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
-                    </li>
-                  <% end %>
-                </ol>
-              </nav>
-              <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
-                {Vertex.name(@vertex)}
-              </h1>
-            </div>
-            <.tabs
-              contents={@contents}
-              content={@content}
+    <%= if !@loaded? do %>
+      <.splash_screen />
+    <% else %>
+      <.flash_group flash={@flash} />
+      <%= case @lens do %>
+        <% nil -> %>
+          <.lens_not_found_error prefix={@prefix} />
+        <% lens -> %>
+          <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
+            <.header
               prefix={@prefix}
-              vertex={@vertex}
-              lens={lens}
-            />
-            <.render_content
-              content={@content}
-              vertex={@vertex}
-              perspective_pid={@perspective_pid}
-              socket={@socket}
+              lens={@lens}
               theme={@theme}
+              refreshing={@clarity.status == :working}
+              work_status={@clarity.status}
+              queue_info={@clarity.queue_info}
+              class="header z-10"
+            />
+
+            <.navigation
+              tree={@tree}
               prefix={@prefix}
               lens={lens}
-              zoom_subgraph={@zoom_subgraph}
+              node={@vertex}
+              breadcrumbs={@breadcrumbs}
+              class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
             />
-          <% else %>
-            <.vertex_not_found_error prefix={@prefix} lens={lens} />
-          <% end %>
-        </article>
-        <.render_tooltips graph={@clarity.graph} prefix={@prefix} lens={@lens} />
+
+            <%= if @vertex do %>
+              <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
+                <nav class="breadcrumbs mr-3">
+                  <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
+                    <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)), idx > 0 do %>
+                      <li class="flex items-center">
+                        <span :if={idx > 1} class="mx-1 text-base-light-500 dark:text-base-dark-600">
+                          →
+                        </span>
+                        <.link
+                          patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
+                          class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
+                        >
+                          <.vertex_name vertex={breadcrumb} />
+                        </.link>
+                      </li>
+                    <% end %>
+                    <%= if length(@breadcrumbs) > 1 do %>
+                      <li class="flex items-center">
+                        <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
+                      </li>
+                    <% end %>
+                  </ol>
+                </nav>
+                <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
+                  {Vertex.name(@vertex)}
+                </h1>
+              </div>
+              <.tabs
+                contents={@contents}
+                content={@content}
+                prefix={@prefix}
+                vertex={@vertex}
+                lens={lens}
+              />
+              <.render_content
+                content={@content}
+                vertex={@vertex}
+                perspective_pid={@perspective_pid}
+                socket={@socket}
+                theme={@theme}
+                prefix={@prefix}
+                lens={lens}
+                zoom_subgraph={@zoom_subgraph}
+              />
+            <% else %>
+              <.vertex_not_found_error prefix={@prefix} lens={lens} />
+            <% end %>
+          </article>
+          <.render_tooltips graph={@clarity.graph} prefix={@prefix} lens={@lens} />
+      <% end %>
     <% end %>
     """
   end
