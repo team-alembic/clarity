@@ -13,13 +13,14 @@ defmodule Clarity.PageLive do
   alias Phoenix.LiveView.Socket
 
   @impl Phoenix.LiveView
-  def mount(params, _session, socket) do
+  def mount(params, session, socket) do
     if connected?(socket) do
       Clarity.subscribe(socket.assigns.clarity_pid, [:work_started, :work_completed])
       Process.send_after(self(), :refresh_interval, to_timeout(second: 1))
 
       clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
-      {:ok, perspective_pid} = Perspective.start_link(clarity.graph)
+      initial_vertex = Map.get(session, "initial_vertex", "root")
+      {:ok, perspective_pid} = Perspective.start_link(clarity.graph, initial_vertex)
 
       socket =
         socket

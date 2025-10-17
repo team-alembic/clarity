@@ -20,15 +20,13 @@ defmodule Clarity.Perspective.Lensmaker.DebugTest do
                description: description,
                icon: icon_fn,
                filter: filter,
-               content_sorter: content_sorter,
-               intro_vertex: intro_vertex_fn
+               content_sorter: content_sorter
              } = Debug.make_lens()
 
       assert is_binary(description)
       assert is_function(icon_fn, 0)
       assert is_function(filter, 1)
       assert is_function(content_sorter, 2)
-      assert is_function(intro_vertex_fn, 1)
     end
 
     test "debug lens shows everything (no filtering)" do
@@ -38,13 +36,6 @@ defmodule Clarity.Perspective.Lensmaker.DebugTest do
       assert lens.filter.(%Root{})
       assert lens.filter.(%{some: "vertex"})
       assert lens.filter.(nil)
-    end
-
-    test "debug lens uses root as intro vertex" do
-      lens = Debug.make_lens()
-      graph = Graph.new()
-
-      assert %Root{} = lens.intro_vertex.(graph)
     end
 
     test "debug lens icon renders bug emoji" do

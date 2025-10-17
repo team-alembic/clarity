@@ -18,10 +18,7 @@ defmodule Clarity.Perspective do
       
       # Get filtered subgraph (computed lazily)
       subgraph = Perspective.get_subgraph(pid)
-      
-      # Get intro vertex from current lens
-      intro_vertex = Perspective.get_intro_vertex(pid)  # may be nil
-      
+
       # Get content for vertex
       content_list = Perspective.get_content_for_vertex(pid, "some_vertex")
 
@@ -81,19 +78,27 @@ defmodule Clarity.Perspective do
   @type result(type) :: {:ok, type} | {:error, error()}
 
   @doc """
-  Starts the Perspective Agent with a graph and auto-installs the default lens.
+  Starts the Perspective Agent with a graph, initial vertex, and auto-installs the default lens.
   """
-  @spec start_link(Graph.t()) :: Agent.on_start()
-  def start_link(graph) do
+  @spec start_link(Graph.t(), Vertex.t() | String.t()) :: Agent.on_start()
+  def start_link(graph, initial_vertex \\ "root") do
     default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
     {:ok, lens} = resolve_lens(default_lens_id)
 
-    initial_vertex = lens.intro_vertex.(graph) || %Root{}
+    # Resolve vertex if string ID was provided
+    resolved_vertex =
+      case initial_vertex do
+        vertex_id when is_binary(vertex_id) ->
+          Graph.get_vertex(graph, vertex_id) || %Root{}
+
+        vertex ->
+          vertex
+      end
 
     initial_state = %__MODULE__{
       graph: graph,
       current_lens: lens,
-      current_vertex: initial_vertex
+      current_vertex: resolved_vertex
     }
 
     Agent.start_link(fn -> initial_state end)
@@ -275,19 +280,6 @@ defmodule Clarity.Perspective do
       cached_breadcrumbs ->
         {cached_breadcrumbs, state}
     end
-  end
-
-  @doc """
-  Gets the intro vertex from the current lens (may be nil).
-  """
-  @spec get_intro_vertex(Agent.agent()) :: Vertex.t() | nil
-  def get_intro_vertex(agent) do
-    Agent.get(agent, fn %__MODULE__{
-                          current_lens: %Lens{intro_vertex: intro_vertex_fn},
-                          graph: graph
-                        } ->
-      intro_vertex_fn.(graph)
-    end)
   end
 
   @doc """

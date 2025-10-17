@@ -6,7 +6,6 @@ defmodule Clarity.Perspective.LensTest do
   alias Clarity.Graph
   alias Clarity.Graph.Filter
   alias Clarity.Perspective.Lens
-  alias Clarity.Vertex.Root
 
   describe "struct creation" do
     test "creates valid lens with all required fields" do
@@ -15,7 +14,6 @@ defmodule Clarity.Perspective.LensTest do
         ~H"🐛"
       end
 
-      intro_vertex_fn = fn _graph -> %Root{} end
       filter_fn = Filter.custom(fn _vertex -> true end)
 
       content_sorter = fn a, b -> a.id <= b.id end
@@ -26,16 +24,14 @@ defmodule Clarity.Perspective.LensTest do
                description: "A test lens",
                icon: ^icon_fn,
                filter: ^filter_fn,
-               content_sorter: ^content_sorter,
-               intro_vertex: ^intro_vertex_fn
+               content_sorter: ^content_sorter
              } = %Lens{
                id: "test",
                name: "Test Lens",
                description: "A test lens",
                icon: icon_fn,
                filter: filter_fn,
-               content_sorter: content_sorter,
-               intro_vertex: intro_vertex_fn
+               content_sorter: content_sorter
              }
     end
 
@@ -45,7 +41,6 @@ defmodule Clarity.Perspective.LensTest do
         ~H"🐛"
       end
 
-      intro_vertex_fn = fn _graph -> %Root{} end
       filter_fn = Filter.custom(fn _vertex -> true end)
 
       content_sorter = fn a, b -> a.id <= b.id end
@@ -56,15 +51,13 @@ defmodule Clarity.Perspective.LensTest do
                description: nil,
                icon: ^icon_fn,
                filter: ^filter_fn,
-               content_sorter: ^content_sorter,
-               intro_vertex: ^intro_vertex_fn
+               content_sorter: ^content_sorter
              } = %Lens{
                id: "minimal",
                name: "Minimal",
                icon: icon_fn,
                filter: filter_fn,
-               content_sorter: content_sorter,
-               intro_vertex: intro_vertex_fn
+               content_sorter: content_sorter
              }
     end
   end
@@ -85,47 +78,6 @@ defmodule Clarity.Perspective.LensTest do
 
       result = lens.icon.()
       assert %Phoenix.LiveView.Rendered{} = result
-    end
-  end
-
-  describe "intro_vertex function" do
-    test "intro_vertex function returns vertex based on graph" do
-      graph = Graph.new()
-
-      intro_vertex_fn = fn g ->
-        assert g == graph
-        %Root{}
-      end
-
-      lens = %Lens{
-        id: "test",
-        name: "Test",
-        icon: fn ->
-          assigns = %{}
-          ~H"🔍"
-        end,
-        filter: Filter.custom(fn _vertex -> true end),
-        intro_vertex: intro_vertex_fn
-      }
-
-      assert %Root{} = lens.intro_vertex.(graph)
-    end
-
-    test "intro_vertex function can return nil" do
-      intro_vertex_fn = fn _graph -> nil end
-
-      lens = %Lens{
-        id: "test",
-        name: "Test",
-        icon: fn ->
-          assigns = %{}
-          ~H"🔍"
-        end,
-        filter: Filter.custom(fn _vertex -> true end),
-        intro_vertex: intro_vertex_fn
-      }
-
-      assert nil == lens.intro_vertex.(Graph.new())
     end
   end
 

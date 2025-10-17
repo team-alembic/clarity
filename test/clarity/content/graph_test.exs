@@ -26,8 +26,7 @@ defmodule Clarity.Content.GraphTest do
         name: "Test",
         description: "Test lens",
         icon: fn -> nil end,
-        filter: fn _ -> true end,
-        intro_vertex: fn _ -> %Root{} end
+        filter: fn _ -> true end
       }
 
       assert Graph.applies?(vertex, lens) == true
@@ -48,8 +47,7 @@ defmodule Clarity.Content.GraphTest do
         name: "Test",
         description: "Test lens",
         icon: fn -> nil end,
-        filter: fn _ -> true end,
-        intro_vertex: fn _ -> %Root{} end
+        filter: fn _ -> true end
       }
 
       assert {:viz, viz_fn} = Graph.render_static(vertex, lens)
