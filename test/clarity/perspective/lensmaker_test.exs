@@ -6,7 +6,6 @@ defmodule Clarity.Perspective.LensmakerTest do
   alias Clarity.Graph.Filter
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
-  alias Clarity.Vertex.Root
 
   defmodule TestLensmaker1 do
     @moduledoc false
@@ -21,8 +20,7 @@ defmodule Clarity.Perspective.LensmakerTest do
           assigns = %{}
           ~H"🧪"
         end,
-        filter: Filter.custom(fn _vertex -> true end),
-        intro_vertex: fn _graph -> %Root{} end
+        filter: Filter.custom(fn _vertex -> true end)
       }
     end
 
@@ -43,8 +41,7 @@ defmodule Clarity.Perspective.LensmakerTest do
           assigns = %{}
           ~H"⚡"
         end,
-        filter: Filter.custom(fn _vertex -> false end),
-        intro_vertex: fn _graph -> nil end
+        filter: Filter.custom(fn _vertex -> false end)
       }
     end
 
@@ -77,8 +74,7 @@ defmodule Clarity.Perspective.LensmakerTest do
           assigns = %{}
           ~H"⚙️"
         end,
-        filter: Filter.custom(fn _vertex -> true end),
-        intro_vertex: fn _graph -> %Root{} end
+        filter: Filter.custom(fn _vertex -> true end)
       }
     end
   end

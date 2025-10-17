@@ -19,15 +19,13 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
                description: description,
                icon: icon_fn,
                filter: filter,
-               content_sorter: content_sorter,
-               intro_vertex: intro_vertex_fn
+               content_sorter: content_sorter
              } = Architect.make_lens()
 
       assert is_binary(description)
       assert is_function(icon_fn, 0)
       assert is_function(filter, 1)
       assert is_function(content_sorter, 2)
-      assert is_function(intro_vertex_fn, 1)
     end
 
     test "architect lens focuses on structural elements" do
@@ -36,14 +34,6 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
       # Architect filter should focus on structural/architectural elements
       # This is a placeholder - actual filtering logic will depend on vertex types
       assert is_function(lens.filter, 1)
-    end
-
-    test "architect lens uses appropriate intro vertex" do
-      lens = Architect.make_lens()
-      graph = Graph.new()
-
-      intro_vertex = lens.intro_vertex.(graph)
-      assert intro_vertex
     end
 
     test "architect lens icon renders building emoji" do

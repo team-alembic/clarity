@@ -21,8 +21,7 @@ defmodule Clarity.PerspectiveTest do
         assigns = %{}
         ~H"🧪"
       end,
-      filter: Filter.custom(fn _vertex -> true end),
-      intro_vertex: fn _graph -> %Root{} end
+      filter: Filter.custom(fn _vertex -> true end)
     }
 
     {:ok, graph: graph, test_lens: test_lens}
@@ -30,7 +29,7 @@ defmodule Clarity.PerspectiveTest do
 
   describe "start_link/1" do
     test "auto-installs default lens from application config", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
       assert %Lens{id: ^default_lens_id} = Perspective.get_current_lens(pid)
@@ -39,24 +38,24 @@ defmodule Clarity.PerspectiveTest do
 
   describe "install_lens/2" do
     test "installs lens by ID", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       assert {:ok, _lens} = Perspective.install_lens(pid, "debug")
       assert %Lens{id: "debug", name: "Debug"} = Perspective.get_current_lens(pid)
     end
 
     test "installs lens by struct", %{graph: graph, test_lens: test_lens} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       assert {:ok, _lens} = Perspective.install_lens(pid, test_lens)
       assert %Lens{id: "test", name: "Test Lens"} = Perspective.get_current_lens(pid)
     end
 
     test "returns error for unknown lens ID", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       assert {:error, :lens_not_found} = Perspective.install_lens(pid, "unknown")
     end
 
     test "invalidates cached subgraph when lens changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       # Install first lens
       assert {:ok, _lens} = Perspective.install_lens(pid, "debug")
@@ -74,14 +73,14 @@ defmodule Clarity.PerspectiveTest do
 
   describe "get_current_lens/1" do
     test "returns current lens when installed", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
       assert %Lens{id: ^default_lens_id} = Perspective.get_current_lens(pid)
     end
 
     test "can change lens", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       assert {:ok, _lens} = Perspective.install_lens(pid, "architect")
       assert %Lens{id: "architect"} = Perspective.get_current_lens(pid)
     end
@@ -89,25 +88,25 @@ defmodule Clarity.PerspectiveTest do
 
   describe "set_current_vertex/2" do
     test "sets current vertex by ID", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       assert {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
       assert %Root{} = Perspective.get_current_vertex(pid)
     end
 
     test "sets current vertex by struct", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       root_vertex = %Root{}
       assert {:ok, _vertex} = Perspective.set_current_vertex(pid, root_vertex)
       assert %Root{} = Perspective.get_current_vertex(pid)
     end
 
     test "returns error for unknown vertex ID", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       assert {:error, :vertex_not_found} = Perspective.set_current_vertex(pid, "nonexistent")
     end
 
     test "invalidates cached subgraph when vertex changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       # Add a new vertex to test with
       new_vertex = %Vertex.Application{
@@ -133,7 +132,7 @@ defmodule Clarity.PerspectiveTest do
 
   describe "get_subgraph/1" do
     test "returns filtered subgraph", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       subgraph = Perspective.get_subgraph(pid)
@@ -144,7 +143,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "caches subgraph on repeated calls", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       subgraph1 = Perspective.get_subgraph(pid)
@@ -158,7 +157,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "includes current vertex and breadcrumb path in subgraph", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       # Add some vertices to test breadcrumb inclusion
       child_vertex = %Vertex.Module{module: String, version: :unknown}
@@ -181,7 +180,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "invalidates subgraph cache when graph changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Get initial subgraph
@@ -210,16 +209,9 @@ defmodule Clarity.PerspectiveTest do
     end
   end
 
-  describe "get_intro_vertex/1" do
-    test "returns intro vertex from current lens", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
-      assert %Root{} = Perspective.get_intro_vertex(pid)
-    end
-  end
-
   describe "get_contents/1" do
     test "returns content list for current vertex", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       contents = Perspective.get_contents(pid)
       assert is_list(contents)
       assert length(contents) >= 1
@@ -228,7 +220,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "returns Clarity.Content structs", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       contents = Perspective.get_contents(pid)
 
       for content <- contents do
@@ -241,7 +233,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "finds applicable content for current vertex", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       contents = Perspective.get_contents(pid)
 
       # Content is discovered from registered providers, not graph edges
@@ -250,7 +242,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "caches contents on repeated calls", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       contents1 = Perspective.get_contents(pid)
       contents2 = Perspective.get_contents(pid)
@@ -263,7 +255,7 @@ defmodule Clarity.PerspectiveTest do
       module_vertex = %Vertex.Module{module: String, version: :unknown}
       root_vertex = Graph.get_vertex(graph, "root")
       :ok = Graph.add_vertex(graph, module_vertex, root_vertex)
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       contents1 = Perspective.get_contents(pid)
       vertex_id = Vertex.id(module_vertex)
@@ -275,7 +267,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "invalidates contents cache when lens changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       contents1 = Perspective.get_contents(pid)
       {:ok, _} = Perspective.install_lens(pid, "architect")
@@ -290,7 +282,7 @@ defmodule Clarity.PerspectiveTest do
 
   describe "get_tree/1" do
     test "returns tree structure for current subgraph", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Ensure subgraph is computed first
@@ -301,7 +293,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "caches tree on repeated calls", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Ensure subgraph is computed first
@@ -325,7 +317,7 @@ defmodule Clarity.PerspectiveTest do
       :ok = Graph.add_edge(graph, root_vertex, app_vertex, :dependency)
       :ok = Graph.add_edge(graph, root_vertex, module_vertex, :dependency)
 
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Start with debug lens (shows everything)
@@ -348,7 +340,7 @@ defmodule Clarity.PerspectiveTest do
 
   describe "get_breadcrumbs/1" do
     test "returns breadcrumb path for current vertex", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Ensure subgraph is computed first
@@ -361,7 +353,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "caches breadcrumbs on repeated calls", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Ensure subgraph is computed first
@@ -382,7 +374,7 @@ defmodule Clarity.PerspectiveTest do
       child_vertex_id = Vertex.id(child_vertex)
       :ok = Graph.add_edge(graph, root_vertex, child_vertex, :dependency)
 
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       # Set initial vertex and get breadcrumbs
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
@@ -399,7 +391,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "invalidates breadcrumbs cache when lens changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Start with debug lens
@@ -421,12 +413,12 @@ defmodule Clarity.PerspectiveTest do
 
   describe "zoom functionality" do
     test "has default zoom level", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       assert {1, 1} = Perspective.get_zoom(pid)
     end
 
     test "can set and get zoom level", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       # Set new zoom level
       assert :ok = Perspective.set_zoom(pid, {3, 2})
@@ -438,7 +430,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "can get zoom subgraph", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       zoom_subgraph = Perspective.get_zoom_subgraph(pid)
@@ -449,7 +441,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "caches zoom subgraph on repeated calls", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       zoom_subgraph1 = Perspective.get_zoom_subgraph(pid)
@@ -463,7 +455,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "invalidates zoom cache when zoom level changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Get initial zoom subgraph
@@ -490,7 +482,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "invalidates zoom cache when lens changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Start with debug lens
@@ -515,7 +507,7 @@ defmodule Clarity.PerspectiveTest do
       :ok = Graph.add_vertex(graph, new_vertex, %Root{})
       new_vertex_id = Vertex.id(new_vertex)
 
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       # Set initial vertex and get zoom subgraph
       assert {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
@@ -534,7 +526,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "invalidates zoom cache when graph changes", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Get initial zoom subgraph
@@ -563,7 +555,7 @@ defmodule Clarity.PerspectiveTest do
     end
 
     test "zoom subgraph is independent from regular subgraph cache", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
       {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
 
       # Get both subgraphs
@@ -592,7 +584,7 @@ defmodule Clarity.PerspectiveTest do
 
   describe "Agent state management" do
     test "maintains state across operations", %{graph: graph} do
-      pid = start_supervised!({Perspective, graph})
+      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
 
       # Install lens
       assert {:ok, _lens} = Perspective.install_lens(pid, "debug")

@@ -9,11 +9,8 @@ defmodule Clarity.Perspective.Lens do
 
   alias Clarity.Content
   alias Clarity.Graph
-  alias Clarity.Vertex
-  alias Clarity.Vertex.Root
 
   @type icon_fn() :: (-> Phoenix.LiveView.Rendered.t())
-  @type intro_vertex_fn() :: (Graph.t() -> Vertex.t() | nil)
   @type content_sorter_fn() :: (Content.t(), Content.t() -> boolean())
 
   @type t() :: %__MODULE__{
@@ -22,8 +19,7 @@ defmodule Clarity.Perspective.Lens do
           description: String.t() | nil,
           icon: icon_fn(),
           filter: Graph.Filter.filter_fn(),
-          content_sorter: content_sorter_fn(),
-          intro_vertex: intro_vertex_fn()
+          content_sorter: content_sorter_fn()
         }
 
   @enforce_keys [:id, :name, :icon, :filter]
@@ -33,8 +29,7 @@ defmodule Clarity.Perspective.Lens do
     :description,
     :icon,
     :filter,
-    content_sorter: &__MODULE__.sort_alphabetically/2,
-    intro_vertex: &__MODULE__.default_intro_vertex/1
+    content_sorter: &__MODULE__.sort_alphabetically/2
   ]
 
   @doc """
@@ -48,13 +43,4 @@ defmodule Clarity.Perspective.Lens do
   def sort_alphabetically(%Content{provider: Content.Graph}, _b), do: false
   def sort_alphabetically(_a, %Content{provider: Content.Graph}), do: true
   def sort_alphabetically(a, b), do: a.name <= b.name
-
-  @doc """
-  Default intro vertex function that returns the root vertex.
-
-  This is the default intro vertex function used by lenses unless they specify
-  their own intro_vertex function.
-  """
-  @spec default_intro_vertex(Graph.t()) :: Root.t()
-  def default_intro_vertex(_graph), do: %Root{}
 end

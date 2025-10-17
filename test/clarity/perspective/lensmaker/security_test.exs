@@ -19,29 +19,19 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
                description: description,
                icon: icon_fn,
                filter: filter,
-               content_sorter: content_sorter,
-               intro_vertex: intro_vertex_fn
+               content_sorter: content_sorter
              } = Security.make_lens()
 
       assert is_binary(description)
       assert is_function(icon_fn, 0)
       assert is_function(filter, 1)
       assert is_function(content_sorter, 2)
-      assert is_function(intro_vertex_fn, 1)
     end
 
     test "security lens focuses on security-related elements" do
       lens = Security.make_lens()
 
       assert is_function(lens.filter, 1)
-    end
-
-    test "security lens uses appropriate intro vertex" do
-      lens = Security.make_lens()
-      graph = Graph.new()
-
-      intro_vertex = lens.intro_vertex.(graph)
-      assert intro_vertex
     end
 
     test "security lens icon renders shield emoji" do

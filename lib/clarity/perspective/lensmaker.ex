@@ -21,8 +21,7 @@ defmodule Clarity.Perspective.Lensmaker do
             name: "Security Audit",
             description: "Focus on security-related vertices",
             icon: fn -> ~H"🛡️" end,
-            filter: Filter.vertex_type([Auth.Module, Permission.Module]),
-            intro_vertex: &find_auth_module/1
+            filter: Filter.vertex_type([Auth.Module, Permission.Module])
           }
         end
       end

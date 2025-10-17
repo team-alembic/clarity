@@ -78,6 +78,7 @@ defmodule Clarity.Router do
 
       live_socket_path = Keyword.get(opts, :live_socket_path, "/live")
       full_path = Phoenix.Router.scoped_path(__MODULE__, path)
+      app = Keyword.fetch!(Mix.Project.config(), :app)
 
       live_session_name = opts[:live_session_name] || :clarity
       on_mount = [Clarity.Pages.Setup | List.wrap(opts[:on_mount])]
@@ -85,7 +86,7 @@ defmodule Clarity.Router do
       session =
         {Clarity.Router, :__session__,
          [
-           %{"prefix" => full_path},
+           %{"prefix" => full_path, "initial_vertex" => "application:#{app}"},
            List.wrap(opts[:session])
          ]}
 
