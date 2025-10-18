@@ -199,9 +199,9 @@ defmodule Clarity.PageLive do
               <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
                 <nav class="breadcrumbs mr-3">
                   <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
-                    <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)), idx > 0 do %>
+                    <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)) do %>
                       <li class="flex items-center">
-                        <span :if={idx > 1} class="mx-1 text-base-light-500 dark:text-base-dark-600">
+                        <span :if={idx > 0} class="mx-1 text-base-light-500 dark:text-base-dark-600">
                           →
                         </span>
                         <.link

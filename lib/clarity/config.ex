@@ -140,7 +140,7 @@ defmodule Clarity.Config do
   @doc false
   @spec filtered_applications() :: [application_details()]
   def filtered_applications do
-    filter_by_config(Application.loaded_applications())
+    filter_by_config(Application.started_applications())
   end
 
   @doc """
