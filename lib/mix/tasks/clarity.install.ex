@@ -133,8 +133,19 @@ if Code.ensure_loaded?(Igniter) do
     @spec add_code_reloader(igniter :: Igniter.t()) :: Igniter.t()
     defp add_code_reloader(igniter) do
       MixProject.update(igniter, :project, [:listeners], fn
-        nil -> {:ok, {:code, [Clarity.CodeReloader]}}
-        zipper -> List.append_new_to_list(zipper, Clarity.CodeReloader)
+        nil ->
+          {:ok, {:code, [Clarity.CodeReloader]}}
+
+        zipper ->
+          if List.list?(zipper) do
+            List.append_new_to_list(zipper, Clarity.CodeReloader)
+          else
+            {:warning,
+             """
+             Structure of `mix.exs` / `project` / `listeners` is not a list, manual installation required:
+             Add `Clarity.CodeReloader` to the list of listeners in your `mix.exs` project function.
+             """}
+          end
       end)
     end
   end
