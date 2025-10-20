@@ -76,10 +76,12 @@ defmodule Clarity.Router do
     quote bind_quoted: [path: path, opts: opts] do
       import Phoenix.LiveView.Router
 
+      alias Clarity.Vertex.Util
+
       live_socket_path = Keyword.get(opts, :live_socket_path, "/live")
       full_path = Phoenix.Router.scoped_path(__MODULE__, path)
       app = Keyword.fetch!(Mix.Project.config(), :app)
-      initial_vertex = Clarity.Vertex.Util.id(Clarity.Vertex.Application, [app])
+      initial_vertex = Util.id(Clarity.Vertex.Application, [app])
 
       live_session_name = opts[:live_session_name] || :clarity
       on_mount = [Clarity.Pages.Setup | List.wrap(opts[:on_mount])]
