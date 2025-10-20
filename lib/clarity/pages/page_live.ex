@@ -5,7 +5,6 @@ defmodule Clarity.PageLive do
 
   import Clarity.Components.MarkdownComponent
 
-  alias Clarity.Graph
   alias Clarity.Perspective
   alias Clarity.Vertex
   alias Phoenix.LiveView.AsyncResult
@@ -247,7 +246,14 @@ defmodule Clarity.PageLive do
               <.vertex_not_found_error prefix={@prefix} lens={lens} />
             <% end %>
           </article>
-          <.render_tooltips graph={@clarity.graph} prefix={@prefix} lens={@lens} />
+          <.live_component
+            module={Clarity.TooltipComponent}
+            id="tooltips"
+            graph={@subgraph}
+            breadcrumbs={@breadcrumbs}
+            prefix={@prefix}
+            lens={@lens}
+          />
       <% end %>
     <% end %>
     """
@@ -377,23 +383,6 @@ defmodule Clarity.PageLive do
           <% end %>
       <% end %>
     </.async_result>
-    """
-  end
-
-  @spec render_tooltips(assigns :: Socket.assigns()) :: Rendered.t()
-  defp render_tooltips(assigns) do
-    ~H"""
-    <%= for vertex <- Graph.vertices(@graph),
-          tooltip = Vertex.TooltipProvider.tooltip(vertex),
-          tooltip != nil,
-          overview = tooltip |> IO.iodata_to_binary() |> String.trim(),
-          overview != "" do %>
-      <div id={"tooltip-#{Vertex.id(vertex)}"} phx-hook="Tooltip" class="tooltip hidden py-5">
-        <div class="border border-base-light-400 dark:border-base-dark-600 shadow-lg bg-white dark:bg-base-dark-800 text-gray-900 dark:text-base-dark-100 px-4 py-2 rounded-xs">
-          <.markdown content={overview} prefix={@prefix} lens={@lens} />
-        </div>
-      </div>
-    <% end %>
     """
   end
 

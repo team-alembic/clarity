@@ -79,7 +79,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "displays breadcrumbs for domain vertices", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/domain:Demo.Accounts.Domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
       html = render_async(view)
 
       # Should show breadcrumb path (root not shown): clarity > Demo.Accounts.Domain
@@ -103,10 +103,10 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
       # Test viz:click event with domain vertex
-      view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "domain:Demo.Accounts.Domain"})
+      view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts-domain"})
 
       # Should navigate to the domain vertex
-      assert_patched(view, "/debug/domain:Demo.Accounts.Domain/graph")
+      assert_patched(view, "/debug/ash-domain:demo-accounts-domain/graph")
     end
 
     test "displays tooltips for vertices", %{conn: conn} do
