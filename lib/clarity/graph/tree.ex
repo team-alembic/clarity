@@ -5,18 +5,7 @@ defmodule Clarity.Graph.Tree do
   This module provides incremental maintenance of a tree graph where each vertex
   (except root) has exactly one incoming edge, representing the shortest path from
   the root vertex.
-
-  Also provides tree structure representation for navigation and rendering.
   """
-
-  alias Clarity.Vertex
-
-  @type t() :: %__MODULE__{
-          vertex: Vertex.t(),
-          out_edges: %{:digraph.edge() => [t()]}
-        }
-
-  defstruct [:vertex, :out_edges]
 
   @doc false
   @spec add_vertex(
@@ -24,14 +13,9 @@ defmodule Clarity.Graph.Tree do
           vertex_id :: String.t()
         ) :: :ok
   def add_vertex(tree_graph, vertex_id) do
-    # Filter out content vertices - they don't belong in the navigation tree
-    # Content vertices have IDs starting with specific patterns, but for simplicity
-    # we'll check if it contains "content" in the ID
-    if !String.contains?(vertex_id, "content") do
-      # Just add the vertex ID to the tree graph - no path calculation needed yet
-      # The path will be established when edges are added
-      :digraph.add_vertex(tree_graph, vertex_id)
-    end
+    # Just add the vertex ID to the tree graph - no path calculation needed yet
+    # The path will be established when edges are added
+    :digraph.add_vertex(tree_graph, vertex_id)
 
     :ok
   end
@@ -44,10 +28,7 @@ defmodule Clarity.Graph.Tree do
           label :: :digraph.label()
         ) :: :ok
   def add_edge(tree_graph, from_vertex_id, to_vertex_id, label) do
-    # Filter out content edges - they don't belong in the navigation tree
-    if label != :content do
-      maybe_add_shorter_path(tree_graph, from_vertex_id, to_vertex_id, label)
-    end
+    maybe_add_shorter_path(tree_graph, from_vertex_id, to_vertex_id, label)
 
     :ok
   end
@@ -146,29 +127,5 @@ defmodule Clarity.Graph.Tree do
       end)
 
     children ++ Enum.flat_map(children, &get_all_descendants(tree_graph, &1))
-  end
-
-  @doc false
-  @spec build_tree_from_vertex(Clarity.Graph.t(), String.t(), %{String.t() => Vertex.t()}) :: t()
-  def build_tree_from_vertex(graph, vertex_id, vertices) do
-    # Get all outgoing edges from the tree digraph
-    out_edges_by_label =
-      graph.tree_graph
-      |> :digraph.out_edges(vertex_id)
-      |> Enum.map(fn edge_id ->
-        {_, _, to_vertex_id, label} = :digraph.edge(graph.tree_graph, edge_id)
-        {label, to_vertex_id}
-      end)
-      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      |> Map.new(fn {label, vertex_ids} ->
-        child_trees =
-          vertex_ids
-          |> Enum.map(&build_tree_from_vertex(graph, &1, vertices))
-          |> Enum.sort_by(&Vertex.name(&1.vertex))
-
-        {label, child_trees}
-      end)
-
-    %__MODULE__{vertex: Map.fetch!(vertices, vertex_id), out_edges: out_edges_by_label}
   end
 end

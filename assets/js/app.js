@@ -19,6 +19,7 @@ import Viz from "./viz.hook";
 import Tooltip from "./tooltip.hook";
 import ThemeToggle, { getInitialTheme } from "./theme.hook";
 import Flash from "./flash.hook";
+import Details from "./details.hook";
 
 let socketPath =
   document.querySelector("html").getAttribute("phx-socket") || "/live";
@@ -29,6 +30,7 @@ const Hooks = {
   Tooltip: Tooltip,
   ThemeToggle: ThemeToggle,
   Flash: Flash,
+  Details: Details,
 };
 
 let csrfToken = document

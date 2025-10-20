@@ -471,13 +471,35 @@ defmodule Clarity.Graph do
   end
 
   @doc """
-  Converts the internal tree digraph to a structured tree starting from the root vertex.
-  Returns a tree structure with vertices and labeled edges organized hierarchically.
+  Gets the direct children of a vertex in the tree graph, grouped by edge label.
+
+  Returns a map where keys are edge labels and values are lists of child vertices,
+  sorted by vertex name for consistent ordering.
+
+  ## Examples
+
+      children = Graph.navigation_children(graph, root_vertex)
+      # Returns: %{:application => [app1, app2], :module => [mod1]}
   """
-  @spec to_tree(t()) :: Tree.t()
-  def to_tree(%__MODULE__{} = graph) do
-    vertices = graph |> vertices() |> Map.new(&{Vertex.id(&1), &1})
-    Tree.build_tree_from_vertex(graph, "root", vertices)
+  @spec navigation_children(t(), Vertex.t()) :: %{:digraph.label() => [Vertex.t()]}
+  def navigation_children(%__MODULE__{} = graph, vertex) do
+    vertex_id = Vertex.id(vertex)
+
+    graph.tree_graph
+    |> :digraph.out_edges(vertex_id)
+    |> Enum.map(fn edge_id ->
+      {_, _, to_vertex_id, label} = :digraph.edge(graph.tree_graph, edge_id)
+      {label, to_vertex_id}
+    end)
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Map.new(fn {label, vertex_ids} ->
+      children =
+        vertex_ids
+        |> Enum.map(&get_vertex(graph, &1))
+        |> Enum.sort_by(&Vertex.name/1)
+
+      {label, children}
+    end)
   end
 
   @doc """

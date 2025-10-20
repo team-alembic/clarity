@@ -117,14 +117,14 @@ defmodule Clarity.PageLive do
           content: nil,
           contents: [],
           breadcrumbs: [],
-          tree: nil,
+          subgraph: nil,
           page_title: "Lens Not Found"
         )
 
       {:ok, lens} ->
-        tree = Perspective.get_tree(perspective_id)
+        subgraph = Perspective.get_subgraph(perspective_id)
 
-        socket = assign(socket, lens: lens, tree: tree)
+        socket = assign(socket, lens: lens, subgraph: subgraph)
 
         case Perspective.set_current_vertex(perspective_id, vertex_id) do
           {:error, :vertex_not_found} ->
@@ -186,14 +186,17 @@ defmodule Clarity.PageLive do
               class="header z-10"
             />
 
-            <.navigation
-              tree={@tree}
-              prefix={@prefix}
-              lens={lens}
-              node={@vertex}
-              breadcrumbs={@breadcrumbs}
-              class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}
-            />
+            <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
+              <.live_component
+                module={Clarity.TreeComponent}
+                id="navigation-tree"
+                graph={@subgraph}
+                active_vertex={@vertex}
+                breadcrumbs={@breadcrumbs}
+                prefix={@prefix}
+                lens={lens}
+              />
+            </nav>
 
             <%= if @vertex do %>
               <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
@@ -208,7 +211,7 @@ defmodule Clarity.PageLive do
                           patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
                           class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
                         >
-                          <.vertex_name vertex={breadcrumb} />
+                          {Vertex.name(breadcrumb)}
                         </.link>
                       </li>
                     <% end %>

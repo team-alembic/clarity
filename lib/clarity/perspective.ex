@@ -32,7 +32,6 @@ defmodule Clarity.Perspective do
 
   alias Clarity.Content
   alias Clarity.Graph
-  alias Clarity.Graph.Tree
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex
@@ -47,7 +46,6 @@ defmodule Clarity.Perspective do
             cached_subgraph: Graph.t() | nil,
             cache_params:
               %{lens_id: String.t(), vertex_id: String.t(), update_count: pos_integer()} | nil,
-            cached_tree: Tree.t() | nil,
             cached_breadcrumbs: [Vertex.t()] | nil,
             cached_contents: [Content.t()] | nil,
             zoom_level: zoom(),
@@ -61,7 +59,6 @@ defmodule Clarity.Perspective do
     current_vertex: %Root{},
     cached_subgraph: nil,
     cache_params: nil,
-    cached_tree: nil,
     cached_breadcrumbs: nil,
     cached_contents: nil,
     zoom_level: {1, 1},
@@ -180,7 +177,6 @@ defmodule Clarity.Perspective do
           state
           | cache_params: current_params,
             cached_subgraph: nil,
-            cached_tree: nil,
             cached_breadcrumbs: nil,
             cached_contents: nil,
             cached_zoom_subgraph: nil
@@ -231,30 +227,6 @@ defmodule Clarity.Perspective do
 
       cached_subgraph ->
         {cached_subgraph, state}
-    end
-  end
-
-  @doc """
-  Gets the tree structure for navigation, computed lazily from the filtered subgraph.
-  """
-  @spec get_tree(Agent.agent()) :: Tree.t()
-  def get_tree(agent) do
-    Agent.get_and_update(agent, &handle_tree_request/1)
-  end
-
-  @spec handle_tree_request(t()) :: {Tree.t(), t()}
-  defp handle_tree_request(state) do
-    state = invalidate_outdated_caches(state)
-    {subgraph, state} = handle_subgraph_request(state)
-
-    case state.cached_tree do
-      nil ->
-        tree = Graph.to_tree(subgraph)
-        state = %{state | cached_tree: tree}
-        {tree, state}
-
-      cached_tree ->
-        {cached_tree, state}
     end
   end
 
