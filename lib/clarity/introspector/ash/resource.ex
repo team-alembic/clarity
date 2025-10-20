@@ -10,6 +10,7 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex.Ash.Domain
       alias Clarity.Vertex.Ash.Resource
       alias Clarity.Vertex.Module
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [Module]
@@ -49,11 +50,9 @@ case Code.ensure_loaded(Ash) do
       defp get_domain_vertex(_graph, nil), do: {:ok, nil}
 
       defp get_domain_vertex(graph, domain) do
-        graph
-        |> Graph.vertices(type: Domain, field_equal: {:domain, domain})
-        |> case do
-          [%Domain{} = vertex] -> {:ok, vertex}
-          [] -> {:error, :unmet_dependencies}
+        case Graph.get_vertex(graph, Util.id(Domain, [domain])) do
+          %Domain{} = vertex -> {:ok, vertex}
+          nil -> {:error, :unmet_dependencies}
         end
       end
     end

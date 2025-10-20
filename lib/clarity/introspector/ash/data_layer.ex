@@ -9,6 +9,7 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex
       alias Clarity.Vertex.Ash.DataLayer
       alias Clarity.Vertex.Ash.Resource
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [Resource]
@@ -19,14 +20,13 @@ case Code.ensure_loaded(Ash) do
         data_layer_vertex = %DataLayer{data_layer: data_layer}
         app = Application.get_application(data_layer)
 
-        app_vertex =
-          graph
-          |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
-          |> List.first()
+        app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
         module_vertex =
           graph
-          |> Clarity.Graph.vertices(type: Vertex.Module, field_equal: {:module, data_layer})
+          |> Clarity.Graph.vertices(
+            {:and, {:==, :vertex_type, Vertex.Module}, {:==, {:field, :module}, data_layer}}
+          )
           |> List.first()
 
         {:ok,

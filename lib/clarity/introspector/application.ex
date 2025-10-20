@@ -34,7 +34,7 @@ defmodule Clarity.Introspector.Application do
   def introspect_vertex(%Vertex.Application{app: app} = app_vertex, graph) do
     all_applications =
       graph
-      |> Graph.vertices(type: Vertex.Application)
+      |> Graph.vertices({:==, :vertex_type, Vertex.Application})
       |> Map.new(&{&1.app, &1})
 
     app_spec = Application.spec(app)
@@ -82,7 +82,7 @@ defmodule Clarity.Introspector.Application do
 
   @spec get_cached_applications(Graph.t()) :: [Vertex.Application.t()]
   defp get_cached_applications(graph) do
-    Graph.vertices(graph, type: Vertex.Application)
+    Graph.vertices(graph, {:==, :vertex_type, Vertex.Application})
   end
 
   @spec purge_app_if_changed(

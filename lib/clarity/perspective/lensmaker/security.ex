@@ -30,32 +30,28 @@ defmodule Clarity.Perspective.Lensmaker.Security do
     }
   end
 
-  @spec filter(Graph.t()) :: (Vertex.t() -> boolean())
+  @spec filter(Graph.t()) :: Graph.query()
   defp filter(graph) do
-    fn
-      # Hide Applications from the navigation / graph. Without user
-      # provided filters, this is too noisy to be useful.
-      %Vertex.Application{} = vertex ->
-        total = Graph.out_degree(graph, vertex)
-        module = Graph.out_degree(graph, vertex, :module)
-        dependency = Graph.out_degree(graph, vertex, :dependency)
+    # Find applications with security-related edges (beyond :module and :dependency)
+    application_ids =
+      graph
+      |> Graph.vertices({:==, :vertex_type, Vertex.Application})
+      |> Enum.filter(fn vertex ->
+        Enum.any?([:domain, :router, :endpoint], &(Graph.out_degree(graph, vertex, &1) > 0))
+      end)
+      |> Enum.map(&Vertex.id/1)
 
-        total - module - dependency > 0
-
-      %struct{}
-      when struct in [
-             Vertex.Ash.Action,
-             Vertex.Ash.DataLayer,
-             Vertex.Ash.Domain,
-             Vertex.Ash.Policy,
-             Vertex.Ash.Relationship,
-             Vertex.Ash.Resource,
-             Vertex.Phoenix.Router
-           ] ->
-        true
-
-      _vertex ->
-        false
-    end
+    # Show security-related vertex types OR applications with security edges
+    {:or, {:in, :vertex_id, application_ids},
+     {:in, :vertex_type,
+      [
+        Vertex.Ash.Action,
+        Vertex.Ash.DataLayer,
+        Vertex.Ash.Domain,
+        Vertex.Ash.Policy,
+        Vertex.Ash.Relationship,
+        Vertex.Ash.Resource,
+        Vertex.Phoenix.Router
+      ]}}
   end
 end

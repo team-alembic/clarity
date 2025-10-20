@@ -22,7 +22,7 @@ defmodule Clarity.Graph.Filter do
   alias Clarity.Graph.Util
   alias Clarity.Vertex
 
-  @type filter_fn() :: (Clarity.Graph.t() -> (Vertex.t() -> boolean()))
+  @type filter() :: Clarity.Graph.query() | (Clarity.Graph.t() -> Clarity.Graph.query())
 
   @doc """
   Creates a filter that includes vertices within the specified number of steps
@@ -31,36 +31,34 @@ defmodule Clarity.Graph.Filter do
   This filter includes vertices reachable within `max_outgoing_steps` forward hops
   OR `max_incoming_steps` backward hops from the center vertex.
   """
-  @spec within_steps(Vertex.t(), non_neg_integer(), non_neg_integer()) :: filter_fn()
+  @spec within_steps(Vertex.t(), non_neg_integer(), non_neg_integer()) :: filter()
   def within_steps(center_vertex, max_outgoing_steps, max_incoming_steps) do
     fn graph ->
       center_vertex_id = Vertex.id(center_vertex)
 
       allowed_vertex_ids =
-        Util.vertices_within_steps(
-          graph.main_graph,
+        graph.main_graph
+        |> Util.vertices_within_steps(
           center_vertex_id,
           max_outgoing_steps,
           max_incoming_steps
         )
+        |> MapSet.to_list()
 
-      fn vertex ->
-        vertex_id = Vertex.id(vertex)
-        MapSet.member?(allowed_vertex_ids, vertex_id)
-      end
+      {:in, :vertex_id, allowed_vertex_ids}
     end
   end
 
   @doc """
   Creates a filter that includes vertices reachable from any of the specified vertices.
   """
-  @spec reachable_from([Vertex.t()]) :: filter_fn()
+  @spec reachable_from([Vertex.t()]) :: filter()
   def reachable_from(source_vertices) do
     fn graph ->
       source_vertex_ids = MapSet.new(source_vertices, &Vertex.id/1)
 
       # Find all vertices reachable from any source vertex
-      for_result =
+      reachable_vertex_ids =
         for vertex_id <- :digraph.vertices(graph.main_graph),
             MapSet.member?(source_vertex_ids, vertex_id) or
               Enum.any?(source_vertex_ids, fn source_id ->
@@ -69,12 +67,7 @@ defmodule Clarity.Graph.Filter do
           vertex_id
         end
 
-      reachable_vertex_ids = MapSet.new(for_result)
-
-      fn vertex ->
-        vertex_id = Vertex.id(vertex)
-        MapSet.member?(reachable_vertex_ids, vertex_id)
-      end
+      {:in, :vertex_id, reachable_vertex_ids}
     end
   end
 
@@ -92,26 +85,9 @@ defmodule Clarity.Graph.Filter do
       # Only modules and applications
       Filter.vertex_type([Clarity.Vertex.Module, Clarity.Vertex.Application])
   """
-  @spec vertex_type([module()]) :: filter_fn()
+  @spec vertex_type([module()]) :: filter()
   def vertex_type(filter_types) when is_list(filter_types) do
-    filter_types_set = MapSet.new(filter_types)
-
-    fn _graph ->
-      fn vertex ->
-        MapSet.member?(filter_types_set, vertex.__struct__)
-      end
-    end
-  end
-
-  @doc """
-  Creates a custom filter using a user-provided predicate function.
-
-  The predicate function receives a vertex and should return true if the vertex
-  should be included in the filtered graph.
-  """
-  @spec custom((Vertex.t() -> boolean())) :: filter_fn()
-  def custom(predicate_fn) do
-    fn _graph -> predicate_fn end
+    {:in, :vertex_type, filter_types}
   end
 
   @doc """
@@ -126,16 +102,11 @@ defmodule Clarity.Graph.Filter do
         Filter.vertex_type([Module])
       ])
   """
-  @spec all([filter_fn()]) :: filter_fn()
+  @spec all([filter()]) :: filter()
   def all(filters) when is_list(filters) do
     fn graph ->
-      # Prepare all filter predicates
-      predicates = Enum.map(filters, & &1.(graph))
-
-      # Return combined predicate that requires all to be true
-      fn vertex ->
-        Enum.all?(predicates, & &1.(vertex))
-      end
+      queries = Enum.map(filters, &evaluate_filter(&1, graph))
+      Enum.reduce(queries, fn q, acc -> {:and, acc, q} end)
     end
   end
 
@@ -151,16 +122,11 @@ defmodule Clarity.Graph.Filter do
         Filter.vertex_type([Application])
       ])
   """
-  @spec any([filter_fn()]) :: filter_fn()
+  @spec any([filter()]) :: filter()
   def any(filters) when is_list(filters) do
     fn graph ->
-      # Prepare all filter predicates
-      predicates = Enum.map(filters, & &1.(graph))
-
-      # Return combined predicate that requires any to be true
-      fn vertex ->
-        Enum.any?(predicates, & &1.(vertex))
-      end
+      queries = Enum.map(filters, &evaluate_filter(&1, graph))
+      Enum.reduce(queries, fn q, acc -> {:or, acc, q} end)
     end
   end
 
@@ -174,15 +140,15 @@ defmodule Clarity.Graph.Filter do
       # Everything except modules
       Filter.negate(Filter.vertex_type([Module]))
   """
-  @spec negate(filter_fn()) :: filter_fn()
-  def negate(filter) when is_function(filter) do
+  @spec negate(filter()) :: filter()
+  def negate(filter) do
     fn graph ->
-      predicate = filter.(graph)
-
-      # Return negated predicate
-      fn vertex ->
-        not predicate.(vertex)
-      end
+      query = evaluate_filter(filter, graph)
+      {:not, query}
     end
   end
+
+  @spec evaluate_filter(filter(), Clarity.Graph.t()) :: Clarity.Graph.query()
+  defp evaluate_filter(filter, graph) when is_function(filter), do: filter.(graph)
+  defp evaluate_filter(filter, _graph), do: filter
 end

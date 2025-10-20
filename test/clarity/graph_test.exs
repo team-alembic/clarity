@@ -3,6 +3,7 @@ defmodule Clarity.GraphTest do
 
   alias Clarity.Graph
   alias Clarity.Graph.Filter
+  alias Clarity.Vertex
   alias Clarity.Vertex.Application
   alias Clarity.Vertex.Module
   alias Clarity.Vertex.Root
@@ -236,7 +237,7 @@ defmodule Clarity.GraphTest do
 
     test "subgraphs are readonly" do
       graph = Graph.new()
-      subgraph = Graph.filter(graph, Filter.custom(fn _ -> true end))
+      subgraph = Graph.filter(graph, true)
 
       app = %Application{app: :test, description: "Test", version: "1.0.0"}
       assert {:error, :subgraphs_are_readonly} = Graph.add_vertex(subgraph, app, %Root{})
@@ -310,7 +311,7 @@ defmodule Clarity.GraphTest do
 
     test "get_vertex/2 retrieves vertex by ID", %{graph: graph, app: app} do
       Graph.add_vertex(graph, app, %Root{})
-      vertex_id = Clarity.Vertex.id(app)
+      vertex_id = Vertex.id(app)
 
       assert Graph.get_vertex(graph, vertex_id) == app
       assert Graph.get_vertex(graph, "nonexistent") == nil
@@ -326,20 +327,43 @@ defmodule Clarity.GraphTest do
       assert app in vertices
       assert mod in vertices
 
-      assert [] = Graph.vertices(graph, type: Inexistent)
-      assert [%Root{}] = Graph.vertices(graph, type: Root)
-      assert [^app] = Graph.vertices(graph, type: Application)
-      vertices = Graph.vertices(graph, type: [Root, Application])
+      assert [] = Graph.vertices(graph, {:==, :vertex_type, Inexistent})
+      assert [%Root{}] = Graph.vertices(graph, {:==, :vertex_type, Root})
+      assert [^app] = Graph.vertices(graph, {:==, :vertex_type, Application})
+      vertices = Graph.vertices(graph, {:in, :vertex_type, [Root, Application]})
       assert %Root{} in vertices
       assert app in vertices
       refute mod in vertices
 
-      assert [^app] = Graph.vertices(graph, type: Application, field_equal: {:app, :test_app})
-      assert [] = Graph.vertices(graph, type: Application, field_equal: {:app, :nonexistent})
+      assert [^app] =
+               Graph.vertices(
+                 graph,
+                 {:and, {:==, :vertex_type, Application}, {:==, {:field, :app}, :test_app}}
+               )
 
-      assert [^app] = Graph.vertices(graph, type: Application, field_in: {:app, [:test_app]})
-      assert [] = Graph.vertices(graph, type: Application, field_in: {:app, []})
-      assert [] = Graph.vertices(graph, type: Application, field_in: {:app, [:nonexistent]})
+      assert [] =
+               Graph.vertices(
+                 graph,
+                 {:and, {:==, :vertex_type, Application}, {:==, {:field, :app}, :nonexistent}}
+               )
+
+      assert [^app] =
+               Graph.vertices(
+                 graph,
+                 {:and, {:==, :vertex_type, Application}, {:in, {:field, :app}, [:test_app]}}
+               )
+
+      assert [] =
+               Graph.vertices(
+                 graph,
+                 {:and, {:==, :vertex_type, Application}, {:in, {:field, :app}, []}}
+               )
+
+      assert [] =
+               Graph.vertices(
+                 graph,
+                 {:and, {:==, :vertex_type, Application}, {:in, {:field, :app}, [:nonexistent]}}
+               )
     end
 
     test "vertex_count/1 returns correct count", %{graph: graph, app: app, mod: mod} do
@@ -588,7 +612,7 @@ defmodule Clarity.GraphTest do
       children = Graph.navigation_children(graph, %Root{})
       apps = children[:application]
 
-      names = Enum.map(apps, &Clarity.Vertex.name/1)
+      names = Enum.map(apps, &Vertex.name/1)
       assert names == Enum.sort(names)
     end
 
@@ -870,8 +894,8 @@ defmodule Clarity.GraphTest do
       assert mod1 in loaded_vertices
       assert mod2 in loaded_vertices
 
-      assert Graph.get_vertex(loaded_graph, Clarity.Vertex.id(app)) == app
-      assert Graph.get_vertex(loaded_graph, Clarity.Vertex.id(mod1)) == mod1
+      assert Graph.get_vertex(loaded_graph, Vertex.id(app)) == app
+      assert Graph.get_vertex(loaded_graph, Vertex.id(mod1)) == mod1
 
       Graph.delete(loaded_graph)
     end
@@ -879,7 +903,7 @@ defmodule Clarity.GraphTest do
     @tag :tmp_dir
     test "persist returns error for subgraphs", %{tmp_dir: tmp_dir} do
       graph = Graph.new()
-      subgraph = Graph.filter(graph, Filter.custom(fn _ -> true end))
+      subgraph = Graph.filter(graph, true)
 
       persist_path = Path.join(tmp_dir, "subgraph_test")
       assert {:error, :subgraphs_are_readonly} = Graph.persist(subgraph, persist_path)
@@ -1088,11 +1112,11 @@ defmodule Clarity.GraphTest do
 
       subgraph =
         Graph.filter(graph, fn _graph ->
-          fn
-            %Application{app: app} when app in [:app1, :app2] -> true
-            %Root{} -> true
-            _ -> false
-          end
+          # Include app1, app2, and root
+          app1_id = Vertex.id(app1)
+          app2_id = Vertex.id(app2)
+          root_id = Vertex.id(%Root{})
+          {:in, :vertex_id, [app1_id, app2_id, root_id]}
         end)
 
       assert Graph.out_degree(subgraph, app1) == 1

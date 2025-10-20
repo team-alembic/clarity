@@ -9,6 +9,7 @@ case Code.ensure_loaded(Spark) do
       alias Clarity.Vertex.Module
       alias Clarity.Vertex.Spark.Dsl
       alias Clarity.Vertex.Spark.Extension
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [Module, Dsl]
@@ -18,10 +19,7 @@ case Code.ensure_loaded(Spark) do
         if spark_dsl?(module) do
           app = Application.get_application(module)
 
-          app_vertex =
-            graph
-            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
-            |> List.first()
+          app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
           dsl_vertex = %Dsl{dsl: module}
 
@@ -62,7 +60,9 @@ case Code.ensure_loaded(Spark) do
             }
       defp build_extension_lookup(graph, needed_extensions) do
         graph
-        |> Clarity.Graph.vertices(type: Extension, field_in: {:extension, needed_extensions})
+        |> Clarity.Graph.vertices(
+          {:and, {:==, :vertex_type, Extension}, {:in, {:field, :extension}, needed_extensions}}
+        )
         |> Map.new(&{&1.extension, &1})
       end
 

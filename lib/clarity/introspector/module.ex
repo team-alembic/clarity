@@ -230,7 +230,9 @@ defmodule Clarity.Introspector.Module do
   @spec build_module_lookup(Clarity.Graph.t(), [module()]) :: %{module() => ModuleVertex.t()}
   defp build_module_lookup(graph, needed_modules) do
     graph
-    |> Clarity.Graph.vertices(type: ModuleVertex, field_in: {:module, needed_modules})
+    |> Clarity.Graph.vertices(
+      {:and, {:==, :vertex_type, ModuleVertex}, {:in, {:field, :module}, needed_modules}}
+    )
     |> Map.new(&{&1.module, &1})
   end
 

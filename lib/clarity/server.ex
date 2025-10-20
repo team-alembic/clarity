@@ -6,6 +6,7 @@ defmodule Clarity.Server do
   alias Clarity.Graph
   alias Clarity.Graph.Cache
   alias Clarity.Vertex.Root
+  alias Clarity.Vertex.Util
 
   require Logger
 
@@ -520,22 +521,15 @@ defmodule Clarity.Server do
 
   @spec find_module_vertices(Graph.t(), [module()]) :: [Clarity.Vertex.Module.t()]
   defp find_module_vertices(graph, module_names) do
-    graph
-    |> Graph.vertices()
-    |> Enum.filter(fn
-      %Clarity.Vertex.Module{module: mod} -> mod in module_names
-      _ -> false
-    end)
+    Graph.vertices(
+      graph,
+      {:and, {:==, :vertex_type, Clarity.Vertex.Module}, {:in, {:field, :module}, module_names}}
+    )
   end
 
   @spec find_application_vertex(Graph.t(), Application.app()) ::
           Clarity.Vertex.Application.t() | nil
   defp find_application_vertex(graph, app) do
-    graph
-    |> Graph.vertices()
-    |> Enum.find(fn
-      %Clarity.Vertex.Application{app: ^app} -> true
-      _ -> false
-    end)
+    Graph.get_vertex(graph, Util.id(Clarity.Vertex.Application, [app]))
   end
 end

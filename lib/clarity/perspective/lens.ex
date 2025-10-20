@@ -18,7 +18,7 @@ defmodule Clarity.Perspective.Lens do
           name: String.t(),
           description: String.t() | nil,
           icon: icon_fn(),
-          filter: Graph.Filter.filter_fn(),
+          filter: Graph.Filter.filter(),
           content_sorter: content_sorter_fn()
         }
 

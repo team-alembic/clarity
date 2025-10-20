@@ -36,19 +36,19 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
     }
   end
 
-  @spec filter(Graph.t()) :: (Vertex.t() -> boolean())
+  @spec filter(Graph.t()) :: Graph.query()
   defp filter(graph) do
-    fn
-      # Hide Applications from the navigation / graph. Without user
-      # provided filters, this is too noisy to be useful.
-      %Vertex.Application{} = vertex ->
-        total = Graph.out_degree(graph, vertex)
-        module = Graph.out_degree(graph, vertex, :module)
+    # Find applications with "interesting" edges (beyond just :module)
+    # This filters out noisy applications that only have module edges
+    application_ids =
+      graph
+      |> Graph.vertices({:==, :vertex_type, Vertex.Application})
+      |> Enum.filter(fn vertex ->
+        Graph.out_degree(graph, vertex) - Graph.out_degree(graph, vertex, :module) > 0
+      end)
+      |> Enum.map(&Vertex.id/1)
 
-        total - module > 0
-
-      _vertex ->
-        true
-    end
+    # Show applications with interesting edges OR any non-application vertex
+    {:or, {:in, :vertex_id, application_ids}, {:!=, :vertex_type, Vertex.Application}}
   end
 end

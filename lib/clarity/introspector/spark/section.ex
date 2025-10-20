@@ -8,6 +8,7 @@ case Code.ensure_loaded(Spark) do
       alias Clarity.Vertex.Module
       alias Clarity.Vertex.Spark.Dsl
       alias Clarity.Vertex.Spark.Section, as: SectionVertex
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [Module]
@@ -50,9 +51,7 @@ case Code.ensure_loaded(Spark) do
 
       @spec find_dsl_vertex(Clarity.Graph.t(), module()) :: Dsl.t() | nil
       defp find_dsl_vertex(graph, dsl_base) do
-        graph
-        |> Clarity.Graph.vertices(type: Dsl, field_equal: {:dsl, dsl_base})
-        |> List.first()
+        Clarity.Graph.get_vertex(graph, Util.id(Dsl, [dsl_base]))
       end
 
       @spec get_section_paths(map()) :: [[atom()]]

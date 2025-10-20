@@ -191,42 +191,6 @@ defmodule Clarity.Graph.FilterTest do
     end
   end
 
-  describe "custom/1" do
-    setup do
-      graph = Graph.new()
-      app1 = %Application{app: :test_app, description: "Test App", version: "1.0.0"}
-      mod1 = %Module{module: TestMod}
-      mod2 = %Module{module: OtherMod}
-
-      Graph.add_vertex(graph, app1, %Root{})
-      Graph.add_vertex(graph, mod1, %Root{})
-      Graph.add_vertex(graph, mod2, %Root{})
-
-      %{graph: graph, app1: app1, mod1: mod1, mod2: mod2}
-    end
-
-    test "applies custom predicate function", %{graph: graph, mod1: mod1, mod2: mod2} do
-      # Filter to only modules containing "Test"
-      filter_fn =
-        Filter.custom(fn vertex ->
-          case vertex do
-            %Module{module: module} -> String.contains?(to_string(module), "Test")
-            _ -> false
-          end
-        end)
-
-      filtered_graph = Graph.filter(graph, filter_fn)
-      vertices = Graph.vertices(filtered_graph)
-
-      # TestMod contains "Test"
-      assert mod1 in vertices
-      # OtherMod doesn't contain "Test"
-      refute mod2 in vertices
-      # Root is not a module
-      refute %Root{} in vertices
-    end
-  end
-
   describe "logical operations" do
     setup do
       graph = Graph.new()
@@ -246,30 +210,23 @@ defmodule Clarity.Graph.FilterTest do
     end
 
     test "all/1 combines multiple filters with AND logic", %{graph: graph, app: app, mod1: mod1, mod2: mod2} do
-      # Combine distance filter AND custom filter
+      # Combine distance filter AND type filter
       filter_fn =
         Filter.all([
           # Within 2 steps from root
           Filter.within_steps(%Root{}, 2, 0),
-          # Only modules containing "Test"
-          Filter.custom(fn vertex ->
-            case vertex do
-              %Module{module: module} -> String.contains?(to_string(module), "Test")
-              _ -> false
-            end
-          end)
+          # Only modules
+          Filter.vertex_type([Module])
         ])
 
       filtered_graph = Graph.filter(graph, filter_fn)
       vertices = Graph.vertices(filtered_graph)
 
-      # Should only include mod1 (TestMod) which passes both filters
+      # Should include both modules within 2 steps
       assert mod1 in vertices
-      # Fails custom filter
-      refute mod2 in vertices
-      # Fails custom filter
+      assert mod2 in vertices
+      # Should NOT include root or app (wrong type)
       refute %Root{} in vertices
-      # Fails custom filter
       refute app in vertices
     end
 
@@ -371,7 +328,7 @@ defmodule Clarity.Graph.FilterTest do
       graph = Graph.new()
 
       # Should work with single filter
-      filtered_graph = Graph.filter(graph, Filter.custom(fn _ -> true end))
+      filtered_graph = Graph.filter(graph, true)
       vertices = Graph.vertices(filtered_graph)
 
       assert %Root{} in vertices
@@ -382,8 +339,8 @@ defmodule Clarity.Graph.FilterTest do
 
       # Should work with list of filters
       filters = [
-        Filter.custom(fn _ -> true end),
-        Filter.custom(fn _ -> true end)
+        Filter.vertex_type([Root]),
+        Filter.vertex_type([Root])
       ]
 
       filtered_graph = Graph.filter(graph, filters)

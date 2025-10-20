@@ -4,7 +4,6 @@ defmodule Clarity.PerspectiveTest do
   import Phoenix.Component
 
   alias Clarity.Graph
-  alias Clarity.Graph.Filter
   alias Clarity.Perspective
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
@@ -21,7 +20,7 @@ defmodule Clarity.PerspectiveTest do
         assigns = %{}
         ~H"🧪"
       end,
-      filter: Filter.custom(fn _vertex -> true end)
+      filter: true
     }
 
     {:ok, graph: graph, test_lens: test_lens}

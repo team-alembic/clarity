@@ -222,54 +222,139 @@ defmodule Clarity.Graph do
     :ets.lookup_element(graph.vertices, vertex_id, 3, nil)
   end
 
-  @type query_option() ::
-          {:type, module() | [module()]}
-          | {:field_equal, {atom(), any()}}
-          | {:field_in, {atom(), [any()]}}
-  @type query() :: [query_option()]
+  @type query_subject() :: :vertex_type | :vertex_id | {:field, atom()}
+
+  @type query() ::
+          {:and, query(), query()}
+          | {:or, query(), query()}
+          | {:not, query()}
+          | {:==, query_subject(), term()}
+          | {:!=, query_subject(), term()}
+          | {:in, query_subject(), [term()]}
+          | boolean()
 
   @doc """
-  Gets all vertices.
+  Gets all vertices matching the query.
+
+  ## Query Syntax
+
+  Queries support complex boolean expressions using operations, operators, and fields.
+
+  ### Operations
+  - `{:and, query1, query2}` - Both queries must match
+  - `{:or, query1, query2}` - Either query must match
+  - `{:not, query}` - Query must not match
+
+  ### Operators
+  - `{:==, field, value}` - Field equals value
+  - `{:!=, field, value}` - Field does not equal value
+  - `{:in, field, values}` - Field is in list of values
+
+  ### Fields
+  - `:vertex_type` - The module of the vertex (e.g., `Application`, `Module`)
+  - `:vertex_id` - The unique ID string of the vertex
+  - `{:field, :field_name}` - A field within the vertex struct (e.g., `{:field, :app}`, `{:field, :module}`)
+
+  ## Examples
+
+      # All Application vertices
+      Graph.vertices(graph, {:==, :vertex_type, Application})
+
+      # Application OR Root vertices
+      Graph.vertices(graph, {:or,
+        {:==, :vertex_type, Application},
+        {:==, :vertex_type, Root}
+      })
+
+      # Same as above, using :in
+      Graph.vertices(graph, {:in, :vertex_type, [Application, Root]})
+
+      # Complex: Root/Application OR (Module with specific ID)
+      Graph.vertices(graph, {:or,
+        {:in, :vertex_type, [Root, Application]},
+        {:and, {:==, :vertex_type, Module}, {:==, :vertex_id, "module:Foo"}}
+      })
+
+      # All vertices except Root
+      Graph.vertices(graph, {:not, {:==, :vertex_type, Root}})
+
+      # Query by field value
+      Graph.vertices(graph, {:and,
+        {:==, :vertex_type, Application},
+        {:==, {:field, :app}, :my_app}
+      })
+
+      # All vertices (default)
+      Graph.vertices(graph, true)
+      Graph.vertices(graph)
   """
   @spec vertices(t(), query()) :: [Vertex.t()]
-  def vertices(%__MODULE__{} = graph, query \\ []) do
+  def vertices(%__MODULE__{} = graph, query \\ true) do
     all_vertices = graph.main_graph |> :digraph.vertices() |> MapSet.new()
 
     graph.vertices
-    |> :ets.select(vertex_query_to_ets_match_spec(query))
+    |> :ets.select(vertex_query_to_ets_match_spec(query, :"$3"))
     |> Enum.filter(&MapSet.member?(all_vertices, Vertex.id(&1)))
   end
 
-  @spec vertex_query_to_ets_match_spec(query :: query()) :: :ets.match_spec()
-  defp vertex_query_to_ets_match_spec(query)
-  defp vertex_query_to_ets_match_spec([]), do: [{{:"$1", :"$2", :"$3"}, [], [:"$3"]}]
+  @spec vertex_ids(t(), query()) :: [Vertex.t()]
+  defp vertex_ids(%__MODULE__{} = graph, query) do
+    all_vertices = graph.main_graph |> :digraph.vertices() |> MapSet.new()
 
-  defp vertex_query_to_ets_match_spec(conditions) do
-    filters =
-      conditions
-      |> Enum.map(fn
-        {:field_equal, {field, value}} ->
-          {:==, {:map_get, field, :"$3"}, value}
-
-        {:field_in, {_field, []}} ->
-          false
-
-        {:field_in, {field, values}} when is_list(values) ->
-          values
-          |> Enum.map(&{:==, {:map_get, field, :"$3"}, &1})
-          |> Enum.reduce(fn a, b -> {:orelse, a, b} end)
-
-        {:type, type} when is_atom(type) ->
-          {:==, :"$2", type}
-
-        {:type, types} when is_list(types) ->
-          types |> Enum.map(&{:==, :"$2", &1}) |> Enum.reduce(fn a, b -> {:orelse, a, b} end)
-      end)
-      |> Enum.reduce(fn a, b -> {:andalso, a, b} end)
-      |> List.wrap()
-
-    [{{:"$1", :"$2", :"$3"}, filters, [:"$3"]}]
+    graph.vertices
+    |> :ets.select(vertex_query_to_ets_match_spec(query, :"$1"))
+    |> MapSet.new()
+    |> MapSet.intersection(all_vertices)
+    |> MapSet.to_list()
   end
+
+  @spec vertex_query_to_ets_match_spec(query :: query(), select :: atom()) :: :ets.match_spec()
+  defp vertex_query_to_ets_match_spec(query, select)
+  defp vertex_query_to_ets_match_spec(true, select), do: [{{:"$1", :"$2", :"$3"}, [], [select]}]
+
+  defp vertex_query_to_ets_match_spec(query, select) do
+    condition = query_to_match_condition(query)
+    [{{:"$1", :"$2", :"$3"}, [condition], [select]}]
+  end
+
+  @spec query_to_match_condition(query()) :: term()
+  defp query_to_match_condition(true), do: true
+  defp query_to_match_condition(false), do: false
+
+  defp query_to_match_condition({:and, q1, q2}) do
+    {:andalso, query_to_match_condition(q1), query_to_match_condition(q2)}
+  end
+
+  defp query_to_match_condition({:or, q1, q2}) do
+    {:orelse, query_to_match_condition(q1), query_to_match_condition(q2)}
+  end
+
+  defp query_to_match_condition({:not, q}) do
+    {:not, query_to_match_condition(q)}
+  end
+
+  defp query_to_match_condition({:==, subject, value}) do
+    {:==, query_subject(subject), value}
+  end
+
+  defp query_to_match_condition({:!=, subject, value}) do
+    {:"/=", query_subject(subject), value}
+  end
+
+  defp query_to_match_condition({:in, _field, []}) do
+    false
+  end
+
+  defp query_to_match_condition({:in, field, values}) when is_list(values) do
+    values
+    |> Enum.map(&query_to_match_condition({:==, field, &1}))
+    |> Enum.reduce(fn a, b -> {:orelse, a, b} end)
+  end
+
+  @spec query_subject(query_subject()) :: term()
+  defp query_subject(:vertex_type), do: :"$2"
+  defp query_subject(:vertex_id), do: :"$1"
+  defp query_subject({:field, field}), do: {:map_get, field, :"$3"}
 
   @doc """
   Gets outgoing edges for a vertex.
@@ -503,7 +588,7 @@ defmodule Clarity.Graph do
   end
 
   @doc """
-  Creates a filtered subgraph using one or more composable filter functions.
+  Creates a filtered subgraph using a composable filter.
   Returns a new Clarity.Graph instance with the filtered vertices and edges.
 
   > #### Graph Memory Management {: .warning}
@@ -519,27 +604,21 @@ defmodule Clarity.Graph do
       subgraph = Graph.filter(graph, Filter.within_steps(vertex, 2, 1))
 
       # Multiple composed filters
-      filters = [
+      filter = Filter.all([
         Filter.within_steps(vertex, 2, 1),
-        Filter.reachable_from(root_vertex)
-      ]
-      subgraph = Graph.filter(graph, filters)
+        Filter.reachable_from([root_vertex])
+      ])
+      subgraph = Graph.filter(graph, filter)
   """
-  @spec filter(t(), Filter.filter_fn() | [Filter.filter_fn()]) :: t()
-  def filter(%__MODULE__{} = graph, filter_or_filters) do
-    filter_fn =
-      case filter_or_filters do
-        filters when is_list(filters) -> Filter.all(filters)
-        filter when is_function(filter) -> filter
-      end
+  @spec filter(t(), Filter.filter() | [Filter.filter()]) :: t()
+  def filter(%__MODULE__{} = graph, filters) when is_list(filters) do
+    filter(graph, Filter.all(filters))
+  end
 
-    predicate = filter_fn.(graph)
+  def filter(%__MODULE__{} = graph, filter) do
+    query = if is_function(filter), do: filter.(graph), else: filter
 
-    included_vertex_ids =
-      graph
-      |> vertices()
-      |> Enum.filter(predicate)
-      |> Enum.map(&Vertex.id/1)
+    included_vertex_ids = vertex_ids(graph, query)
 
     filtered_main_graph = :digraph_utils.subgraph(graph.main_graph, included_vertex_ids)
     filtered_tree_graph = :digraph_utils.subgraph(graph.tree_graph, included_vertex_ids)

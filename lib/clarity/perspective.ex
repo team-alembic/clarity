@@ -376,9 +376,10 @@ defmodule Clarity.Perspective do
             graph
             |> Graph.breadcrumbs(vertex)
             |> Kernel.||([vertex])
-            |> MapSet.new()
 
-          &MapSet.member?(breadcrumbs, &1)
+          breadcrumb_ids = Enum.map(breadcrumbs, &Vertex.id/1)
+
+          {:in, :vertex_id, breadcrumb_ids}
         end
       ])
 
