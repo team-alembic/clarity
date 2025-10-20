@@ -12,6 +12,7 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex.Ash.Calculation
       alias Clarity.Vertex.Ash.Type
       alias Clarity.Vertex.Module
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [Module, Attribute, Aggregate, Calculation]
@@ -21,10 +22,7 @@ case Code.ensure_loaded(Ash) do
         if Spark.implements_behaviour?(module, Ash.Type) do
           app = Application.get_application(module)
 
-          app_vertex =
-            graph
-            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
-            |> List.first()
+          app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
           type_vertex = %Type{type: module}
 
@@ -61,12 +59,9 @@ case Code.ensure_loaded(Ash) do
         Code.ensure_loaded(simplified_type)
 
         if Config.should_process_module?(simplified_type) do
-          # Check if the type vertex already exists in the graph
-          graph
-          |> Clarity.Graph.vertices(type: Type, field_equal: {:type, simplified_type})
-          |> case do
-            [] -> {:error, :unmet_dependencies}
-            [vertex] -> {:ok, [{:edge, field_vertex, vertex, :type}]}
+          case Clarity.Graph.get_vertex(graph, Util.id(Type, [simplified_type])) do
+            nil -> {:error, :unmet_dependencies}
+            vertex -> {:ok, [{:edge, field_vertex, vertex, :type}]}
           end
         else
           {:ok, []}

@@ -4,7 +4,6 @@ defmodule Clarity.Perspective.Lensmaker.DebugTest do
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Debug
-  alias Clarity.Vertex.Root
   alias Phoenix.LiveView.Rendered
 
   setup do
@@ -27,15 +26,6 @@ defmodule Clarity.Perspective.Lensmaker.DebugTest do
       assert is_function(icon_fn, 0)
       assert is_function(filter, 1)
       assert is_function(content_sorter, 2)
-    end
-
-    test "debug lens shows everything (no filtering)" do
-      lens = Debug.make_lens()
-
-      # Debug filter should always return true (show everything)
-      assert lens.filter.(%Root{})
-      assert lens.filter.(%{some: "vertex"})
-      assert lens.filter.(nil)
     end
 
     test "debug lens icon renders bug emoji" do

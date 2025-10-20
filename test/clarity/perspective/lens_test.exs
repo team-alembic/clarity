@@ -4,63 +4,7 @@ defmodule Clarity.Perspective.LensTest do
   import Phoenix.Component
 
   alias Clarity.Graph
-  alias Clarity.Graph.Filter
   alias Clarity.Perspective.Lens
-
-  describe "struct creation" do
-    test "creates valid lens with all required fields" do
-      icon_fn = fn ->
-        assigns = %{}
-        ~H"🐛"
-      end
-
-      filter_fn = Filter.custom(fn _vertex -> true end)
-
-      content_sorter = fn a, b -> a.id <= b.id end
-
-      assert %Lens{
-               id: "test",
-               name: "Test Lens",
-               description: "A test lens",
-               icon: ^icon_fn,
-               filter: ^filter_fn,
-               content_sorter: ^content_sorter
-             } = %Lens{
-               id: "test",
-               name: "Test Lens",
-               description: "A test lens",
-               icon: icon_fn,
-               filter: filter_fn,
-               content_sorter: content_sorter
-             }
-    end
-
-    test "creates lens with minimal required fields" do
-      icon_fn = fn ->
-        assigns = %{}
-        ~H"🐛"
-      end
-
-      filter_fn = Filter.custom(fn _vertex -> true end)
-
-      content_sorter = fn a, b -> a.id <= b.id end
-
-      assert %Lens{
-               id: "minimal",
-               name: "Minimal",
-               description: nil,
-               icon: ^icon_fn,
-               filter: ^filter_fn,
-               content_sorter: ^content_sorter
-             } = %Lens{
-               id: "minimal",
-               name: "Minimal",
-               icon: icon_fn,
-               filter: filter_fn,
-               content_sorter: content_sorter
-             }
-    end
-  end
 
   describe "icon function" do
     test "icon function returns rendered component" do
@@ -73,7 +17,7 @@ defmodule Clarity.Perspective.LensTest do
         id: "test",
         name: "Test",
         icon: icon_fn,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
 
       result = lens.icon.()
@@ -84,7 +28,7 @@ defmodule Clarity.Perspective.LensTest do
   describe "filter integration" do
     test "filter function works with Graph.filter/2" do
       graph = Graph.new()
-      filter_fn = Filter.custom(fn _vertex -> true end)
+      filter_fn = true
 
       lens = %Lens{
         id: "test",
@@ -111,7 +55,7 @@ defmodule Clarity.Perspective.LensTest do
           assigns = %{}
           ~H"🔍"
         end,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
 
       # Should use default alphabetical sorter
@@ -128,7 +72,7 @@ defmodule Clarity.Perspective.LensTest do
           assigns = %{}
           ~H"🔍"
         end,
-        filter: Filter.custom(fn _vertex -> true end),
+        filter: true,
         content_sorter: custom_sorter
       }
 

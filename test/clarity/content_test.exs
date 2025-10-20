@@ -4,7 +4,6 @@ defmodule Clarity.ContentTest do
   import Phoenix.Component
 
   alias Clarity.Content
-  alias Clarity.Graph.Filter
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex.Root
 
@@ -123,7 +122,7 @@ defmodule Clarity.ContentTest do
           assigns = %{}
           ~H"🧪"
         end,
-        filter: Filter.custom(fn _vertex -> true end),
+        filter: true,
         content_sorter: &Lens.sort_alphabetically/2
       }
 
@@ -234,7 +233,7 @@ defmodule Clarity.ContentTest do
           assigns = %{}
           ~H"🧪"
         end,
-        filter: Filter.custom(fn _vertex -> true end),
+        filter: true,
         content_sorter: &Lens.sort_alphabetically/2
       }
 

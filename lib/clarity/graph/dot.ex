@@ -85,10 +85,7 @@ defmodule Clarity.Graph.DOT do
   @spec render_graph(graph :: Clarity.Graph.t(), options :: options()) ::
           {iodata(), MapSet.t(Vertex.t())}
   defp render_graph(clarity_graph, options) do
-    all_vertices =
-      clarity_graph
-      |> Clarity.Graph.vertices()
-      |> Enum.reject(&match?(%Vertex.Root{}, &1))
+    all_vertices = Clarity.Graph.vertices(clarity_graph, {:not, {:==, :vertex_type, Vertex.Root}})
 
     highlighted = options[:highlight]
 

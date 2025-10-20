@@ -8,6 +8,7 @@ case Code.ensure_loaded(Spark) do
       alias Clarity.Vertex
       alias Clarity.Vertex.Module
       alias Clarity.Vertex.Spark.Extension
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [Module]
@@ -17,10 +18,7 @@ case Code.ensure_loaded(Spark) do
         if Spark.implements_behaviour?(module, Spark.Dsl.Extension) do
           app = Application.get_application(module)
 
-          app_vertex =
-            graph
-            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
-            |> List.first()
+          app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
           extension_vertex = %Extension{extension: module}
 

@@ -3,7 +3,6 @@ defmodule Clarity.Perspective.LensmakerTest do
 
   import Phoenix.Component
 
-  alias Clarity.Graph.Filter
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
 
@@ -20,7 +19,7 @@ defmodule Clarity.Perspective.LensmakerTest do
           assigns = %{}
           ~H"🧪"
         end,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
     end
 
@@ -41,7 +40,7 @@ defmodule Clarity.Perspective.LensmakerTest do
           assigns = %{}
           ~H"⚡"
         end,
-        filter: Filter.custom(fn _vertex -> false end)
+        filter: false
       }
     end
 
@@ -74,7 +73,7 @@ defmodule Clarity.Perspective.LensmakerTest do
           assigns = %{}
           ~H"⚙️"
         end,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
     end
   end

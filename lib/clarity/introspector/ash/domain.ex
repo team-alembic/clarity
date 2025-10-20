@@ -8,6 +8,7 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex
       alias Clarity.Vertex.Ash.Domain
       alias Clarity.Vertex.Module
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [Module]
@@ -17,10 +18,7 @@ case Code.ensure_loaded(Ash) do
         if Spark.implements_behaviour?(module, Ash.Domain) do
           app = Application.get_application(module)
 
-          app_vertex =
-            graph
-            |> Clarity.Graph.vertices(type: Vertex.Application, field_equal: {:app, app})
-            |> List.first()
+          app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
           domain_vertex = %Domain{domain: module}
 

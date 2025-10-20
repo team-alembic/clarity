@@ -22,6 +22,7 @@ case Code.ensure_loaded(Ash) do
       alias Clarity.Vertex.Ash.Relationship
       alias Clarity.Vertex.Ash.Resource
       alias Clarity.Vertex.Spark.Entity, as: EntityVertex
+      alias Clarity.Vertex.Util
 
       @impl Clarity.Introspector
       def source_vertex_types, do: [EntityVertex]
@@ -99,11 +100,9 @@ case Code.ensure_loaded(Ash) do
       @spec fetch_resource_vertex(Graph.t(), module()) ::
               {:ok, Resource.t()} | {:error, :unmet_dependencies}
       defp fetch_resource_vertex(graph, module) do
-        graph
-        |> Graph.vertices(type: Resource, field_equal: {:resource, module})
-        |> case do
-          [] -> {:error, :unmet_dependencies}
-          [vertex] -> {:ok, vertex}
+        case Graph.get_vertex(graph, Util.id(Resource, [module])) do
+          nil -> {:error, :unmet_dependencies}
+          vertex -> {:ok, vertex}
         end
       end
 

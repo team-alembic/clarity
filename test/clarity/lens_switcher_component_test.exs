@@ -4,7 +4,6 @@ defmodule Clarity.LensSwitcherComponentTest do
   import Phoenix.Component
   import Phoenix.LiveViewTest
 
-  alias Clarity.Graph.Filter
   alias Clarity.LensSwitcherComponent
   alias Clarity.Perspective.Lens
 
@@ -18,7 +17,7 @@ defmodule Clarity.LensSwitcherComponentTest do
           assigns = %{}
           ~H"🐛"
         end,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
 
       html =
@@ -47,7 +46,7 @@ defmodule Clarity.LensSwitcherComponentTest do
           assigns = %{}
           ~H"🐛"
         end,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
 
       html =
@@ -76,7 +75,7 @@ defmodule Clarity.LensSwitcherComponentTest do
           assigns = %{}
           ~H"🏗️"
         end,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
 
       html =
@@ -103,7 +102,7 @@ defmodule Clarity.LensSwitcherComponentTest do
           assigns = %{}
           ~H"🛡️"
         end,
-        filter: Filter.custom(fn _vertex -> true end)
+        filter: true
       }
 
       html =
