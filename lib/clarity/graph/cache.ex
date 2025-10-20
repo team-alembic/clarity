@@ -41,6 +41,8 @@ defmodule Clarity.Graph.Cache do
   @spec load(GenServer.server()) :: {:ok, Graph.t()} | {:error, term()}
   def load(server \\ __MODULE__) do
     GenServer.call(server, :load)
+  after
+    delete_ets_transfer_messages()
   end
 
   @impl GenServer
@@ -167,5 +169,19 @@ defmodule Clarity.Graph.Cache do
       end)
     end)
     |> :erlang.phash2()
+  end
+
+  @spec delete_ets_transfer_messages(non_neg_integer()) :: :ok
+  defp delete_ets_transfer_messages(count \\ 12)
+  defp delete_ets_transfer_messages(0), do: :ok
+
+  defp delete_ets_transfer_messages(count) do
+    receive do
+      {:"ETS-TRANSFER", _ref, _pid, :graph_handover} ->
+        delete_ets_transfer_messages(count - 1)
+    after
+      0 ->
+        :ok
+    end
   end
 end
