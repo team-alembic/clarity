@@ -280,64 +280,6 @@ defmodule Clarity.PerspectiveTest do
     end
   end
 
-  describe "get_tree/1" do
-    test "returns tree structure for current subgraph", %{graph: graph} do
-      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
-      {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
-
-      # Ensure subgraph is computed first
-      _subgraph = Perspective.get_subgraph(pid)
-
-      tree = Perspective.get_tree(pid)
-      assert %Graph.Tree{} = tree
-    end
-
-    test "caches tree on repeated calls", %{graph: graph} do
-      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
-      {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
-
-      # Ensure subgraph is computed first
-      _subgraph = Perspective.get_subgraph(pid)
-
-      tree1 = Perspective.get_tree(pid)
-      tree2 = Perspective.get_tree(pid)
-
-      # Should be the same reference (cached)
-      assert tree1 == tree2
-    end
-
-    test "invalidates tree cache when lens changes", %{graph: graph} do
-      # Add some test data that would be filtered differently by different lenses
-      app_vertex = %Clarity.Vertex.Application{app: :test_app, description: "Test App", version: "1.0.0"}
-      module_vertex = %Clarity.Vertex.Module{module: TestModule}
-      root_vertex = Graph.get_vertex(graph, "root")
-
-      :ok = Graph.add_vertex(graph, app_vertex, root_vertex)
-      :ok = Graph.add_vertex(graph, module_vertex, root_vertex)
-      :ok = Graph.add_edge(graph, root_vertex, app_vertex, :dependency)
-      :ok = Graph.add_edge(graph, root_vertex, module_vertex, :dependency)
-
-      pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})
-      {:ok, _vertex} = Perspective.set_current_vertex(pid, "root")
-
-      # Start with debug lens (shows everything)
-      assert {:ok, _lens} = Perspective.install_lens(pid, "debug")
-      _subgraph1 = Perspective.get_subgraph(pid)
-      tree1 = Perspective.get_tree(pid)
-
-      # Change to architect lens (filters differently)
-      assert {:ok, _lens} = Perspective.install_lens(pid, "architect")
-      _subgraph2 = Perspective.get_subgraph(pid)
-      tree2 = Perspective.get_tree(pid)
-
-      # Trees should be different due to different filtering
-      # But if they end up the same due to simple test data, that's also valid
-      # The important thing is that cache was invalidated (tested separately)
-      assert %Graph.Tree{} = tree1
-      assert %Graph.Tree{} = tree2
-    end
-  end
-
   describe "get_breadcrumbs/1" do
     test "returns breadcrumb path for current vertex", %{graph: graph} do
       pid = start_supervised!(%{id: Perspective, start: {Perspective, :start_link, [graph, %Root{}]}})

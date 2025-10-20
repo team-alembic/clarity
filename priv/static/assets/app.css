@@ -232,6 +232,9 @@
   }
 }
 @layer utilities {
+  .visible {
+    visibility: visible;
+  }
   .absolute {
     position: absolute;
   }
@@ -1055,6 +1058,9 @@
   }
   .pl-2 {
     padding-left: calc(var(--spacing) * 2);
+  }
+  .pl-\[25px\] {
+    padding-left: 25px;
   }
   .text-center {
     text-align: center;

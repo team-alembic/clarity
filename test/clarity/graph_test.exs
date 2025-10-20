@@ -548,14 +548,13 @@ defmodule Clarity.GraphTest do
     end
   end
 
-  describe "tree operations" do
+  describe "navigation_children/2" do
     setup do
-      # Create a tree structure
       graph = Graph.new()
-      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
-      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
-      mod1 = %Module{module: Mod1}
-      mod2 = %Module{module: Mod2}
+      app1 = %Application{app: :test_app1, description: "Test App 1", version: "1.0.0"}
+      app2 = %Application{app: :test_app2, description: "Test App 2", version: "1.0.0"}
+      mod1 = %Module{module: TestMod1}
+      mod2 = %Module{module: TestMod2}
 
       Graph.add_vertex(graph, app1, %Root{})
       Graph.add_vertex(graph, app2, %Root{})
@@ -570,28 +569,40 @@ defmodule Clarity.GraphTest do
       %{graph: graph, app1: app1, app2: app2, mod1: mod1, mod2: mod2}
     end
 
-    test "to_tree/1 converts graph to tree structure", %{graph: graph, app1: app1, app2: app2, mod1: mod1} do
-      tree = Graph.to_tree(graph)
+    test "returns children grouped by edge label", %{graph: graph, app1: app1, app2: app2} do
+      children = Graph.navigation_children(graph, %Root{})
 
-      # Root should be the tree vertex
-      assert tree.vertex == %Root{}
+      assert Map.has_key?(children, :application)
+      assert length(children[:application]) == 2
+      assert app1 in children[:application]
+      assert app2 in children[:application]
+    end
 
-      # Should have :application edges
-      assert Map.has_key?(tree.out_edges, :application)
-      app_trees = tree.out_edges[:application]
-      assert length(app_trees) == 2
+    test "returns empty map for leaf vertices", %{graph: graph, mod1: mod1} do
+      children = Graph.navigation_children(graph, mod1)
 
-      # Check app vertices are present
-      app_vertices = Enum.map(app_trees, & &1.vertex)
-      assert app1 in app_vertices
-      assert app2 in app_vertices
+      assert children == %{}
+    end
 
-      # Find app1 tree and check its children
-      app1_tree = Enum.find(app_trees, fn tree -> tree.vertex == app1 end)
-      assert Map.has_key?(app1_tree.out_edges, :module)
-      mod1_trees = app1_tree.out_edges[:module]
-      assert length(mod1_trees) == 1
-      assert hd(mod1_trees).vertex == mod1
+    test "children are sorted by vertex name", %{graph: graph} do
+      children = Graph.navigation_children(graph, %Root{})
+      apps = children[:application]
+
+      names = Enum.map(apps, &Clarity.Vertex.name/1)
+      assert names == Enum.sort(names)
+    end
+
+    test "handles multiple edge types from same vertex", %{graph: graph, app1: app1} do
+      mod3 = %Module{module: TestMod3}
+      Graph.add_vertex(graph, mod3, app1)
+      Graph.add_edge(graph, app1, mod3, :dependency)
+
+      children = Graph.navigation_children(graph, app1)
+
+      assert Map.has_key?(children, :module)
+      assert Map.has_key?(children, :dependency)
+      assert length(children[:module]) == 1
+      assert length(children[:dependency]) == 1
     end
   end
 

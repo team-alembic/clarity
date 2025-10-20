@@ -6,7 +6,6 @@ defmodule Clarity.CoreComponents do
   import Phoenix.HTML
 
   alias Clarity.Perspective.Lens
-  alias Clarity.Vertex
   alias Phoenix.LiveView.JS
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
@@ -84,123 +83,6 @@ defmodule Clarity.CoreComponents do
         </button>
       </div>
     </header>
-    """
-  end
-
-  attr :tree, :any, required: true, doc: "The navigation tree digraph"
-  attr :prefix, :string, default: "/", doc: "The URL prefix for links"
-  attr :node, :any, required: true, doc: "The currently selected node in the tree"
-
-  attr :lens, Lens,
-    required: true,
-    doc: "Current lens for perspective switching"
-
-  attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the navigation container"
-
-  @spec navigation(assigns :: Socket.assigns()) :: Rendered.t()
-  def navigation(assigns) do
-    ~H"""
-    <nav {@rest}>
-      <.navigation_tree
-        tree={@tree}
-        prefix={@prefix}
-        node={@node}
-        lens={@lens}
-        breadcrumbs={@breadcrumbs}
-      />
-    </nav>
-    """
-  end
-
-  attr :tree, :any, required: true, doc: "The navigation tree digraph"
-  attr :prefix, :string, default: "/", doc: "The URL prefix for links"
-  attr :node, :any, required: true, doc: "The currently selected node in the tree"
-
-  attr :lens, Lens,
-    required: true,
-    doc: "Current lens for perspective switching"
-
-  attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
-
-  @spec navigation_tree(assigns :: Socket.assigns()) :: Rendered.t()
-  defp navigation_tree(assigns) do
-    ~H"""
-    <div :for={{label, vertices} <- @tree.out_edges} :if={label != :content}>
-      <span class="cursor-pointer select-none text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark px-2 py-1 rounded-xs group-open:bg-base-light-200 dark:group-open:bg-base-dark-700 transition-colors">
-        {label}
-      </span>
-      <ul class="border-l border-base-light-300 dark:border-base-dark-700 pl-2 space-y-1">
-        <li :for={vertex <- vertices}>
-          <.navigation_node
-            tree={vertex}
-            prefix={@prefix}
-            node={@node}
-            lens={@lens}
-            breadcrumbs={@breadcrumbs}
-          />
-        </li>
-      </ul>
-    </div>
-    """
-  end
-
-  attr :tree, :any, required: true, doc: "The navigation tree digraph"
-  attr :prefix, :string, default: "/", doc: "The URL prefix for links"
-
-  attr :lens, Lens,
-    required: true,
-    doc: "Current lens for perspective switching"
-
-  attr :node, :any, required: true, doc: "The currently selected node in the tree"
-  attr :breadcrumbs, :list, required: true, doc: "List of breadcrumb vertices"
-
-  @spec navigation_node(assigns :: Socket.assigns()) :: Rendered.t()
-  defp navigation_node(assigns) do
-    ~H"""
-    <%= if Enum.any?(@tree.out_edges, &(elem(&1, 0) != :content)) do %>
-      <details open={Enum.any?(@breadcrumbs, &(&1 == @tree.vertex))}>
-        <summary>
-          <.link
-            patch={Path.join([@prefix, @lens.id, Clarity.Vertex.id(@tree.vertex)])}
-            class={
-              "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
-              if @tree.vertex == @node, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
-            }
-          >
-            <.vertex_name vertex={@tree.vertex} />
-          </.link>
-        </summary>
-        <div class="ml-4 group">
-          <.navigation_tree
-            tree={@tree}
-            prefix={@prefix}
-            node={@node}
-            lens={@lens}
-            breadcrumbs={@breadcrumbs}
-          />
-        </div>
-      </details>
-    <% else %>
-      <.link
-        patch={Path.join([@prefix, @lens.id, Clarity.Vertex.id(@tree.vertex)])}
-        class={
-              "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
-              if @tree.vertex == @node, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
-            }
-      >
-        <.vertex_name vertex={@tree.vertex} />
-      </.link>
-    <% end %>
-    """
-  end
-
-  attr :vertex, :any, required: true, doc: "The vertex to render"
-
-  @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
-  def vertex_name(assigns) do
-    ~H"""
-    <span data-tooltip={"tooltip-#{Vertex.id(@vertex)}"}>{Vertex.name(@vertex)}</span>
     """
   end
 
