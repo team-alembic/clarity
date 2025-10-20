@@ -232,7 +232,7 @@ defmodule Clarity.Config do
   @doc false
   @spec auto_start?() :: boolean()
   def auto_start? do
-    Application.get_env(:clarity, :auto_start?, true)
+    Application.get_env(:clarity, :auto_start?, false)
   end
 
   @spec filter_by_config([application_details()]) :: [application_details()]
