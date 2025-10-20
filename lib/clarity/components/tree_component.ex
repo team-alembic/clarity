@@ -6,9 +6,7 @@ defmodule Clarity.TreeComponent do
   renders nodes that are visible (root, breadcrumb path, and user-opened branches).
   """
 
-  use Phoenix.LiveComponent
-
-  import Clarity.CoreComponents, only: [loading_spinner: 1]
+  use Clarity.Web, :live_component
 
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
