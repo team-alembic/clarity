@@ -297,41 +297,6 @@ defmodule Clarity.PageLive do
     {:noreply, socket}
   end
 
-  @spec tabs(assigns :: Socket.assigns()) :: Rendered.t()
-  defp tabs(assigns) do
-    ~H"""
-    <nav class="tabs border-b border-base-light-300 dark:border-base-dark-700 bg-base-light-100 dark:bg-base-dark-900 px-4 flex justify-between items-center">
-      <ul class="flex space-x-2">
-        <li :for={content <- @contents}>
-          <.link
-            patch={Path.join([@prefix, @lens.id, Clarity.Vertex.id(@vertex), content.id])}
-            class={
-            "inline-block px-4 py-2 rounded-t-md font-medium transition-colors " <>
-            if @content && content.id == @content.id,
-              do: "bg-base-light-200 dark:bg-base-dark-800 text-primary-light dark:text-primary-dark border-b-2 border-primary-light dark:border-primary-dark",
-              else: "text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark hover:bg-base-light-200 dark:hover:bg-base-dark-800"
-            }
-            title={content.description}
-          >
-            {content.name}
-          </.link>
-        </li>
-      </ul>
-      
-    <!-- Editor button section -->
-      <div class="flex items-center">
-        <%= if Vertex.SourceLocationProvider.source_location(@vertex) != nil do %>
-          <.live_component
-            module={Clarity.EditorButtonComponent}
-            id="editor-button"
-            source_location={Vertex.SourceLocationProvider.source_location(@vertex)}
-          />
-        <% end %>
-      </div>
-    </nav>
-    """
-  end
-
   @spec render_content(assigns :: Socket.assigns()) :: Rendered.t()
   defp render_content(assigns) do
     ~H"""
@@ -383,66 +348,6 @@ defmodule Clarity.PageLive do
           <% end %>
       <% end %>
     </.async_result>
-    """
-  end
-
-  @spec lens_not_found_error(assigns :: Socket.assigns()) :: Rendered.t()
-  defp lens_not_found_error(assigns) do
-    ~H"""
-    <div class="bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100 min-h-screen w-full flex items-center justify-center p-8">
-      <div class="max-w-lg w-full text-center">
-        <h1 class="text-4xl font-bold text-base-light-900 dark:text-base-dark-100 mb-6">
-          Lens Not Found
-        </h1>
-        <p class="text-lg text-base-light-600 dark:text-base-dark-400 mb-8">
-          The requested lens could not be found. It may not be available or the URL is incorrect.
-        </p>
-        <.link
-          patch={@prefix}
-          class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xs shadow-xs text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
-        >
-          ← Go to Default Page
-        </.link>
-      </div>
-    </div>
-    """
-  end
-
-  @spec vertex_not_found_error(assigns :: Socket.assigns()) :: Rendered.t()
-  defp vertex_not_found_error(assigns) do
-    ~H"""
-    <div class="content p-8 text-center">
-      <div class="max-w-md mx-auto">
-        <h1 class="text-3xl font-bold text-base-light-900 dark:text-base-dark-100 mb-4">
-          Vertex Not Found
-        </h1>
-        <p class="text-base-light-600 dark:text-base-dark-400 mb-6">
-          The requested vertex could not be found. It may have been removed or the URL is incorrect.
-        </p>
-        <.link
-          patch={Path.join([@prefix, @lens.id, "root"])}
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xs shadow-xs text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
-        >
-          ← Go to Root
-        </.link>
-      </div>
-    </div>
-    """
-  end
-
-  @spec content_not_found_error(assigns :: Socket.assigns()) :: Rendered.t()
-  defp content_not_found_error(assigns) do
-    ~H"""
-    <div class="content p-8 text-center">
-      <div class="max-w-md mx-auto">
-        <h2 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100 mb-4">
-          Content Not Found
-        </h2>
-        <p class="text-base-light-600 dark:text-base-dark-400 mb-6">
-          The requested content could not be found for this vertex. Try selecting a different tab above.
-        </p>
-      </div>
-    </div>
     """
   end
 
