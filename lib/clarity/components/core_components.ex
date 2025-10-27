@@ -3,6 +3,7 @@ defmodule Clarity.CoreComponents do
 
   use Phoenix.Component
 
+  import Clarity.Components.MarkdownComponent
   import Phoenix.HTML
 
   alias Clarity.Content
@@ -465,6 +466,67 @@ defmodule Clarity.CoreComponents do
         </p>
       </div>
     </div>
+    """
+  end
+
+  @doc """
+  Renders the content view based on the content type (live component, live view, or static).
+  """
+  attr :content, Content, doc: "The content to render"
+  attr :vertex, :any, required: true, doc: "Current vertex being viewed"
+  attr :lens, Lens, required: true, doc: "Current lens for rendering"
+  attr :socket, Socket, required: true, doc: "The LiveView socket"
+  attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
+  attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
+  attr :zoom_level, :any, required: true, doc: "Zoom level tuple {outgoing, incoming}"
+  attr :prefix, :string, required: true, doc: "URL prefix for links"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the content container"
+
+  @spec render_content(assigns :: Socket.assigns()) :: Rendered.t()
+  def render_content(assigns) do
+    ~H"""
+    <% content_props = %{
+      theme: @theme,
+      zoom_subgraph: @zoom_graph,
+      zoom_level: @zoom_level
+    } %>
+    <%= cond do %>
+      <% @content == nil -> %>
+        <.content_not_found_error />
+      <% @content.live_component? -> %>
+        <.live_component
+          module={@content.provider}
+          id="content-view"
+          vertex={@vertex}
+          lens={@lens}
+          {content_props}
+        />
+      <% @content.live_view? -> %>
+        {live_render(@socket, @content.provider,
+          id: "content-view",
+          session: %{
+            "vertex" => @vertex,
+            "lens" => @lens
+          },
+          container: {:div, class: "content"}
+        )}
+      <% true -> %>
+        <%= case @content.render_static do %>
+          <% {:mermaid, content} -> %>
+            <.mermaid graph={content.(content_props)} class="content p-4" id="content-view-mermaid" />
+          <% {:viz, content} -> %>
+            <.viz graph={content.(content_props)} class="content p-4" id="content-view-viz" />
+          <% {:markdown, content} -> %>
+            <section class="content w-full flex justify-center">
+              <.markdown
+                content={content.(content_props)}
+                class="p-4 max-w-[100ch] w-full"
+                prefix={@prefix}
+                lens={@lens}
+              />
+            </section>
+        <% end %>
+    <% end %>
     """
   end
 end

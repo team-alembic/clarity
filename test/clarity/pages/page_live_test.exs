@@ -45,19 +45,6 @@ defmodule Clarity.Pages.PageLiveTest do
       # Root is not shown in navigation, but should show application
       assert render(view) =~ "clarity"
     end
-
-    test "can refresh the clarity data", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
-
-      # Find and click refresh button
-      if has_element?(view, "button[phx-click='refresh']") do
-        view |> element("button[phx-click='refresh']") |> render_click()
-
-        # The refresh button should exist and be clickable
-        # (The actual refreshing state might not show in our test environment)
-        assert has_element?(view, "button[phx-click='refresh']")
-      end
-    end
   end
 
   describe "PageLive Breadcrumbs" do

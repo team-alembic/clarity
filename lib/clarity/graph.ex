@@ -107,9 +107,29 @@ defmodule Clarity.Graph do
   Returns an updated graph struct with the new owner.
   """
   @spec handover(t(), pid()) :: result(t())
+  def handover(graph, pid)
+
+  def handover(%__MODULE__{subgraph: true} = graph, pid) do
+    with :ok <- check_owner(graph) do
+      # For subgraphs, only transfer the unique digraph tables (main_graph and tree_graph)
+      # The vertices, update_count, indexes, and provenance_graph are shared with the main graph
+      {vtab1, etab1, ntab1, _} = unpack_digraph(graph.main_graph)
+      :ets.give_away(vtab1, pid, :graph_handover)
+      :ets.give_away(etab1, pid, :graph_handover)
+      :ets.give_away(ntab1, pid, :graph_handover)
+
+      {vtab2, etab2, ntab2, _} = unpack_digraph(graph.tree_graph)
+      :ets.give_away(vtab2, pid, :graph_handover)
+      :ets.give_away(etab2, pid, :graph_handover)
+      :ets.give_away(ntab2, pid, :graph_handover)
+
+      {:ok, %{graph | owner: pid}}
+    end
+  end
+
   def handover(%__MODULE__{} = graph, pid) do
-    with :ok <- check_writable(graph) do
-      # Transfer 3 direct ETS tables
+    with :ok <- check_owner(graph) do
+      # For main graphs, transfer all ETS tables
       :ets.give_away(graph.vertices, pid, :graph_handover)
       :ets.give_away(graph.update_count, pid, :graph_handover)
       :ets.give_away(graph.indexes, pid, :graph_handover)

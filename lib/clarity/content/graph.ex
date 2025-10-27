@@ -11,8 +11,6 @@ defmodule Clarity.Content.Graph do
   use Clarity.Web, :live_component
 
   alias Clarity.Graph
-  alias Clarity.Perspective
-  alias Phoenix.LiveView.Socket
 
   @impl Clarity.Content
   def name, do: "Graph Navigation"
@@ -37,20 +35,13 @@ defmodule Clarity.Content.Graph do
   end
 
   @impl Phoenix.LiveComponent
+  def mount(socket) do
+    {:ok, assign(socket, max_vertices: 50, show_controls: false)}
+  end
+
+  @impl Phoenix.LiveComponent
   def update(params, socket) do
     socket = assign(socket, params)
-
-    {outgoing_edges, incoming_edges} = Perspective.get_zoom(socket.assigns.perspective_pid)
-
-    socket =
-      socket
-      |> assign(
-        outgoing_edges: outgoing_edges,
-        incoming_edges: incoming_edges,
-        show_controls: false,
-        max_vertices: 50
-      )
-      |> reload_graph()
 
     {:ok, socket}
   end
@@ -90,19 +81,20 @@ defmodule Clarity.Content.Graph do
             Graph Controls
           </h3>
           <form phx-change="update_controls" phx-target={@myself} class="flex flex-col gap-4">
+            <% {outgoing_edges, incoming_edges} = @zoom_level %>
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-base-light-700 dark:text-base-dark-300">
                   Outgoing:
                 </span>
                 <span class="text-sm font-semibold text-base-light-900 dark:text-base-dark-100 min-w-[1.5rem] text-right">
-                  {@outgoing_edges}
+                  {outgoing_edges}
                 </span>
               </div>
               <input
                 type="range"
                 name="outgoing_edges"
-                value={@outgoing_edges}
+                value={outgoing_edges}
                 min="0"
                 max="5"
                 class="w-full h-2 bg-base-light-300 dark:bg-base-dark-600 rounded-lg appearance-none cursor-pointer accent-primary-light dark:accent-primary-dark"
@@ -114,13 +106,13 @@ defmodule Clarity.Content.Graph do
                   Incoming:
                 </span>
                 <span class="text-sm font-semibold text-base-light-900 dark:text-base-dark-100 min-w-[1.5rem] text-right">
-                  {@incoming_edges}
+                  {incoming_edges}
                 </span>
               </div>
               <input
                 type="range"
                 name="incoming_edges"
-                value={@incoming_edges}
+                value={incoming_edges}
                 min="0"
                 max="5"
                 class="w-full h-2 bg-base-light-300 dark:bg-base-dark-600 rounded-lg appearance-none cursor-pointer accent-primary-light dark:accent-primary-dark"
@@ -145,7 +137,17 @@ defmodule Clarity.Content.Graph do
         </div>
       </div>
       <div class="flex-1 min-h-0 p-4">
-        <.viz graph={@dot_graph} id="content-view-viz" class="h-full" />
+        <.viz
+          graph={
+            Graph.DOT.to_dot(@zoom_subgraph,
+              theme: @theme,
+              highlight: @vertex,
+              max_vertices: @max_vertices
+            )
+          }
+          id="content-view-viz"
+          class="h-full"
+        />
       </div>
     </div>
     """
@@ -168,29 +170,15 @@ defmodule Clarity.Content.Graph do
 
     max_vertices = max(1, min(max_vertices, 1000))
 
-    :ok = Perspective.set_zoom(socket.assigns.perspective_pid, {outgoing_edges, incoming_edges})
+    zoom_level = {outgoing_edges, incoming_edges}
 
-    {:noreply,
-     socket
-     |> assign(
-       outgoing_edges: outgoing_edges,
-       incoming_edges: incoming_edges,
-       max_vertices: max_vertices
-     )
-     |> reload_graph()}
-  end
-
-  @spec reload_graph(Socket.t()) :: Socket.t()
-  defp reload_graph(socket) do
-    zoom_subgraph = Perspective.get_zoom_subgraph(socket.assigns.perspective_pid)
-
-    dot_graph =
-      Graph.DOT.to_dot(zoom_subgraph,
-        theme: socket.assigns.theme,
-        highlight: socket.assigns.vertex,
-        max_vertices: socket.assigns.max_vertices
+    if socket.assigns.zoom_level != zoom_level do
+      send(
+        self(),
+        {:update_zoom_level, {outgoing_edges, incoming_edges}}
       )
+    end
 
-    assign(socket, zoom_subgraph: zoom_subgraph, dot_graph: dot_graph)
+    {:noreply, assign(socket, max_vertices: max_vertices)}
   end
 end

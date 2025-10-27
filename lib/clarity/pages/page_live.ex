@@ -3,48 +3,66 @@ defmodule Clarity.PageLive do
 
   use Clarity.Web, :live_view
 
-  import Clarity.Components.MarkdownComponent
-
-  alias Clarity.Perspective
+  alias Clarity.Content
+  alias Clarity.Graph
+  alias Clarity.Perspective.Lens
+  alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex
+  alias Clarity.Vertex.Root
   alias Phoenix.LiveView.AsyncResult
-  alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
   @impl Phoenix.LiveView
-  def mount(params, session, socket) do
+  def mount(params, _session, socket) do
     if connected?(socket) do
       Clarity.subscribe(socket.assigns.clarity_pid, [:work_started, :work_completed])
-      Process.send_after(self(), :refresh_interval, to_timeout(second: 1))
+      :timer.send_interval(100, :refresh)
+    end
 
-      clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
-      initial_vertex = Map.get(session, "initial_vertex", "root")
-      {:ok, perspective_pid} = Perspective.start_link(clarity.graph, initial_vertex)
+    clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
+    update_count = Graph.get_update_count(clarity.graph)
 
-      socket =
-        socket
-        |> assign(
-          clarity: clarity,
-          perspective_pid: perspective_pid,
-          show_navigation: false,
-          zoom_subgraph: AsyncResult.loading(),
-          loaded?: true
-        )
-        |> handle_routing(params, &push_navigate/2)
+    socket =
+      assign(socket,
+        clarity: clarity,
+        update_count: update_count,
+        zoom_level: {1, 1},
+        show_navigation: false,
+        data: AsyncResult.loading(),
+        lens: nil,
+        vertex: nil,
+        content: nil,
+        contents: [],
+        page_title: "Loading...",
+        breadcrumbs: []
+      )
 
-      {:ok, socket}
+    if connected?(socket) do
+      {:ok, handle_routing(socket, params, &push_patch/2)}
     else
-      {:ok, assign(socket, loaded?: false)}
+      {:ok, socket}
     end
   end
 
   @impl Phoenix.LiveView
   def handle_params(params, _url, socket) do
-    if socket.assigns.loaded? do
-      {:noreply, handle_routing(socket, params, &push_patch/2)}
-    else
-      {:noreply, socket}
+    {:noreply, handle_routing(socket, params, &push_patch/2)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_async(:data, {:ok, %{data: new_data}}, socket) do
+    old_data = socket.assigns[:data]
+
+    if old_data && old_data.ok? do
+      Graph.delete(old_data.result.graph)
+      Graph.delete(old_data.result.zoom_graph)
     end
+
+    {:noreply, assign(socket, data: AsyncResult.ok(socket.assigns.data, new_data))}
+  end
+
+  def handle_async(:data, {:exit, reason}, socket) do
+    {:noreply, assign(socket, data: AsyncResult.failed(socket.assigns.data, {:exit, reason}))}
   end
 
   @spec handle_routing(Socket.t(), map(), (Socket.t(), keyword() -> Socket.t())) :: Socket.t()
@@ -68,194 +86,142 @@ defmodule Clarity.PageLive do
 
   @spec handle_root_route(Socket.t(), (Socket.t(), keyword() -> Socket.t())) :: Socket.t()
   defp handle_root_route(socket, navigate_fn) do
-    lens = Perspective.get_current_lens(socket.assigns.perspective_pid)
-    socket = assign(socket, lens: lens)
-    navigate_fn.(socket, to: Path.join([socket.assigns.prefix, lens.id]))
+    default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
+    navigate_fn.(socket, to: Path.join([socket.assigns.prefix, default_lens_id]))
   end
 
   @spec handle_lens_route(String.t(), Socket.t(), (Socket.t(), keyword() -> Socket.t())) ::
           Socket.t()
   defp handle_lens_route(lens_id, socket, navigate_fn) do
-    Perspective.install_lens(socket.assigns.perspective_pid, lens_id)
-
-    vertex = Perspective.get_current_vertex(socket.assigns.perspective_pid)
-    lens = Perspective.get_current_lens(socket.assigns.perspective_pid)
-
-    navigate_fn.(socket,
-      to: Path.join([socket.assigns.prefix, lens.id, Vertex.id(vertex)])
-    )
+    navigate_fn.(socket, to: Path.join([socket.assigns.prefix, lens_id, "root"]))
   end
 
   @spec handle_vertex_route(String.t(), String.t(), Socket.t(), navigation_fn) :: Socket.t()
         when navigation_fn: (Socket.t(), keyword() -> Socket.t())
   defp handle_vertex_route(lens_id, vertex_id, socket, navigate_fn) do
-    Perspective.install_lens(socket.assigns.perspective_pid, lens_id)
-    Perspective.set_current_vertex(socket.assigns.perspective_pid, vertex_id)
+    clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
 
-    lens = Perspective.get_current_lens(socket.assigns.perspective_pid)
-    first_content_id = get_first_content_id(socket.assigns.perspective_pid)
+    with {:ok, lens} <- Lensmaker.get_lens_by_id(lens_id),
+         vertex when not is_nil(vertex) <- Graph.get_vertex(clarity.graph, vertex_id) do
+      contents = Content.get_contents_for_vertex(vertex, lens)
+      first_content_id = get_first_content_id(contents)
 
-    navigate_fn.(socket,
-      to: Path.join([socket.assigns.prefix, lens.id, vertex_id, first_content_id])
-    )
+      navigate_fn.(socket,
+        to: Path.join([socket.assigns.prefix, lens.id, vertex_id, first_content_id])
+      )
+    else
+      _ ->
+        navigate_fn.(socket, to: Path.join([socket.assigns.prefix, lens_id, "root"]))
+    end
   end
 
   @spec handle_page_route(String.t(), String.t(), String.t(), Socket.t()) :: Socket.t()
   defp handle_page_route(lens_id, vertex_id, content_id, socket) do
     clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
+    update_count = Graph.get_update_count(clarity.graph)
 
-    socket = assign(socket, clarity: clarity, show_navigation: false)
+    socket = assign(socket, clarity: clarity, update_count: update_count, show_navigation: false)
 
-    perspective_id = socket.assigns.perspective_pid
-
-    case Perspective.install_lens(perspective_id, lens_id) do
+    case Lensmaker.get_lens_by_id(lens_id) do
       {:error, :lens_not_found} ->
         assign(socket,
           lens: nil,
           vertex: nil,
           content: nil,
           contents: [],
-          breadcrumbs: [],
-          subgraph: nil,
-          page_title: "Lens Not Found"
+          page_title: "Lens Not Found",
+          data: AsyncResult.failed(socket.assigns.data, :lens_not_found)
         )
 
       {:ok, lens} ->
-        subgraph = Perspective.get_subgraph(perspective_id)
-
-        socket = assign(socket, lens: lens, subgraph: subgraph)
-
-        case Perspective.set_current_vertex(perspective_id, vertex_id) do
-          {:error, :vertex_not_found} ->
+        case Graph.get_vertex(clarity.graph, vertex_id) do
+          nil ->
             assign(socket,
+              lens: lens,
               vertex: nil,
               content: nil,
               contents: [],
+              page_title: "Vertex Not Found",
               breadcrumbs: [],
-              page_title: "Vertex Not Found"
+              data: AsyncResult.failed(socket.assigns.data, :vertex_not_found)
             )
 
-          {:ok, vertex} ->
-            breadcrumbs = Perspective.get_breadcrumbs(perspective_id)
-            contents = Perspective.get_contents(perspective_id)
+          vertex ->
+            contents = Content.get_contents_for_vertex(vertex, lens)
+
+            breadcrumbs = Graph.breadcrumbs(clarity.graph, vertex) || [vertex]
+
+            content = Enum.find(contents, &(&1.id == content_id))
 
             socket =
               socket
-              |> assign(vertex: vertex, contents: contents, breadcrumbs: breadcrumbs)
-              |> assign_async(
-                :zoom_subgraph,
-                fn ->
-                  {:ok, %{zoom_subgraph: Perspective.get_zoom_subgraph(perspective_id)}}
-                end,
-                reset: true
+              |> assign(
+                lens: lens,
+                vertex: vertex,
+                contents: contents,
+                content: content,
+                breadcrumbs: breadcrumbs
               )
               |> update_page_title()
+              |> load_data_async()
 
-            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-            case Perspective.get_content(perspective_id, content_id) do
-              {:error, :content_not_found} ->
-                assign(socket, content: nil, page_title: "Content Not Found")
-
-              {:ok, content} ->
-                assign(socket, content: content)
-            end
+            socket
         end
     end
   end
 
-  @impl Phoenix.LiveView
-  def render(assigns) do
-    ~H"""
-    <%= if !@loaded? do %>
-      <.splash_screen />
-    <% else %>
-      <.flash_group flash={@flash} />
-      <%= case @lens do %>
-        <% nil -> %>
-          <.lens_not_found_error prefix={@prefix} />
-        <% lens -> %>
-          <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
-            <.header
-              socket={@socket}
-              prefix={@prefix}
-              lens={@lens}
-              theme={@theme}
-              clarity_pid={@clarity_pid}
-              class="header z-10"
-            />
+  @spec load_data_async(Socket.t()) :: Socket.t()
+  defp load_data_async(socket) do
+    %{
+      clarity: clarity,
+      lens: lens,
+      vertex: vertex,
+      zoom_level: zoom_level
+    } = socket.assigns
 
-            <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
-              <.live_component
-                module={Clarity.TreeComponent}
-                id="navigation-tree"
-                graph={@subgraph}
-                active_vertex={@vertex}
-                breadcrumbs={@breadcrumbs}
-                prefix={@prefix}
-                lens={lens}
-              />
-            </nav>
+    liveview_pid = self()
 
-            <%= if @vertex do %>
-              <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
-                <nav class="breadcrumbs mr-3">
-                  <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
-                    <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)) do %>
-                      <li class="flex items-center">
-                        <span :if={idx > 0} class="mx-1 text-base-light-500 dark:text-base-dark-600">
-                          →
-                        </span>
-                        <.link
-                          patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
-                          class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
-                        >
-                          {Vertex.name(breadcrumb)}
-                        </.link>
-                      </li>
-                    <% end %>
-                    <%= if length(@breadcrumbs) > 1 do %>
-                      <li class="flex items-center">
-                        <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
-                      </li>
-                    <% end %>
-                  </ol>
-                </nav>
-                <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
-                  {Vertex.name(@vertex)}
-                </h1>
-              </div>
-              <.tabs
-                contents={@contents}
-                content={@content}
-                prefix={@prefix}
-                vertex={@vertex}
-                lens={lens}
-              />
-              <.render_content
-                content={@content}
-                vertex={@vertex}
-                perspective_pid={@perspective_pid}
-                socket={@socket}
-                theme={@theme}
-                prefix={@prefix}
-                lens={lens}
-                zoom_subgraph={@zoom_subgraph}
-              />
-            <% else %>
-              <.vertex_not_found_error prefix={@prefix} lens={lens} />
-            <% end %>
-          </article>
-          <.live_component
-            module={Clarity.TooltipComponent}
-            id="tooltips"
-            graph={@subgraph}
-            breadcrumbs={@breadcrumbs}
-            prefix={@prefix}
-            lens={@lens}
-          />
-      <% end %>
-    <% end %>
-    """
+    assign_async(
+      socket,
+      :data,
+      fn ->
+        graph = compute_subgraph(clarity.graph, lens, vertex)
+
+        {outgoing_steps, incoming_steps} = zoom_level
+
+        zoom_graph =
+          Graph.filter(
+            graph,
+            Graph.Filter.within_steps(vertex, outgoing_steps, incoming_steps)
+          )
+
+        {:ok, graph} = Graph.handover(graph, liveview_pid)
+        {:ok, zoom_graph} = Graph.handover(zoom_graph, liveview_pid)
+
+        {:ok, %{data: %{graph: graph, zoom_graph: zoom_graph}}}
+      end
+    )
+  end
+
+  @spec compute_subgraph(Graph.t(), Lens.t(), Vertex.t()) :: Graph.t()
+  defp compute_subgraph(graph, lens, vertex) do
+    context_filter =
+      Graph.Filter.any([
+        lens.filter,
+        Graph.Filter.vertex_type([Root]),
+        fn graph ->
+          breadcrumbs =
+            graph
+            |> Graph.breadcrumbs(vertex)
+            |> Kernel.||([vertex])
+
+          breadcrumb_ids = Enum.map(breadcrumbs, &Vertex.id/1)
+
+          {:in, :vertex_id, breadcrumb_ids}
+        end
+      ])
+
+    Graph.filter(graph, context_filter)
   end
 
   @impl Phoenix.LiveView
@@ -277,72 +243,42 @@ defmodule Clarity.PageLive do
     {:noreply, put_flash(socket, kind, message)}
   end
 
-  def handle_info(:refresh_interval, socket) do
-    # Only refresh if work is in progress to avoid unnecessary calls
-    socket =
-      if socket.assigns.clarity.status == :working do
-        handle_routing(socket, socket.assigns.params, &push_patch/2)
-      else
-        socket
-      end
+  def handle_info(:refresh, socket) do
+    clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
+    new_update_count = Graph.get_update_count(clarity.graph)
 
-    Process.send_after(self(), :refresh_interval, to_timeout(second: 1))
+    socket =
+      cond do
+        new_update_count == socket.assigns.update_count and
+            clarity.status == socket.assigns.clarity.status ->
+          socket
+
+        new_update_count == socket.assigns.update_count ->
+          assign(socket, clarity: clarity)
+
+        socket.assigns.data.ok? ->
+          socket
+          |> assign(clarity: clarity, update_count: new_update_count)
+          |> load_data_async()
+
+        socket.assigns.data.failed? ->
+          socket
+          |> assign(clarity: clarity, update_count: new_update_count)
+          |> handle_routing(socket.assigns.params, fn socket, _opts -> socket end)
+
+        true ->
+          socket
+      end
 
     {:noreply, socket}
   end
 
-  @spec render_content(assigns :: Socket.assigns()) :: Rendered.t()
-  defp render_content(assigns) do
-    ~H"""
-    <.async_result :let={zoom_subgraph} assign={@zoom_subgraph}>
-      <:loading>
-        <.loading_spinner class="content" />
-      </:loading>
-      <% content_props = %{
-        theme: @theme,
-        zoom_subgraph: zoom_subgraph
-      } %>
-      <%= cond do %>
-        <% @content == nil -> %>
-          <.content_not_found_error />
-        <% @content.live_component? -> %>
-          <.live_component
-            module={@content.provider}
-            id="content-view"
-            vertex={@vertex}
-            lens={@lens}
-            perspective_pid={@perspective_pid}
-            {content_props}
-          />
-        <% @content.live_view? -> %>
-          {live_render(@socket, @content.provider,
-            id: "content-view",
-            session: %{
-              "vertex" => @vertex,
-              "lens" => @lens,
-              "perspective_pid" => @perspective_pid
-            },
-            container: {:div, class: "content"}
-          )}
-        <% true -> %>
-          <%= case @content.render_static do %>
-            <% {:mermaid, content} -> %>
-              <.mermaid graph={content.(content_props)} class="content p-4" id="content-view-mermaid" />
-            <% {:viz, content} -> %>
-              <.viz graph={content.(content_props)} class="content p-4" id="content-view-viz" />
-            <% {:markdown, content} -> %>
-              <section class="content w-full flex justify-center">
-                <.markdown
-                  content={content.(content_props)}
-                  class="p-4 max-w-[100ch] w-full"
-                  prefix={@prefix}
-                  lens={@lens}
-                />
-              </section>
-          <% end %>
-      <% end %>
-    </.async_result>
-    """
+  def handle_info({:"ETS-TRANSFER", _ref, _pid, :graph_handover}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_info({:update_zoom_level, zoom_level}, socket) do
+    {:noreply, socket |> assign(zoom_level: zoom_level) |> load_data_async()}
   end
 
   @spec update_page_title(Socket.t()) :: Socket.t()
@@ -356,10 +292,9 @@ defmodule Clarity.PageLive do
     assign(socket, page_title: page_title)
   end
 
-  @spec get_first_content_id(pid()) :: String.t()
-  defp get_first_content_id(perspective_pid) do
-    [%{id: id} | _] = Perspective.get_contents(perspective_pid)
-
+  @spec get_first_content_id([Content.t()]) :: String.t()
+  defp get_first_content_id(contents) do
+    [%{id: id} | _] = contents
     id
   end
 end

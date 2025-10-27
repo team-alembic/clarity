@@ -1854,7 +1854,7 @@
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto auto auto 1fr;
-  grid-template-areas: "header" "navigation" "title" "tabs" "main";
+  grid-template-areas: "header" "navigation" "title" "tabs" "main" "splash";
   grid-column-gap: 0px;
   grid-row-gap: 0px;
   width: 100vw;
@@ -1864,7 +1864,7 @@
   .layout-container {
     grid-template-columns: minmax(20rem, 25vw) 1fr;
     grid-template-rows: min-content min-content min-content 1fr;
-    grid-template-areas: "header header" "navigation title" "navigation tabs" "navigation main";
+    grid-template-areas: "header header" "navigation title" "navigation tabs" "navigation main" "splash splash";
     height: 100vh;
   }
 }
@@ -1884,6 +1884,9 @@
 .layout-container > .content {
   grid-area: main;
   overflow: auto;
+}
+.layout-container > #splash {
+  grid-area: splash;
 }
 .tooltip {
   position: fixed;

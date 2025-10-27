@@ -124,7 +124,8 @@
     "navigation"
     "title"
     "tabs"
-    "main";
+    "main"
+    "splash";
 
   grid-column-gap: 0px;
   grid-row-gap: 0px;
@@ -140,7 +141,8 @@
       "header header"
       "navigation title"
       "navigation tabs"
-      "navigation main";
+      "navigation main"
+      "splash splash";
 
     height: 100vh;
   }
@@ -166,6 +168,10 @@
 .layout-container > .content {
   grid-area: main;
   overflow: auto;
+}
+
+.layout-container > #splash {
+  grid-area: splash;
 }
 
 .tooltip {
