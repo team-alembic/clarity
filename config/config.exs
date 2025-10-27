@@ -1,9 +1,5 @@
 import Config
 
-config :clarity,
-  introspector_applications: [:clarity, :ash, :spark],
-  auto_start?: false
-
 config :esbuild,
   version: "0.25.10",
   default: [
@@ -49,6 +45,8 @@ case config_env() do
 
     config :clarity,
       ash_domains: [Demo.Accounts.Domain]
+
+    config :clarity, auto_start?: false
 
     config :logger, level: :debug
 
