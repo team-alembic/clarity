@@ -1,6 +1,8 @@
 export default {
   mounted() {
-    this.el.addEventListener('toggle', () => {
+    this.el.addEventListener('toggle', (event) => {
+      if(this.el.getAttribute('phx-hook-loading')) return;
+
       const eventName = this.el.getAttribute('phx-toggle');
       if (!eventName) return;
 
