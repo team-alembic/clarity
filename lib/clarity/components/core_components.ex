@@ -12,6 +12,7 @@ defmodule Clarity.CoreComponents do
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
+  attr :socket, Socket, required: true, doc: "The LiveView socket"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
 
   attr :lens, Lens,
@@ -19,13 +20,7 @@ defmodule Clarity.CoreComponents do
     doc: "Current lens for perspective switching"
 
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
-  attr :refreshing, :boolean, default: false, doc: "Whether a refresh is in progress"
-  attr :work_status, :atom, required: true, doc: "Current work status (:working or :done)"
-
-  attr :queue_info, :map,
-    required: true,
-    doc: "Queue information with future_queue, in_progress, total_vertices"
-
+  attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
 
@@ -50,11 +45,13 @@ defmodule Clarity.CoreComponents do
       </h1>
 
       <div class="flex justify-center mx-4">
-        <.progress_bar work_status={@work_status} queue_info={@queue_info} />
+        {live_render(@socket, Clarity.Components.StatusLive,
+          id: "clarity-status",
+          session: %{"clarity_pid" => @clarity_pid}
+        )}
       </div>
 
       <div class="flex items-center space-x-2">
-        <.refresh_button refreshing={@refreshing} />
         <.live_component
           module={Clarity.LensSwitcherComponent}
           id="lens-switcher"
@@ -110,40 +107,6 @@ defmodule Clarity.CoreComponents do
     """
   end
 
-  attr :class, :string, default: "", doc: "CSS classes to apply to the refresh button"
-  attr :refreshing, :boolean, default: false, doc: "Whether the refresh is in progress"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the refresh button"
-
-  @spec refresh_button(assigns :: Socket.assigns()) :: Rendered.t()
-  def refresh_button(assigns) do
-    ~H"""
-    <button
-      type="button"
-      disabled={@refreshing}
-      phx-click="refresh"
-      class={"inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 focus:outline-hidden focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed #{@class}"}
-      aria-label="Refresh"
-      {@rest}
-    >
-      <!-- Refresh icon -->
-      <svg
-        id="refresh-icon"
-        class={"w-5 h-5 #{if @refreshing, do: "animate-spin", else: ""}"}
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-        />
-      </svg>
-    </button>
-    """
-  end
-
   attr :id, :string, required: true, doc: "The unique ID for the theme toggle button"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :class, :string, default: "", doc: "CSS classes to apply to the theme toggle button"
@@ -185,37 +148,6 @@ defmodule Clarity.CoreComponents do
         />
       </svg>
     </button>
-    """
-  end
-
-  attr :work_status, :atom, required: true, doc: "Current work status (:working or :done)"
-
-  attr :queue_info, :map,
-    required: true,
-    doc: "Queue information with future_queue, in_progress, total_vertices"
-
-  attr :class, :string, default: "", doc: "CSS classes to apply to the progress bar container"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the progress bar container"
-
-  @spec progress_bar(assigns :: Socket.assigns()) :: Rendered.t()
-  def progress_bar(assigns) do
-    ~H"""
-    <div
-      :if={@work_status == :working}
-      class={"flex items-center space-x-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md #{@class}"}
-      title={"Vertices: #{@queue_info.total_vertices} | In Progress: #{@queue_info.in_progress} | Queued: #{@queue_info.future_queue} | Requeued: #{@queue_info.requeue_queue}"}
-      {@rest}
-    >
-      <progress
-        value={@queue_info.total_vertices}
-        max={
-          @queue_info.total_vertices + @queue_info.future_queue + @queue_info.in_progress +
-            @queue_info.requeue_queue
-        }
-        class="w-32 h-4 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-blue-200 dark:[&::-webkit-progress-bar]:bg-blue-700 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-blue-600 dark:[&::-webkit-progress-value]:bg-blue-400 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-blue-600 dark:[&::-moz-progress-bar]:bg-blue-400"
-      >
-      </progress>
-    </div>
     """
   end
 

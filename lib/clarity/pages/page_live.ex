@@ -176,12 +176,11 @@ defmodule Clarity.PageLive do
         <% lens -> %>
           <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
             <.header
+              socket={@socket}
               prefix={@prefix}
               lens={@lens}
               theme={@theme}
-              refreshing={@clarity.status == :working}
-              work_status={@clarity.status}
-              queue_info={@clarity.queue_info}
+              clarity_pid={@clarity_pid}
               class="header z-10"
             />
 
@@ -267,11 +266,6 @@ defmodule Clarity.PageLive do
 
   def handle_event("toggle_navigation", _params, socket) do
     {:noreply, assign(socket, show_navigation: not socket.assigns.show_navigation)}
-  end
-
-  def handle_event("refresh", _params, socket) do
-    Clarity.introspect(socket.assigns.clarity_pid)
-    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
