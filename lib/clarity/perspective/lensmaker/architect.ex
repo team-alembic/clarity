@@ -26,7 +26,8 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
         assigns = %{}
         ~H"🏗️"
       end,
-      filter: &filter/1
+      filter: &filter/1,
+      show_vertex_types: &show_vertex_types/1
     }
   end
 
@@ -41,20 +42,26 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       end)
       |> Enum.map(&Vertex.id/1)
 
-    # Show architectural vertex types OR applications with architectural edges
-    {:or, {:in, :vertex_id, application_ids},
-     {:in, :vertex_type,
-      [
-        Vertex.Ash.Aggregate,
-        Vertex.Ash.Action,
-        Vertex.Ash.Attribute,
-        Vertex.Ash.Calculation,
-        Vertex.Ash.Domain,
-        Vertex.Ash.Policy,
-        Vertex.Ash.Relationship,
-        Vertex.Ash.Resource,
-        Vertex.Phoenix.Endpoint,
-        Vertex.Phoenix.Router
-      ]}}
+    # Show: if Application type, only those with architectural edges; otherwise allow all
+    {:or, {:in, :vertex_id, application_ids}, {:!=, :vertex_type, Vertex.Application}}
+  end
+
+  @spec show_vertex_types([module()]) :: [module()]
+  defp show_vertex_types(available_types) do
+    architectural_types = [
+      Vertex.Application,
+      Vertex.Ash.Aggregate,
+      Vertex.Ash.Action,
+      Vertex.Ash.Attribute,
+      Vertex.Ash.Calculation,
+      Vertex.Ash.Domain,
+      Vertex.Ash.Policy,
+      Vertex.Ash.Relationship,
+      Vertex.Ash.Resource,
+      Vertex.Phoenix.Endpoint,
+      Vertex.Phoenix.Router
+    ]
+
+    Enum.filter(available_types, &(&1 in architectural_types))
   end
 end

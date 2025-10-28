@@ -32,7 +32,8 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
         %Content{provider: Content.Graph}, _b -> true
         _a, %Content{provider: Content.Graph} -> false
         a, b -> Lens.sort_alphabetically(a, b)
-      end
+      end,
+      show_vertex_types: & &1
     }
   end
 
@@ -48,7 +49,7 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
       end)
       |> Enum.map(&Vertex.id/1)
 
-    # Show applications with interesting edges OR any non-application vertex
+    # Show: if Application type, only those with interesting edges; otherwise allow all
     {:or, {:in, :vertex_id, application_ids}, {:!=, :vertex_type, Vertex.Application}}
   end
 end

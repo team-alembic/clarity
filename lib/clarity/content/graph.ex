@@ -74,4 +74,26 @@ defmodule Clarity.Content.Graph do
 
     {:noreply, assign(socket, max_vertices: max_vertices)}
   end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("toggle_vertex_type", %{"type" => type_str}, socket) do
+    vertex_type = Module.safe_concat([type_str])
+    current_shown_types = socket.assigns.shown_vertex_types
+
+    new_shown_types =
+      cond do
+        current_shown_types == [] ->
+          [vertex_type]
+
+        vertex_type in current_shown_types ->
+          List.delete(current_shown_types, vertex_type)
+
+        true ->
+          [vertex_type | current_shown_types]
+      end
+
+    send(self(), {:update_shown_vertex_types, new_shown_types})
+
+    {:noreply, socket}
+  end
 end

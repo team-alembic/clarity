@@ -58,7 +58,6 @@ defmodule Clarity.Perspective.LensTest do
         filter: true
       }
 
-      # Should use default alphabetical sorter
       assert lens.content_sorter == (&Lens.sort_alphabetically/2)
     end
 
@@ -77,6 +76,47 @@ defmodule Clarity.Perspective.LensTest do
       }
 
       assert lens.content_sorter == custom_sorter
+    end
+  end
+
+  describe "show_vertex_types function" do
+    test "show_vertex_types returns all types by default" do
+      lens = %Lens{
+        id: "test",
+        name: "Test",
+        icon: fn ->
+          assigns = %{}
+          ~H"🔍"
+        end,
+        filter: true
+      }
+
+      assert lens.show_vertex_types == (&Lens.default_show_vertex_types/1)
+    end
+
+    test "default_show_vertex_types returns all input types unchanged" do
+      types = [Clarity.Vertex.Application, Clarity.Vertex.Module]
+      assert Lens.default_show_vertex_types(types) == types
+    end
+
+    test "show_vertex_types can be customized" do
+      custom_filter = fn types ->
+        Enum.reject(types, &(&1 == Clarity.Vertex.Application))
+      end
+
+      lens = %Lens{
+        id: "test",
+        name: "Test",
+        icon: fn ->
+          assigns = %{}
+          ~H"🔍"
+        end,
+        filter: true,
+        show_vertex_types: custom_filter
+      }
+
+      types = [Clarity.Vertex.Application, Clarity.Vertex.Module]
+      assert lens.show_vertex_types.(types) == [Clarity.Vertex.Module]
     end
   end
 end

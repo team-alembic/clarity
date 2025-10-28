@@ -5,6 +5,9 @@ defmodule Clarity.Perspective.LensmakerTest do
 
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
+  alias Clarity.Vertex.Ash.Policy
+  alias Clarity.Vertex.Ash.Resource
+  alias Clarity.Vertex.Phoenix.Router
 
   defmodule TestLensmaker1 do
     @moduledoc false
@@ -177,6 +180,58 @@ defmodule Clarity.Perspective.LensmakerTest do
 
     test "returns error for unknown lens ID" do
       assert {:error, :lens_not_found} = Lensmaker.get_lens_by_id("unknown_lens")
+    end
+  end
+
+  describe "lensmaker show_vertex_types" do
+    test "debug lens shows all types" do
+      {:ok, debug_lens} = Lensmaker.get_lens_by_id("debug")
+
+      types = [
+        Clarity.Vertex.Application,
+        Clarity.Vertex.Module,
+        Clarity.Vertex.Root
+      ]
+
+      shown_types = debug_lens.show_vertex_types.(types)
+
+      assert shown_types == types
+    end
+
+    test "architect lens shows only architectural types" do
+      {:ok, architect_lens} = Lensmaker.get_lens_by_id("architect")
+
+      types = [
+        Clarity.Vertex.Application,
+        Clarity.Vertex.Module,
+        Resource,
+        Router
+      ]
+
+      shown_types = architect_lens.show_vertex_types.(types)
+
+      assert Clarity.Vertex.Application in shown_types
+      refute Clarity.Vertex.Module in shown_types
+      assert Resource in shown_types
+      assert Router in shown_types
+    end
+
+    test "security lens shows only security-related types" do
+      {:ok, security_lens} = Lensmaker.get_lens_by_id("security")
+
+      types = [
+        Clarity.Vertex.Application,
+        Clarity.Vertex.Module,
+        Policy,
+        Router
+      ]
+
+      shown_types = security_lens.show_vertex_types.(types)
+
+      assert Clarity.Vertex.Application in shown_types
+      refute Clarity.Vertex.Module in shown_types
+      assert Policy in shown_types
+      assert Router in shown_types
     end
   end
 end
