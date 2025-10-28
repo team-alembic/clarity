@@ -208,9 +208,7 @@ defmodule Clarity.PageLive do
   @spec load_data_async(Socket.t()) :: Socket.t()
   defp load_data_async(socket)
 
-  defp load_data_async(%Socket{assigns: %{data: %AsyncResult{failed: reason}}} = socket)
-       when reason != nil,
-       do: socket
+  defp load_data_async(%Socket{assigns: %{vertex: nil}} = socket), do: socket
 
   defp load_data_async(socket) do
     %{
