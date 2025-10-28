@@ -67,6 +67,7 @@ defmodule Clarity.Web do
       # use Gettext, backend: Clarity.Gettext
 
       import Clarity.CoreComponents
+      import Clarity.IconComponents
 
       # HTML escaping functionality
       import Phoenix.HTML

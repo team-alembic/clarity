@@ -4,6 +4,7 @@ defmodule Clarity.CoreComponents do
   use Phoenix.Component
 
   import Clarity.Components.MarkdownComponent
+  import Clarity.IconComponents
   import Phoenix.HTML
 
   alias Clarity.Content
