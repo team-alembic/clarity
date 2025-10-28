@@ -23,70 +23,78 @@
           <% end %>
         </:failed>
 
-        <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
-          <.live_component
-            module={Clarity.TreeComponent}
-            id="navigation-tree"
-            graph={data.graph}
-            active_vertex={@vertex}
-            breadcrumbs={@breadcrumbs}
+        <%= if @vertex do %>
+          <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
+            <.live_component
+              module={Clarity.TreeComponent}
+              id="navigation-tree"
+              graph={data.graph}
+              active_vertex={@vertex}
+              breadcrumbs={@breadcrumbs}
+              prefix={@prefix}
+              lens={lens}
+            />
+          </nav>
+
+          <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
+            <nav class="breadcrumbs mr-3">
+              <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
+                <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)) do %>
+                  <li class="flex items-center">
+                    <span :if={idx > 0} class="mx-1 text-base-light-500 dark:text-base-dark-600">
+                      →
+                    </span>
+                    <.link
+                      patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
+                      class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
+                    >
+                      {Vertex.name(breadcrumb)}
+                    </.link>
+                  </li>
+                <% end %>
+                <%= if length(@breadcrumbs) > 1 do %>
+                  <li class="flex items-center">
+                    <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
+                  </li>
+                <% end %>
+              </ol>
+            </nav>
+            <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
+              {Vertex.name(@vertex)}
+            </h1>
+          </div>
+          <.tabs
+            contents={@contents}
+            content={@content}
             prefix={@prefix}
+            vertex={@vertex}
             lens={lens}
           />
-        </nav>
-
-        <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
-          <nav class="breadcrumbs mr-3">
-            <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
-              <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)) do %>
-                <li class="flex items-center">
-                  <span :if={idx > 0} class="mx-1 text-base-light-500 dark:text-base-dark-600">
-                    →
-                  </span>
-                  <.link
-                    patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
-                    class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
-                  >
-                    {Vertex.name(breadcrumb)}
-                  </.link>
-                </li>
-              <% end %>
-              <%= if length(@breadcrumbs) > 1 do %>
-                <li class="flex items-center">
-                  <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
-                </li>
-              <% end %>
-            </ol>
-          </nav>
-          <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
-            {Vertex.name(@vertex)}
-          </h1>
-        </div>
-        <.tabs
-          contents={@contents}
-          content={@content}
-          prefix={@prefix}
-          vertex={@vertex}
-          lens={lens}
-        />
-        <.render_content
-          content={@content}
-          vertex={@vertex}
-          socket={@socket}
-          theme={@theme}
-          prefix={@prefix}
-          lens={lens}
-          zoom_graph={data.zoom_graph}
-          zoom_level={@zoom_level}
-        />
-        <.live_component
-          module={Clarity.TooltipComponent}
-          id="tooltips"
-          graph={data.graph}
-          breadcrumbs={@breadcrumbs}
-          prefix={@prefix}
-          lens={@lens}
-        />
+          <%= if @data.loading do %>
+            <div class="content">
+              <.splash_screen />
+            </div>
+          <% else %>
+            <.render_content
+              content={@content}
+              vertex={@vertex}
+              socket={@socket}
+              theme={@theme}
+              prefix={@prefix}
+              lens={lens}
+              zoom_graph={data.zoom_graph}
+              zoom_level={@zoom_level}
+            />
+          <% end %>
+          <.live_component
+            module={Clarity.TooltipComponent}
+            id="tooltips"
+            graph={data.graph}
+            breadcrumbs={@breadcrumbs}
+            prefix={@prefix}
+            lens={@lens}
+          />
+        <% end %>
       </.async_result>
     </article>
 <% end %>
