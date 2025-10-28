@@ -33,7 +33,7 @@ defmodule Clarity.Test.MockClarityServer do
         clarity = %Clarity{
           graph: Clarity.Graph.new(),
           status: :done,
-          queue_info: %{future_queue: 0, in_progress: 0, total_vertices: 0}
+          queue_info: %{future_queue: 0, in_progress: 0, total_vertices: 0, requeue_queue: 0}
         }
 
         {:reply, clarity, state}

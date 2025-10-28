@@ -11,16 +11,14 @@ defmodule Clarity.Components.StatusLive do
       [:work_progress, :work_started, :work_completed]
     )
 
+    %Clarity{status: status, queue_info: queue_info} =
+      Clarity.get(clarity_pid, :partial)
+
     {:ok,
      socket
      |> assign(:clarity_pid, clarity_pid)
-     |> assign(:work_status, :done)
-     |> assign(:queue_info, %{
-       total_vertices: 0,
-       future_queue: 0,
-       in_progress: 0,
-       requeue_queue: 0
-     })
+     |> assign(:work_status, status)
+     |> assign(:queue_info, queue_info)
      |> assign(:throttle_timer, nil)
      |> assign(:pending_progress, nil)}
   end
