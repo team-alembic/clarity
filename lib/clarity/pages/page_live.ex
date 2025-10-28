@@ -13,13 +13,14 @@ defmodule Clarity.PageLive do
   alias Phoenix.LiveView.Socket
 
   @impl Phoenix.LiveView
-  def mount(params, _session, socket) do
+  def mount(params, session, socket) do
     if connected?(socket) do
       Clarity.subscribe(socket.assigns.clarity_pid, [:work_started, :work_completed])
       :timer.send_interval(100, :refresh)
     end
 
     navigation_fun = if connected?(socket), do: &push_patch/2, else: &push_navigate/2
+    initial_vertex = Map.get(session, "initial_vertex", "root")
 
     socket =
       socket
@@ -29,7 +30,8 @@ defmodule Clarity.PageLive do
         data: AsyncResult.loading(),
         page_title: "Loading...",
         shown_vertex_types: [],
-        available_vertex_types: []
+        available_vertex_types: [],
+        initial_vertex: initial_vertex
       )
       |> fetch_clarity()
       |> handle_routing(params, navigation_fun)
@@ -87,7 +89,9 @@ defmodule Clarity.PageLive do
   defp handle_lens_route(lens_id, socket, navigate_fn) do
     socket
     |> assign(:data, AsyncResult.loading())
-    |> navigate_fn.(to: Path.join([socket.assigns.prefix, lens_id, "root"]))
+    |> navigate_fn.(
+      to: Path.join([socket.assigns.prefix, lens_id, socket.assigns.initial_vertex])
+    )
   end
 
   @spec handle_vertex_route(String.t(), String.t(), Socket.t(), navigation_fn) :: Socket.t()
