@@ -131,6 +131,8 @@ defmodule Clarity.CoreComponents do
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
   attr :zoom_level, :any, required: true, doc: "Zoom level tuple {outgoing, incoming}"
+  attr :shown_vertex_types, :list, required: true, doc: "List of vertex types currently shown"
+  attr :available_vertex_types, :list, required: true, doc: "List of all available vertex types"
   attr :prefix, :string, required: true, doc: "URL prefix for links"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the content container"
 

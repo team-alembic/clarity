@@ -27,7 +27,9 @@ defmodule Clarity.PageLive do
         zoom_level: {1, 1},
         show_navigation: false,
         data: AsyncResult.loading(),
-        page_title: "Loading..."
+        page_title: "Loading...",
+        shown_vertex_types: [],
+        available_vertex_types: []
       )
       |> fetch_clarity()
       |> handle_routing(params, navigation_fun)
@@ -138,11 +140,30 @@ defmodule Clarity.PageLive do
   defp fetch_lens(socket, lens_id) do
     case Lensmaker.get_lens_by_id(lens_id) do
       {:ok, lens} ->
-        {:ok, assign(socket, lens: lens)}
+        available_vertex_types =
+          socket.assigns.clarity.graph
+          |> Graph.available_vertex_types()
+          |> Enum.reject(&(&1 == Root))
+
+        shown_vertex_types = lens.show_vertex_types.(available_vertex_types)
+
+        {:ok,
+         assign(socket,
+           lens: lens,
+           shown_vertex_types: shown_vertex_types,
+           available_vertex_types: available_vertex_types
+         )}
 
       {:error, :lens_not_found} ->
-        {:error, assign(socket, lens: nil, vertex: nil, content: nil, contents: []),
-         :lens_not_found}
+        {:error,
+         assign(socket,
+           lens: nil,
+           vertex: nil,
+           content: nil,
+           contents: [],
+           shown_vertex_types: [],
+           available_vertex_types: []
+         ), :lens_not_found}
     end
   end
 
@@ -196,7 +217,8 @@ defmodule Clarity.PageLive do
       clarity: clarity,
       lens: lens,
       vertex: vertex,
-      zoom_level: zoom_level
+      zoom_level: zoom_level,
+      shown_vertex_types: shown_vertex_types
     } = socket.assigns
 
     liveview_pid = self()
@@ -205,7 +227,7 @@ defmodule Clarity.PageLive do
       socket,
       :data,
       fn ->
-        graph = compute_subgraph(clarity.graph, lens, vertex)
+        graph = compute_subgraph(clarity.graph, lens, vertex, shown_vertex_types)
 
         {outgoing_steps, incoming_steps} = zoom_level
 
@@ -223,22 +245,34 @@ defmodule Clarity.PageLive do
     )
   end
 
-  @spec compute_subgraph(Graph.t(), Lens.t(), Vertex.t()) :: Graph.t()
-  defp compute_subgraph(graph, lens, vertex) do
+  @spec compute_subgraph(Graph.t(), Lens.t(), Vertex.t(), [module()]) :: Graph.t()
+  defp compute_subgraph(graph, lens, vertex, shown_vertex_types) do
+    lens_filter =
+      if shown_vertex_types == [] do
+        lens.filter
+      else
+        Graph.Filter.all([
+          lens.filter,
+          Graph.Filter.vertex_type(shown_vertex_types)
+        ])
+      end
+
+    breadcrumbs_filter = fn graph ->
+      breadcrumbs =
+        graph
+        |> Graph.breadcrumbs(vertex)
+        |> Kernel.||([vertex])
+
+      breadcrumb_ids = Enum.map(breadcrumbs, &Vertex.id/1)
+
+      {:in, :vertex_id, breadcrumb_ids}
+    end
+
     context_filter =
       Graph.Filter.any([
-        lens.filter,
+        lens_filter,
         Graph.Filter.vertex_type([Root]),
-        fn graph ->
-          breadcrumbs =
-            graph
-            |> Graph.breadcrumbs(vertex)
-            |> Kernel.||([vertex])
-
-          breadcrumb_ids = Enum.map(breadcrumbs, &Vertex.id/1)
-
-          {:in, :vertex_id, breadcrumb_ids}
-        end
+        breadcrumbs_filter
       ])
 
     Graph.filter(graph, context_filter)
@@ -296,6 +330,10 @@ defmodule Clarity.PageLive do
 
   def handle_info({:update_zoom_level, zoom_level}, socket) do
     {:noreply, socket |> assign(zoom_level: zoom_level) |> load_data_async()}
+  end
+
+  def handle_info({:update_shown_vertex_types, shown_vertex_types}, socket) do
+    {:noreply, socket |> assign(shown_vertex_types: shown_vertex_types) |> load_data_async()}
   end
 
   @spec update_page_title(Socket.t()) :: Socket.t()

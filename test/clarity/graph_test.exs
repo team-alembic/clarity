@@ -1263,4 +1263,60 @@ defmodule Clarity.GraphTest do
       Task.await(task)
     end
   end
+
+  describe "available_vertex_types/1" do
+    test "returns only Root for graph with only root" do
+      graph = Graph.new()
+      types = Graph.available_vertex_types(graph)
+      assert types == [Root]
+    end
+
+    test "returns all unique vertex types in graph" do
+      graph = Graph.new()
+
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "2.0.0"}
+      mod1 = %Module{module: TestModule}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, mod1, %Root{})
+
+      types = Graph.available_vertex_types(graph)
+      assert length(types) == 3
+      assert Application in types
+      assert Module in types
+      assert Root in types
+    end
+
+    test "returns sorted list of types" do
+      graph = Graph.new()
+
+      mod1 = %Module{module: TestModule}
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+
+      Graph.add_vertex(graph, mod1, %Root{})
+      Graph.add_vertex(graph, app1, %Root{})
+
+      types = Graph.available_vertex_types(graph)
+      assert types == Enum.sort(types)
+    end
+
+    test "does not include duplicate types" do
+      graph = Graph.new()
+
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "2.0.0"}
+      app3 = %Application{app: :app3, description: "App 3", version: "3.0.0"}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, app3, %Root{})
+
+      types = Graph.available_vertex_types(graph)
+      assert length(types) == 2
+      assert Application in types
+      assert Root in types
+    end
+  end
 end

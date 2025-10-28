@@ -12,6 +12,7 @@ defmodule Clarity.Perspective.Lens do
 
   @type icon_fn() :: (-> Phoenix.LiveView.Rendered.t())
   @type content_sorter_fn() :: (Content.t(), Content.t() -> boolean())
+  @type show_vertex_types_fn() :: ([module()] -> [module()])
 
   @type t() :: %__MODULE__{
           id: String.t(),
@@ -19,7 +20,8 @@ defmodule Clarity.Perspective.Lens do
           description: String.t() | nil,
           icon: icon_fn(),
           filter: Graph.Filter.filter(),
-          content_sorter: content_sorter_fn()
+          content_sorter: content_sorter_fn(),
+          show_vertex_types: show_vertex_types_fn()
         }
 
   @enforce_keys [:id, :name, :icon, :filter]
@@ -29,7 +31,8 @@ defmodule Clarity.Perspective.Lens do
     :description,
     :icon,
     :filter,
-    content_sorter: &__MODULE__.sort_alphabetically/2
+    content_sorter: &__MODULE__.sort_alphabetically/2,
+    show_vertex_types: &__MODULE__.default_show_vertex_types/1
   ]
 
   @doc """
@@ -43,4 +46,13 @@ defmodule Clarity.Perspective.Lens do
   def sort_alphabetically(%Content{provider: Content.Graph}, _b), do: false
   def sort_alphabetically(_a, %Content{provider: Content.Graph}), do: true
   def sort_alphabetically(a, b), do: a.name <= b.name
+
+  @doc """
+  Default vertex type filter that shows all vertex types.
+
+  This is the default function used by lenses unless they specify
+  their own show_vertex_types function. Returns all types unchanged.
+  """
+  @spec default_show_vertex_types([module()]) :: [module()]
+  def default_show_vertex_types(types), do: types
 end

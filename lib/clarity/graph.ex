@@ -317,6 +317,20 @@ defmodule Clarity.Graph do
     |> Enum.filter(&MapSet.member?(all_vertices, Vertex.id(&1)))
   end
 
+  @doc """
+  Gets all unique vertex types present in the graph.
+
+  Returns a list of modules representing the types of vertices in the graph.
+  """
+  @spec available_vertex_types(t()) :: [module()]
+  def available_vertex_types(%__MODULE__{} = graph) do
+    graph.main_graph
+    |> :digraph.vertices()
+    |> Enum.map(&:ets.lookup_element(graph.vertices, &1, 2))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
   @spec vertex_ids(t(), query()) :: [Vertex.t()]
   defp vertex_ids(%__MODULE__{} = graph, query) do
     all_vertices = graph.main_graph |> :digraph.vertices() |> MapSet.new()

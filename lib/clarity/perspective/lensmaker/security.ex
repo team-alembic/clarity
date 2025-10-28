@@ -26,7 +26,8 @@ defmodule Clarity.Perspective.Lensmaker.Security do
         assigns = %{}
         ~H"🛡️"
       end,
-      filter: &filter/1
+      filter: &filter/1,
+      show_vertex_types: &show_vertex_types/1
     }
   end
 
@@ -41,17 +42,23 @@ defmodule Clarity.Perspective.Lensmaker.Security do
       end)
       |> Enum.map(&Vertex.id/1)
 
-    # Show security-related vertex types OR applications with security edges
-    {:or, {:in, :vertex_id, application_ids},
-     {:in, :vertex_type,
-      [
-        Vertex.Ash.Action,
-        Vertex.Ash.DataLayer,
-        Vertex.Ash.Domain,
-        Vertex.Ash.Policy,
-        Vertex.Ash.Relationship,
-        Vertex.Ash.Resource,
-        Vertex.Phoenix.Router
-      ]}}
+    # Show: if Application type, only those with security edges; otherwise allow all
+    {:or, {:in, :vertex_id, application_ids}, {:!=, :vertex_type, Vertex.Application}}
+  end
+
+  @spec show_vertex_types([module()]) :: [module()]
+  defp show_vertex_types(available_types) do
+    security_types = [
+      Vertex.Application,
+      Vertex.Ash.Action,
+      Vertex.Ash.DataLayer,
+      Vertex.Ash.Domain,
+      Vertex.Ash.Policy,
+      Vertex.Ash.Relationship,
+      Vertex.Ash.Resource,
+      Vertex.Phoenix.Router
+    ]
+
+    Enum.filter(available_types, &(&1 in security_types))
   end
 end

@@ -1,7 +1,9 @@
 <% content_props = %{
   theme: @theme,
   zoom_subgraph: @zoom_graph,
-  zoom_level: @zoom_level
+  zoom_level: @zoom_level,
+  shown_vertex_types: @shown_vertex_types,
+  available_vertex_types: @available_vertex_types
 } %>
 <%= cond do %>
   <% @content == nil -> %>
