@@ -13,6 +13,8 @@ defmodule Clarity.TreeComponent do
   alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
 
+  embed_templates "tree_component/*"
+
   @impl Phoenix.LiveComponent
   def mount(socket) do
     {:ok, assign(socket, opened: MapSet.new())}
@@ -25,23 +27,6 @@ defmodule Clarity.TreeComponent do
     visible_ids = compute_visible_ids(socket.assigns)
 
     {:ok, assign(socket, visible_ids: visible_ids)}
-  end
-
-  @impl Phoenix.LiveComponent
-  def render(assigns) do
-    ~H"""
-    <div>
-      <.render_vertex
-        graph={@graph}
-        vertex={%Clarity.Vertex.Root{}}
-        visible_ids={@visible_ids}
-        active_vertex={@active_vertex}
-        prefix={@prefix}
-        lens={@lens}
-        myself={@myself}
-      />
-    </div>
-    """
   end
 
   @impl Phoenix.LiveComponent
@@ -67,31 +52,7 @@ defmodule Clarity.TreeComponent do
   attr :myself, :any, required: true
 
   @spec render_vertex(map()) :: Rendered.t()
-  defp render_vertex(assigns) do
-    ~H"""
-    <%= for {label, children} <- Graph.navigation_children(@graph, @vertex), label != :content do %>
-      <div>
-        <span class="cursor-pointer select-none text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark px-2 py-1 rounded-xs group-open:bg-base-light-200 dark:group-open:bg-base-dark-700 transition-colors">
-          {label}
-        </span>
-        <ul class="border-l border-base-light-300 dark:border-base-dark-700 pl-2 space-y-1">
-          <li :for={child <- children}>
-            <.render_node
-              graph={@graph}
-              vertex={child}
-              visible_ids={@visible_ids}
-              active_vertex={@active_vertex}
-              prefix={@prefix}
-              lens={@lens}
-              myself={@myself}
-              any_sibling_has_children={Enum.any?(children, &has_children?(@graph, &1))}
-            />
-          </li>
-        </ul>
-      </div>
-    <% end %>
-    """
-  end
+  def render_vertex(assigns)
 
   attr :graph, :any, required: true
   attr :vertex, :any, required: true
@@ -103,68 +64,7 @@ defmodule Clarity.TreeComponent do
   attr :any_sibling_has_children, :boolean, required: true
 
   @spec render_node(map()) :: Rendered.t()
-  defp render_node(assigns) do
-    ~H"""
-    <%= if has_children?(@graph, @vertex) do %>
-      <details
-        id={"tree-node-#{Vertex.id(@vertex)}"}
-        open={open?(@vertex, @visible_ids)}
-        phx-hook="Details"
-        phx-toggle="toggle"
-        phx-value-vertex_id={Vertex.id(@vertex)}
-        phx-target={@myself}
-      >
-        <summary>
-          <.link
-            patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
-            class={
-              "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
-              if @vertex == @active_vertex, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
-            }
-          >
-            <.vertex_name vertex={@vertex} />
-          </.link>
-        </summary>
-        <%= if open?(@vertex, @visible_ids) do %>
-          <div class="ml-4 group">
-            <.render_vertex
-              graph={@graph}
-              vertex={@vertex}
-              visible_ids={@visible_ids}
-              active_vertex={@active_vertex}
-              prefix={@prefix}
-              lens={@lens}
-              myself={@myself}
-            />
-          </div>
-        <% else %>
-          <.loading_spinner class="ml-4 py-2" />
-        <% end %>
-      </details>
-    <% else %>
-      <.link
-        patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
-        class={[
-          "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
-          @any_sibling_has_children && "pl-[25px]",
-          @vertex == @active_vertex &&
-            "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
-        ]}
-      >
-        <.vertex_name vertex={@vertex} />
-      </.link>
-    <% end %>
-    """
-  end
-
-  attr :vertex, :any, required: true
-
-  @spec vertex_name(map()) :: Rendered.t()
-  defp vertex_name(assigns) do
-    ~H"""
-    <span data-tooltip={"tooltip-#{Vertex.id(@vertex)}"}>{Vertex.name(@vertex)}</span>
-    """
-  end
+  def render_node(assigns)
 
   @spec compute_visible_ids(map()) :: MapSet.t()
   defp compute_visible_ids(assigns) do

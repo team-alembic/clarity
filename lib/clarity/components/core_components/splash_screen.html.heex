@@ -1,0 +1,9 @@
+<div
+  id="splash"
+  class={"min-h-screen w-full flex flex-col items-center justify-center bg-base-light-50 dark:bg-base-dark-900 #{@class}"}
+  {@rest}
+>
+  {raw(Clarity.Resources.splash())}
+
+  <.loading_spinner class="mt-8" />
+</div>

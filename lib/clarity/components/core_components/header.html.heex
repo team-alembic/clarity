@@ -1,0 +1,55 @@
+<header
+  class={"flex items-center px-6 py-4 bg-base-light-100 dark:bg-base-dark-800 shadow-md #{@class}"}
+  {@rest}
+>
+  <.link patch={@prefix} class="mr-4">
+    <img
+      src={Clarity.Resources.logo_uri()}
+      alt="Ash Logo"
+      class="h-8 w-8"
+    />
+  </.link>
+  <h1 class="text-2xl font-bold tracking-tight flex-1 truncate text-base-light-900 dark:text-base-dark-50">
+    <.link patch={@prefix} class="mr-4">
+      Clarity
+    </.link>
+  </h1>
+
+  <div class="flex justify-center mx-4">
+    {live_render(@socket, Clarity.Components.StatusLive,
+      id: "clarity-status",
+      session: %{"clarity_pid" => @clarity_pid}
+    )}
+  </div>
+
+  <div class="flex items-center space-x-2">
+    <.live_component
+      module={Clarity.LensSwitcherComponent}
+      id="lens-switcher"
+      prefix={@prefix}
+      lens={@lens}
+    />
+    <.theme_toggle id="header-theme-toggle" theme={@theme} />
+    <button
+      type="button"
+      class="inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 md:hidden"
+      phx-click="toggle_navigation"
+      aria-label="Toggle navigation"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-6"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+        />
+      </svg>
+    </button>
+  </div>
+</header>

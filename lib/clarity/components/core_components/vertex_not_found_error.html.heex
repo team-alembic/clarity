@@ -1,0 +1,16 @@
+<div class="content p-8 text-center" {@rest}>
+  <div class="max-w-md mx-auto">
+    <h1 class="text-3xl font-bold text-base-light-900 dark:text-base-dark-100 mb-4">
+      Vertex Not Found
+    </h1>
+    <p class="text-base-light-600 dark:text-base-dark-400 mb-6">
+      The requested vertex could not be found. It may have been removed or the URL is incorrect.
+    </p>
+    <.link
+      patch={Path.join([@prefix, @lens.id, "root"])}
+      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xs shadow-xs text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
+    >
+      ← Go to Root
+    </.link>
+  </div>
+</div>

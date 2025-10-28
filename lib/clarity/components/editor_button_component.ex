@@ -6,45 +6,6 @@ defmodule Clarity.EditorButtonComponent do
   alias Clarity.OpenEditor
   alias Clarity.SourceLocation
 
-  attr :source_location, SourceLocation, required: true, doc: "The source location for the file"
-
-  @impl Phoenix.LiveComponent
-  def render(assigns) do
-    ~H"""
-    <div>
-      <%= case @editor_action do %>
-        <% :action_not_available -> %>
-        <% :editor_not_available -> %>
-          <button
-            disabled
-            class="p-2 rounded-xs transition-colors opacity-50 cursor-not-allowed text-base-light-400 dark:text-base-dark-600"
-            title="No editor configured - set CLARITY_EDITOR, ELIXIR_EDITOR, or EDITOR environment variable"
-          >
-            <.render_icon />
-          </button>
-        <% {:url, url} -> %>
-          <a
-            href={url}
-            target="_blank"
-            class="p-2 rounded-xs transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark block"
-            title="Open in Browser"
-          >
-            <.render_icon />
-          </a>
-        <% {:execute, _execute_fn} -> %>
-          <button
-            phx-click="open_in_editor"
-            phx-target={@myself}
-            class="p-2 rounded-xs transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark"
-            title="Open in Editor"
-          >
-            <.render_icon />
-          </button>
-      <% end %>
-    </div>
-    """
-  end
-
   @impl Phoenix.LiveComponent
   def update(%{source_location: source_location}, socket) do
     editor_action = OpenEditor.action(source_location)

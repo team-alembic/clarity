@@ -1,0 +1,42 @@
+<% content_props = %{
+  theme: @theme,
+  zoom_subgraph: @zoom_graph,
+  zoom_level: @zoom_level
+} %>
+<%= cond do %>
+  <% @content == nil -> %>
+    <.content_not_found_error />
+  <% @content.live_component? -> %>
+    <.live_component
+      module={@content.provider}
+      id="content-view"
+      vertex={@vertex}
+      lens={@lens}
+      {content_props}
+    />
+  <% @content.live_view? -> %>
+    {live_render(@socket, @content.provider,
+      id: "content-view",
+      session: %{
+        "vertex" => @vertex,
+        "lens" => @lens
+      },
+      container: {:div, class: "content"}
+    )}
+  <% true -> %>
+    <%= case @content.render_static do %>
+      <% {:mermaid, content} -> %>
+        <.mermaid graph={content.(content_props)} class="content p-4" id="content-view-mermaid" />
+      <% {:viz, content} -> %>
+        <.viz graph={content.(content_props)} class="content p-4" id="content-view-viz" />
+      <% {:markdown, content} -> %>
+        <section class="content w-full flex justify-center">
+          <.markdown
+            content={content.(content_props)}
+            class="p-4 max-w-[100ch] w-full"
+            prefix={@prefix}
+            lens={@lens}
+          />
+        </section>
+    <% end %>
+<% end %>

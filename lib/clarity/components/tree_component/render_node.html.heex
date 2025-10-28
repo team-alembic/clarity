@@ -1,0 +1,49 @@
+<%= if has_children?(@graph, @vertex) do %>
+  <details
+    id={"tree-node-#{Vertex.id(@vertex)}"}
+    open={open?(@vertex, @visible_ids)}
+    phx-hook="Details"
+    phx-toggle="toggle"
+    phx-value-vertex_id={Vertex.id(@vertex)}
+    phx-target={@myself}
+  >
+    <summary>
+      <.link
+        patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
+        class={
+          "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
+          if @vertex == @active_vertex, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
+        }
+      >
+        <.vertex_name vertex={@vertex} />
+      </.link>
+    </summary>
+    <%= if open?(@vertex, @visible_ids) do %>
+      <div class="ml-4 group">
+        <.render_vertex
+          graph={@graph}
+          vertex={@vertex}
+          visible_ids={@visible_ids}
+          active_vertex={@active_vertex}
+          prefix={@prefix}
+          lens={@lens}
+          myself={@myself}
+        />
+      </div>
+    <% else %>
+      <.loading_spinner class="ml-4 py-2" />
+    <% end %>
+  </details>
+<% else %>
+  <.link
+    patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
+    class={[
+      "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
+      @any_sibling_has_children && "pl-[25px]",
+      @vertex == @active_vertex &&
+        "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
+    ]}
+  >
+    <.vertex_name vertex={@vertex} />
+  </.link>
+<% end %>

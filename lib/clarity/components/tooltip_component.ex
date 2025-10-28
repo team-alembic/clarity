@@ -40,28 +40,6 @@ defmodule Clarity.TooltipComponent do
     end
   end
 
-  @impl Phoenix.LiveComponent
-  def render(assigns) do
-    ~H"""
-    <div id="tooltips-container" phx-update="stream" phx-hook="Tooltip">
-      <div id="tooltip-placeholder" class="tooltip hidden py-5">
-        <div class="border border-base-light-400 dark:border-base-dark-600 shadow-lg bg-white dark:bg-base-dark-800 text-gray-900 dark:text-base-dark-100 px-4 py-2 rounded-xs">
-          <.loading_spinner />
-        </div>
-      </div>
-      <div
-        :for={{dom_id, vertex} <- @streams.tooltips}
-        id={dom_id}
-        class="tooltip hidden py-5"
-      >
-        <div class="border border-base-light-400 dark:border-base-dark-600 shadow-lg bg-white dark:bg-base-dark-800 text-gray-900 dark:text-base-dark-100 px-4 py-2 rounded-xs">
-          <.markdown content={get_tooltip_content(vertex)} prefix={@prefix} lens={@lens} />
-        </div>
-      </div>
-    </div>
-    """
-  end
-
   @spec compute_preload_vertices(map()) :: [Vertex.t()]
   defp compute_preload_vertices(assigns) do
     breadcrumb_vertices = assigns.breadcrumbs
