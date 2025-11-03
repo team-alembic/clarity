@@ -32,11 +32,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       def graph_group(%@for{resource: resource}), do: [inspect(resource), inspect(Calculation)]
     end
 
-    defimpl Clarity.Vertex.GraphShapeProvider do
-      @impl Clarity.Vertex.GraphShapeProvider
-      def shape(_vertex), do: "promoter"
-    end
-
     defimpl Clarity.Vertex.SourceLocationProvider do
       @impl Clarity.Vertex.SourceLocationProvider
       def source_location(%@for{calculation: calculation, resource: resource}) do
