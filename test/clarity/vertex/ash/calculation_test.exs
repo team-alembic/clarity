@@ -45,7 +45,7 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
 
   describe inspect(&Clarity.Vertex.GraphShapeProvider.shape/1) do
     test "returns correct shape", %{vertex: vertex} do
-      assert Vertex.GraphShapeProvider.shape(vertex) == "promoter"
+      assert Vertex.GraphShapeProvider.shape(vertex) == "box"
     end
   end
 

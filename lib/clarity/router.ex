@@ -141,14 +141,14 @@ defmodule Clarity.Router do
   ]
 
   @doc false
-  @spec __session__(conn :: Plug.Conn.t(), [map() | [{module(), atom(), [any()]}]]) :: map()
+  @spec __session__(conn :: Plug.Conn.t(), [map() | [{module(), atom(), [term()]}]]) :: map()
   def __session__(conn, [session, additional_hooks]),
     do: __session__(conn, session, additional_hooks)
 
   @spec __session__(
           conn :: Plug.Conn.t(),
           session :: map(),
-          additional_hooks :: [{module(), atom(), [any()]}]
+          additional_hooks :: [{module(), atom(), [term()]}]
         ) :: map()
   def __session__(conn, session, additional_hooks \\ []) do
     session =
