@@ -33,7 +33,7 @@ defmodule Clarity.Vertex.Util do
     |> Enum.map_join(":", &normalize_segment/1)
   end
 
-  @spec part_to_string(atom() | String.t() | integer() | any()) :: String.t()
+  @spec part_to_string(atom() | String.t() | integer() | term()) :: String.t()
   defp part_to_string(value)
        when is_atom(value) and not is_boolean(value) and not is_nil(value) do
     case Atom.to_string(value) do

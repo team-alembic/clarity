@@ -74,6 +74,12 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.ApplicationOverview,
           Clarity.Content.Ash.DomainOverview,
           Clarity.Content.Ash.ResourceOverview,
+          Clarity.Content.Ash.ActionOverview,
+          Clarity.Content.Ash.AttributeOverview,
+          Clarity.Content.Ash.CalculationOverview,
+          Clarity.Content.Ash.AggregateOverview,
+          Clarity.Content.Ash.PolicyOverview,
+          Clarity.Content.Ash.RelationshipOverview,
           Clarity.Content.Phoenix.RouterRoutes
         ],
         default_perspective_lens: "architect"

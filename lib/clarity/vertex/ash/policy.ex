@@ -5,6 +5,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     Represents a policy definition in an Ash resource that controls authorization.
     """
+    alias Ash.Policy.Check
     alias Clarity.SourceLocation
 
     @type t() :: %__MODULE__{
@@ -40,7 +41,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         end
       end
 
-      @spec format_condition(list() | term()) :: String.t()
+      @spec format_condition(Check.ref() | [Check.ref()]) :: String.t()
       defp format_condition(condition) when is_list(condition) do
         Enum.map_join(condition, ", ", fn
           {module, _opts} -> module |> Module.split() |> List.last()

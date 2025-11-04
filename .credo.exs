@@ -147,7 +147,6 @@
           {Credo.Check.Warning.OperationOnSameValues, []},
           {Credo.Check.Warning.OperationWithConstantResult, []},
           {Credo.Check.Warning.RaiseInsideRescue, []},
-          {Credo.Check.Warning.SpecWithStruct, []},
           {Credo.Check.Warning.UnsafeExec, []},
           {Credo.Check.Warning.UnusedEnumOperation, []},
           {Credo.Check.Warning.UnusedFileOperation, []},
@@ -209,7 +208,8 @@
           {Credo.Check.Refactor.VariableRebinding, []},
           {Credo.Check.Warning.LazyLogging, []},
           {Credo.Check.Warning.LeakyEnvironment, []},
-          {Credo.Check.Warning.MapGetUnsafePass, []}
+          {Credo.Check.Warning.MapGetUnsafePass, []},
+          {Credo.Check.Warning.SpecWithStruct, []}
 
           # {Credo.Check.Refactor.MapInto, []},
 

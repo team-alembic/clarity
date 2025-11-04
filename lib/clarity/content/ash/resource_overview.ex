@@ -305,7 +305,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ]
     end
 
-    @spec format_type_with_link({:array, any()} | atom() | any()) :: iodata()
+    @spec format_type_with_link(module() | {:array, atom}) :: iodata()
     defp format_type_with_link({:array, inner_type}) do
       ["list of ", format_type_with_link(inner_type)]
     end
@@ -325,7 +325,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
     end
 
-    @spec clean_description(String.t() | nil | any()) :: String.t()
+    @spec clean_description(String.t() | nil) :: String.t()
     defp clean_description(nil), do: ""
 
     defp clean_description(description) when is_binary(description) do
@@ -334,7 +334,5 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       |> String.replace("\n", " ")
       |> String.replace(~r/\s+/, " ")
     end
-
-    defp clean_description(_), do: ""
   end
 end
