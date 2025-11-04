@@ -8,6 +8,7 @@ defmodule Clarity.Components.MarkdownComponent do
 
   use Phoenix.Component
 
+  alias Clarity.Components.CodeHighlighter
   alias Clarity.Perspective.Lens
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
@@ -51,6 +52,7 @@ defmodule Clarity.Components.MarkdownComponent do
       {:ok, ast, _messages} ->
         ast
         |> Earmark.Transform.map_ast(&transform_vertex_links(&1, prefix, lens))
+        |> Earmark.Transform.map_ast(&transform_code_blocks/1)
         |> Earmark.Transform.transform()
 
       {:error, _reason, _messages} ->
@@ -86,6 +88,46 @@ defmodule Clarity.Components.MarkdownComponent do
   end
 
   defp transform_vertex_links(node, _prefix, _lens), do: node
+
+  @spec transform_code_blocks(ast_node :: Earmark.Parser.ast_node()) ::
+          Earmark.Parser.ast_node() | {:replace, Earmark.Parser.ast_node()}
+  defp transform_code_blocks(
+         {"pre", pre_attrs, [{"code", code_attrs, [content], code_meta}], pre_meta} = node
+       ) do
+    language = extract_language(code_attrs)
+
+    case CodeHighlighter.get_lexer(language) do
+      nil ->
+        node
+
+      lexer ->
+        highlighted_spans = Makeup.highlight_inner_html(content, lexer: lexer)
+        code_meta_with_verbatim = Map.put(code_meta, :verbatim, true)
+        pre_meta_with_verbatim = Map.put(pre_meta, :verbatim, true)
+
+        new_node =
+          {"pre", [{"class", "highlight"} | pre_attrs],
+           [{"code", code_attrs, [highlighted_spans], code_meta_with_verbatim}],
+           pre_meta_with_verbatim}
+
+        {:replace, new_node}
+    end
+  end
+
+  defp transform_code_blocks(node), do: node
+
+  @spec extract_language(attrs :: list()) :: String.t() | nil
+  defp extract_language(attrs) do
+    case Enum.find(attrs, fn {key, _value} -> key == "class" end) do
+      {"class", class_value} ->
+        class_value
+        |> String.split()
+        |> Enum.find(&(&1 not in ["", "inline"]))
+
+      _other ->
+        nil
+    end
+  end
 
   @spec build_clarity_path(
           vertex_path :: String.t(),
