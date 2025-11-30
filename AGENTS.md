@@ -568,5 +568,10 @@ _Generic tooling for building DSLs_
 
 <!-- clarity-start -->
 ## Clarity Project Rules
-See [usage-rules/](usage-rules/) for project-specific guidelines.
+
+- [Development Guide](usage-rules/development.md) - Running the dev server, testing, and code quality
+- [Content Providers](usage-rules/content-providers.md) - Creating UI content for vertices
+- [Introspectors](usage-rules/introspectors.md) - Analyzing code and building the graph
+- [Lensmakers](usage-rules/lensmakers.md) - Creating perspective lenses
+- [Vertex Types](usage-rules/vertex-types.md) - Defining custom vertex types
 <!-- clarity-end -->
