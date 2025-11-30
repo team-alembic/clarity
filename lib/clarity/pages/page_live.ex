@@ -299,6 +299,11 @@ defmodule Clarity.PageLive do
     {:noreply, assign(socket, show_raw_drawer: false)}
   end
 
+  # Catch tooltip events that escape from TooltipComponent during navigation/re-renders
+  def handle_event("load_tooltip", _params, socket) do
+    {:noreply, socket}
+  end
+
   @impl Phoenix.LiveView
   def handle_info({:clarity, event}, socket) when event in [:work_started, :work_completed] do
     {:noreply, handle_routing(socket, socket.assigns.params, &push_patch/2)}

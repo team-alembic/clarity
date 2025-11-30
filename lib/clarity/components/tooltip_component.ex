@@ -22,11 +22,16 @@ defmodule Clarity.TooltipComponent do
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
+    old_breadcrumbs = socket.assigns[:breadcrumbs]
     socket = assign(socket, assigns)
 
-    preload_vertices = compute_preload_vertices(socket.assigns)
-
-    {:ok, stream(socket, :tooltips, preload_vertices, reset: true)}
+    # Only reset stream when breadcrumbs change to avoid DOM churn
+    if old_breadcrumbs != assigns[:breadcrumbs] do
+      preload_vertices = compute_preload_vertices(socket.assigns)
+      {:ok, stream(socket, :tooltips, preload_vertices, reset: true)}
+    else
+      {:ok, socket}
+    end
   end
 
   @impl Phoenix.LiveComponent
