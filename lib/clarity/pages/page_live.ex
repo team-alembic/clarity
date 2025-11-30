@@ -27,6 +27,7 @@ defmodule Clarity.PageLive do
       |> assign(
         zoom_level: {1, 1},
         show_navigation: false,
+        show_raw_drawer: false,
         data: AsyncResult.loading(),
         page_title: "Loading...",
         shown_vertex_types: [],
@@ -288,6 +289,14 @@ defmodule Clarity.PageLive do
 
   def handle_event("toggle_navigation", _params, socket) do
     {:noreply, assign(socket, show_navigation: not socket.assigns.show_navigation)}
+  end
+
+  def handle_event("toggle_raw_drawer", _params, socket) do
+    {:noreply, assign(socket, show_raw_drawer: not socket.assigns.show_raw_drawer)}
+  end
+
+  def handle_event("close_raw_drawer", _params, socket) do
+    {:noreply, assign(socket, show_raw_drawer: false)}
   end
 
   @impl Phoenix.LiveView
