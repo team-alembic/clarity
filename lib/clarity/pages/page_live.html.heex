@@ -70,7 +70,7 @@
             vertex={@vertex}
             lens={lens}
           />
-          <%= if @data.loading do %>
+          <%= if not @data.ok? do %>
             <div class="content">
               <.splash_screen />
             </div>
