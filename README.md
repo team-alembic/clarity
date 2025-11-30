@@ -76,6 +76,19 @@ clarity("/clarity")
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm).The docs can be found at
 <https://hexdocs.pm/clarity>.
+
+## Development
+
+To run the development server with the demo application:
+
+```bash
+mix dev
+```
+
+This starts a Phoenix server at http://localhost:4000 with live reload enabled.
+
+See [usage-rules/development.md](usage-rules/development.md) for more details on
+testing, asset building, and code quality tools.
 <!-- ex_doc_ignore_end -->
 
 ## License
