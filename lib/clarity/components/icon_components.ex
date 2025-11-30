@@ -146,4 +146,22 @@ defmodule Clarity.IconComponents do
 
   @spec icon_external_link(assigns :: Socket.assigns()) :: Rendered.t()
   def icon_external_link(assigns)
+
+  @doc """
+  Renders a clipboard icon (copy to clipboard).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_clipboard(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_clipboard(assigns)
+
+  @doc """
+  Renders a code icon (source code brackets).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_code(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_code(assigns)
 end

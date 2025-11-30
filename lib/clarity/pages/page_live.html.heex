@@ -96,6 +96,42 @@
             prefix={@prefix}
             lens={@lens}
           />
+          <% {content_type, raw_content} = case @content && @content.render_static do
+            {:mermaid, content_fn} ->
+              props = %{
+                theme: @theme,
+                zoom_subgraph: data.zoom_graph,
+                zoom_level: @zoom_level,
+                shown_vertex_types: @shown_vertex_types,
+                available_vertex_types: @available_vertex_types
+              }
+              {"mermaid", IO.iodata_to_binary(content_fn.(props))}
+            {:viz, content_fn} ->
+              props = %{
+                theme: @theme,
+                zoom_subgraph: data.zoom_graph,
+                zoom_level: @zoom_level,
+                shown_vertex_types: @shown_vertex_types,
+                available_vertex_types: @available_vertex_types
+              }
+              {"graphviz", IO.iodata_to_binary(content_fn.(props))}
+            {:markdown, content_fn} ->
+              props = %{
+                theme: @theme,
+                zoom_subgraph: data.zoom_graph,
+                zoom_level: @zoom_level,
+                shown_vertex_types: @shown_vertex_types,
+                available_vertex_types: @available_vertex_types
+              }
+              {"markdown", IO.iodata_to_binary(content_fn.(props))}
+            _ ->
+              {"", ""}
+          end %>
+          <.raw_content_drawer
+            show={@show_raw_drawer && content_type != ""}
+            content_type={content_type}
+            raw_content={raw_content}
+          />
         <% end %>
       </.async_result>
     </article>

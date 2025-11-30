@@ -20,6 +20,7 @@ import Tooltip from "./tooltip.hook";
 import ThemeToggle, { getInitialTheme } from "./theme.hook";
 import Flash from "./flash.hook";
 import Details from "./details.hook";
+import ResizableDrawer from "./resizable-drawer.hook";
 
 let socketPath =
   document.querySelector("html").getAttribute("phx-socket") || "/live";
@@ -31,6 +32,7 @@ const Hooks = {
   ThemeToggle: ThemeToggle,
   Flash: Flash,
   Details: Details,
+  ResizableDrawer: ResizableDrawer,
 };
 
 let csrfToken = document
@@ -53,3 +55,21 @@ liveSocket.disableDebug();
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket;
+
+// Copy to clipboard handler
+window.addEventListener("clarity:copy-to-clipboard", (event) => {
+  const content = event.detail.content;
+  if (content) {
+    navigator.clipboard.writeText(content).then(() => {
+      // Show brief feedback by changing button temporarily
+      const button = event.target;
+      const originalTitle = button.title;
+      button.title = "Copied!";
+      button.classList.add("text-green-500");
+      setTimeout(() => {
+        button.title = originalTitle;
+        button.classList.remove("text-green-500");
+      }, 1500);
+    });
+  }
+});
