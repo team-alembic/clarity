@@ -17,7 +17,7 @@ defmodule Clarity.TreeComponent do
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
-    {:ok, assign(socket, opened: MapSet.new())}
+    {:ok, socket}
   end
 
   @impl Phoenix.LiveComponent
@@ -39,6 +39,9 @@ defmodule Clarity.TreeComponent do
       end
 
     visible_ids = compute_visible_ids(%{socket.assigns | opened: opened})
+
+    # Notify parent to persist the opened state
+    send(self(), {:update_tree_opened, opened})
 
     {:noreply, assign(socket, opened: opened, visible_ids: visible_ids)}
   end
