@@ -6,8 +6,13 @@
     phx-toggle="toggle"
     phx-value-vertex_id={Vertex.id(@vertex)}
     phx-target={@myself}
+    class="select-none"
   >
-    <summary>
+    <summary
+      phx-click="toggle"
+      phx-value-vertex_id={Vertex.id(@vertex)}
+      phx-target={@myself}
+    >
       <.link
         patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
         class={
@@ -30,15 +35,13 @@
           myself={@myself}
         />
       </div>
-    <% else %>
-      <.loading_spinner class="ml-4 py-2" />
     <% end %>
   </details>
 <% else %>
   <.link
     patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
     class={[
-      "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
+      "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium select-none",
       @any_sibling_has_children && "pl-[25px]",
       @vertex == @active_vertex &&
         "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"

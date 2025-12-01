@@ -39,16 +39,30 @@ export default {
         tooltip.classList.add("hidden");
       }, {once: true, passive: true});
     } else {
-      let shownTooltip = placeholderElement;
-      
-      shownTooltip.classList.remove("hidden");
-      
+      let shownTooltip = null;
+      let resolved = false;
+
+      // Delay showing placeholder to avoid flash for elements without tooltips
+      const placeholderTimeout = setTimeout(() => {
+        if (!resolved) {
+          shownTooltip = placeholderElement;
+          shownTooltip.classList.remove("hidden");
+        }
+      }, 150);
+
       target.addEventListener("mouseleave", () => {
-        shownTooltip.classList.add("hidden");
+        clearTimeout(placeholderTimeout);
+        if (shownTooltip) {
+          shownTooltip.classList.add("hidden");
+        }
       }, {once: true, passive: true});
 
       this.pushEventTo(this.el, "load_tooltip", {vertex_id: tooltipId}, (response) => {
-        shownTooltip.classList.add("hidden");
+        resolved = true;
+        clearTimeout(placeholderTimeout);
+        if (shownTooltip) {
+          shownTooltip.classList.add("hidden");
+        }
         if(response.added) {
           shownTooltip = document.getElementById(tooltipId);
           shownTooltip.classList.remove("hidden");

@@ -28,6 +28,7 @@ defmodule Clarity.PageLive do
         zoom_level: {1, 1},
         show_navigation: false,
         show_raw_drawer: false,
+        tree_opened: MapSet.new(),
         data: AsyncResult.loading(),
         page_title: "Loading...",
         shown_vertex_types: [],
@@ -350,6 +351,10 @@ defmodule Clarity.PageLive do
 
   def handle_info({:update_shown_vertex_types, shown_vertex_types}, socket) do
     {:noreply, socket |> assign(shown_vertex_types: shown_vertex_types) |> load_data_async()}
+  end
+
+  def handle_info({:update_tree_opened, opened}, socket) do
+    {:noreply, assign(socket, tree_opened: opened)}
   end
 
   @spec update_page_title(Socket.t()) :: Socket.t()
