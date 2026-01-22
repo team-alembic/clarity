@@ -171,18 +171,18 @@ defmodule Clarity.Graph.CacheTest do
       File.mkdir_p!(cache_path)
       File.chmod!(cache_path, 0o000)
 
-      task = Server.pull_task(server)
-
-      case task do
-        {:ok, task} ->
-          Server.ack_task(server, task.id, [])
-
-        :empty ->
-          :ok
-      end
-
       log =
         capture_log(fn ->
+          task = Server.pull_task(server)
+
+          case task do
+            {:ok, task} ->
+              Server.ack_task(server, task.id, [])
+
+            :empty ->
+              :ok
+          end
+
           assert_receive {:clarity, :work_completed}, 5000
           Process.sleep(100)
         end)
