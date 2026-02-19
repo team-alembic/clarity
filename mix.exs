@@ -99,7 +99,7 @@ defmodule Clarity.MixProject do
       {:makeup_elixir, "~> 1.0"},
       {:telemetry, "~> 1.3"},
       {:telemetry_registry, "~> 0.3.2"},
-      {:igniter, "~> 0.6.25", optional: true},
+      {:igniter, "~> 0.7", optional: true},
       # UI
       {:esbuild, "~> 0.8", only: [:dev, :test], runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.4.0", only: [:dev, :test], runtime: Mix.env() == :dev},
