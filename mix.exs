@@ -89,7 +89,7 @@ defmodule Clarity.MixProject do
 
   defp deps do
     [
-      {:usage_rules, "~> 0.1", only: [:dev]},
+      {:usage_rules, "~> 1.2", only: [:dev]},
       {:ash, "~> 3.5 and >= 3.5.43", optional: true},
       {:spark, "~> 2.3", optional: true},
       {:phoenix, "~> 1.7"},
@@ -105,7 +105,7 @@ defmodule Clarity.MixProject do
       {:tailwind, "~> 0.4.0", only: [:dev, :test], runtime: Mix.env() == :dev},
       # Development
       {:phx_new, "~> 1.7", only: [:test]},
-      {:ex_doc, "~> 0.38.2", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40.1", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.5", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
