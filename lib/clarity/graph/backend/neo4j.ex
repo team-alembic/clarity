@@ -65,7 +65,9 @@ defmodule Clarity.Graph.Backend.Neo4j do
   end
 
   @impl Backend
-  def delete(state, _subgraph) do
+  def delete(_state, true), do: :ok
+
+  def delete(state, false) do
     execute(state, "MATCH (n) DETACH DELETE n", %{})
     :ok
   end
