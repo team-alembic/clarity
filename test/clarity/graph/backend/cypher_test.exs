@@ -108,6 +108,16 @@ defmodule Clarity.Graph.Backend.CypherTest do
       assert props["prop_module"] == "Elixir.MyApp.Foo"
     end
 
+    test "promotes all simple-typed fields" do
+      vertex = %Clarity.Vertex.Application{app: :my_app, description: "Test", version: "1.0.0"}
+
+      props = Cypher.serialize_vertex("app:my_app", Clarity.Vertex.Application, vertex)
+
+      assert props["prop_app"] == "my_app"
+      assert props["prop_description"] == "Test"
+      assert props["prop_version"] == "1.0.0"
+    end
+
     test "skips nil field values" do
       vertex = %Root{}
 
@@ -115,6 +125,15 @@ defmodule Clarity.Graph.Backend.CypherTest do
 
       refute Map.has_key?(props, "prop_app")
       refute Map.has_key?(props, "prop_module")
+    end
+
+    test "promotes boolean fields" do
+      vertex = %Clarity.Vertex.Module{module: MyApp.Foo, behaviour?: true}
+
+      props = Cypher.serialize_vertex("mod:MyApp.Foo", Clarity.Vertex.Module, vertex)
+
+      assert props["prop_module"] == "Elixir.MyApp.Foo"
+      assert props["prop_behaviour?"] == "true"
     end
   end
 

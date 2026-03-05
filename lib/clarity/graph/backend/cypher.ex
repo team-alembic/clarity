@@ -92,8 +92,6 @@ defmodule Clarity.Graph.Backend.Cypher do
 
   # Vertex serialization
 
-  @queryable_fields [:app, :module, :name, :description]
-
   @doc false
   @spec serialize_vertex(String.t(), module(), struct()) :: map()
   def serialize_vertex(vertex_id, vertex_type, vertex_struct) do
@@ -104,16 +102,25 @@ defmodule Clarity.Graph.Backend.Cypher do
     }
 
     promoted =
-      for field <- @queryable_fields,
-          Map.has_key?(vertex_struct, field),
-          value = Map.get(vertex_struct, field),
-          value != nil,
-          into: %{} do
-        {"prop_#{field}", serialize_field_value(value)}
-      end
+      vertex_struct
+      |> Map.from_struct()
+      |> Enum.reduce(%{}, fn {field, value}, acc ->
+        if promotable_value?(value) do
+          Map.put(acc, "prop_#{field}", serialize_field_value(value))
+        else
+          acc
+        end
+      end)
 
     Map.merge(base, promoted)
   end
+
+  @spec promotable_value?(term()) :: boolean()
+  defp promotable_value?(nil), do: false
+  defp promotable_value?(value) when is_atom(value), do: true
+  defp promotable_value?(value) when is_binary(value), do: true
+  defp promotable_value?(value) when is_number(value), do: true
+  defp promotable_value?(_), do: false
 
   @doc false
   @spec deserialize_vertex(map()) :: struct()

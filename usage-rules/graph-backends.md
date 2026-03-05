@@ -105,8 +105,8 @@ Both Neo4j and ArcadeDB use Cypher queries. The shared
 ### Vertex Serialization
 
 Vertex structs are stored as ETF-encoded binary data in a `data`
-property. Queryable fields (`:app`, `:module`, `:name`,
-`:description`) are promoted to top-level properties prefixed with
+property. All simple-typed struct fields (atoms, strings, numbers)
+are automatically promoted to top-level properties prefixed with
 `prop_` so they can be filtered with native Cypher:
 
 ```
