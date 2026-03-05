@@ -517,6 +517,11 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
     )
   end
 
+  @spec extract_row(map() | list() | term()) :: [term()]
+  defp extract_row(%{"row" => values}), do: values
+  defp extract_row(values) when is_list(values), do: values
+  defp extract_row(other), do: [other]
+
   @spec execute_cypher(t(), String.t(), map()) :: [[term()]]
   defp execute_cypher(state, cypher, params) do
     body = %{
@@ -540,11 +545,6 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
   end
 
   # Write buffering
-
-  @spec extract_row(map() | list() | term()) :: [term()]
-  defp extract_row(%{"row" => values}), do: values
-  defp extract_row(values) when is_list(values), do: values
-  defp extract_row(other), do: [other]
 
   @spec buffer_statements(t(), [{String.t(), map()}]) :: t()
   defp buffer_statements(state, statements) do
