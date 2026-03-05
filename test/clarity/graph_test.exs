@@ -1180,7 +1180,7 @@ defmodule Clarity.GraphTest do
       Task.await(task)
     end
 
-    test "transfers all 12 ETS tables (3 direct + 9 from digraphs)" do
+    test "transfers all 13 ETS tables (state_ref + 3 direct + 9 from digraphs)" do
       graph = Graph.new()
       test_pid = self()
 
@@ -1205,7 +1205,7 @@ defmodule Clarity.GraphTest do
       send(task.pid, {:graph, new_graph})
 
       assert_receive {:owned_count, count}, 1000
-      assert count >= 12
+      assert count >= 13
 
       send(task.pid, :continue)
       Task.await(task)
@@ -1318,6 +1318,112 @@ defmodule Clarity.GraphTest do
       assert length(types) == 2
       assert Application in types
       assert Root in types
+    end
+  end
+
+  describe "subgraph deletion" do
+    setup do
+      graph = Graph.new()
+      app = %Application{app: :test, description: "Test", version: "1.0.0"}
+      mod = %Module{module: TestMod}
+
+      Graph.add_vertex(graph, app, %Root{})
+      Graph.add_vertex(graph, mod, app)
+      Graph.add_edge(graph, %Root{}, app, :application)
+      Graph.add_edge(graph, app, mod, :module)
+
+      %{graph: graph, app: app, mod: mod}
+    end
+
+    test "deleting a subgraph does not destroy the parent graph", %{graph: graph, app: app} do
+      parent_count = Graph.vertex_count(graph)
+
+      subgraph = Graph.filter(graph, Filter.within_steps(app, 1, 0))
+      assert Graph.vertex_count(subgraph) > 0
+
+      assert :ok = Graph.delete(subgraph)
+
+      assert Graph.vertex_count(graph) == parent_count
+      assert Graph.get_vertex(graph, Vertex.id(app)) == app
+    end
+
+    test "deleting a subgraph cleans up its state_ref ETS table", %{graph: graph, app: app} do
+      subgraph = Graph.filter(graph, Filter.within_steps(app, 1, 0))
+
+      tables_before = length(:ets.all())
+      assert :ok = Graph.delete(subgraph)
+      tables_after = length(:ets.all())
+
+      assert tables_after < tables_before
+    end
+
+    test "multiple subgraphs can be created and deleted independently", %{graph: graph, app: app, mod: mod} do
+      sub1 = Graph.filter(graph, Filter.within_steps(app, 0, 0))
+      sub2 = Graph.filter(graph, Filter.within_steps(mod, 0, 0))
+
+      assert :ok = Graph.delete(sub1)
+
+      assert Graph.vertex_count(sub2) > 0
+      assert Graph.vertex_count(graph) > 0
+
+      assert :ok = Graph.delete(sub2)
+
+      assert Graph.vertex_count(graph) > 0
+    end
+  end
+
+  describe "mutable state cell" do
+    test "backend state persists across multiple writes" do
+      graph = Graph.new()
+
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+      mod1 = %Module{module: Mod1}
+
+      Graph.add_vertex(graph, app1, %Root{})
+      Graph.add_vertex(graph, app2, %Root{})
+      Graph.add_vertex(graph, mod1, app1)
+      Graph.add_edge(graph, %Root{}, app1, :application)
+      Graph.add_edge(graph, %Root{}, app2, :application)
+      Graph.add_edge(graph, app1, mod1, :module)
+
+      assert Graph.vertex_count(graph) == 4
+      assert Graph.get_vertex(graph, Vertex.id(app1)) == app1
+      assert Graph.get_vertex(graph, Vertex.id(app2)) == app2
+      assert Graph.get_vertex(graph, Vertex.id(mod1)) == mod1
+    end
+
+    test "update_count increments consistently across operations" do
+      graph = Graph.new()
+      initial = Graph.get_update_count(graph)
+
+      app = %Application{app: :test, description: "Test", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+      after_vertex = Graph.get_update_count(graph)
+      assert after_vertex > initial
+
+      Graph.add_edge(graph, %Root{}, app, :application)
+      after_edge = Graph.get_update_count(graph)
+      assert after_edge > after_vertex
+
+      Graph.purge(graph, app)
+      after_purge = Graph.get_update_count(graph)
+      assert after_purge > after_edge
+    end
+
+    test "clear resets state but graph remains usable" do
+      graph = Graph.new()
+      app = %Application{app: :test, description: "Test", version: "1.0.0"}
+
+      Graph.add_vertex(graph, app, %Root{})
+      assert Graph.vertex_count(graph) == 2
+
+      Graph.clear(graph)
+      assert Graph.vertex_count(graph) == 1
+
+      Graph.add_vertex(graph, app, %Root{})
+      assert Graph.vertex_count(graph) == 2
+      assert Graph.get_vertex(graph, Vertex.id(app)) == app
     end
   end
 end
