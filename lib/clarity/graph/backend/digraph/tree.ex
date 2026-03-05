@@ -1,12 +1,14 @@
 defmodule Clarity.Graph.Backend.Digraph.Tree do
   @moduledoc false
 
+  @doc false
   @spec add_vertex(tree_graph :: :digraph.graph(), vertex_id :: String.t()) :: :ok
   def add_vertex(tree_graph, vertex_id) do
     :digraph.add_vertex(tree_graph, vertex_id)
     :ok
   end
 
+  @doc false
   @spec add_edge(
           tree_graph :: :digraph.graph(),
           from_vertex_id :: String.t(),

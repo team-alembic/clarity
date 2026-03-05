@@ -10,6 +10,7 @@ defmodule Clarity.Graph.Backend.Cypher do
 
   # Query DSL -> Cypher WHERE clause
 
+  @doc false
   @spec query_to_cypher(Clarity.Graph.query(), String.t()) :: String.t()
   def query_to_cypher(query, var \\ "v") do
     case translate_query(query, var) do
@@ -81,6 +82,7 @@ defmodule Clarity.Graph.Backend.Cypher do
   defp cypher_value(false), do: "false"
   defp cypher_value(value), do: "'#{escape_cypher_string(inspect(value))}'"
 
+  @doc false
   @spec escape_cypher_string(String.t()) :: String.t()
   def escape_cypher_string(str) do
     str
@@ -92,6 +94,7 @@ defmodule Clarity.Graph.Backend.Cypher do
 
   @queryable_fields [:app, :module, :name, :description]
 
+  @doc false
   @spec serialize_vertex(String.t(), module(), struct()) :: map()
   def serialize_vertex(vertex_id, vertex_type, vertex_struct) do
     base = %{
@@ -112,11 +115,13 @@ defmodule Clarity.Graph.Backend.Cypher do
     Map.merge(base, promoted)
   end
 
+  @doc false
   @spec deserialize_vertex(map()) :: struct()
   def deserialize_vertex(%{"data" => data}) do
     data |> Base.decode64!() |> :erlang.binary_to_term()
   end
 
+  @doc false
   @spec serialize_field_value(term()) :: String.t()
   def serialize_field_value(value) when is_atom(value), do: to_string(value)
   def serialize_field_value(value) when is_binary(value), do: value
@@ -124,11 +129,13 @@ defmodule Clarity.Graph.Backend.Cypher do
 
   # Cypher statement builders
 
+  @doc false
   @spec merge_vertex_cypher(map()) :: {String.t(), map()}
   def merge_vertex_cypher(props) do
     {"MERGE (v:Vertex {id: $id}) SET v = $props", %{"id" => props["id"], "props" => props}}
   end
 
+  @doc false
   @spec merge_edge_cypher(String.t(), String.t(), term(), String.t()) :: {String.t(), map()}
   def merge_edge_cypher(from_id, to_id, label, rel_type \\ "EDGE") do
     cypher = """
@@ -140,11 +147,13 @@ defmodule Clarity.Graph.Backend.Cypher do
     {cypher, params}
   end
 
+  @doc false
   @spec delete_vertex_cypher(String.t()) :: {String.t(), map()}
   def delete_vertex_cypher(vertex_id) do
     {"MATCH (v:Vertex {id: $id}) DETACH DELETE v", %{"id" => vertex_id}}
   end
 
+  @doc false
   @spec shortest_path_cypher(String.t(), String.t(), String.t()) :: {String.t(), map()}
   def shortest_path_cypher(from_id, to_id, rel_type \\ "EDGE") do
     cypher = """
@@ -155,6 +164,7 @@ defmodule Clarity.Graph.Backend.Cypher do
     {cypher, %{"from_id" => from_id, "to_id" => to_id}}
   end
 
+  @doc false
   @spec vertices_within_steps_cypher(String.t(), non_neg_integer(), non_neg_integer()) ::
           {String.t(), map()}
   def vertices_within_steps_cypher(vertex_id, max_out, max_in) do

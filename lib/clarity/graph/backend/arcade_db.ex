@@ -529,13 +529,7 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
 
     case Req.post(state.req, url: path, json: body) do
       {:ok, %{status: 200, body: %{"result" => result}}} ->
-        Enum.map(result, fn row ->
-          case row do
-            %{"row" => values} -> values
-            values when is_list(values) -> values
-            other -> [other]
-          end
-        end)
+        Enum.map(result, &extract_row/1)
 
       {:ok, %{body: body}} ->
         raise "ArcadeDB error: #{inspect(body)}"
@@ -546,6 +540,11 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
   end
 
   # Write buffering
+
+  @spec extract_row(map() | list() | term()) :: [term()]
+  defp extract_row(%{"row" => values}), do: values
+  defp extract_row(values) when is_list(values), do: values
+  defp extract_row(other), do: [other]
 
   @spec buffer_statements(t(), [{String.t(), map()}]) :: t()
   defp buffer_statements(state, statements) do

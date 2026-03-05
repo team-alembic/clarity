@@ -84,6 +84,7 @@ defmodule Clarity.Graph.Backend do
   @callback persist(state, Path.t()) :: :ok | {:error, term()}
   @callback load(Path.t(), opts :: keyword()) :: {:ok, state} | {:error, term()}
 
+  @doc "Returns the configured graph backend module."
   @spec configured_backend() :: module()
   def configured_backend do
     Application.get_env(:clarity, :graph_backend, Clarity.Graph.Backend.Digraph)

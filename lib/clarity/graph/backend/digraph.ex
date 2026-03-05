@@ -442,6 +442,7 @@ defmodule Clarity.Graph.Backend.Digraph do
 
   # Handover helpers
 
+  @spec handover_subgraph(t(), pid()) :: :ok
   defp handover_subgraph(state, pid) do
     {vtab1, etab1, ntab1, _} = unpack_digraph(state.main_graph)
     :ets.give_away(vtab1, pid, :graph_handover)
@@ -454,6 +455,7 @@ defmodule Clarity.Graph.Backend.Digraph do
     :ets.give_away(ntab2, pid, :graph_handover)
   end
 
+  @spec handover_main(t(), pid()) :: :ok
   defp handover_main(state, pid) do
     :ets.give_away(state.vertices, pid, :graph_handover)
     :ets.give_away(state.update_count, pid, :graph_handover)

@@ -2,6 +2,7 @@
 defmodule Clarity.Graph.Backend.Digraph.Traversal do
   @moduledoc false
 
+  @doc false
   @spec vertices_within_steps(
           original_graph :: :digraph.graph(),
           root_vertex :: :digraph.vertex(),
