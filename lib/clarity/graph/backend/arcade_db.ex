@@ -68,13 +68,13 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
   def delete(_state, true), do: :ok
 
   def delete(state, false) do
-    execute_cypher(state, "MATCH (n) DETACH DELETE n", %{})
+    execute_cypher(state, "MATCH (n:Vertex) DETACH DELETE n", %{})
     :ok
   end
 
   @impl Backend
   def clear(state) do
-    execute_cypher(state, "MATCH (n) DETACH DELETE n", %{})
+    execute_cypher(state, "MATCH (n:Vertex) DETACH DELETE n", %{})
     %{state | update_count: state.update_count + 1, write_buffer: []}
   end
 

@@ -68,13 +68,13 @@ defmodule Clarity.Graph.Backend.Neo4j do
   def delete(_state, true), do: :ok
 
   def delete(state, false) do
-    execute(state, "MATCH (n) DETACH DELETE n", %{})
+    execute(state, "MATCH (n:Vertex) DETACH DELETE n", %{})
     :ok
   end
 
   @impl Backend
   def clear(state) do
-    execute(state, "MATCH (n) DETACH DELETE n", %{})
+    execute(state, "MATCH (n:Vertex) DETACH DELETE n", %{})
     %{state | update_count: state.update_count + 1, write_buffer: []}
   end
 
