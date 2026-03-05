@@ -19,7 +19,6 @@ defmodule Clarity.Graph.Filter do
       subgraph = Graph.filter(graph, filters)
   """
 
-  alias Clarity.Graph.Util
   alias Clarity.Vertex
 
   @type filter() :: Clarity.Graph.query() | (Clarity.Graph.t() -> Clarity.Graph.query())
@@ -37,8 +36,8 @@ defmodule Clarity.Graph.Filter do
       center_vertex_id = Vertex.id(center_vertex)
 
       allowed_vertex_ids =
-        graph.main_graph
-        |> Util.vertices_within_steps(
+        graph.backend_state
+        |> graph.backend.vertices_within_steps(
           center_vertex_id,
           max_outgoing_steps,
           max_incoming_steps
@@ -55,17 +54,10 @@ defmodule Clarity.Graph.Filter do
   @spec reachable_from([Vertex.t()]) :: filter()
   def reachable_from(source_vertices) do
     fn graph ->
-      source_vertex_ids = MapSet.new(source_vertices, &Vertex.id/1)
+      source_vertex_ids = Enum.map(source_vertices, &Vertex.id/1)
 
-      # Find all vertices reachable from any source vertex
       reachable_vertex_ids =
-        for vertex_id <- :digraph.vertices(graph.main_graph),
-            MapSet.member?(source_vertex_ids, vertex_id) or
-              Enum.any?(source_vertex_ids, fn source_id ->
-                :digraph.get_path(graph.main_graph, source_id, vertex_id) != false
-              end) do
-          vertex_id
-        end
+        graph.backend.reachable_from(graph.backend_state, source_vertex_ids)
 
       {:in, :vertex_id, reachable_vertex_ids}
     end

@@ -1,22 +1,7 @@
 # credo:disable-for-this-file Credo.Check.Refactor.Nesting
-defmodule Clarity.Graph.Util do
+defmodule Clarity.Graph.Backend.Digraph.Traversal do
   @moduledoc false
 
-  @doc """
-  Return a MapSet of all vertices reachable from `root_vertex` within
-  **`max_outgoing_steps` forward hops** *or* **`max_incoming_steps` backward hops**.
-
-  The traversal is breadth‑first in each direction, so the overall complexity
-  remains linear in the size of the resulting vertex set (`O(Vₛ)`).
-
-  ## Parameters
-
-    * `original_graph` – the `:digraph` you want to sample from.
-    * `root_vertex` – where traversal starts.
-    * `max_outgoing_steps` – how far to follow *outgoing* edges.
-    * `max_incoming_steps` – how far to follow *incoming* edges.
-
-  """
   @spec vertices_within_steps(
           original_graph :: :digraph.graph(),
           root_vertex :: :digraph.vertex(),
