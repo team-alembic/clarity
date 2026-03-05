@@ -49,10 +49,18 @@ Display information about vertices in the UI. Implement `Clarity.Content` behavi
 ### 4. Lensmakers (`lib/clarity/perspective/lensmaker/`)
 Create filtered views of the graph for different audiences (architect, security, debug). Implement `Clarity.Perspective.Lensmaker` behaviour with `make_lens/0` and `update_lens/1`.
 
+### 5. Graph Backends (`lib/clarity/graph/backend/`)
+Pluggable storage backends for the graph. Implement `Clarity.Graph.Backend` behaviour. The default `Digraph` backend uses Erlang's `:digraph` and ETS tables. External backends (Neo4j, ArcadeDB) use Cypher over HTTP.
+- `digraph.ex` - Default in-process backend using `:digraph`/ETS
+- `neo4j.ex` - Neo4j backend via HTTP transaction API
+- `arcade_db.ex` - ArcadeDB backend via HTTP command API
+- `cypher.ex` - Shared Cypher query builder used by Neo4j and ArcadeDB
+
 ### Core Modules
 
 - `Clarity.Server` - GenServer orchestrating introspection via PartitionSupervisor workers
-- `Clarity.Graph` - Graph structure using `:digraph`, ETS tables, and tree graphs
+- `Clarity.Graph` - Graph facade delegating to a configured backend. Owns policy guards (ownership, writability)
+- `Clarity.Graph.Backend` - Behaviour defining the graph storage API (~25 callbacks)
 - `Clarity.Graph.Filter` - Tuple-based query syntax for filtering vertices
 - `Clarity.Router` - Phoenix router macros (`import Clarity.Router`, then `clarity "/clarity"`)
 
@@ -83,6 +91,13 @@ config :clarity, :auto_start?, false
 config :clarity, :introspector_applications, [:my_app]
 config :clarity, :default_perspective_lens, "architect"
 config :clarity, :editor, "code --goto __FILE__:__LINE__:__COLUMN__"
+
+# Graph backend (default is Digraph, no config needed)
+config :clarity, :graph_backend, Clarity.Graph.Backend.Neo4j
+config :clarity, Clarity.Graph.Backend.Neo4j,
+  url: "http://localhost:7474",
+  auth: {:basic, "neo4j", "password"},
+  database: "clarity"
 ```
 
 Register extensions per-application:
@@ -110,3 +125,4 @@ Detailed extension guides are in `usage-rules/`:
 - `introspectors.md` - Creating introspectors
 - `content-providers.md` - Creating content providers
 - `lensmakers.md` - Creating lenses
+- `graph-backends.md` - Configuring and creating graph backends

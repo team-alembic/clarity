@@ -78,6 +78,13 @@ config :clarity, :auto_start?, true
 
 # Custom cache path
 config :clarity, :cache_path, "/custom/path"
+
+# Graph backend (default is Digraph)
+config :clarity, :graph_backend, Clarity.Graph.Backend.Neo4j
+config :clarity, Clarity.Graph.Backend.Neo4j,
+  url: "http://localhost:7474",
+  auth: {:basic, "neo4j", "password"},
+  database: "clarity"
 ```
 
 ## Graph Query System
@@ -254,7 +261,17 @@ lib/clarity/
 ├── perspective/
 │   └── lensmaker/            # Lensmaker implementations
 ├── graph/
-│   └── filter.ex             # Filter helpers
+│   ├── backend.ex            # Backend behaviour
+│   ├── backend/
+│   │   ├── digraph.ex        # Default :digraph/ETS backend
+│   │   ├── digraph/          # Digraph internal helpers
+│   │   ├── cypher.ex         # Shared Cypher query builder
+│   │   ├── neo4j.ex          # Neo4j HTTP backend
+│   │   └── arcade_db.ex      # ArcadeDB HTTP backend
+│   ├── filter.ex             # Filter helpers
+│   ├── cache.ex              # Graph cache (persistence)
+│   └── dot.ex                # DOT format export
+├── graph.ex                  # Graph facade (delegates to backend)
 ├── vertex.ex                 # Vertex protocol
 ├── introspector.ex           # Introspector behavior
 ├── content.ex                # Content behavior

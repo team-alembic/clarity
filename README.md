@@ -45,6 +45,35 @@ to your `mix.exs` dependencies.
 - **[ash_diagram](https://hex.pm/packages/ash_diagram)** – Provides mermaid
   diagrams for Ash
 
+## Graph Backends
+
+Clarity uses a pluggable graph backend architecture. The default backend stores
+the graph in-process using Erlang's `:digraph` and ETS tables. For persistent or
+external graph storage, you can swap in a Neo4j or ArcadeDB backend.
+
+```elixir
+# Default - no configuration needed
+config :clarity, :graph_backend, Clarity.Graph.Backend.Digraph
+
+# Neo4j
+config :clarity, :graph_backend, Clarity.Graph.Backend.Neo4j
+config :clarity, Clarity.Graph.Backend.Neo4j,
+  url: "http://localhost:7474",
+  auth: {:basic, "neo4j", "password"},
+  database: "clarity"
+
+# ArcadeDB
+config :clarity, :graph_backend, Clarity.Graph.Backend.ArcadeDB
+config :clarity, Clarity.Graph.Backend.ArcadeDB,
+  url: "http://localhost:2480",
+  auth: {:basic, "root", "password"},
+  database: "clarity"
+```
+
+External backends communicate via HTTP (using `Req`) and require no additional
+dependencies. They use native Cypher queries for paths, reachability, and
+filtering.
+
 ## Installation
 
 ### Igniter
