@@ -19,9 +19,10 @@ defmodule Clarity.Graph.Filter do
       subgraph = Graph.filter(graph, filters)
   """
 
+  alias Clarity.Graph
   alias Clarity.Vertex
 
-  @type filter() :: Clarity.Graph.query() | (Clarity.Graph.t() -> Clarity.Graph.query())
+  @type filter() :: Graph.query() | (Graph.t() -> Graph.query())
 
   @doc """
   Creates a filter that includes vertices within the specified number of steps
@@ -36,8 +37,8 @@ defmodule Clarity.Graph.Filter do
       center_vertex_id = Vertex.id(center_vertex)
 
       allowed_vertex_ids =
-        graph.backend_state
-        |> graph.backend.vertices_within_steps(
+        graph
+        |> Graph.vertices_within_steps(
           center_vertex_id,
           max_outgoing_steps,
           max_incoming_steps
@@ -56,8 +57,7 @@ defmodule Clarity.Graph.Filter do
     fn graph ->
       source_vertex_ids = Enum.map(source_vertices, &Vertex.id/1)
 
-      reachable_vertex_ids =
-        graph.backend.reachable_from(graph.backend_state, source_vertex_ids)
+      reachable_vertex_ids = Graph.reachable_from(graph, source_vertex_ids)
 
       {:in, :vertex_id, reachable_vertex_ids}
     end
@@ -140,7 +140,7 @@ defmodule Clarity.Graph.Filter do
     end
   end
 
-  @spec evaluate_filter(filter(), Clarity.Graph.t()) :: Clarity.Graph.query()
+  @spec evaluate_filter(filter(), Graph.t()) :: Graph.query()
   defp evaluate_filter(filter, graph) when is_function(filter), do: filter.(graph)
   defp evaluate_filter(filter, _graph), do: filter
 end

@@ -172,7 +172,7 @@ defmodule Clarity.Graph.Cache do
   end
 
   @spec delete_ets_transfer_messages(non_neg_integer()) :: :ok
-  defp delete_ets_transfer_messages(count \\ 12)
+  defp delete_ets_transfer_messages(count \\ 13)
   defp delete_ets_transfer_messages(0), do: :ok
 
   defp delete_ets_transfer_messages(count) do

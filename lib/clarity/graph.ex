@@ -9,10 +9,10 @@ defmodule Clarity.Graph do
   alias Clarity.Vertex.Root
 
   @derive {Inspect, only: [:owner, :subgraph]}
-  @enforce_keys [:backend, :backend_state, :owner]
+  @enforce_keys [:backend, :state_ref, :owner]
   defstruct [
     :backend,
-    :backend_state,
+    :state_ref,
     :owner,
     subgraph: false
   ]
@@ -28,7 +28,7 @@ defmodule Clarity.Graph do
   """
   @opaque t() :: %__MODULE__{
             backend: module(),
-            backend_state: Backend.state(),
+            state_ref: :ets.tid(),
             owner: pid(),
             subgraph: boolean()
           }
@@ -54,7 +54,7 @@ defmodule Clarity.Graph do
 
     graph = %__MODULE__{
       backend: backend,
-      backend_state: backend_state,
+      state_ref: new_state_ref(backend_state),
       owner: self()
     }
 
@@ -68,7 +68,9 @@ defmodule Clarity.Graph do
   @spec delete(t()) :: result()
   def delete(%__MODULE__{} = graph) do
     with :ok <- check_owner(graph) do
-      graph.backend.delete(graph.backend_state, graph.subgraph)
+      graph.backend.delete(get_backend_state(graph), graph.subgraph)
+      :ets.delete(graph.state_ref)
+
       :ok
     end
   end
@@ -82,7 +84,11 @@ defmodule Clarity.Graph do
   @spec handover(t(), pid()) :: result(t())
   def handover(%__MODULE__{} = graph, pid) do
     with :ok <- check_owner(graph) do
-      _new_backend_state = graph.backend.handover(graph.backend_state, pid, graph.subgraph)
+      new_backend_state =
+        graph.backend.handover(get_backend_state(graph), pid, graph.subgraph)
+
+      put_backend_state(graph, new_backend_state)
+      :ets.give_away(graph.state_ref, pid, :graph_handover)
       {:ok, %{graph | owner: pid}}
     end
   end
@@ -95,7 +101,8 @@ defmodule Clarity.Graph do
   @spec clear(t()) :: result()
   def clear(%__MODULE__{} = graph) do
     with :ok <- check_writable(graph) do
-      graph.backend.clear(graph.backend_state)
+      new_backend_state = graph.backend.clear(get_backend_state(graph))
+      put_backend_state(graph, new_backend_state)
       add_root_vertex(graph)
       :ok
     end
@@ -110,14 +117,16 @@ defmodule Clarity.Graph do
       vertex_id = Vertex.id(vertex)
       caused_by_id = Vertex.id(caused_by)
 
-      graph.backend.add_vertex(
-        graph.backend_state,
-        vertex_id,
-        vertex.__struct__,
-        vertex,
-        caused_by_id
-      )
+      new_backend_state =
+        graph.backend.add_vertex(
+          get_backend_state(graph),
+          vertex_id,
+          vertex.__struct__,
+          vertex,
+          caused_by_id
+        )
 
+      put_backend_state(graph, new_backend_state)
       :ok
     end
   end
@@ -131,8 +140,10 @@ defmodule Clarity.Graph do
       from_id = Vertex.id(from_vertex)
       to_id = Vertex.id(to_vertex)
 
-      graph.backend.add_edge(graph.backend_state, from_id, to_id, label)
+      new_backend_state =
+        graph.backend.add_edge(get_backend_state(graph), from_id, to_id, label)
 
+      put_backend_state(graph, new_backend_state)
       :ok
     end
   end
@@ -142,7 +153,7 @@ defmodule Clarity.Graph do
   """
   @spec vertex_count(t()) :: non_neg_integer()
   def vertex_count(%__MODULE__{} = graph) do
-    graph.backend.vertex_count(graph.backend_state)
+    graph.backend.vertex_count(get_backend_state(graph))
   end
 
   @doc """
@@ -150,7 +161,7 @@ defmodule Clarity.Graph do
   """
   @spec get_vertex(t(), String.t()) :: Vertex.t() | nil
   def get_vertex(%__MODULE__{} = graph, vertex_id) do
-    graph.backend.get_vertex(graph.backend_state, vertex_id)
+    graph.backend.get_vertex(get_backend_state(graph), vertex_id)
   end
 
   @doc """
@@ -210,7 +221,7 @@ defmodule Clarity.Graph do
   """
   @spec vertices(t(), query()) :: [Vertex.t()]
   def vertices(%__MODULE__{} = graph, query \\ true) do
-    graph.backend.vertices(graph.backend_state, query)
+    graph.backend.vertices(get_backend_state(graph), query)
   end
 
   @doc """
@@ -220,12 +231,12 @@ defmodule Clarity.Graph do
   """
   @spec available_vertex_types(t()) :: [module()]
   def available_vertex_types(%__MODULE__{} = graph) do
-    graph.backend.available_vertex_types(graph.backend_state)
+    graph.backend.available_vertex_types(get_backend_state(graph))
   end
 
   @spec vertex_ids(t(), query()) :: [String.t()]
   defp vertex_ids(%__MODULE__{} = graph, query) do
-    graph.backend.vertex_ids(graph.backend_state, query)
+    graph.backend.vertex_ids(get_backend_state(graph), query)
   end
 
   @doc """
@@ -234,7 +245,7 @@ defmodule Clarity.Graph do
   @spec out_edges(t(), Vertex.t()) :: [:digraph.edge()]
   def out_edges(%__MODULE__{} = graph, vertex) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.out_edges(graph.backend_state, vertex_id)
+    graph.backend.out_edges(get_backend_state(graph), vertex_id)
   end
 
   @doc """
@@ -243,7 +254,7 @@ defmodule Clarity.Graph do
   @spec in_edges(t(), Vertex.t()) :: [:digraph.edge()]
   def in_edges(%__MODULE__{} = graph, vertex) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.in_edges(graph.backend_state, vertex_id)
+    graph.backend.in_edges(get_backend_state(graph), vertex_id)
   end
 
   @doc """
@@ -251,7 +262,7 @@ defmodule Clarity.Graph do
   """
   @spec edges(t()) :: [:digraph.edge()]
   def edges(%__MODULE__{} = graph) do
-    graph.backend.edges(graph.backend_state)
+    graph.backend.edges(get_backend_state(graph))
   end
 
   @doc """
@@ -261,7 +272,7 @@ defmodule Clarity.Graph do
           {:digraph.edge(), Vertex.t() | nil, Vertex.t() | nil, :digraph.label()}
           | false
   def edge(%__MODULE__{} = graph, edge_id) do
-    graph.backend.edge(graph.backend_state, edge_id)
+    graph.backend.edge(get_backend_state(graph), edge_id)
   end
 
   @doc """
@@ -270,7 +281,7 @@ defmodule Clarity.Graph do
   @spec out_neighbors(t(), Vertex.t()) :: [Vertex.t()]
   def out_neighbors(%__MODULE__{} = graph, vertex) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.out_neighbors(graph.backend_state, vertex_id)
+    graph.backend.out_neighbors(get_backend_state(graph), vertex_id)
   end
 
   @doc """
@@ -279,7 +290,7 @@ defmodule Clarity.Graph do
   @spec in_neighbors(t(), Vertex.t()) :: [Vertex.t()]
   def in_neighbors(%__MODULE__{} = graph, vertex) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.in_neighbors(graph.backend_state, vertex_id)
+    graph.backend.in_neighbors(get_backend_state(graph), vertex_id)
   end
 
   @doc """
@@ -302,7 +313,7 @@ defmodule Clarity.Graph do
   """
   @spec get_update_count(t()) :: pos_integer()
   def get_update_count(%__MODULE__{} = graph) do
-    graph.backend.get_update_count(graph.backend_state)
+    graph.backend.get_update_count(get_backend_state(graph))
   end
 
   @doc """
@@ -311,7 +322,7 @@ defmodule Clarity.Graph do
   @spec in_degree(t(), Vertex.t()) :: non_neg_integer()
   def in_degree(%__MODULE__{} = graph, vertex) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.in_degree(graph.backend_state, vertex_id)
+    graph.backend.in_degree(get_backend_state(graph), vertex_id)
   end
 
   @doc """
@@ -320,7 +331,7 @@ defmodule Clarity.Graph do
   @spec in_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
   def in_degree(%__MODULE__{} = graph, vertex, label) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.in_degree(graph.backend_state, vertex_id, label)
+    graph.backend.in_degree(get_backend_state(graph), vertex_id, label)
   end
 
   @doc """
@@ -329,7 +340,7 @@ defmodule Clarity.Graph do
   @spec out_degree(t(), Vertex.t()) :: non_neg_integer()
   def out_degree(%__MODULE__{} = graph, vertex) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.out_degree(graph.backend_state, vertex_id)
+    graph.backend.out_degree(get_backend_state(graph), vertex_id)
   end
 
   @doc """
@@ -338,7 +349,7 @@ defmodule Clarity.Graph do
   @spec out_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
   def out_degree(%__MODULE__{} = graph, vertex, label) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.out_degree(graph.backend_state, vertex_id, label)
+    graph.backend.out_degree(get_backend_state(graph), vertex_id, label)
   end
 
   @doc """
@@ -348,7 +359,11 @@ defmodule Clarity.Graph do
   def purge(%__MODULE__{} = graph, vertex) do
     with :ok <- check_writable(graph) do
       vertex_id = Vertex.id(vertex)
-      {purged_vertices, _new_state} = graph.backend.purge(graph.backend_state, vertex_id)
+
+      {purged_vertices, new_backend_state} =
+        graph.backend.purge(get_backend_state(graph), vertex_id)
+
+      put_backend_state(graph, new_backend_state)
       {:ok, purged_vertices}
     end
   end
@@ -360,7 +375,7 @@ defmodule Clarity.Graph do
   @spec breadcrumbs(t(), Vertex.t()) :: [Vertex.t()] | false
   def breadcrumbs(%__MODULE__{} = graph, vertex) do
     to_id = Vertex.id(vertex)
-    graph.backend.breadcrumbs(graph.backend_state, to_id)
+    graph.backend.breadcrumbs(get_backend_state(graph), to_id)
   end
 
   @doc """
@@ -372,7 +387,7 @@ defmodule Clarity.Graph do
   def get_short_path(%__MODULE__{} = graph, from_vertex, to_vertex) do
     from_id = Vertex.id(from_vertex)
     to_id = Vertex.id(to_vertex)
-    graph.backend.get_short_path(graph.backend_state, from_id, to_id)
+    graph.backend.get_short_path(get_backend_state(graph), from_id, to_id)
   end
 
   @doc """
@@ -389,7 +404,19 @@ defmodule Clarity.Graph do
   @spec navigation_children(t(), Vertex.t()) :: %{:digraph.label() => [Vertex.t()]}
   def navigation_children(%__MODULE__{} = graph, vertex) do
     vertex_id = Vertex.id(vertex)
-    graph.backend.navigation_children(graph.backend_state, vertex_id)
+    graph.backend.navigation_children(get_backend_state(graph), vertex_id)
+  end
+
+  @doc false
+  @spec vertices_within_steps(t(), String.t(), non_neg_integer(), non_neg_integer()) :: MapSet.t()
+  def vertices_within_steps(%__MODULE__{} = graph, vertex_id, max_out, max_in) do
+    graph.backend.vertices_within_steps(get_backend_state(graph), vertex_id, max_out, max_in)
+  end
+
+  @doc false
+  @spec reachable_from(t(), [String.t()]) :: [String.t()]
+  def reachable_from(%__MODULE__{} = graph, source_vertex_ids) do
+    graph.backend.reachable_from(get_backend_state(graph), source_vertex_ids)
   end
 
   @doc """
@@ -424,11 +451,13 @@ defmodule Clarity.Graph do
     query = if is_function(filter), do: filter.(graph), else: filter
 
     included_vertex_ids = vertex_ids(graph, query)
-    new_backend_state = graph.backend.create_subgraph(graph.backend_state, included_vertex_ids)
+
+    new_backend_state =
+      graph.backend.create_subgraph(get_backend_state(graph), included_vertex_ids)
 
     %__MODULE__{
       backend: graph.backend,
-      backend_state: new_backend_state,
+      state_ref: new_state_ref(new_backend_state),
       owner: self(),
       subgraph: true
     }
@@ -445,7 +474,7 @@ defmodule Clarity.Graph do
   def persist(%__MODULE__{subgraph: true}, _path), do: {:error, :subgraphs_are_readonly}
 
   def persist(%__MODULE__{} = graph, path) do
-    graph.backend.persist(graph.backend_state, path)
+    graph.backend.persist(get_backend_state(graph), path)
   end
 
   @doc """
@@ -466,7 +495,7 @@ defmodule Clarity.Graph do
       {:ok, backend_state} ->
         graph = %__MODULE__{
           backend: backend,
-          backend_state: backend_state,
+          state_ref: new_state_ref(backend_state),
           owner: self()
         }
 
@@ -477,8 +506,6 @@ defmodule Clarity.Graph do
     end
   end
 
-  # Kept for backward compatibility with Graph.DOT and any external consumers
-  # that need to unpack/pack digraphs for the default backend.
   @dialyzer {:nowarn_function, unpack_digraph: 1}
   @spec unpack_digraph(:digraph.graph()) ::
           {:ets.tid(), :ets.tid(), :ets.tid(), boolean()}
@@ -492,18 +519,44 @@ defmodule Clarity.Graph do
     Backend.Digraph.pack_digraph(vtab, etab, ntab, cyclic)
   end
 
+  # Mutable state cell for backend state.
+  # Backends like Neo4j/ArcadeDB return updated state from write operations
+  # (e.g. with buffered writes, updated counters). This ETS table acts as a
+  # mutable cell so callers don't need to thread state back through the
+  # fire-and-forget API (add_vertex returns :ok, not an updated graph).
+
+  @spec new_state_ref(Backend.state()) :: :ets.tid()
+  defp new_state_ref(backend_state) do
+    ref = :ets.new(:graph_state, [:set, :public])
+    :ets.insert(ref, {:state, backend_state})
+    ref
+  end
+
+  @spec get_backend_state(t()) :: Backend.state()
+  defp get_backend_state(%__MODULE__{state_ref: ref}) do
+    :ets.lookup_element(ref, :state, 2)
+  end
+
+  @spec put_backend_state(t(), Backend.state()) :: true
+  defp put_backend_state(%__MODULE__{state_ref: ref}, backend_state) do
+    :ets.insert(ref, {:state, backend_state})
+  end
+
   @spec add_root_vertex(t()) :: :ok
   defp add_root_vertex(graph) do
     root_vertex = %Root{}
     root_id = Vertex.id(root_vertex)
 
-    graph.backend.add_vertex(
-      graph.backend_state,
-      root_id,
-      Root,
-      root_vertex,
-      root_id
-    )
+    new_backend_state =
+      graph.backend.add_vertex(
+        get_backend_state(graph),
+        root_id,
+        Root,
+        root_vertex,
+        root_id
+      )
+
+    put_backend_state(graph, new_backend_state)
 
     :ok
   end
