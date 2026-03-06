@@ -5,6 +5,7 @@ defmodule Clarity.Graph do
 
   alias Clarity.Graph.Backend
   alias Clarity.Graph.Filter
+  alias Clarity.Graph.StateRef
   alias Clarity.Vertex
   alias Clarity.Vertex.Root
 
@@ -54,7 +55,7 @@ defmodule Clarity.Graph do
 
     graph = %__MODULE__{
       backend: backend,
-      state_ref: new_state_ref(backend_state),
+      state_ref: StateRef.new(backend_state),
       owner: self()
     }
 
@@ -69,7 +70,7 @@ defmodule Clarity.Graph do
   def delete(%__MODULE__{} = graph) do
     with :ok <- check_owner(graph) do
       graph.backend.delete(get_backend_state(graph), graph.subgraph)
-      :ets.delete(graph.state_ref)
+      StateRef.delete(graph.state_ref)
 
       :ok
     end
@@ -88,7 +89,7 @@ defmodule Clarity.Graph do
         graph.backend.handover(get_backend_state(graph), pid, graph.subgraph)
 
       put_backend_state(graph, new_backend_state)
-      :ets.give_away(graph.state_ref, pid, :graph_handover)
+      StateRef.give_away(graph.state_ref, pid)
       {:ok, %{graph | owner: pid}}
     end
   end
@@ -407,18 +408,6 @@ defmodule Clarity.Graph do
     graph.backend.navigation_children(get_backend_state(graph), vertex_id)
   end
 
-  @doc false
-  @spec vertices_within_steps(t(), String.t(), non_neg_integer(), non_neg_integer()) :: MapSet.t()
-  def vertices_within_steps(%__MODULE__{} = graph, vertex_id, max_out, max_in) do
-    graph.backend.vertices_within_steps(get_backend_state(graph), vertex_id, max_out, max_in)
-  end
-
-  @doc false
-  @spec reachable_from(t(), [String.t()]) :: [String.t()]
-  def reachable_from(%__MODULE__{} = graph, source_vertex_ids) do
-    graph.backend.reachable_from(get_backend_state(graph), source_vertex_ids)
-  end
-
   @doc """
   Creates a filtered subgraph using a composable filter.
   Returns a new Clarity.Graph instance with the filtered vertices and edges.
@@ -457,7 +446,7 @@ defmodule Clarity.Graph do
 
     %__MODULE__{
       backend: graph.backend,
-      state_ref: new_state_ref(new_backend_state),
+      state_ref: StateRef.new(new_backend_state),
       owner: self(),
       subgraph: true
     }
@@ -495,7 +484,7 @@ defmodule Clarity.Graph do
       {:ok, backend_state} ->
         graph = %__MODULE__{
           backend: backend,
-          state_ref: new_state_ref(backend_state),
+          state_ref: StateRef.new(backend_state),
           owner: self()
         }
 
@@ -519,27 +508,14 @@ defmodule Clarity.Graph do
     Backend.Digraph.pack_digraph(vtab, etab, ntab, cyclic)
   end
 
-  # Mutable state cell for backend state.
-  # Backends like Neo4j/ArcadeDB return updated state from write operations
-  # (e.g. with buffered writes, updated counters). This ETS table acts as a
-  # mutable cell so callers don't need to thread state back through the
-  # fire-and-forget API (add_vertex returns :ok, not an updated graph).
-
-  @spec new_state_ref(Backend.state()) :: :ets.tid()
-  defp new_state_ref(backend_state) do
-    ref = :ets.new(:graph_state, [:set, :public])
-    :ets.insert(ref, {:state, backend_state})
-    ref
-  end
-
   @spec get_backend_state(t()) :: Backend.state()
   defp get_backend_state(%__MODULE__{state_ref: ref}) do
-    :ets.lookup_element(ref, :state, 2)
+    StateRef.get(ref)
   end
 
   @spec put_backend_state(t(), Backend.state()) :: true
   defp put_backend_state(%__MODULE__{state_ref: ref}, backend_state) do
-    :ets.insert(ref, {:state, backend_state})
+    StateRef.put(ref, backend_state)
   end
 
   @spec add_root_vertex(t()) :: :ok

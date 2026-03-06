@@ -20,6 +20,7 @@ defmodule Clarity.Graph.Filter do
   """
 
   alias Clarity.Graph
+  alias Clarity.Graph.Traversal
   alias Clarity.Vertex
 
   @type filter() :: Graph.query() | (Graph.t() -> Graph.query())
@@ -34,15 +35,9 @@ defmodule Clarity.Graph.Filter do
   @spec within_steps(Vertex.t(), non_neg_integer(), non_neg_integer()) :: filter()
   def within_steps(center_vertex, max_outgoing_steps, max_incoming_steps) do
     fn graph ->
-      center_vertex_id = Vertex.id(center_vertex)
-
       allowed_vertex_ids =
         graph
-        |> Graph.vertices_within_steps(
-          center_vertex_id,
-          max_outgoing_steps,
-          max_incoming_steps
-        )
+        |> Traversal.vertices_within_steps(center_vertex, max_outgoing_steps, max_incoming_steps)
         |> MapSet.to_list()
 
       {:in, :vertex_id, allowed_vertex_ids}
@@ -55,9 +50,7 @@ defmodule Clarity.Graph.Filter do
   @spec reachable_from([Vertex.t()]) :: filter()
   def reachable_from(source_vertices) do
     fn graph ->
-      source_vertex_ids = Enum.map(source_vertices, &Vertex.id/1)
-
-      reachable_vertex_ids = Graph.reachable_from(graph, source_vertex_ids)
+      reachable_vertex_ids = Traversal.reachable_from(graph, source_vertices)
 
       {:in, :vertex_id, reachable_vertex_ids}
     end

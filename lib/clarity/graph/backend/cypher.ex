@@ -19,6 +19,39 @@ defmodule Clarity.Graph.Backend.Cypher do
     end
   end
 
+  @doc false
+  @spec query_with_subgraph(Clarity.Graph.query(), String.t(), MapSet.t(String.t()) | nil) ::
+          String.t()
+  def query_with_subgraph(query, var, subgraph_ids) do
+    query_clause = translate_query(query, var)
+    subgraph_clause = subgraph_filter_clause(subgraph_ids, var)
+
+    case {query_clause, subgraph_clause} do
+      {nil, nil} -> ""
+      {nil, subgraph} -> " WHERE #{subgraph}"
+      {query_part, nil} -> " WHERE #{query_part}"
+      {query_part, subgraph} -> " WHERE (#{query_part}) AND (#{subgraph})"
+    end
+  end
+
+  @doc false
+  @spec subgraph_where(MapSet.t(String.t()) | nil, String.t()) :: String.t()
+  def subgraph_where(nil, _var), do: ""
+
+  def subgraph_where(ids, var) do
+    " WHERE " <> subgraph_filter_clause(ids, var)
+  end
+
+  @doc false
+  @spec subgraph_where_multi(MapSet.t(String.t()) | nil, [String.t()]) :: String.t()
+  def subgraph_where_multi(nil, _vars), do: ""
+
+  def subgraph_where_multi(ids, vars) do
+    id_list = cypher_list(MapSet.to_list(ids))
+    clauses = Enum.map_join(vars, " AND ", fn var -> "#{var}.id IN #{id_list}" end)
+    " WHERE #{clauses}"
+  end
+
   @spec translate_query(Clarity.Graph.query(), String.t()) :: String.t() | nil
   defp translate_query(true, _var), do: nil
   defp translate_query(false, _var), do: "false"
@@ -88,6 +121,19 @@ defmodule Clarity.Graph.Backend.Cypher do
     str
     |> String.replace("\\", "\\\\")
     |> String.replace("'", "\\'")
+  end
+
+  @doc false
+  @spec cypher_list([String.t()]) :: String.t()
+  def cypher_list(items) do
+    "[#{Enum.map_join(items, ", ", &"'#{escape_cypher_string(&1)}'")}]"
+  end
+
+  @spec subgraph_filter_clause(MapSet.t(String.t()) | nil, String.t()) :: String.t() | nil
+  defp subgraph_filter_clause(nil, _var), do: nil
+
+  defp subgraph_filter_clause(ids, var) do
+    "#{var}.id IN #{cypher_list(MapSet.to_list(ids))}"
   end
 
   # Vertex serialization
