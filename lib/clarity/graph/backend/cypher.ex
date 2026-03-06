@@ -220,7 +220,8 @@ defmodule Clarity.Graph.Backend.Cypher do
   @doc false
   @spec vertices_within_steps_cypher(String.t(), non_neg_integer(), non_neg_integer()) ::
           {String.t(), map()}
-  def vertices_within_steps_cypher(vertex_id, max_out, max_in) do
+  def vertices_within_steps_cypher(vertex_id, max_out, max_in)
+      when is_integer(max_out) and max_out >= 0 and is_integer(max_in) and max_in >= 0 do
     cypher = """
     MATCH (center:Vertex {id: $id})
     OPTIONAL MATCH (center)-[:EDGE*0..#{max_out}]->(out_v:Vertex)

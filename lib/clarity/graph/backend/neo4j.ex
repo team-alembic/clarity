@@ -178,11 +178,13 @@ defmodule Clarity.Graph.Backend.Neo4j do
         end)
 
         Enum.each(data.edges, fn edge ->
+          rel_type = validate_rel_type!(edge["type"])
+
           run_query(
             state,
             """
             MATCH (a:Vertex {id: $from}), (b:Vertex {id: $to})
-            CREATE (a)-[:#{edge["type"]} {label: $label}]->(b)
+            CREATE (a)-[:#{rel_type} {label: $label}]->(b)
             """,
             %{"from" => edge["from"], "to" => edge["to"], "label" => edge["label"]}
           )
@@ -227,8 +229,11 @@ defmodule Clarity.Graph.Backend.Neo4j do
     path = "/db/#{state.database}/tx/commit"
 
     case Req.post(state.req, url: path, json: body) do
-      {:ok, %{status: 200, body: %{"results" => [%{"data" => data} | _]}}} ->
-        Enum.map(data, fn %{"row" => row} -> row end)
+      {:ok, %{status: 200, body: %{"results" => results}}} ->
+        Enum.flat_map(results, fn
+          %{"data" => data} -> Enum.map(data, fn %{"row" => row} -> row end)
+          _ -> []
+        end)
 
       {:ok, %{status: 200}} ->
         []
@@ -260,4 +265,12 @@ defmodule Clarity.Graph.Backend.Neo4j do
 
     :ok
   end
+
+  @allowed_rel_types ~w(EDGE TREE_EDGE CAUSED_BY)
+
+  @spec validate_rel_type!(String.t()) :: String.t()
+  defp validate_rel_type!(type) when type in @allowed_rel_types, do: type
+
+  defp validate_rel_type!(type),
+    do: raise(ArgumentError, "invalid relationship type: #{inspect(type)}")
 end

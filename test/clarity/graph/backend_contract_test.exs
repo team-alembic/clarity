@@ -173,95 +173,7 @@ defmodule Clarity.Graph.BackendContractTest do
     end
   end
 
-  defmodule Neo4jStub do
-    @moduledoc false
-    @behaviour Backend
-
-    alias Clarity.Graph.BackendContractTest.RemoteStubCore
-
-    for {name, arity} <- [
-          {:new, 1},
-          {:delete, 2},
-          {:clear, 1},
-          {:handover, 3},
-          {:add_vertex, 5},
-          {:add_edge, 4},
-          {:purge, 2},
-          {:get_vertex, 2},
-          {:vertex_count, 1},
-          {:get_update_count, 1},
-          {:out_neighbors, 2},
-          {:in_neighbors, 2},
-          {:out_edges, 2},
-          {:in_edges, 2},
-          {:edges, 1},
-          {:edge, 2},
-          {:in_degree, 2},
-          {:in_degree, 3},
-          {:out_degree, 2},
-          {:out_degree, 3},
-          {:vertices, 2},
-          {:vertex_ids, 2},
-          {:available_vertex_types, 1},
-          {:breadcrumbs, 2},
-          {:get_short_path, 3},
-          {:navigation_children, 2},
-          {:vertices_within_steps, 4},
-          {:reachable_from, 2},
-          {:create_subgraph, 2},
-          {:persist, 2},
-          {:load, 2}
-        ] do
-      args = Macro.generate_arguments(arity, __MODULE__)
-      defdelegate unquote(name)(unquote_splicing(args)), to: RemoteStubCore
-    end
-  end
-
-  defmodule ArcadeDBStub do
-    @moduledoc false
-    @behaviour Backend
-
-    alias Clarity.Graph.BackendContractTest.RemoteStubCore
-
-    for {name, arity} <- [
-          {:new, 1},
-          {:delete, 2},
-          {:clear, 1},
-          {:handover, 3},
-          {:add_vertex, 5},
-          {:add_edge, 4},
-          {:purge, 2},
-          {:get_vertex, 2},
-          {:vertex_count, 1},
-          {:get_update_count, 1},
-          {:out_neighbors, 2},
-          {:in_neighbors, 2},
-          {:out_edges, 2},
-          {:in_edges, 2},
-          {:edges, 1},
-          {:edge, 2},
-          {:in_degree, 2},
-          {:in_degree, 3},
-          {:out_degree, 2},
-          {:out_degree, 3},
-          {:vertices, 2},
-          {:vertex_ids, 2},
-          {:available_vertex_types, 1},
-          {:breadcrumbs, 2},
-          {:get_short_path, 3},
-          {:navigation_children, 2},
-          {:vertices_within_steps, 4},
-          {:reachable_from, 2},
-          {:create_subgraph, 2},
-          {:persist, 2},
-          {:load, 2}
-        ] do
-      args = Macro.generate_arguments(arity, __MODULE__)
-      defdelegate unquote(name)(unquote_splicing(args)), to: RemoteStubCore
-    end
-  end
-
-  @backends [Digraph, Neo4jStub, ArcadeDBStub]
+  @backends [Digraph, RemoteStubCore]
 
   for backend <- @backends do
     describe "backend contract #{inspect(backend)}" do
@@ -315,6 +227,35 @@ defmodule Clarity.Graph.BackendContractTest do
         assert Graph.get_update_count(graph) > before_count
 
         assert :ok = Graph.delete(graph)
+      end
+
+      test "persist and load round-trip" do
+        graph = Graph.new(backend: unquote(backend))
+
+        app = %Application{app: :persist_app, description: "Persist App", version: "1.0.0"}
+        mod = %Module{module: PersistModule}
+
+        Graph.add_vertex(graph, app, %Root{})
+        Graph.add_vertex(graph, mod, app)
+        Graph.add_edge(graph, %Root{}, app, :application)
+        Graph.add_edge(graph, app, mod, :module)
+
+        path = Path.join(System.tmp_dir!(), "clarity_persist_test_#{unquote(backend) |> inspect() |> String.replace(".", "_")}")
+        File.rm_rf!(path)
+
+        assert :ok = Graph.persist(graph, path)
+        assert {:ok, loaded_graph} = Graph.load(path, backend: unquote(backend))
+
+        assert Graph.vertex_count(loaded_graph) == 3
+        assert Graph.get_vertex(loaded_graph, "root") == %Root{}
+
+        loaded_app = Graph.get_vertex(loaded_graph, Clarity.Vertex.id(app))
+        assert loaded_app == app
+
+        assert :ok = Graph.delete(loaded_graph)
+        assert :ok = Graph.delete(graph)
+
+        File.rm_rf!(path)
       end
     end
   end

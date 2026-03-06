@@ -495,19 +495,6 @@ defmodule Clarity.Graph do
     end
   end
 
-  @dialyzer {:nowarn_function, unpack_digraph: 1}
-  @spec unpack_digraph(:digraph.graph()) ::
-          {:ets.tid(), :ets.tid(), :ets.tid(), boolean()}
-  def unpack_digraph(digraph) do
-    Backend.Digraph.unpack_digraph(digraph)
-  end
-
-  @dialyzer {:nowarn_function, pack_digraph: 4}
-  @spec pack_digraph(:ets.tid(), :ets.tid(), :ets.tid(), boolean()) :: :digraph.graph()
-  def pack_digraph(vtab, etab, ntab, cyclic) do
-    Backend.Digraph.pack_digraph(vtab, etab, ntab, cyclic)
-  end
-
   @spec get_backend_state(t()) :: Backend.state()
   defp get_backend_state(%__MODULE__{state_ref: ref}) do
     StateRef.get(ref)

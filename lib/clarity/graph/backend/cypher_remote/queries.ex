@@ -268,7 +268,8 @@ defmodule Clarity.Graph.Backend.CypherRemote.Queries do
           module()
         ) ::
           MapSet.t(String.t())
-  def vertices_within_steps(state, vertex_id, max_out, max_in, adapter) do
+  def vertices_within_steps(state, vertex_id, max_out, max_in, adapter)
+      when is_integer(max_out) and max_out >= 0 and is_integer(max_in) and max_in >= 0 do
     state = flush(state, adapter)
 
     state

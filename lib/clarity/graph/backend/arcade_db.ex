@@ -178,11 +178,13 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
         end)
 
         Enum.each(data.edges, fn edge ->
+          rel_type = validate_rel_type!(edge["type"])
+
           run_query(
             state,
             """
             MATCH (a:Vertex {id: $from}), (b:Vertex {id: $to})
-            CREATE (a)-[:#{edge["type"]} {label: $label}]->(b)
+            CREATE (a)-[:#{rel_type} {label: $label}]->(b)
             """,
             %{"from" => edge["from"], "to" => edge["to"], "label" => edge["label"]}
           )
@@ -220,7 +222,29 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
   @doc false
   @spec run_batch(t(), [{String.t(), map()}]) :: [[term()]]
   def run_batch(state, statements) do
-    Enum.flat_map(statements, fn {cypher, params} -> run_query(state, cypher, params) end)
+    body = %{
+      "language" => "cypher",
+      "serializer" => "record",
+      "operations" => Enum.map(statements, fn {cypher, params} ->
+        %{"language" => "cypher", "command" => cypher, "params" => params}
+      end)
+    }
+
+    path = "/api/v1/batch/#{state.database}"
+
+    case Req.post(state.req, url: path, json: body) do
+      {:ok, %{status: 200, body: %{"result" => result}}} ->
+        Enum.map(result, &extract_row/1)
+
+      {:ok, %{status: 200}} ->
+        []
+
+      {:ok, _} ->
+        Enum.flat_map(statements, fn {cypher, params} -> run_query(state, cypher, params) end)
+
+      {:error, _} ->
+        Enum.flat_map(statements, fn {cypher, params} -> run_query(state, cypher, params) end)
+    end
   end
 
   @spec build_req(String.t(), {:basic, String.t(), String.t()}) :: term()
@@ -237,17 +261,20 @@ defmodule Clarity.Graph.Backend.ArcadeDB do
   defp extract_row(values) when is_list(values), do: values
   defp extract_row(other), do: [other]
 
+  @allowed_rel_types ~w(EDGE TREE_EDGE CAUSED_BY)
+
+  @spec validate_rel_type!(String.t()) :: String.t()
+  defp validate_rel_type!(type) when type in @allowed_rel_types, do: type
+
+  defp validate_rel_type!(type),
+    do: raise(ArgumentError, "invalid relationship type: #{inspect(type)}")
+
   @spec ensure_schema(t()) :: :ok
   defp ensure_schema(state) do
-    try do
-      run_query(state, "CREATE VERTEX TYPE Vertex IF NOT EXISTS", %{})
-      run_query(state, "CREATE EDGE TYPE EDGE IF NOT EXISTS", %{})
-      run_query(state, "CREATE EDGE TYPE TREE_EDGE IF NOT EXISTS", %{})
-      run_query(state, "CREATE EDGE TYPE CAUSED_BY IF NOT EXISTS", %{})
-    rescue
-      _ -> :ok
-    end
-
+    run_query(state, "CREATE VERTEX TYPE Vertex IF NOT EXISTS", %{})
+    run_query(state, "CREATE EDGE TYPE EDGE IF NOT EXISTS", %{})
+    run_query(state, "CREATE EDGE TYPE TREE_EDGE IF NOT EXISTS", %{})
+    run_query(state, "CREATE EDGE TYPE CAUSED_BY IF NOT EXISTS", %{})
     :ok
   end
 end
