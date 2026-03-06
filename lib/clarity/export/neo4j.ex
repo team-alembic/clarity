@@ -103,6 +103,15 @@ defmodule Clarity.Export.Neo4j do
     path = "/db/#{state.database}/tx/commit"
 
     case state.request_fun.(state.req, url: path, json: body) do
+      {:ok, %{status: 200, body: %{"errors" => [_ | _] = errors}}} ->
+        raise "Neo4j export error: #{inspect(errors)}"
+
+      {:ok, %{status: 200, body: %{"errors" => []}}} ->
+        %{state | requests: state.requests + 1}
+
+      {:ok, %{status: 200, body: %{"results" => _results}}} ->
+        %{state | requests: state.requests + 1}
+
       {:ok, %{status: 200}} ->
         %{state | requests: state.requests + 1}
 

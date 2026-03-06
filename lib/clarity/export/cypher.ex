@@ -5,6 +5,9 @@ defmodule Clarity.Export.Cypher do
 
   alias Clarity.Vertex
 
+  @neo4j_max_integer 9_223_372_036_854_775_807
+  @neo4j_min_integer -9_223_372_036_854_775_808
+
   @doc """
   Serializes a Clarity vertex into exportable properties.
   """
@@ -56,7 +59,13 @@ defmodule Clarity.Export.Cypher do
   @spec serialize_field_value(term()) :: term()
   def serialize_field_value(value) when is_atom(value), do: to_string(value)
   def serialize_field_value(value) when is_binary(value), do: value
-  def serialize_field_value(value) when is_number(value), do: value
+
+  def serialize_field_value(value)
+      when is_integer(value) and value in @neo4j_min_integer..@neo4j_max_integer,
+      do: value
+
+  def serialize_field_value(value) when is_integer(value), do: Integer.to_string(value)
+  def serialize_field_value(value) when is_float(value), do: value
   def serialize_field_value(value), do: inspect(value)
 
   @spec promotable_value?(term()) :: boolean()

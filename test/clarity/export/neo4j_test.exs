@@ -10,7 +10,7 @@ defmodule Clarity.Export.Neo4jTest do
 
     request_fun = fn _req, options ->
       send(parent, {:request, options})
-      {:ok, %{status: 200}}
+      {:ok, %{status: 200, body: %{"results" => [], "errors" => []}}}
     end
 
     assert {:ok, %{vertices: 3, edges: 2, requests: 5}} =
@@ -40,5 +40,24 @@ defmodule Clarity.Export.Neo4jTest do
     assert_receive {:request, [url: "/db/clarity/tx/commit", json: %{"statements" => [statement]}]}
     assert statement["statement"] =~ "MERGE (a)-[:EDGE"
     assert length(statement["parameters"]["batch"]) == 2
+  end
+
+  test "raises when neo4j returns errors in a 200 response" do
+    clarity = Helper.build_test_clarity()
+
+    request_fun = fn _req, _options ->
+      {:ok,
+       %{
+         status: 200,
+         body: %{
+           "results" => [],
+           "errors" => [%{"code" => "Neo.ClientError.Statement.TypeError", "message" => "bad type"}]
+         }
+       }}
+    end
+
+    assert_raise RuntimeError, ~r/Neo4j export error/, fn ->
+      Neo4j.export(clarity.graph, req: :fake, request_fun: request_fun, database: "clarity")
+    end
   end
 end
