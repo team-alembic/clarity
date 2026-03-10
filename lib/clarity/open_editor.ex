@@ -161,6 +161,8 @@ defmodule Clarity.OpenEditor do
       {error_output, exit_code} ->
         {:error, {:command_failed, exit_code, error_output}}
     end
+  rescue
+    e -> {:error, {:system_error, e}}
   end
 
   defp execute_system_command([editor | args]) do
@@ -171,6 +173,8 @@ defmodule Clarity.OpenEditor do
       {error_output, exit_code} ->
         {:error, {:command_failed, exit_code, error_output}}
     end
+  rescue
+    e -> {:error, {:system_error, e}}
   end
 
   @spec get_relative_path_for_source_location(Clarity.SourceLocation.t()) ::
