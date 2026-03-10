@@ -132,6 +132,22 @@ defmodule Clarity.OpenEditorTest do
       assert {:execute, execute_fn} = OpenEditor.action(source_location)
       assert {:error, _reason} = execute_fn.()
     end
+
+    test "execute function returns error when editor binary does not exist" do
+      Application.put_env(:clarity, :editor, "nonexistent_editor_binary_12345")
+      source_location = SourceLocation.from_path(:test_app, "/path/to/file.ex")
+
+      assert {:execute, execute_fn} = OpenEditor.action(source_location)
+      assert {:error, _reason} = execute_fn.()
+    end
+
+    test "execute function returns error when editor with template vars binary does not exist" do
+      Application.put_env(:clarity, :editor, "nonexistent_editor_12345 __FILE__:__LINE__")
+      source_location = SourceLocation.from_path(:test_app, "/path/to/file.ex")
+
+      assert {:execute, execute_fn} = OpenEditor.action(source_location)
+      assert {:error, _reason} = execute_fn.()
+    end
   end
 
   describe "configuration priority" do
