@@ -284,8 +284,12 @@ defmodule Clarity.PageLive do
 
   @impl Phoenix.LiveView
   def handle_event("viz:click", %{"id" => id}, socket) do
+    graph_content_id = Content.content_id(Content.Graph)
+
     {:noreply,
-     push_patch(socket, to: Path.join([socket.assigns.prefix, socket.assigns.lens.id, id]))}
+     push_patch(socket,
+       to: Path.join([socket.assigns.prefix, socket.assigns.lens.id, id, graph_content_id])
+     )}
   end
 
   def handle_event("toggle_navigation", _params, socket) do
