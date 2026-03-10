@@ -213,8 +213,9 @@ defmodule Clarity.Content do
     {type, content}
   end
 
+  @doc false
   @spec content_id(module()) :: String.t()
-  defp content_id(provider) do
+  def content_id(provider) do
     provider
     |> Macro.underscore()
     |> String.replace(~r/[_\/]+/, "-")
