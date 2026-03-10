@@ -95,11 +95,21 @@ defmodule Clarity.Content do
           provider: provider(),
           live_view?: boolean(),
           live_component?: boolean(),
-          render_static: rendered_static_content() | nil
+          render_static: rendered_static_content() | nil,
+          sort_priority: integer()
         }
 
   @enforce_keys [:id, :name, :provider, :live_view?, :live_component?]
-  defstruct [:id, :name, :description, :provider, :live_view?, :live_component?, :render_static]
+  defstruct [
+    :id,
+    :name,
+    :description,
+    :provider,
+    :live_view?,
+    :live_component?,
+    :render_static,
+    sort_priority: 0
+  ]
 
   @doc """
   Returns the name of this content provider.
@@ -132,7 +142,16 @@ defmodule Clarity.Content do
   """
   @callback render_static(vertex :: Vertex.t(), lens :: Lens.t()) :: static_content()
 
-  @optional_callbacks [render_static: 2]
+  @doc """
+  Returns the sort priority for this content provider.
+
+  Lower values sort first. The default is `0`. Use negative values to sort
+  before other content (e.g., overview tabs), and positive values to sort
+  after (e.g., graph navigation).
+  """
+  @callback sort_priority() :: integer()
+
+  @optional_callbacks [render_static: 2, sort_priority: 0]
 
   @doc false
   @spec get_contents_for_vertex(Vertex.t(), Lens.t()) :: [t()]
@@ -168,6 +187,11 @@ defmodule Clarity.Content do
         normalize_static_content(provider.render_static(vertex, lens))
       end
 
+    sort_priority =
+      if function_exported?(provider, :sort_priority, 0),
+        do: provider.sort_priority(),
+        else: 0
+
     %__MODULE__{
       id: content_id(provider),
       name: provider.name(),
@@ -175,7 +199,8 @@ defmodule Clarity.Content do
       provider: provider,
       live_view?: live_view?,
       live_component?: live_component?,
-      render_static: render_static
+      render_static: render_static,
+      sort_priority: sort_priority
     }
   end
 

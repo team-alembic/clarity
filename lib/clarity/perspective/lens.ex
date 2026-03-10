@@ -36,16 +36,21 @@ defmodule Clarity.Perspective.Lens do
   ]
 
   @doc """
-  Default content sorter that sorts alphabetically by content name, with Graph deprioritized.
+  Default content sorter that sorts by priority, then alphabetically by name,
+  then by id for deterministic ordering.
 
   This is the default sorting function used by lenses unless they specify
-  their own content_sorter function. Graph content is moved to the end.
+  their own content_sorter function. Content providers can implement the
+  `sort_priority/0` callback to control their position (lower values first).
   """
   @spec sort_alphabetically(Content.t(), Content.t()) :: boolean()
-  def sort_alphabetically(a, b)
-  def sort_alphabetically(%Content{provider: Content.Graph}, _b), do: false
-  def sort_alphabetically(_a, %Content{provider: Content.Graph}), do: true
-  def sort_alphabetically(a, b), do: a.name <= b.name
+  def sort_alphabetically(a, b) do
+    cond do
+      a.sort_priority != b.sort_priority -> a.sort_priority < b.sort_priority
+      a.name != b.name -> a.name <= b.name
+      true -> a.id <= b.id
+    end
+  end
 
   @doc """
   Default vertex type filter that shows all vertex types.

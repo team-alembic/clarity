@@ -19,6 +19,9 @@ defmodule Clarity.Content.Graph do
   def description, do: "Visual graph navigation and exploration"
 
   @impl Clarity.Content
+  def sort_priority, do: 100
+
+  @impl Clarity.Content
   def applies?(_vertex, _lens), do: true
 
   @impl Clarity.Content
