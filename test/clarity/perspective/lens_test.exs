@@ -79,6 +79,63 @@ defmodule Clarity.Perspective.LensTest do
     end
   end
 
+  describe "sort_alphabetically/2" do
+    alias Clarity.Content
+
+    defp content(name, opts \\ []) do
+      id = Keyword.get(opts, :id, name)
+      priority = Keyword.get(opts, :sort_priority, 0)
+
+      %Content{
+        id: id,
+        name: name,
+        provider: Module.concat(["Test", name]),
+        live_view?: false,
+        live_component?: false,
+        sort_priority: priority
+      }
+    end
+
+    test "sorts by sort_priority first (lower values first)" do
+      high = content("Z Content", sort_priority: -100)
+      low = content("A Content", sort_priority: 100)
+      mid = content("M Content", sort_priority: 0)
+
+      sorted = Enum.sort([low, mid, high], &Lens.sort_alphabetically/2)
+
+      assert [^high, ^mid, ^low] = sorted
+    end
+
+    test "sorts alphabetically by name within same priority" do
+      z = content("Z Content")
+      a = content("A Content")
+      m = content("M Content")
+
+      sorted = Enum.sort([z, a, m], &Lens.sort_alphabetically/2)
+
+      assert [^a, ^m, ^z] = sorted
+    end
+
+    test "breaks ties by id for deterministic ordering" do
+      first = content("Same Name", id: "aaa")
+      second = content("Same Name", id: "zzz")
+
+      sorted = Enum.sort([second, first], &Lens.sort_alphabetically/2)
+
+      assert [^first, ^second] = sorted
+    end
+
+    test "overview content sorts before regular content" do
+      overview = content("Resource Overview", sort_priority: -100)
+      regular = content("Module Documentation")
+      graph = content("Graph Navigation", sort_priority: 100)
+
+      sorted = Enum.sort([graph, regular, overview], &Lens.sort_alphabetically/2)
+
+      assert [^overview, ^regular, ^graph] = sorted
+    end
+  end
+
   describe "show_vertex_types function" do
     test "show_vertex_types returns all types by default" do
       lens = %Lens{
