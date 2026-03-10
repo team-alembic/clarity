@@ -256,6 +256,39 @@ defmodule Clarity.ContentTest do
       assert render_fn.(%{}) == "Test content"
     end
 
+    test "includes sort_priority from provider callback", %{vertex: vertex, lens: lens} do
+      defmodule PriorityProvider do
+        @moduledoc false
+        @behaviour Content
+
+        @impl Content
+        def name, do: "Priority Content"
+        @impl Content
+        def description, do: nil
+        @impl Content
+        def sort_priority, do: -50
+        @impl Content
+        def applies?(%Root{}, _lens), do: true
+        def applies?(_vertex, _lens), do: false
+        @impl Content
+        def render_static(_vertex, _lens), do: {:markdown, "X"}
+      end
+
+      providers = [PriorityProvider]
+      Application.put_env(:clarity, :clarity_content_providers, providers)
+
+      [content] = Content.get_contents_for_vertex(vertex, lens)
+      assert content.sort_priority == -50
+    end
+
+    test "defaults sort_priority to 0 when callback not implemented", %{vertex: vertex, lens: lens} do
+      providers = [TestContentProvider]
+      Application.put_env(:clarity, :clarity_content_providers, providers)
+
+      [content] = Content.get_contents_for_vertex(vertex, lens)
+      assert content.sort_priority == 0
+    end
+
     test "handles providers without description callback", %{vertex: vertex, lens: lens} do
       defmodule NoDescProvider do
         @moduledoc false

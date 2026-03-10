@@ -18,6 +18,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def description, do: "Ash domains and resources defined in this application"
 
     @impl Clarity.Content
+    def sort_priority, do: -100
+
+    @impl Clarity.Content
     def applies?(%Application{app: app}, _lens) do
       Ash.Info.domains(app) != []
     end

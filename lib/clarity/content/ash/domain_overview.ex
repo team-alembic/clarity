@@ -19,6 +19,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def description, do: "Overview of this Ash domain"
 
     @impl Clarity.Content
+    def sort_priority, do: -100
+
+    @impl Clarity.Content
     def applies?(%Domain{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 
