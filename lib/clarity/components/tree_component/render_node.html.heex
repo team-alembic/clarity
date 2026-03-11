@@ -8,11 +8,7 @@
     phx-target={@myself}
     class="select-none"
   >
-    <summary
-      phx-click="toggle"
-      phx-value-vertex_id={Vertex.id(@vertex)}
-      phx-target={@myself}
-    >
+    <summary>
       <.link
         patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
         class={
