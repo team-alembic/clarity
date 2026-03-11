@@ -26,18 +26,13 @@ defmodule Clarity.Test.MockClarityServer do
   def handle_call(:get, _from, state) do
     send(state.test_pid, :get)
 
-    receive do
-      {:reply_get, response} -> {:reply, response, state}
-    after
-      1000 ->
-        clarity = %Clarity{
-          graph: Clarity.Graph.new(),
-          status: :done,
-          queue_info: %{future_queue: 0, in_progress: 0, total_vertices: 0, requeue_queue: 0}
-        }
+    clarity = %Clarity{
+      graph: Clarity.Graph.new(),
+      status: :done,
+      queue_info: %{future_queue: 0, in_progress: 0, total_vertices: 0, requeue_queue: 0}
+    }
 
-        {:reply, clarity, state}
-    end
+    {:reply, clarity, state}
   end
 
   def handle_call(:subscribe, _from, state) do
