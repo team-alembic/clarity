@@ -123,7 +123,7 @@ defmodule Clarity.Graph.CacheTest do
 
       server = start_supervised!({Server, name: __MODULE__.PersistServer})
 
-      _cache =
+      cache =
         start_supervised!({Cache, clarity_server: server, cache_path: cache_path, name: __MODULE__.PersistCache})
 
       Clarity.subscribe(server, :work_completed)
@@ -140,7 +140,8 @@ defmodule Clarity.Graph.CacheTest do
 
       assert_receive {:clarity, :work_completed}, 5000
 
-      Process.sleep(1000)
+      # Synchronize: ensure Cache has processed the work_completed message
+      :sys.get_state(cache)
 
       metadata_path = Path.join(cache_path, "metadata.etf")
 
@@ -163,7 +164,7 @@ defmodule Clarity.Graph.CacheTest do
 
       server = start_supervised!({Server, name: __MODULE__.PersistFailServer})
 
-      _cache =
+      cache =
         start_supervised!({Cache, clarity_server: server, cache_path: cache_path, name: __MODULE__.PersistFailCache})
 
       Clarity.subscribe(server, :work_completed)
@@ -184,7 +185,7 @@ defmodule Clarity.Graph.CacheTest do
       log =
         capture_log(fn ->
           assert_receive {:clarity, :work_completed}, 5000
-          Process.sleep(100)
+          :sys.get_state(cache)
         end)
 
       assert log =~ "Failed to persist graph cache"
@@ -214,7 +215,8 @@ defmodule Clarity.Graph.CacheTest do
 
       send(cache, {:clarity, :work_completed})
 
-      Process.sleep(100)
+      # Synchronize: ensure Cache has processed the work_completed message
+      :sys.get_state(cache)
 
       metadata_path = Path.join(cache_path, "metadata.etf")
 
