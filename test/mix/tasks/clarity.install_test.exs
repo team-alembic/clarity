@@ -1,6 +1,8 @@
 defmodule Mix.Tasks.Clarity.InstallTest do
   use ExUnit.Case, async: true
 
+  @moduletag :slow
+
   import Igniter.Test
 
   test "installs clarity" do
