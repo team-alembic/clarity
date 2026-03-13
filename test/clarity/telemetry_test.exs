@@ -136,16 +136,15 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, SuccessfulIntrospector, graph)
 
+      MockClarityServer.enqueue_pull_task(mock_server, {:ok, task})
       start_supervised!({Worker, clarity_server: mock_server})
 
-      assert_receive :pull_task
-      send(mock_server, {:reply_pull_task, {:ok, task}})
+      assert_receive {:telemetry, [:clarity, :worker, :start], start_measurements,
+                      %{clarity_server: ^mock_server} = start_metadata}
 
-      assert_receive {:telemetry, [:clarity, :worker, :start], start_measurements, start_metadata}
       assert %{monotonic_time: _, system_time: _} = start_measurements
 
       assert %{
-               clarity_server: ^mock_server,
                worker: _worker,
                telemetry_span_context: ref,
                introspector: SuccessfulIntrospector,
@@ -154,7 +153,8 @@ defmodule Clarity.TelemetryTest do
 
       assert is_reference(ref)
 
-      assert_receive {:telemetry, [:clarity, :worker, :stop], stop_measurements, stop_metadata}
+      assert_receive {:telemetry, [:clarity, :worker, :stop], stop_measurements,
+                      %{clarity_server: ^mock_server} = stop_metadata}
 
       assert %{
                duration: _,
@@ -164,7 +164,6 @@ defmodule Clarity.TelemetryTest do
              } = stop_measurements
 
       assert %{
-               clarity_server: ^mock_server,
                telemetry_span_context: ^ref,
                introspector: SuccessfulIntrospector,
                vertex_type: Root,
@@ -180,14 +179,14 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, SuccessfulWithEntriesIntrospector, graph)
 
+      MockClarityServer.enqueue_pull_task(mock_server, {:ok, task})
       start_supervised!({Worker, clarity_server: mock_server})
 
-      assert_receive :pull_task
-      send(mock_server, {:reply_pull_task, {:ok, task}})
+      assert_receive {:telemetry, [:clarity, :worker, :start], _, %{clarity_server: ^mock_server}}
 
-      assert_receive {:telemetry, [:clarity, :worker, :start], _, _}
+      assert_receive {:telemetry, [:clarity, :worker, :stop], measurements,
+                      %{clarity_server: ^mock_server} = metadata}
 
-      assert_receive {:telemetry, [:clarity, :worker, :stop], measurements, metadata}
       assert %{result_entry_count: 1} = measurements
       assert %{result_type: :ok} = metadata
 
@@ -201,14 +200,14 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, UnmetDependenciesIntrospector, graph)
 
+      MockClarityServer.enqueue_pull_task(mock_server, {:ok, task})
       start_supervised!({Worker, clarity_server: mock_server})
 
-      assert_receive :pull_task
-      send(mock_server, {:reply_pull_task, {:ok, task}})
+      assert_receive {:telemetry, [:clarity, :worker, :start], _, %{clarity_server: ^mock_server}}
 
-      assert_receive {:telemetry, [:clarity, :worker, :start], _, _}
+      assert_receive {:telemetry, [:clarity, :worker, :stop], measurements,
+                      %{clarity_server: ^mock_server} = metadata}
 
-      assert_receive {:telemetry, [:clarity, :worker, :stop], measurements, metadata}
       assert %{result_entry_count: nil} = measurements
       assert %{result_type: :unmet_dependencies} = metadata
 
@@ -221,15 +220,18 @@ defmodule Clarity.TelemetryTest do
       graph = Clarity.Graph.new()
       task = Task.new_introspection(%Root{}, FailingIntrospector, graph)
 
+      MockClarityServer.enqueue_pull_task(mock_server, {:ok, task})
       start_supervised!({Worker, clarity_server: mock_server})
 
-      assert_receive :pull_task
-      send(mock_server, {:reply_pull_task, {:ok, task}})
+      assert_receive {:telemetry, [:clarity, :worker, :start], _,
+                      %{clarity_server: ^mock_server} = start_metadata},
+                     500
 
-      assert_receive {:telemetry, [:clarity, :worker, :start], _, start_metadata}
       ref = start_metadata.telemetry_span_context
 
-      assert_receive {:telemetry, [:clarity, :worker, :exception], measurements, metadata}
+      assert_receive {:telemetry, [:clarity, :worker, :exception], measurements,
+                      %{clarity_server: ^mock_server} = metadata},
+                     500
       assert %{duration: _, monotonic_time: _, system_time: _} = measurements
 
       assert %{
