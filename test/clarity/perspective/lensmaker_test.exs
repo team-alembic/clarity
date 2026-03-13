@@ -132,19 +132,19 @@ defmodule Clarity.Perspective.LensmakerTest do
       assert %Lens{id: "test1", description: "Enhanced by TestEnhancer"} = lens
     end
 
-    test "multiple lensmakers can update the same lens" do
-      defmodule AnotherUpdater do
-        @moduledoc false
-        @behaviour Lensmaker
+    defmodule AnotherUpdater do
+      @moduledoc false
+      @behaviour Lensmaker
 
-        @impl Lensmaker
-        def update_lens(%{id: "test1"} = lens) do
-          %{lens | description: "Updated by AnotherUpdater"}
-        end
-
-        def update_lens(lens), do: lens
+      @impl Lensmaker
+      def update_lens(%{id: "test1"} = lens) do
+        %{lens | description: "Updated by AnotherUpdater"}
       end
 
+      def update_lens(lens), do: lens
+    end
+
+    test "multiple lensmakers can update the same lens" do
       lensmakers = [TestLensmaker1, UpdateOnlyLensmaker, AnotherUpdater]
 
       lenses = Lensmaker.get_all_lenses(lensmakers)
@@ -158,11 +158,11 @@ defmodule Clarity.Perspective.LensmakerTest do
              } = lens
     end
 
-    test "handles invalid lensmaker modules gracefully" do
-      defmodule InvalidLensmaker do
-        @moduledoc false
-      end
+    defmodule InvalidLensmaker do
+      @moduledoc false
+    end
 
+    test "handles invalid lensmaker modules gracefully" do
       assert [] = Lensmaker.get_all_lenses([InvalidLensmaker])
     end
 

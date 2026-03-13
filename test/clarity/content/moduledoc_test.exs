@@ -50,11 +50,11 @@ defmodule Clarity.Content.ModuledocTest do
       assert Moduledoc.applies?(vertex, lens) == false
     end
 
-    test "returns false for modules without moduledoc" do
-      defmodule TestModuleWithoutDoc do
-        @moduledoc false
-      end
+    defmodule TestModuleWithoutDoc do
+      @moduledoc false
+    end
 
+    test "returns false for modules without moduledoc" do
       vertex = %Module{module: TestModuleWithoutDoc, version: :unknown}
       lens = nil
 

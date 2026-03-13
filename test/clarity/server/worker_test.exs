@@ -35,20 +35,20 @@ defmodule Clarity.Server.WorkerTest do
       assert_receive :pull_task
     end
 
-    test "handles task execution errors with nack_task" do
-      defmodule FailingIntrospector do
-        @moduledoc false
-        @behaviour Clarity.Introspector
+    defmodule FailingIntrospector do
+      @moduledoc false
+      @behaviour Clarity.Introspector
 
-        @impl Clarity.Introspector
-        def source_vertex_types, do: [Root]
+      @impl Clarity.Introspector
+      def source_vertex_types, do: [Root]
 
-        @impl Clarity.Introspector
-        def introspect_vertex(_vertex, _graph) do
-          raise "Intentional test error"
-        end
+      @impl Clarity.Introspector
+      def introspect_vertex(_vertex, _graph) do
+        raise "Intentional test error"
       end
+    end
 
+    test "handles task execution errors with nack_task" do
       mock_server = start_supervised!({MockClarityServer, self()})
 
       graph = Clarity.Graph.new()

@@ -82,12 +82,11 @@ defmodule Clarity.ConfigTest do
       assert Config.should_process_module?(Config)
     end
 
-    test "returns false for modules that don't belong to any application" do
-      # Dynamically defined module won't belong to any application
-      defmodule DynamicTestModule do
-        @moduledoc false
-      end
+    defmodule DynamicTestModule do
+      @moduledoc false
+    end
 
+    test "returns false for modules that don't belong to any application" do
       refute Config.should_process_module?(DynamicTestModule)
     end
   end

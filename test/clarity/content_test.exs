@@ -192,37 +192,37 @@ defmodule Clarity.ContentTest do
              } = content
     end
 
+    defmodule ZProvider do
+      @moduledoc false
+      @behaviour Content
+
+      @impl Content
+      def name, do: "Z Content"
+      @impl Content
+      def description, do: "Z content provider"
+      @impl Content
+      def applies?(%Root{}, _lens), do: true
+      def applies?(_vertex, _lens), do: false
+      @impl Content
+      def render_static(_vertex, _lens), do: {:markdown, "Z"}
+    end
+
+    defmodule AProvider do
+      @moduledoc false
+      @behaviour Content
+
+      @impl Content
+      def name, do: "A Content"
+      @impl Content
+      def description, do: "A content provider"
+      @impl Content
+      def applies?(%Root{}, _lens), do: true
+      def applies?(_vertex, _lens), do: false
+      @impl Content
+      def render_static(_vertex, _lens), do: {:markdown, "A"}
+    end
+
     test "sorts content using lens content_sorter", %{vertex: vertex} do
-      defmodule ZProvider do
-        @moduledoc false
-        @behaviour Content
-
-        @impl Content
-        def name, do: "Z Content"
-        @impl Content
-        def description, do: "Z content provider"
-        @impl Content
-        def applies?(%Root{}, _lens), do: true
-        def applies?(_vertex, _lens), do: false
-        @impl Content
-        def render_static(_vertex, _lens), do: {:markdown, "Z"}
-      end
-
-      defmodule AProvider do
-        @moduledoc false
-        @behaviour Content
-
-        @impl Content
-        def name, do: "A Content"
-        @impl Content
-        def description, do: "A content provider"
-        @impl Content
-        def applies?(%Root{}, _lens), do: true
-        def applies?(_vertex, _lens), do: false
-        @impl Content
-        def render_static(_vertex, _lens), do: {:markdown, "A"}
-      end
-
       providers = [ZProvider, AProvider]
       Application.put_env(:clarity, :clarity_content_providers, providers)
 
@@ -256,24 +256,24 @@ defmodule Clarity.ContentTest do
       assert render_fn.(%{}) == "Test content"
     end
 
+    defmodule PriorityProvider do
+      @moduledoc false
+      @behaviour Content
+
+      @impl Content
+      def name, do: "Priority Content"
+      @impl Content
+      def description, do: nil
+      @impl Content
+      def sort_priority, do: -50
+      @impl Content
+      def applies?(%Root{}, _lens), do: true
+      def applies?(_vertex, _lens), do: false
+      @impl Content
+      def render_static(_vertex, _lens), do: {:markdown, "X"}
+    end
+
     test "includes sort_priority from provider callback", %{vertex: vertex, lens: lens} do
-      defmodule PriorityProvider do
-        @moduledoc false
-        @behaviour Content
-
-        @impl Content
-        def name, do: "Priority Content"
-        @impl Content
-        def description, do: nil
-        @impl Content
-        def sort_priority, do: -50
-        @impl Content
-        def applies?(%Root{}, _lens), do: true
-        def applies?(_vertex, _lens), do: false
-        @impl Content
-        def render_static(_vertex, _lens), do: {:markdown, "X"}
-      end
-
       providers = [PriorityProvider]
       Application.put_env(:clarity, :clarity_content_providers, providers)
 
@@ -289,22 +289,22 @@ defmodule Clarity.ContentTest do
       assert content.sort_priority == 0
     end
 
+    defmodule NoDescProvider do
+      @moduledoc false
+      @behaviour Content
+
+      @impl Content
+      def name, do: "No Desc"
+      @impl Content
+      def description, do: nil
+      @impl Content
+      def applies?(%Root{}, _lens), do: true
+      def applies?(_vertex, _lens), do: false
+      @impl Content
+      def render_static(_vertex, _lens), do: {:markdown, "X"}
+    end
+
     test "handles providers without description callback", %{vertex: vertex, lens: lens} do
-      defmodule NoDescProvider do
-        @moduledoc false
-        @behaviour Content
-
-        @impl Content
-        def name, do: "No Desc"
-        @impl Content
-        def description, do: nil
-        @impl Content
-        def applies?(%Root{}, _lens), do: true
-        def applies?(_vertex, _lens), do: false
-        @impl Content
-        def render_static(_vertex, _lens), do: {:markdown, "X"}
-      end
-
       providers = [NoDescProvider]
       Application.put_env(:clarity, :clarity_content_providers, providers)
 
