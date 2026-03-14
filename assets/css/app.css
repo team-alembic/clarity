@@ -19,6 +19,12 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
   }
+
+  /* Remove backtick characters added by Tailwind Typography around inline code */
+  .prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *))::before,
+  .prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *))::after {
+    content: none;
+  }
 }
 
 /* Alerts and form errors used by phx.new */
