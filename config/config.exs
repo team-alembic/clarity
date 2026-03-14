@@ -31,7 +31,7 @@ case config_env() do
       check_origin: false,
       pubsub_server: Demo.PubSub,
       watchers: [
-        esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]},
+        esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=linked --watch)]},
         tailwind: {Tailwind, :install_and_run, [:default, ~w(--watch)]}
       ],
       live_reload: [

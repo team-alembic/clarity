@@ -127,7 +127,7 @@ defmodule Clarity.MixProject do
   defp aliases do
     [
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["tailwind default", "esbuild default --sourcemap=inline"],
+      "assets.build": ["tailwind default", "esbuild default --sourcemap=linked"],
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
       dev: "run --no-halt --no-start dev.exs --config config",
       "usage_rules.update": [
