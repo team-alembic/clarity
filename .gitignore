@@ -30,6 +30,6 @@ clarity-*.tar
 
 # Assets
 /assets/node_modules/
-# TODO: Priv/Static...
+/priv/static/assets/
 
 .claude
