@@ -13,6 +13,14 @@ module.exports = {
   ],
   theme: {
     extend: {
+      typography: {
+        DEFAULT: {
+          css: {
+            'code::before': { content: 'none' },
+            'code::after': { content: 'none' },
+          }
+        }
+      },
       animation: {
         'gradient': 'gradient 8s linear infinite',
         'float': 'float 7s ease-in-out infinite',
