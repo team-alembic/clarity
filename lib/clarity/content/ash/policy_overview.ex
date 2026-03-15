@@ -107,9 +107,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec format_condition([Check.ref()]) :: iodata()
     defp format_condition(condition) when is_list(condition) do
-      condition
-      |> Enum.map(&format_condition_item/1)
-      |> Enum.intersperse("\n")
+      Enum.map_intersperse(condition, "\n", &format_condition_item/1)
     end
 
     defp format_condition(condition) do
@@ -140,9 +138,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Checks\n\n",
           "| Type | Check | Description |\n",
           "| --- | --- | --- |\n",
-          checks
-          |> Enum.map(&check_row/1)
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(checks, "", &check_row/1),
           "\n\n"
         ]
       end

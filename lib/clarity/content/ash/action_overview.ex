@@ -178,9 +178,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Arguments\n\n",
           "| Name | Type | Description | Required | Allow Nil |\n",
           "| --- | --- | --- | --- | --- |\n",
-          action.arguments
-          |> Enum.map(&argument_row/1)
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(action.arguments, "", &argument_row/1),
           "\n\n"
         ]
       end
@@ -216,9 +214,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       else
         [
           "## Changes\n\n",
-          changes
-          |> Enum.map(&format_change/1)
-          |> Enum.intersperse("\n"),
+          Enum.map_intersperse(changes, "\n", &format_change/1),
           "\n\n"
         ]
       end
@@ -331,9 +327,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       else
         [
           "## Preparations\n\n",
-          preparations
-          |> Enum.map(&format_preparation/1)
-          |> Enum.intersperse("\n"),
+          Enum.map_intersperse(preparations, "\n", &format_preparation/1),
           "\n\n"
         ]
       end
@@ -487,16 +481,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec format_atom_list([atom()]) :: iodata()
     defp format_atom_list(list) do
-      list
-      |> Enum.map(&["`", to_string(&1), "`"])
-      |> Enum.intersperse(", ")
+      Enum.map_intersperse(list, ", ", &["`", to_string(&1), "`"])
     end
 
     @spec format_module_list([module()]) :: iodata()
     defp format_module_list(list) do
-      list
-      |> Enum.map(&inspect/1)
-      |> Enum.intersperse(", ")
+      Enum.map_intersperse(list, ", ", &inspect/1)
     end
 
     @spec clean_description(String.t() | nil) :: String.t()

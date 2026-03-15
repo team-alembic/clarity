@@ -53,6 +53,7 @@ defmodule Clarity.Components.MarkdownComponent do
         ast
         |> Earmark.Transform.map_ast(&transform_vertex_links(&1, prefix, lens))
         |> Earmark.Transform.map_ast(&transform_code_blocks/1)
+        |> transform_inline_code_in_ast()
         |> Earmark.Transform.transform()
 
       {:error, _reason, _messages} ->
@@ -115,6 +116,25 @@ defmodule Clarity.Components.MarkdownComponent do
   end
 
   defp transform_code_blocks(node), do: node
+
+  @spec transform_inline_code_in_ast(ast :: list()) :: list()
+  defp transform_inline_code_in_ast(ast) when is_list(ast) do
+    Enum.map(ast, &transform_inline_code_node/1)
+  end
+
+  @spec transform_inline_code_node(node :: Earmark.Parser.ast_node() | binary()) ::
+          Earmark.Parser.ast_node() | binary()
+  defp transform_inline_code_node({"pre", _, _, _} = node), do: node
+
+  defp transform_inline_code_node({"code", _attrs, content, meta}) do
+    {"strong", [{"class", "font-mono"}], content, meta}
+  end
+
+  defp transform_inline_code_node({tag, attrs, children, meta}) do
+    {tag, attrs, transform_inline_code_in_ast(children), meta}
+  end
+
+  defp transform_inline_code_node(other), do: other
 
   @spec extract_language(attrs :: list()) :: String.t() | nil
   defp extract_language(attrs) do

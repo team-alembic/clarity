@@ -179,8 +179,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec format_relationship_path(list(atom()), Ash.Resource.t()) :: iodata()
     defp format_relationship_path(path, resource) when is_list(path) do
-      path
-      |> Enum.map(fn rel_name ->
+      Enum.map_intersperse(path, " → ", fn rel_name ->
         [
           "[`",
           to_string(rel_name),
@@ -189,7 +188,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           ")"
         ]
       end)
-      |> Enum.intersperse(" → ")
     end
 
     @spec format_field_link(atom(), list(atom()), Ash.Resource.t(), boolean()) :: iodata()
@@ -235,9 +233,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Join Filters\n\n",
           "| Relationship Path | Filter |\n",
           "| --- | --- |\n",
-          join_filters
-          |> Enum.map(&join_filter_row(&1, resource))
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(join_filters, "", &join_filter_row(&1, resource)),
           "\n\n"
         ]
       end
@@ -285,9 +281,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Return Type Constraints\n\n",
           "| Constraint | Value |\n",
           "| --- | --- |\n",
-          constraints
-          |> Enum.map(&constraint_row/1)
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(constraints, "", &constraint_row/1),
           "\n\n"
         ]
       end
