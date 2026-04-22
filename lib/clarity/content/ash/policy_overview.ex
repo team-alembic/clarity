@@ -224,9 +224,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ]
     end
 
-    @spec clean_description(String.t() | nil) :: String.t()
-    defp clean_description(nil), do: ""
-
+    @spec clean_description(String.t()) :: String.t()
     defp clean_description(description) when is_binary(description) do
       description
       |> String.trim()
