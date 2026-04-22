@@ -23,7 +23,7 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     test "returns true for Relationship vertices" do
       relationships = Info.relationships(User)
 
-      if length(relationships) > 0 do
+      if relationships != [] do
         [relationship | _] = relationships
         vertex = %Relationship{relationship: relationship, resource: User}
         lens = nil
@@ -44,7 +44,7 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     test "returns markdown tuple with function" do
       relationships = Info.relationships(User)
 
-      if length(relationships) > 0 do
+      if relationships != [] do
         [relationship | _] = relationships
         vertex = %Relationship{relationship: relationship, resource: User}
         lens = nil
@@ -57,7 +57,7 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     test "generated markdown includes relationship header" do
       relationships = Info.relationships(User)
 
-      if length(relationships) > 0 do
+      if relationships != [] do
         [relationship | _] = relationships
         vertex = %Relationship{relationship: relationship, resource: User}
         {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
@@ -73,7 +73,7 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     test "generated markdown includes relationship information table" do
       relationships = Info.relationships(User)
 
-      if length(relationships) > 0 do
+      if relationships != [] do
         [relationship | _] = relationships
         vertex = %Relationship{relationship: relationship, resource: User}
         {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
@@ -90,7 +90,7 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     test "generated markdown includes characteristics section" do
       relationships = Info.relationships(User)
 
-      if length(relationships) > 0 do
+      if relationships != [] do
         [relationship | _] = relationships
         vertex = %Relationship{relationship: relationship, resource: User}
         {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
@@ -106,7 +106,7 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     test "generated markdown includes source and destination configuration" do
       relationships = Info.relationships(User)
 
-      if length(relationships) > 0 do
+      if relationships != [] do
         [relationship | _] = relationships
         vertex = %Relationship{relationship: relationship, resource: User}
         {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
@@ -123,7 +123,7 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     test "generated markdown includes vertex links" do
       relationships = Info.relationships(User)
 
-      if length(relationships) > 0 do
+      if relationships != [] do
         [relationship | _] = relationships
         vertex = %Relationship{relationship: relationship, resource: User}
         {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)

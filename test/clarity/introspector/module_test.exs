@@ -56,7 +56,7 @@ defmodule Clarity.Introspector.ModuleTest do
              end)
 
       # At least one module should exist
-      assert length(module_vertices) > 0
+      assert module_vertices != []
     end
 
     test "detects behaviours correctly" do
