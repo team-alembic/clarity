@@ -133,9 +133,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Constraints\n\n",
           "| Constraint | Value |\n",
           "| --- | --- |\n",
-          constraints
-          |> Enum.map(&constraint_row/1)
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(constraints, "", &constraint_row/1),
           "\n\n"
         ]
       end

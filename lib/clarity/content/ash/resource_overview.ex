@@ -95,9 +95,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Attributes\n\n",
           "| Name | Type | Description | Primary Key | Allow Nil | Public |\n",
           "| --- | --- | --- | --- | --- | --- |\n",
-          attributes
-          |> Enum.map(&attribute_row(&1, resource))
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(attributes, "", &attribute_row(&1, resource)),
           "\n\n"
         ]
       end
@@ -139,9 +137,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Relationships\n\n",
           "| Name | Type | Destination | Description |\n",
           "| --- | --- | --- | --- |\n",
-          relationships
-          |> Enum.map(&relationship_row(&1, resource))
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(relationships, "", &relationship_row(&1, resource)),
           "\n\n"
         ]
       end
@@ -184,9 +180,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
         [
           "## Actions\n\n",
-          grouped_actions
-          |> Enum.map(&action_group_section(&1, resource))
-          |> Enum.intersperse("\n"),
+          Enum.map_intersperse(grouped_actions, "\n", &action_group_section(&1, resource)),
           "\n\n"
         ]
       end
@@ -200,9 +194,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         " Actions\n\n",
         "| Name | Description | Primary |\n",
         "| --- | --- | --- |\n",
-        actions
-        |> Enum.map(&action_row(&1, resource))
-        |> Enum.intersperse(""),
+        Enum.map_intersperse(actions, "", &action_row(&1, resource)),
         "\n"
       ]
     end
@@ -236,9 +228,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Aggregates\n\n",
           "| Name | Type | Field | Relationship |\n",
           "| --- | --- | --- | --- |\n",
-          aggregates
-          |> Enum.map(&aggregate_row(&1, resource))
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(aggregates, "", &aggregate_row(&1, resource)),
           "\n\n"
         ]
       end
@@ -281,9 +271,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Calculations\n\n",
           "| Name | Type | Description |\n",
           "| --- | --- | --- |\n",
-          calculations
-          |> Enum.map(&calculation_row(&1, resource))
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(calculations, "", &calculation_row(&1, resource)),
           "\n\n"
         ]
       end

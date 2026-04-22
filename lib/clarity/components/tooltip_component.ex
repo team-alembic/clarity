@@ -26,11 +26,11 @@ defmodule Clarity.TooltipComponent do
     socket = assign(socket, assigns)
 
     # Only reset stream when breadcrumbs change to avoid DOM churn
-    if old_breadcrumbs != assigns[:breadcrumbs] do
+    if old_breadcrumbs == assigns[:breadcrumbs] do
+      {:ok, socket}
+    else
       preload_vertices = compute_preload_vertices(socket.assigns)
       {:ok, stream(socket, :tooltips, preload_vertices, reset: true)}
-    else
-      {:ok, socket}
     end
   end
 
