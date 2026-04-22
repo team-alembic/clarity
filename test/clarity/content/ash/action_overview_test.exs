@@ -85,7 +85,7 @@ defmodule Clarity.Content.Ash.ActionOverviewTest do
 
     test "generated markdown includes arguments section when action has arguments" do
       actions = Info.actions(User)
-      action_with_args = Enum.find(actions, fn a -> length(a.arguments) > 0 end)
+      action_with_args = Enum.find(actions, fn a -> a.arguments != [] end)
 
       if action_with_args do
         vertex = %Action{action: action_with_args, resource: User}

@@ -89,7 +89,7 @@ defmodule Clarity.Perspective.LensTest do
       %Content{
         id: id,
         name: name,
-        provider: Module.concat(["Test", name]),
+        provider: Module.safe_concat(["Test", name]),
         live_view?: false,
         live_component?: false,
         sort_priority: priority

@@ -48,7 +48,7 @@ defmodule Clarity.ServerTest do
 
       # Pull all available tasks
       tasks = pull_all_tasks(server)
-      assert length(tasks) > 0
+      assert tasks != []
 
       # Next pull should return empty
       assert :empty = Server.pull_task(server)

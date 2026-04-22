@@ -23,7 +23,7 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     test "returns true for Aggregate vertices" do
       aggregates = Info.aggregates(User)
 
-      if length(aggregates) > 0 do
+      if aggregates != [] do
         [aggregate | _] = aggregates
         vertex = %Aggregate{aggregate: aggregate, resource: User}
         lens = nil
@@ -44,7 +44,7 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     test "returns markdown tuple with function" do
       aggregates = Info.aggregates(User)
 
-      if length(aggregates) > 0 do
+      if aggregates != [] do
         [aggregate | _] = aggregates
         vertex = %Aggregate{aggregate: aggregate, resource: User}
         lens = nil
@@ -57,7 +57,7 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     test "generated markdown includes aggregate header" do
       aggregates = Info.aggregates(User)
 
-      if length(aggregates) > 0 do
+      if aggregates != [] do
         [aggregate | _] = aggregates
         vertex = %Aggregate{aggregate: aggregate, resource: User}
         {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
@@ -73,7 +73,7 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     test "generated markdown includes aggregate information table" do
       aggregates = Info.aggregates(User)
 
-      if length(aggregates) > 0 do
+      if aggregates != [] do
         [aggregate | _] = aggregates
         vertex = %Aggregate{aggregate: aggregate, resource: User}
         {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
@@ -90,7 +90,7 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     test "generated markdown includes configuration section" do
       aggregates = Info.aggregates(User)
 
-      if length(aggregates) > 0 do
+      if aggregates != [] do
         [aggregate | _] = aggregates
         vertex = %Aggregate{aggregate: aggregate, resource: User}
         {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
@@ -106,7 +106,7 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     test "generated markdown includes target section" do
       aggregates = Info.aggregates(User)
 
-      if length(aggregates) > 0 do
+      if aggregates != [] do
         [aggregate | _] = aggregates
         vertex = %Aggregate{aggregate: aggregate, resource: User}
         {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
@@ -121,7 +121,7 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     test "generated markdown includes vertex links" do
       aggregates = Info.aggregates(User)
 
-      if length(aggregates) > 0 do
+      if aggregates != [] do
         [aggregate | _] = aggregates
         vertex = %Aggregate{aggregate: aggregate, resource: User}
         {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)

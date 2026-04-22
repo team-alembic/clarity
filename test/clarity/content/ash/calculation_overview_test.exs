@@ -23,7 +23,7 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     test "returns true for Calculation vertices" do
       calculations = Info.calculations(User)
 
-      if length(calculations) > 0 do
+      if calculations != [] do
         [calculation | _] = calculations
         vertex = %Calculation{calculation: calculation, resource: User}
         lens = nil
@@ -44,7 +44,7 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     test "returns markdown tuple with function" do
       calculations = Info.calculations(User)
 
-      if length(calculations) > 0 do
+      if calculations != [] do
         [calculation | _] = calculations
         vertex = %Calculation{calculation: calculation, resource: User}
         lens = nil
@@ -57,7 +57,7 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     test "generated markdown includes calculation header" do
       calculations = Info.calculations(User)
 
-      if length(calculations) > 0 do
+      if calculations != [] do
         [calculation | _] = calculations
         vertex = %Calculation{calculation: calculation, resource: User}
         {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
@@ -73,7 +73,7 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     test "generated markdown includes calculation information table" do
       calculations = Info.calculations(User)
 
-      if length(calculations) > 0 do
+      if calculations != [] do
         [calculation | _] = calculations
         vertex = %Calculation{calculation: calculation, resource: User}
         {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
@@ -90,7 +90,7 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     test "generated markdown includes configuration section" do
       calculations = Info.calculations(User)
 
-      if length(calculations) > 0 do
+      if calculations != [] do
         [calculation | _] = calculations
         vertex = %Calculation{calculation: calculation, resource: User}
         {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
@@ -106,7 +106,7 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     test "generated markdown includes implementation section" do
       calculations = Info.calculations(User)
 
-      if length(calculations) > 0 do
+      if calculations != [] do
         [calculation | _] = calculations
         vertex = %Calculation{calculation: calculation, resource: User}
         {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
@@ -121,7 +121,7 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     test "generated markdown includes vertex links" do
       calculations = Info.calculations(User)
 
-      if length(calculations) > 0 do
+      if calculations != [] do
         [calculation | _] = calculations
         vertex = %Calculation{calculation: calculation, resource: User}
         {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
