@@ -111,6 +111,12 @@ config :my_app, :clarity_content_providers, [
 ]
 ```
 
+> **Shipping a content provider from a library?** Register it in
+> your library's `application/0` environment instead, guarded with
+> `Code.ensure_loaded?(Clarity.Content)`. See
+> [Integrating a Library with Clarity](../documentation/how_to/integrate-from-a-library.md)
+> for the full pattern.
+
 ## Static Content Examples
 
 ### Markdown Content

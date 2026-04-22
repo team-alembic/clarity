@@ -45,6 +45,11 @@ to your `mix.exs` dependencies.
 - **[ash_diagram](https://hex.pm/packages/ash_diagram)** – Provides mermaid
   diagrams for Ash
 
+> **Library authors:** see
+> [Integrating a Library with Clarity](documentation/how_to/integrate-from-a-library.md)
+> for the convention used to ship Clarity content from inside your own
+> library — no host-side configuration required on the consumer's part.
+
 ## Installation
 
 ### Igniter

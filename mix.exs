@@ -164,6 +164,12 @@ defmodule Clarity.MixProject do
       logo: "priv/static/images/logo.svg",
       assets: %{"docs/assets" => "docs/assets", "priv/static/images" => "priv/static/images"},
       source_ref: "v#{@version}",
+      extras: [
+        "documentation/how_to/integrate-from-a-library.md"
+      ],
+      groups_for_extras: [
+        "How To": ~r'documentation/how_to'
+      ],
       nesting: [Clarity.Perspective, Clarity.Vertex],
       groups_for_modules: [
         Perspective: [
