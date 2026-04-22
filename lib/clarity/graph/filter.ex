@@ -57,18 +57,23 @@ defmodule Clarity.Graph.Filter do
     fn graph ->
       source_vertex_ids = MapSet.new(source_vertices, &Vertex.id/1)
 
-      # Find all vertices reachable from any source vertex
       reachable_vertex_ids =
-        for vertex_id <- :digraph.vertices(graph.main_graph),
-            MapSet.member?(source_vertex_ids, vertex_id) or
-              Enum.any?(source_vertex_ids, fn source_id ->
-                :digraph.get_path(graph.main_graph, source_id, vertex_id) != false
-              end) do
-          vertex_id
-        end
+        Enum.filter(
+          :digraph.vertices(graph.main_graph),
+          &reachable_from_any?(graph.main_graph, source_vertex_ids, &1)
+        )
 
       {:in, :vertex_id, reachable_vertex_ids}
     end
+  end
+
+  @spec reachable_from_any?(:digraph.graph(), MapSet.t(String.t()), String.t()) :: boolean()
+  defp reachable_from_any?(main_graph, source_vertex_ids, vertex_id) do
+    MapSet.member?(source_vertex_ids, vertex_id) or
+      Enum.any?(
+        source_vertex_ids,
+        &(:digraph.get_path(main_graph, &1, vertex_id) != false)
+      )
   end
 
   @doc """

@@ -82,6 +82,7 @@ defmodule Clarity.Perspective.LensTest do
   describe "sort_alphabetically/2" do
     alias Clarity.Content
 
+    @spec content(String.t(), keyword()) :: Content.t()
     defp content(name, opts \\ []) do
       id = Keyword.get(opts, :id, name)
       priority = Keyword.get(opts, :sort_priority, 0)

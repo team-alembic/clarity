@@ -208,10 +208,6 @@ defmodule Clarity.Graph.DOT do
         " -> ",
         encode_vertex_id(to_vertex),
         ";\n"
-        # TODO: Show label?
-        # " [label = \"",
-        # escape_html_label(label),
-        # "\"];\n"
       ]
     end
   end

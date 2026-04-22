@@ -426,25 +426,27 @@ defmodule Clarity.Server do
 
   @spec broadcast_event(State.t(), Clarity.event()) :: :ok
   defp broadcast_event(state, event) do
-    topic =
-      case event do
-        topic when is_atom(topic) -> topic
-        tuple when is_tuple(tuple) -> elem(tuple, 0)
-      end
+    topic = event_topic(event)
 
     for name <- [state.name, self()] do
-      Registry.dispatch(Clarity.PubSub, {name, topic}, fn entries ->
-        for {pid, ref} <- entries do
-          case ref do
-            nil -> send(pid, {:clarity, event})
-            _ -> send(pid, {:clarity, ref, event})
-          end
-        end
-      end)
+      Registry.dispatch(Clarity.PubSub, {name, topic}, &dispatch_event(&1, event))
     end
 
     :ok
   end
+
+  @spec event_topic(Clarity.event()) :: atom()
+  defp event_topic(event) when is_atom(event), do: event
+  defp event_topic(event) when is_tuple(event), do: elem(event, 0)
+
+  @spec dispatch_event([{pid(), term()}], Clarity.event()) :: :ok
+  defp dispatch_event(entries, event) do
+    Enum.each(entries, fn {pid, ref} -> send_event(pid, ref, event) end)
+  end
+
+  @spec send_event(pid(), reference() | nil, Clarity.event()) :: term()
+  defp send_event(pid, nil, event), do: send(pid, {:clarity, event})
+  defp send_event(pid, ref, event), do: send(pid, {:clarity, ref, event})
 
   @spec queue_info(State.t()) :: Clarity.queue_info()
   defp queue_info(state) do
