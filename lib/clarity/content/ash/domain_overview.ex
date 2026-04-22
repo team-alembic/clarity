@@ -68,9 +68,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Resources\n\n",
           "| Resource | Description |\n",
           "| --- | --- |\n",
-          resources
-          |> Enum.map(&resource_row/1)
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(resources, "", &resource_row/1),
           "\n\n"
         ]
       end

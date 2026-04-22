@@ -170,9 +170,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Arguments\n\n",
           "| Name | Type | Description | Required | Default |\n",
           "| --- | --- | --- | --- | --- |\n",
-          arguments
-          |> Enum.map(&argument_row/1)
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(arguments, "", &argument_row/1),
           "\n\n"
         ]
       end
@@ -217,9 +215,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         [
           "## Dependencies\n\n",
           "This calculation requires the following fields/relationships to be loaded:\n\n",
-          load
-          |> Enum.map(&format_dependency/1)
-          |> Enum.intersperse("\n"),
+          Enum.map_intersperse(load, "\n", &format_dependency/1),
           "\n\n"
         ]
       end
@@ -241,9 +237,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Return Type Constraints\n\n",
           "| Constraint | Value |\n",
           "| --- | --- |\n",
-          constraints
-          |> Enum.map(&constraint_row/1)
-          |> Enum.intersperse(""),
+          Enum.map_intersperse(constraints, "", &constraint_row/1),
           "\n\n"
         ]
       end
