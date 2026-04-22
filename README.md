@@ -7,13 +7,14 @@
 [![Hexdocs badge](https://img.shields.io/badge/docs-hexdocs-purple)](https://hexdocs.pm/clarity)
 
 <!-- ex_doc_ignore_start -->
+
 # Clarity
+
 <!-- ex_doc_ignore_end -->
 
 ⚠️ **Alpha Notice**: Clarity is currently in an **alpha state**. APIs and features
 may change rapidly, and things may break. Feedback and contributions are very
 welcome!
-
 
 Clarity is an interactive introspection and visualization tool for Elixir projects.  
 It automatically discovers and visualizes applications, domains, resources,
@@ -58,6 +59,12 @@ to your `mix.exs` dependencies.
 mix igniter.install clarity
 ```
 
+If you want to include Ash diagramming and visualisation support then also install ash_diagram:
+
+```bash
+mix igniter.install clarity ash_diagram
+```
+
 ### Manual
 
 The package can be installed by adding `clarity` to your list of dependencies
@@ -72,12 +79,14 @@ end
 ```
 
 Router:
+
 ```elixir
 import Clarity.Router
 clarity("/clarity")
 ```
 
 <!-- ex_doc_ignore_start -->
+
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm).The docs can be found at
 <https://hexdocs.pm/clarity>.
@@ -94,6 +103,7 @@ This starts a Phoenix server at http://localhost:4000 with live reload enabled.
 
 See [usage-rules/development.md](usage-rules/development.md) for more details on
 testing, asset building, and code quality tools.
+
 <!-- ex_doc_ignore_end -->
 
 ## License
