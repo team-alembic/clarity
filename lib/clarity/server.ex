@@ -192,7 +192,7 @@ defmodule Clarity.Server do
     case Map.pop(state.in_progress, task_id) do
       {nil, _} ->
         Logger.warning(
-          "Received nack for unknown task #{inspect(task_id)}. The task may have already been acknowledged or requeued."
+          "Received ack for unknown task #{inspect(task_id)}. The task may have already been acknowledged or requeued."
         )
 
         {:noreply, state}
@@ -209,7 +209,7 @@ defmodule Clarity.Server do
     case Map.pop(state.in_progress, task_id) do
       {nil, _} ->
         Logger.warning(
-          "Received ack for unknown task #{inspect(task_id)}. The task may have already been acknowledged or requeued."
+          "Received nack for unknown task #{inspect(task_id)}. The task may have already been acknowledged or requeued."
         )
 
         {:noreply, state}

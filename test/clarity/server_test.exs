@@ -70,12 +70,17 @@ defmodule Clarity.ServerTest do
       assert {:ok, task2} = Server.pull_task(server)
       assert {:ok, _task3} = Server.pull_task(server)
 
-      # Tasks should be tracked in progress
-      # We can verify this indirectly by acking with wrong worker
+      # Nack removes task2 from in_progress; the subsequent ack should be a
+      # no-op and log a warning about an unknown task.
       assert :ok = Server.nack_task(server, task2.id, :test_error)
 
-      # task2 should still be in progress for worker1
-      assert :ok = Server.ack_task(server, task2.id, [])
+      log =
+        capture_log(fn ->
+          assert :ok = Server.ack_task(server, task2.id, [])
+          _ = Clarity.get(server, :partial)
+        end)
+
+      assert log =~ "Received ack for unknown task"
     end
 
     test "vertex type filtering creates only relevant tasks", %{test: test} do
@@ -173,9 +178,14 @@ defmodule Clarity.ServerTest do
       # Nack the task
       assert :ok = Server.nack_task(server, task.id, :test_error)
 
-      # Task should no longer be in progress
-      # Verify by trying to ack it - should succeed but do nothing
-      assert :ok = Server.ack_task(server, task.id, [])
+      # Task is no longer in progress; acking again should no-op and warn.
+      log =
+        capture_log(fn ->
+          assert :ok = Server.ack_task(server, task.id, [])
+          _ = Clarity.get(server, :partial)
+        end)
+
+      assert log =~ "Received ack for unknown task"
     end
 
     test "validates edge provenance and logs warnings for invalid edges", %{test: test} do
