@@ -537,12 +537,7 @@ defmodule Clarity.Graph do
 
       purged_vertices =
         reachable_ids
-        |> Enum.map(fn id ->
-          case :ets.lookup(graph.vertices, id) do
-            [{^id, _type, vertex_struct}] -> vertex_struct
-            [] -> nil
-          end
-        end)
+        |> Enum.map(&lookup_vertex_struct(graph, &1))
         |> Enum.reject(&is_nil/1)
 
       Enum.each(reachable_ids, fn id ->
@@ -556,6 +551,14 @@ defmodule Clarity.Graph do
       increment_update_count(graph)
 
       {:ok, purged_vertices}
+    end
+  end
+
+  @spec lookup_vertex_struct(t(), String.t()) :: Vertex.t() | nil
+  defp lookup_vertex_struct(graph, id) do
+    case :ets.lookup(graph.vertices, id) do
+      [{^id, _type, vertex_struct}] -> vertex_struct
+      [] -> nil
     end
   end
 

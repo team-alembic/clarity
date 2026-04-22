@@ -229,14 +229,16 @@ defmodule Clarity.OpenEditor do
         Keyword.get(docs_info, :source_ref) || Keyword.get(project_info, :source_ref) || "main"
 
       if source_url do
-        source_url =
-          if String.ends_with?(source_url, "/"), do: source_url, else: source_url <> "/"
-
-        {:ok, %{source_url: source_url, ref: ref}}
+        {:ok, %{source_url: ensure_trailing_slash(source_url), ref: ref}}
       else
         {:error, {:no_source_url, app}}
       end
     end
+  end
+
+  @spec ensure_trailing_slash(String.t()) :: String.t()
+  defp ensure_trailing_slash(url) do
+    if String.ends_with?(url, "/"), do: url, else: url <> "/"
   end
 
   @spec mix_project_module(Application.app()) :: {:ok, module()} | {:error, term()}
