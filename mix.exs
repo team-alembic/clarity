@@ -84,7 +84,9 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.AggregateOverview,
           Clarity.Content.Ash.PolicyOverview,
           Clarity.Content.Ash.RelationshipOverview,
-          Clarity.Content.Phoenix.RouterRoutes
+          Clarity.Content.Phoenix.RouterRoutes,
+          Clarity.Content.Phoenix.RouterDiagram,
+          Clarity.Content.Phoenix.EndpointPipeline
         ],
         default_perspective_lens: "architect"
       ]
