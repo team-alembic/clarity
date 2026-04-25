@@ -29,8 +29,8 @@
             if(engine.id == @engine, do: "bg-primary-light/10 dark:bg-primary-dark/10")
           ]}
         >
-          <div class="flex items-center justify-between">
-            <div class="flex-1">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
               <div class="text-sm font-medium text-base-light-900 dark:text-base-dark-100">
                 <span class="font-mono uppercase mr-2">{engine.id}</span>
                 {engine.name}
@@ -39,9 +39,13 @@
                 {engine.description}
               </div>
             </div>
-            <%= if engine.id == @engine do %>
-              <.icon_check class="w-4 h-4 text-primary-light dark:text-primary-dark shrink-0 ml-2" />
-            <% end %>
+            <.icon_check class={[
+              "w-4 h-4 shrink-0 mt-0.5",
+              if(engine.id == @engine,
+                do: "text-primary-light dark:text-primary-dark",
+                else: "invisible"
+              )
+            ]} />
           </div>
         </button>
       <% end %>

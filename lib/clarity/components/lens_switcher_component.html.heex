@@ -43,9 +43,13 @@
               </div>
             <% end %>
           </div>
-          <%= if lens.id == @lens.id do %>
-            <.icon_check class="w-4 h-4 text-primary-light dark:text-primary-dark shrink-0" />
-          <% end %>
+          <.icon_check class={[
+            "w-4 h-4 shrink-0",
+            if(lens.id == @lens.id,
+              do: "text-primary-light dark:text-primary-dark",
+              else: "invisible"
+            )
+          ]} />
         </button>
       <% end %>
     </div>
