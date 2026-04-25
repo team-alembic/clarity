@@ -71,6 +71,7 @@ defmodule Clarity.MixProject do
         clarity_content_providers: [
           Clarity.Content.Graph,
           Clarity.Content.Moduledoc,
+          Clarity.Content.SupervisionTree,
           Clarity.Content.Ash.ApplicationOverview,
           Clarity.Content.Ash.ApplicationDiagram,
           Clarity.Content.Ash.ApplicationDiagramD2,
@@ -86,7 +87,8 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.RelationshipOverview,
           Clarity.Content.Phoenix.RouterRoutes,
           Clarity.Content.Phoenix.RouterDiagram,
-          Clarity.Content.Phoenix.EndpointPipeline
+          Clarity.Content.Phoenix.EndpointPipeline,
+          Clarity.Content.Spark.ExtensionDiagram
         ],
         default_perspective_lens: "architect"
       ]
