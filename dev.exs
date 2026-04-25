@@ -6,10 +6,12 @@ Application.ensure_all_started(:clarity)
 
 Task.start(fn ->
   children = [
-    DemoWeb.Endpoint,
     {Phoenix.PubSub, [name: Demo.PubSub, adapter: Phoenix.PubSub.PG2]},
+    {Task.Supervisor, name: Demo.TaskSupervisor},
+    Demo.Notifications.Supervisor,
+    DemoWeb.Endpoint
   ]
 
-  {:ok, _} = Supervisor.start_link(children, strategy: :one_for_one)
+  {:ok, _} = Supervisor.start_link(children, strategy: :one_for_one, name: Demo.Supervisor)
   Process.sleep(:infinity)
 end)
