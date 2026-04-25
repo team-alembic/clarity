@@ -66,12 +66,12 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "displays breadcrumbs for domain vertices", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       html = render_async(view)
 
-      # Should show breadcrumb path (root not shown): clarity > Demo.Accounts.Domain
+      # Should show breadcrumb path (root not shown): clarity > Demo.Accounts
       assert html =~ "clarity"
-      assert html =~ "Demo.Accounts.Domain"
+      assert html =~ "Demo.Accounts"
     end
   end
 
@@ -90,10 +90,10 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
       # Test viz:click event with domain vertex
-      view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts-domain"})
+      view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts"})
 
       # Should navigate to the domain vertex
-      assert_patched(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      assert_patched(view, "/debug/ash-domain:demo-accounts/graph")
     end
 
     test "displays tooltips for vertices", %{conn: conn} do
@@ -144,7 +144,7 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "nav.tabs")
 
       # Test domain vertex content
-      {:ok, view2, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view2, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       assert has_element?(view2, ".content")
       assert has_element?(view2, "nav.tabs")
     end

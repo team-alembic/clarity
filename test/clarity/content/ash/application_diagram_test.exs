@@ -63,8 +63,8 @@ defmodule Clarity.Content.Ash.ApplicationDiagramTest do
     test "DOT places resources inside a domain cluster (cluster mode)" do
       dot = render_dot(:light)
 
-      assert dot =~ "subgraph cluster_dom_Demo_Accounts_Domain"
-      assert dot =~ ~s|label="Demo.Accounts.Domain"|
+      assert dot =~ "subgraph cluster_dom_Demo_Accounts"
+      assert dot =~ ~s|label="Demo.Accounts"|
       assert dot =~ ~s|label="User"|
     end
 
@@ -112,7 +112,7 @@ defmodule Clarity.Content.Ash.ApplicationDiagramTest do
       assert html =~ "Coloured"
       assert html =~ "Top"
       assert html =~ "Left"
-      assert html =~ "subgraph cluster_dom_Demo_Accounts_Domain"
+      assert html =~ "subgraph cluster_dom_Demo_Accounts"
       # Both default toggles (Grouped + Top) are aria-pressed=true
       pressed_count = html |> String.split(~s|aria-pressed="true"|) |> length() |> Kernel.-(1)
       assert pressed_count == 2

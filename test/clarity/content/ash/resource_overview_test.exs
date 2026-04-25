@@ -53,7 +53,7 @@ defmodule Clarity.Content.Ash.ResourceOverviewTest do
       assert markdown =~ "## Resource Information"
       assert markdown =~ "| Property | Value |"
       assert markdown =~ "Demo.Accounts.User"
-      assert markdown =~ "Demo.Accounts.Domain"
+      assert markdown =~ "Demo.Accounts"
     end
 
     test "generated markdown includes attributes section" do
@@ -116,7 +116,7 @@ defmodule Clarity.Content.Ash.ResourceOverviewTest do
       markdown = IO.iodata_to_binary(markdown_fn.(props))
 
       assert markdown =~ "vertex://ash-resource:demo-accounts-user"
-      assert markdown =~ "vertex://ash-domain:demo-accounts-domain"
+      assert markdown =~ "vertex://ash-domain:demo-accounts"
     end
 
     test "generated markdown handles data layer information" do

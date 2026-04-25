@@ -1,7 +1,7 @@
 defmodule Demo.Accounts.User do
   @moduledoc false
   use Ash.Resource,
-    domain: Demo.Accounts.Domain,
+    domain: Demo.Accounts,
     authorizers: [
       Ash.Policy.Authorizer
     ],
@@ -62,6 +62,16 @@ defmodule Demo.Accounts.User do
   calculations do
     calculate :is_super_admin?, :boolean, expr(admin && representative)
 
+    calculate :full_name,
+              :string,
+              expr(
+                fragment(
+                  "? || ' ' || ?",
+                  coalesce(first_name, ""),
+                  coalesce(last_name, "")
+                )
+              )
+
     calculate :multi_arguments,
               :string,
               expr(
@@ -87,6 +97,17 @@ defmodule Demo.Accounts.User do
     belongs_to :manager, __MODULE__ do
       attribute_writable? true
     end
+
+    has_many :memberships, Demo.Accounts.Membership
+    has_many :api_tokens, Demo.Accounts.ApiToken
+    has_many :authored_audit_events, Demo.Accounts.AuditEvent, destination_attribute: :actor_id
+    has_many :reported_tickets, Demo.Projects.Ticket, destination_attribute: :reporter_id
+    has_many :assigned_tickets, Demo.Projects.Ticket, destination_attribute: :assignee_id
+    has_many :led_projects, Demo.Projects.Project, destination_attribute: :lead_id
+    has_many :time_entries, Demo.Projects.TimeEntry
+    has_many :uploaded_attachments, Demo.Projects.Attachment, destination_attribute: :uploaded_by_id
+    has_many :authored_comments, Demo.Projects.Comment, destination_attribute: :author_id
+    has_many :handled_helpdesk_tickets, Demo.Helpdesk.Ticket, destination_attribute: :assignee_id
   end
 
   attributes do
@@ -149,6 +170,22 @@ defmodule Demo.Accounts.User do
 
     attribute :tags, {:array, :string} do
       public? true
+    end
+
+    attribute :email, :string do
+      public? true
+      sensitive? true
+      constraints match: ~r/^[^@\s]+@[^@\s]+\.[^@\s]+$/
+    end
+
+    attribute :avatar_url, :string, public?: true
+    attribute :last_login_at, :utc_datetime_usec, public?: true
+
+    attribute :locale, :atom do
+      public? true
+      allow_nil? false
+      constraints one_of: [:en, :de, :fr, :es, :ja, :pt]
+      default :en
     end
 
     attribute :org, :string

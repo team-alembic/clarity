@@ -3,7 +3,7 @@ defmodule Clarity.Vertex.Ash.DomainTest do
 
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Domain
-  alias Demo.Accounts.Domain, as: TestDomain
+  alias Demo.Accounts, as: TestDomain
 
   setup do
     vertex = %Domain{domain: TestDomain}
@@ -12,7 +12,7 @@ defmodule Clarity.Vertex.Ash.DomainTest do
 
   describe inspect(&Vertex.id/1) do
     test "returns correct unique identifier", %{vertex: vertex} do
-      assert Vertex.id(vertex) == "ash-domain:demo-accounts-domain"
+      assert Vertex.id(vertex) == "ash-domain:demo-accounts"
     end
   end
 
@@ -24,7 +24,7 @@ defmodule Clarity.Vertex.Ash.DomainTest do
 
   describe inspect(&Vertex.name/1) do
     test "returns correct display name", %{vertex: vertex} do
-      assert Vertex.name(vertex) == "Demo.Accounts.Domain"
+      assert Vertex.name(vertex) == "Demo.Accounts"
     end
   end
 
@@ -50,7 +50,7 @@ defmodule Clarity.Vertex.Ash.DomainTest do
       assert source_location.module == TestDomain
 
       file_path = Clarity.SourceLocation.file_path(source_location)
-      if file_path, do: assert(String.ends_with?(file_path, "dev/demo/accounts/domain.ex"))
+      if file_path, do: assert(String.ends_with?(file_path, "dev/demo/accounts.ex"))
     end
   end
 
@@ -59,7 +59,7 @@ defmodule Clarity.Vertex.Ash.DomainTest do
       overview = Vertex.TooltipProvider.tooltip(vertex)
       overview_string = IO.iodata_to_binary(overview)
 
-      assert overview_string =~ "`Demo.Accounts.Domain`"
+      assert overview_string =~ "`Demo.Accounts`"
     end
   end
 end

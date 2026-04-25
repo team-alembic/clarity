@@ -67,7 +67,7 @@ defmodule Clarity.Content.Ash.ApplicationOverviewTest do
       props = %{theme: :light, zoom_subgraph: nil}
       markdown = IO.iodata_to_binary(markdown_fn.(props))
 
-      assert markdown =~ "Demo.Accounts.Domain"
+      assert markdown =~ "Demo.Accounts"
     end
 
     test "generated markdown includes resource tables" do
@@ -88,7 +88,7 @@ defmodule Clarity.Content.Ash.ApplicationOverviewTest do
       props = %{theme: :light, zoom_subgraph: nil}
       markdown = IO.iodata_to_binary(markdown_fn.(props))
 
-      assert markdown =~ "vertex://ash-domain:demo-accounts-domain"
+      assert markdown =~ "vertex://ash-domain:demo-accounts"
       assert markdown =~ "vertex://ash-resource:demo-accounts-user"
     end
   end

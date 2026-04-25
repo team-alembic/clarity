@@ -9,15 +9,15 @@ defmodule Clarity.Introspector.Ash.DomainTest do
     test "creates domain vertices for module vertices with domains" do
       graph = Clarity.Graph.new()
       app_vertex = %Vertex.Application{app: :clarity, description: "Clarity", version: "1.0.0"}
-      module_vertex = %Vertex.Module{module: Demo.Accounts.Domain, version: :unknown}
+      module_vertex = %Vertex.Module{module: Demo.Accounts, version: :unknown}
 
       Clarity.Graph.add_vertex(graph, app_vertex, %Vertex.Root{})
 
       assert {:ok,
               [
-                {:vertex, %Domain{domain: Demo.Accounts.Domain}},
-                {:edge, ^app_vertex, %Domain{domain: Demo.Accounts.Domain}, :domain},
-                {:edge, ^module_vertex, %Domain{domain: Demo.Accounts.Domain}, :module}
+                {:vertex, %Domain{domain: Demo.Accounts}},
+                {:edge, ^app_vertex, %Domain{domain: Demo.Accounts}, :domain},
+                {:edge, ^module_vertex, %Domain{domain: Demo.Accounts}, :module}
                 | _
               ]} = DomainIntrospector.introspect_vertex(module_vertex, graph)
     end

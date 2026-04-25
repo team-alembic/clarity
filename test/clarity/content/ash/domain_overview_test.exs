@@ -4,7 +4,7 @@ defmodule Clarity.Content.Ash.DomainOverviewTest do
   alias Clarity.Content.Ash.DomainOverview
   alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Root
-  alias Demo.Accounts.Domain, as: TestDomain
+  alias Demo.Accounts, as: TestDomain
 
   describe inspect(&DomainOverview.name/0) do
     test "returns domain overview name" do
@@ -52,7 +52,7 @@ defmodule Clarity.Content.Ash.DomainOverviewTest do
 
       assert markdown =~ "## Domain Information"
       assert markdown =~ "| Property | Value |"
-      assert markdown =~ "Demo.Accounts.Domain"
+      assert markdown =~ "Demo.Accounts"
     end
 
     test "generated markdown includes resources table" do
@@ -95,7 +95,7 @@ defmodule Clarity.Content.Ash.DomainOverviewTest do
       props = %{theme: :light, zoom_subgraph: nil}
       markdown = IO.iodata_to_binary(markdown_fn.(props))
 
-      assert markdown =~ "vertex://ash-domain:demo-accounts-domain"
+      assert markdown =~ "vertex://ash-domain:demo-accounts"
       assert markdown =~ "vertex://ash-resource:demo-accounts-user"
     end
   end

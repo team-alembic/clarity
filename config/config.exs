@@ -44,7 +44,12 @@ case config_env() do
       ]
 
     config :clarity,
-      ash_domains: [Demo.Accounts.Domain]
+      ash_domains: [
+        Demo.Accounts,
+        Demo.Projects,
+        Demo.Helpdesk,
+        Demo.Billing
+      ]
 
     config :clarity, auto_start?: false
 

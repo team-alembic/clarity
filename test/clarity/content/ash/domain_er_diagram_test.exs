@@ -7,7 +7,7 @@ defmodule Clarity.Content.Ash.DomainErDiagramTest do
 
   describe inspect(&DomainErDiagram.applies?/2) do
     test "true for Domain vertex with resources" do
-      assert DomainErDiagram.applies?(%Domain{domain: Demo.Accounts.Domain}, nil)
+      assert DomainErDiagram.applies?(%Domain{domain: Demo.Accounts}, nil)
     end
 
     test "false for non-Domain vertex" do
@@ -17,7 +17,7 @@ defmodule Clarity.Content.Ash.DomainErDiagramTest do
 
   describe inspect(&DomainErDiagram.render_static/2) do
     test "renders sql_tables for every resource in the domain" do
-      d2 = render(Demo.Accounts.Domain)
+      d2 = render(Demo.Accounts)
 
       assert d2 =~ "direction: right"
       assert d2 =~ "shape: sql_table"

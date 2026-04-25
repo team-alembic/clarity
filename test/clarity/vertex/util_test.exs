@@ -36,8 +36,8 @@ defmodule Clarity.Vertex.UtilTest do
     end
 
     test "handles domain vertex type" do
-      assert Util.id(Clarity.Vertex.Ash.Domain, [Demo.Accounts.Domain]) ==
-               "ash-domain:demo-accounts-domain"
+      assert Util.id(Clarity.Vertex.Ash.Domain, [Demo.Accounts]) ==
+               "ash-domain:demo-accounts"
     end
 
     test "handles relationship vertex type" do

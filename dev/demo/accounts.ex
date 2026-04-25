@@ -1,4 +1,4 @@
-defmodule Demo.Accounts.Domain do
+defmodule Demo.Accounts do
   @moduledoc """
   The Accounts domain.
   This handles user management and authentication.
@@ -11,6 +11,10 @@ defmodule Demo.Accounts.Domain do
   use Ash.Domain
 
   resources do
+    resource Demo.Accounts.Organization
     resource Demo.Accounts.User
+    resource Demo.Accounts.Membership
+    resource Demo.Accounts.ApiToken
+    resource Demo.Accounts.AuditEvent
   end
 end

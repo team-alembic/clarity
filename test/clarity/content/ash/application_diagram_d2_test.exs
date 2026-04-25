@@ -40,7 +40,7 @@ defmodule Clarity.Content.Ash.ApplicationDiagramD2Test do
       assert d2 =~ "direction: down"
       assert d2 =~ "shape: package"
       assert d2 =~ "shape: rectangle"
-      assert d2 =~ "Demo_Accounts_Domain"
+      assert d2 =~ "Demo_Accounts:"
       assert d2 =~ ~s|"User"|
       assert d2 =~ ~s|link: "vertex://ash-resource:demo-accounts-user"|
     end

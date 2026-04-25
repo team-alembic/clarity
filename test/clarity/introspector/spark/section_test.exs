@@ -5,7 +5,7 @@ defmodule Clarity.Introspector.Spark.SectionTest do
   alias Clarity.Vertex
   alias Clarity.Vertex.Spark.Dsl
   alias Clarity.Vertex.Spark.Section, as: SectionVertex
-  alias Demo.Accounts.Domain
+  alias Demo.Accounts
   alias Demo.Accounts.User
 
   describe inspect(&SectionIntrospector.introspect_vertex/2) do
@@ -14,7 +14,7 @@ defmodule Clarity.Introspector.Spark.SectionTest do
       root = %Vertex.Root{}
 
       module_vertex = %Vertex.Module{
-        module: Domain,
+        module: Accounts,
         version: :unknown,
         behaviour?: false
       }
@@ -26,7 +26,7 @@ defmodule Clarity.Introspector.Spark.SectionTest do
       assert {:ok,
               [
                 {:edge, ^module_vertex, ^dsl_vertex, :uses_dsl},
-                {:vertex, %SectionVertex{module: Domain, path: [:resources]}},
+                {:vertex, %SectionVertex{module: Accounts, path: [:resources]}},
                 {:edge, ^module_vertex, %SectionVertex{path: [:resources]}, :section},
                 {:edge, %SectionVertex{path: [:resources]}, ^dsl_vertex, :section_of}
               ]} = SectionIntrospector.introspect_vertex(module_vertex, graph)
@@ -84,7 +84,7 @@ defmodule Clarity.Introspector.Spark.SectionTest do
       root = %Vertex.Root{}
 
       module_vertex = %Vertex.Module{
-        module: Domain,
+        module: Accounts,
         version: :unknown,
         behaviour?: false
       }
@@ -96,7 +96,7 @@ defmodule Clarity.Introspector.Spark.SectionTest do
       assert {:ok,
               [
                 {:edge, ^module_vertex, ^dsl_vertex, :uses_dsl},
-                {:vertex, %SectionVertex{module: Domain, path: [:resources]} = section_vertex},
+                {:vertex, %SectionVertex{module: Accounts, path: [:resources]} = section_vertex},
                 {:edge, ^module_vertex, section_vertex, :section},
                 {:edge, section_vertex, ^dsl_vertex, :section_of}
               ]} = SectionIntrospector.introspect_vertex(module_vertex, graph)
@@ -106,7 +106,7 @@ defmodule Clarity.Introspector.Spark.SectionTest do
       graph = Clarity.Graph.new()
 
       module_vertex = %Vertex.Module{
-        module: Domain,
+        module: Accounts,
         version: :unknown,
         behaviour?: false
       }

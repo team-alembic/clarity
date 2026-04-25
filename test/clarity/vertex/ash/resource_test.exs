@@ -60,7 +60,7 @@ defmodule Clarity.Vertex.Ash.ResourceTest do
       overview_string = IO.iodata_to_binary(overview)
 
       assert overview_string =~ "`Demo.Accounts.User`"
-      assert overview_string =~ "Domain: `Demo.Accounts.Domain`"
+      assert overview_string =~ "Domain: `Demo.Accounts`"
     end
   end
 end

@@ -6,7 +6,7 @@ defmodule Clarity.Content.ModuledocTest do
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Module
   alias Clarity.Vertex.Root
-  alias Demo.Accounts.Domain, as: TestDomain
+  alias Demo.Accounts, as: TestDomain
   alias Demo.Accounts.User
 
   describe inspect(&Moduledoc.name/0) do

@@ -25,7 +25,10 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
 
     @impl Clarity.Content
     def applies?(%Extension{extension: extension}, _lens) do
-      function_exported?(extension, :sections, 0)
+      case Code.ensure_loaded(extension) do
+        {:module, ^extension} -> function_exported?(extension, :sections, 0)
+        _ -> false
+      end
     end
 
     def applies?(_vertex, _lens), do: false
