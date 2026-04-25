@@ -16,6 +16,7 @@
 
 import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
+import D2 from "./d2.hook";
 import Tooltip from "./tooltip.hook";
 import ThemeToggle, { getInitialTheme } from "./theme.hook";
 import Flash from "./flash.hook";
@@ -28,6 +29,7 @@ let socketPath =
 const Hooks = {
   Mermaid: Mermaid,
   Viz: Viz,
+  D2: D2,
   Tooltip: Tooltip,
   ThemeToggle: ThemeToggle,
   Flash: Flash,
@@ -47,12 +49,19 @@ const getInitialEngine = () => {
   return VALID_ENGINES.includes(stored) ? stored : "dot";
 };
 
+const VALID_D2_LAYOUTS = ["dagre", "elk"];
+const getInitialD2Layout = () => {
+  const stored = localStorage.getItem("clarity-d2-layout");
+  return VALID_D2_LAYOUTS.includes(stored) ? stored : "dagre";
+};
+
 let liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
   params: {
     _csrf_token: csrfToken,
     user_agent: window.navigator.userAgent,
     theme: getInitialTheme(),
-    engine: getInitialEngine()
+    engine: getInitialEngine(),
+    d2_layout: getInitialD2Layout()
   },
   hooks: Hooks,
 });
@@ -65,6 +74,14 @@ window.addEventListener("phx:clarity:engine-changed", (event) => {
   const engine = event.detail && event.detail.engine;
   if (VALID_ENGINES.includes(engine)) {
     localStorage.setItem("clarity-engine", engine);
+  }
+});
+
+// Persist D2 layout selection to localStorage when the server confirms a change.
+window.addEventListener("phx:clarity:d2-layout-changed", (event) => {
+  const layout = event.detail && event.detail.layout;
+  if (VALID_D2_LAYOUTS.includes(layout)) {
+    localStorage.setItem("clarity-d2-layout", layout);
   }
 });
 

@@ -3,7 +3,7 @@ defmodule Clarity.Content do
   Behavior and struct for content providers that display information about vertices.
 
   Content providers decide whether they should be displayed for a given vertex and lens,
-  and can provide either static content (markdown, mermaid, graphviz) or implement a
+  and can provide either static content (markdown, mermaid, graphviz, d2) or implement a
   full LiveView for interactive content.
 
   ## Static Content Providers
@@ -72,7 +72,7 @@ defmodule Clarity.Content do
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
 
-  @type static_content_type() :: :markdown | :mermaid | :viz
+  @type static_content_type() :: :markdown | :mermaid | :viz | :d2
   @type theme() :: :light | :dark
   @type static_content_props() :: %{
           theme: theme(),
@@ -139,6 +139,7 @@ defmodule Clarity.Content do
   - `:markdown` - Markdown text (iodata or function returning iodata)
   - `:mermaid` - Mermaid diagram (iodata or function returning iodata)
   - `:viz` - Graphviz DOT format (iodata or function returning iodata, or function taking theme map)
+  - `:d2` - D2 diagram source (iodata or function returning iodata)
   """
   @callback render_static(vertex :: Vertex.t(), lens :: Lens.t()) :: static_content()
 

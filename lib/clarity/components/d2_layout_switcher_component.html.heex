@@ -1,0 +1,54 @@
+<div class="relative">
+  <button
+    phx-click={unless @show_dropdown, do: "toggle_dropdown"}
+    phx-target={@myself}
+    class="flex items-center space-x-2 px-3 py-2 rounded-md text-base-light-700 dark:text-base-dark-300 hover:text-base-light-900 dark:hover:text-base-dark-100 bg-base-light-100 dark:bg-base-dark-800 hover:bg-base-light-200 dark:hover:bg-base-dark-700 shadow-md border border-base-light-300 dark:border-base-dark-700 transition-colors"
+    aria-label="Switch D2 layout engine"
+  >
+    <span class="text-xs font-bold tracking-wide">D2</span>
+    <span class="text-sm font-medium font-mono uppercase">{@d2_layout}</span>
+    <.icon_chevron_down class={[
+      "w-4 h-4 transition-transform",
+      if(@show_dropdown, do: "rotate-180", else: "")
+    ]} />
+  </button>
+
+  <div
+    :if={@show_dropdown}
+    class="absolute top-full right-0 mt-1 bg-white dark:bg-base-dark-800 rounded-md shadow-lg border border-base-light-300 dark:border-base-dark-600 z-50 w-80"
+    phx-click-away="close_dropdown"
+    phx-target={@myself}
+  >
+    <div class="py-1">
+      <%= for layout <- @available_layouts do %>
+        <button
+          phx-click="set-d2-layout"
+          phx-value-layout={layout.id}
+          class={[
+            "w-full text-left px-4 py-2 hover:bg-base-light-100 dark:hover:bg-base-dark-700 transition-colors",
+            if(layout.id == @d2_layout, do: "bg-primary-light/10 dark:bg-primary-dark/10")
+          ]}
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-base-light-900 dark:text-base-dark-100">
+                <span class="font-mono uppercase mr-2">{layout.id}</span>
+                {layout.name}
+              </div>
+              <div class="text-xs text-base-light-600 dark:text-base-dark-400">
+                {layout.description}
+              </div>
+            </div>
+            <.icon_check class={[
+              "w-4 h-4 shrink-0 mt-0.5",
+              if(layout.id == @d2_layout,
+                do: "text-primary-light dark:text-primary-dark",
+                else: "invisible"
+              )
+            ]} />
+          </div>
+        </button>
+      <% end %>
+    </div>
+  </div>
+</div>

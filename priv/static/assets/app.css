@@ -1696,6 +1696,11 @@
       color: var(--color-red-300);
     }
   }
+  .dark\:text-red-400 {
+    &:is(.dark *) {
+      color: var(--color-red-400);
+    }
+  }
   .dark\:text-yellow-100 {
     &:is(.dark *) {
       color: var(--color-yellow-100);

@@ -37,6 +37,25 @@
           class="content p-4"
           id="content-view-viz"
         />
+      <% {:d2, content} -> %>
+        <div class="content flex flex-col h-full relative">
+          <div class="absolute top-4 right-4 z-10">
+            <.live_component
+              module={Clarity.D2LayoutSwitcherComponent}
+              id="content-d2-layout-switcher"
+              d2_layout={@d2_layout}
+            />
+          </div>
+          <div class="flex-1 min-h-0 p-4">
+            <.d2
+              graph={IO.iodata_to_binary(content.(content_props))}
+              layout={@d2_layout}
+              theme={Atom.to_string(@theme)}
+              class="h-full"
+              id="content-view-d2"
+            />
+          </div>
+        </div>
       <% {:markdown, content} -> %>
         <section class="content w-full flex justify-center">
           <.markdown

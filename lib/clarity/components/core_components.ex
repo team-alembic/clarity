@@ -51,6 +51,22 @@ defmodule Clarity.CoreComponents do
   @spec mermaid(assigns :: Socket.assigns()) :: Rendered.t()
   def mermaid(assigns)
 
+  attr :id, :string, required: true, doc: "The unique ID for the D2 visualization"
+  attr :graph, :string, required: true, doc: "The D2 source in string format"
+
+  attr :layout, :string,
+    default: "dagre",
+    doc: "D2 layout engine: dagre or elk"
+
+  attr :theme, :string,
+    default: "light",
+    doc: "Theme key forwarded to the D2 hook (light or dark)"
+
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the graph container"
+
+  @spec d2(assigns :: Socket.assigns()) :: Rendered.t()
+  def d2(assigns)
+
   attr :id, :string, required: true, doc: "The unique ID for the theme toggle button"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :class, :string, default: "", doc: "CSS classes to apply to the theme toggle button"
@@ -136,6 +152,7 @@ defmodule Clarity.CoreComponents do
   attr :socket, Socket, required: true, doc: "The LiveView socket"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :engine, :string, required: true, doc: "Current Graphviz layout engine id"
+  attr :d2_layout, :string, required: true, doc: "Current D2 layout engine id (dagre or elk)"
   attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
   attr :zoom_level, :any, required: true, doc: "Zoom level tuple {outgoing, incoming}"
   attr :shown_vertex_types, :list, required: true, doc: "List of vertex types currently shown"

@@ -83,6 +83,7 @@
               socket={@socket}
               theme={@theme}
               engine={@engine}
+              d2_layout={@d2_layout}
               prefix={@prefix}
               lens={lens}
               zoom_graph={data.zoom_graph}
@@ -122,6 +123,17 @@
                 }
 
                 {"graphviz", IO.iodata_to_binary(content_fn.(props))}
+
+              {:d2, content_fn} ->
+                props = %{
+                  theme: @theme,
+                  zoom_subgraph: data.zoom_graph,
+                  zoom_level: @zoom_level,
+                  shown_vertex_types: @shown_vertex_types,
+                  available_vertex_types: @available_vertex_types
+                }
+
+                {"d2", IO.iodata_to_binary(content_fn.(props))}
 
               {:markdown, content_fn} ->
                 props = %{
