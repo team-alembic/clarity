@@ -24,6 +24,7 @@ defmodule Clarity.CoreComponents do
     doc: "Current lens for perspective switching"
 
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
+  attr :engine, :string, required: true, doc: "Current Graphviz layout engine id"
   attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
@@ -33,6 +34,11 @@ defmodule Clarity.CoreComponents do
 
   attr :id, :string, required: true, doc: "The unique ID for the visualization element"
   attr :graph, :string, required: true, doc: "The graph data in DOT language format"
+
+  attr :engine, :string,
+    default: "dot",
+    doc: "Graphviz layout engine: dot, neato, fdp, sfdp, circo, twopi, osage"
+
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the graph container"
 
   @spec viz(assigns :: Socket.assigns()) :: Rendered.t()
@@ -129,6 +135,7 @@ defmodule Clarity.CoreComponents do
   attr :lens, Lens, required: true, doc: "Current lens for rendering"
   attr :socket, Socket, required: true, doc: "The LiveView socket"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
+  attr :engine, :string, required: true, doc: "Current Graphviz layout engine id"
   attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
   attr :zoom_level, :any, required: true, doc: "Zoom level tuple {outgoing, incoming}"
   attr :shown_vertex_types, :list, required: true, doc: "List of vertex types currently shown"

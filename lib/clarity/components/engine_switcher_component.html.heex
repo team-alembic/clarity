@@ -1,0 +1,50 @@
+<div class="relative">
+  <button
+    phx-click={unless @show_dropdown, do: "toggle_dropdown"}
+    phx-target={@myself}
+    class="flex items-center space-x-2 px-3 py-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 transition-colors"
+    aria-label="Switch graph layout engine"
+  >
+    <.icon_sliders class="w-5 h-5" />
+    <span class="text-sm font-medium font-mono uppercase">{@engine}</span>
+    <.icon_chevron_down class={[
+      "w-4 h-4 transition-transform",
+      if(@show_dropdown, do: "rotate-180", else: "")
+    ]} />
+  </button>
+
+  <div
+    :if={@show_dropdown}
+    class="absolute top-full right-0 mt-1 bg-white dark:bg-base-dark-800 rounded-md shadow-lg border border-base-light-300 dark:border-base-dark-600 z-50 w-80"
+    phx-click-away="close_dropdown"
+    phx-target={@myself}
+  >
+    <div class="py-1">
+      <%= for engine <- @available_engines do %>
+        <button
+          phx-click="set-engine"
+          phx-value-engine={engine.id}
+          class={[
+            "w-full text-left px-4 py-2 hover:bg-base-light-100 dark:hover:bg-base-dark-700 transition-colors",
+            if(engine.id == @engine, do: "bg-primary-light/10 dark:bg-primary-dark/10")
+          ]}
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="text-sm font-medium text-base-light-900 dark:text-base-dark-100">
+                <span class="font-mono uppercase mr-2">{engine.id}</span>
+                {engine.name}
+              </div>
+              <div class="text-xs text-base-light-600 dark:text-base-dark-400">
+                {engine.description}
+              </div>
+            </div>
+            <%= if engine.id == @engine do %>
+              <.icon_check class="w-4 h-4 text-primary-light dark:text-primary-dark shrink-0 ml-2" />
+            <% end %>
+          </div>
+        </button>
+      <% end %>
+    </div>
+  </div>
+</div>

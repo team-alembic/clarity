@@ -42,55 +42,58 @@ defmodule Clarity.Content.Ash.ApplicationDiagramTest do
       assert is_function(viz_fn, 1)
     end
 
-    test "generated DOT contains digraph header" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:viz, viz_fn} = ApplicationDiagram.render_static(vertex, nil)
-
-      dot = IO.iodata_to_binary(viz_fn.(%{theme: :light, zoom_subgraph: nil}))
+    test "DOT contains digraph header with TB rankdir for top legend" do
+      dot = render_dot(:light)
 
       assert dot =~ "digraph {"
-      assert dot =~ "rankdir = LR;"
+      assert dot =~ "rankdir=TB;"
     end
 
-    test "DOT places resources inside a domain cluster" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:viz, viz_fn} = ApplicationDiagram.render_static(vertex, nil)
+    test "DOT renders legend cluster before resource cluster" do
+      dot = render_dot(:light)
 
-      dot = IO.iodata_to_binary(viz_fn.(%{theme: :light, zoom_subgraph: nil}))
+      legend_pos = dot |> :binary.match("subgraph cluster_legend") |> elem(0)
+      domain_pos = dot |> :binary.match("subgraph cluster_dom_") |> elem(0)
+      assert legend_pos < domain_pos
+    end
+
+    test "DOT places resources inside a domain cluster (cluster mode)" do
+      dot = render_dot(:light)
 
       assert dot =~ "subgraph cluster_dom_Demo_Accounts_Domain"
-      assert dot =~ ~s|label = "Demo.Accounts.Domain"|
+      assert dot =~ ~s|label="Demo.Accounts.Domain"|
       assert dot =~ ~s|label="User"|
     end
 
-    test "resource nodes link to their vertex IDs" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:viz, viz_fn} = ApplicationDiagram.render_static(vertex, nil)
+    test "uses square boxes (no rounded corners)" do
+      dot = render_dot(:light)
 
-      dot = IO.iodata_to_binary(viz_fn.(%{theme: :light, zoom_subgraph: nil}))
+      assert dot =~ "shape=box, style=filled"
+      refute dot =~ "rounded"
+    end
+
+    test "resource nodes link to their vertex IDs" do
+      dot = render_dot(:light)
 
       assert dot =~ ~s|URL="#ash-resource:demo-accounts-user"|
     end
 
     test "dark theme uses dark-palette colours" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:viz, viz_fn} = ApplicationDiagram.render_static(vertex, nil)
-
-      light = IO.iodata_to_binary(viz_fn.(%{theme: :light, zoom_subgraph: nil}))
-      dark = IO.iodata_to_binary(viz_fn.(%{theme: :dark, zoom_subgraph: nil}))
+      light = render_dot(:light)
+      dark = render_dot(:dark)
 
       refute light == dark
       # Light cluster fill from the palette
-      assert light =~ "fillcolor = \"#fde68a\""
+      assert light =~ ~s|fillcolor="#fef3c7"|
       # Dark cluster fill from the palette
-      assert dark =~ "fillcolor = \"#78350f\""
+      assert dark =~ ~s|fillcolor="#854d0e"|
     end
   end
 
   describe "live_component rendering" do
     import Phoenix.LiveViewTest
 
-    test "default mode is :cluster and renders both toggle buttons" do
+    test "default mode is :cluster, default legend is :top, both toggle pairs render" do
       vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
 
       html =
@@ -98,14 +101,25 @@ defmodule Clarity.Content.Ash.ApplicationDiagramTest do
           id: "test",
           vertex: vertex,
           lens: nil,
-          theme: :light
+          theme: :light,
+          engine: "dot"
         )
 
       assert html =~ "Grouped"
       assert html =~ "Coloured"
+      assert html =~ "Top"
+      assert html =~ "Left"
       assert html =~ "subgraph cluster_dom_Demo_Accounts_Domain"
-      # Cluster button should be the active (pressed) one by default
-      assert html =~ ~s|aria-pressed="true"|
+      # Both default toggles (Grouped + Top) are aria-pressed=true
+      pressed_count = html |> String.split(~s|aria-pressed="true"|) |> length() |> Kernel.-(1)
+      assert pressed_count == 2
     end
+  end
+
+  @spec render_dot(:light | :dark) :: String.t()
+  defp render_dot(theme) do
+    vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
+    {:viz, viz_fn} = ApplicationDiagram.render_static(vertex, nil)
+    IO.iodata_to_binary(viz_fn.(%{theme: theme, zoom_subgraph: nil}))
   end
 end

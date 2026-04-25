@@ -29,6 +29,11 @@
       prefix={@prefix}
       lens={@lens}
     />
+    <.live_component
+      module={Clarity.EngineSwitcherComponent}
+      id="engine-switcher"
+      engine={@engine}
+    />
     <.theme_toggle id="header-theme-toggle" theme={@theme} />
     <button
       type="button"

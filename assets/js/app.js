@@ -38,17 +38,35 @@ const Hooks = {
 let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
+
+const VALID_ENGINES = [
+  "dot", "neato", "fdp", "sfdp", "circo", "twopi", "osage", "patchwork"
+];
+const getInitialEngine = () => {
+  const stored = localStorage.getItem("clarity-engine");
+  return VALID_ENGINES.includes(stored) ? stored : "dot";
+};
+
 let liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
-  params: { 
-    _csrf_token: csrfToken, 
+  params: {
+    _csrf_token: csrfToken,
     user_agent: window.navigator.userAgent,
-    theme: getInitialTheme()
+    theme: getInitialTheme(),
+    engine: getInitialEngine()
   },
   hooks: Hooks,
 });
 
 // connect if there are any LiveViews on the page
 liveSocket.connect();
+
+// Persist engine selection to localStorage when the server confirms a change.
+window.addEventListener("phx:clarity:engine-changed", (event) => {
+  const engine = event.detail && event.detail.engine;
+  if (VALID_ENGINES.includes(engine)) {
+    localStorage.setItem("clarity-engine", engine);
+  }
+});
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 liveSocket.disableDebug();

@@ -14,10 +14,14 @@ export default {
       /emit\(/g,
       `emit("${this.el.id}", `
     );
+    const engine = this.el.dataset.engine || "dot";
 
-    const svg = this.viz.renderSVGElement(graph);
+    const svg = this.viz.renderSVGElement(graph, { engine });
 
-    svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
+    // Use `meet` so small graphs render at natural size centered in the
+    // container instead of being scaled up to fill it (which produces
+    // gigantic labels). svg-pan-zoom still handles user zoom afterwards.
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
 

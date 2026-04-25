@@ -169361,8 +169361,9 @@ ${config5.themeCSS}`;
         /emit\(/g,
         `emit("${this.el.id}", `
       );
-      const svg2 = this.viz.renderSVGElement(graph);
-      svg2.setAttribute("preserveAspectRatio", "xMidYMid slice");
+      const engine = this.el.dataset.engine || "dot";
+      const svg2 = this.viz.renderSVGElement(graph, { engine });
+      svg2.setAttribute("preserveAspectRatio", "xMidYMid meet");
       svg2.setAttribute("width", "100%");
       svg2.setAttribute("height", "100%");
       [...svg2.querySelectorAll("a[*|href]")].forEach((link2) => {
@@ -169573,15 +169574,36 @@ ${config5.themeCSS}`;
     ResizableDrawer: resizable_drawer_hook_default
   };
   var csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+  var VALID_ENGINES = [
+    "dot",
+    "neato",
+    "fdp",
+    "sfdp",
+    "circo",
+    "twopi",
+    "osage",
+    "patchwork"
+  ];
+  var getInitialEngine = () => {
+    const stored = localStorage.getItem("clarity-engine");
+    return VALID_ENGINES.includes(stored) ? stored : "dot";
+  };
   var liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
     params: {
       _csrf_token: csrfToken,
       user_agent: window.navigator.userAgent,
-      theme: getInitialTheme()
+      theme: getInitialTheme(),
+      engine: getInitialEngine()
     },
     hooks: Hooks
   });
   liveSocket.connect();
+  window.addEventListener("phx:clarity:engine-changed", (event3) => {
+    const engine = event3.detail && event3.detail.engine;
+    if (VALID_ENGINES.includes(engine)) {
+      localStorage.setItem("clarity-engine", engine);
+    }
+  });
   liveSocket.disableDebug();
   window.liveSocket = liveSocket;
   window.addEventListener("clarity:copy-to-clipboard", (event3) => {

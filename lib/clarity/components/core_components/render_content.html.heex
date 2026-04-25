@@ -1,5 +1,6 @@
 <% content_props = %{
   theme: @theme,
+  engine: @engine,
   zoom_subgraph: @zoom_graph,
   zoom_level: @zoom_level,
   shown_vertex_types: @shown_vertex_types,
@@ -30,7 +31,12 @@
       <% {:mermaid, content} -> %>
         <.mermaid graph={content.(content_props)} class="content p-4" id="content-view-mermaid" />
       <% {:viz, content} -> %>
-        <.viz graph={content.(content_props)} class="content p-4" id="content-view-viz" />
+        <.viz
+          graph={content.(content_props)}
+          engine={@engine}
+          class="content p-4"
+          id="content-view-viz"
+        />
       <% {:markdown, content} -> %>
         <section class="content w-full flex justify-center">
           <.markdown
