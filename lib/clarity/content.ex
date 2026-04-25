@@ -3,8 +3,8 @@ defmodule Clarity.Content do
   Behavior and struct for content providers that display information about vertices.
 
   Content providers decide whether they should be displayed for a given vertex and lens,
-  and can provide either static content (markdown, mermaid, graphviz, d2) or implement a
-  full LiveView for interactive content.
+  and can provide either static content (markdown, mermaid, graphviz, d2, live_flow) or
+  implement a full LiveView for interactive content.
 
   ## Static Content Providers
 
@@ -72,15 +72,31 @@ defmodule Clarity.Content do
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
 
-  @type static_content_type() :: :markdown | :mermaid | :viz | :d2
+  @type static_content_type() :: :markdown | :mermaid | :viz | :d2 | :live_flow
   @type theme() :: :light | :dark
   @type static_content_props() :: %{
           theme: theme(),
           zoom_subgraph: Clarity.Graph.t()
         }
+  @typedoc """
+  Flow-shaped payload returned by `:live_flow` content providers.
+
+  Unlike the string-based diagram types, `:live_flow` content is a structured map
+  describing nodes, edges, options, and optional custom node-type renderers — to
+  be passed to `LiveFlow.Components.Flow` by the framework wrapper.
+  """
+  @type live_flow_def() :: %{
+          required(:nodes) => list(),
+          required(:edges) => list(),
+          optional(:opts) => map(),
+          optional(:node_types) => map()
+        }
+  @type static_content_payload() :: iodata() | live_flow_def()
   @type static_content() ::
-          {static_content_type(), iodata() | (static_content_props() -> iodata())}
-  @type rendered_static_content() :: {static_content_type(), (static_content_props() -> iodata())}
+          {static_content_type(),
+           static_content_payload() | (static_content_props() -> static_content_payload())}
+  @type rendered_static_content() ::
+          {static_content_type(), (static_content_props() -> static_content_payload())}
 
   @typedoc "A module implementing the `Clarity.Content` behavior"
   @type provider() :: module()
@@ -140,6 +156,8 @@ defmodule Clarity.Content do
   - `:mermaid` - Mermaid diagram (iodata or function returning iodata)
   - `:viz` - Graphviz DOT format (iodata or function returning iodata, or function taking theme map)
   - `:d2` - D2 diagram source (iodata or function returning iodata)
+  - `:live_flow` - Flow definition map `%{nodes:, edges:, opts:, node_types:}`
+    (or function returning the map). Rendered by `Clarity.LiveFlowContentLive`.
   """
   @callback render_static(vertex :: Vertex.t(), lens :: Lens.t()) :: static_content()
 
@@ -208,6 +226,10 @@ defmodule Clarity.Content do
   @spec normalize_static_content(static_content()) :: rendered_static_content()
   defp normalize_static_content({type, content}) when is_binary(content) or is_list(content) do
     {type, fn _props -> content end}
+  end
+
+  defp normalize_static_content({:live_flow, content}) when is_map(content) do
+    {:live_flow, fn _props -> content end}
   end
 
   defp normalize_static_content({type, content}) when is_function(content, 1) do

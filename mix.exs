@@ -107,6 +107,7 @@ defmodule Clarity.MixProject do
       {:phoenix, "~> 1.8"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},
+      {:live_flow, "~> 0.2.3"},
       {:earmark, "~> 1.4"},
       {:makeup_elixir, "~> 1.0"},
       {:telemetry, "~> 1.3"},

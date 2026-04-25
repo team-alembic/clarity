@@ -7,6 +7,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@terrastruct/d2": "^0.1.33",
     "@viz-js/viz": "^3.19.0",
+    "live_flow": "file:../deps/live_flow",
     "mermaid": "^11.12.0",
     "svg-pan-zoom": "^3.6.2"
   }

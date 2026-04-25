@@ -138,6 +138,17 @@
 
                 {"d2", IO.iodata_to_binary(content_fn.(props))}
 
+              {:live_flow, content_fn} ->
+                props = %{
+                  theme: @theme,
+                  zoom_subgraph: data.zoom_graph,
+                  zoom_level: @zoom_level,
+                  shown_vertex_types: @shown_vertex_types,
+                  available_vertex_types: @available_vertex_types
+                }
+
+                {"live_flow", Clarity.LiveFlowContentLive.inspect_flow_def(content_fn.(props))}
+
               {:markdown, content_fn} ->
                 props = %{
                   theme: @theme,

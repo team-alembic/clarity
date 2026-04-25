@@ -57,6 +57,22 @@
             />
           </div>
         </div>
+      <% {:live_flow, _content} -> %>
+        {live_render(@socket, Clarity.LiveFlowContentLive,
+          id: "content-view-live-flow-" <> Clarity.Vertex.id(@vertex),
+          session: %{
+            "provider" => @content.provider,
+            "vertex" => @vertex,
+            "lens_id" => @lens.id,
+            "theme" => @theme,
+            "engine" => @engine,
+            "prefix" => @prefix,
+            "zoom_level" => @zoom_level,
+            "shown_vertex_types" => @shown_vertex_types,
+            "available_vertex_types" => @available_vertex_types
+          },
+          container: {:div, class: "content"}
+        )}
       <% {:markdown, content} -> %>
         <section class="content w-full flex justify-center">
           <.markdown

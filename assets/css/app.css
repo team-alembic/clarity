@@ -1,5 +1,6 @@
 /* This file is for your main application CSS */
 @import 'tailwindcss';
+@import '../../deps/live_flow/assets/css/live_flow.css';
 
 @config '../tailwind.config.js';
 

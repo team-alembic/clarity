@@ -17,6 +17,7 @@
 import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
 import D2 from "./d2.hook";
+import { LiveFlowHook, setupDownloadHandler } from "live_flow";
 import Tooltip from "./tooltip.hook";
 import ThemeToggle, { getInitialTheme } from "./theme.hook";
 import Flash from "./flash.hook";
@@ -30,6 +31,7 @@ const Hooks = {
   Mermaid: Mermaid,
   Viz: Viz,
   D2: D2,
+  LiveFlow: LiveFlowHook,
   Tooltip: Tooltip,
   ThemeToggle: ThemeToggle,
   Flash: Flash,
@@ -105,6 +107,9 @@ liveSocket.disableDebug();
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket;
+
+// Enable LiveFlow's client-side SVG/PNG download handler.
+setupDownloadHandler();
 
 // Copy to clipboard handler
 window.addEventListener("clarity:copy-to-clipboard", (event) => {
