@@ -169581,8 +169581,7 @@ ${config5.themeCSS}`;
     "sfdp",
     "circo",
     "twopi",
-    "osage",
-    "patchwork"
+    "osage"
   ];
   var getInitialEngine = () => {
     const stored = localStorage.getItem("clarity-engine");

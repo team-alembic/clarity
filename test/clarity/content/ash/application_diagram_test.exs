@@ -49,12 +49,15 @@ defmodule Clarity.Content.Ash.ApplicationDiagramTest do
       assert dot =~ "rankdir=TB;"
     end
 
-    test "DOT renders legend cluster before resource cluster" do
+    test "DOT renders an HTML-table legend before the resource cluster" do
       dot = render_dot(:light)
 
-      legend_pos = dot |> :binary.match("subgraph cluster_legend") |> elem(0)
+      legend_pos = dot |> :binary.match("__legend [shape=plaintext") |> elem(0)
       domain_pos = dot |> :binary.match("subgraph cluster_dom_") |> elem(0)
       assert legend_pos < domain_pos
+      # Header + colour swatch row signature
+      assert dot =~ "<B>DOMAINS</B>"
+      assert dot =~ ~s|FIXEDSIZE="TRUE" BGCOLOR="#fef3c7"|
     end
 
     test "DOT places resources inside a domain cluster (cluster mode)" do

@@ -40,7 +40,7 @@ let csrfToken = document
   .getAttribute("content");
 
 const VALID_ENGINES = [
-  "dot", "neato", "fdp", "sfdp", "circo", "twopi", "osage", "patchwork"
+  "dot", "neato", "fdp", "sfdp", "circo", "twopi", "osage"
 ];
 const getInitialEngine = () => {
   const stored = localStorage.getItem("clarity-engine");

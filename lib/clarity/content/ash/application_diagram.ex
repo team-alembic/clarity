@@ -169,7 +169,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         "  packmode=\"array_t#{packing_columns(total_resources, mode)}\";\n",
         node_defaults(theme),
         edge_defaults(edge_color),
-        legend_block(indexed, theme, legend),
+        legend_block(indexed, theme),
         body(indexed, theme, mode),
         legend_anchors(indexed, mode),
         "}\n"
@@ -279,75 +279,71 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ]
     end
 
-    @spec legend_block(
-            [{{module(), [module()]}, non_neg_integer()}],
-            :light | :dark,
-            :top | :left
-          ) :: iodata()
-    defp legend_block(indexed, theme, position) do
+    # Renders the legend as a single shape=plaintext node containing an HTML
+    # table with a header and one row per domain (colour swatch + domain
+    # name). This is visually distinct from resource boxes — clearly a key,
+    # not just another node — and stays compact on engines that don't
+    # honour subgraph cluster layout (twopi, circo, neato).
+    @spec legend_block([{{module(), [module()]}, non_neg_integer()}], :light | :dark) :: iodata()
+    defp legend_block(indexed, theme) do
       {bg, fg, stroke} = neutral_colors(theme)
 
-      rank_attr =
-        case position do
-          :top -> "  rank=source;\n"
-          :left -> "  rank=min;\n"
-        end
-
-      [
-        "subgraph cluster_legend {\n",
-        ~s|  label="Domains";\n|,
-        ~s|  style=filled;\n|,
-        ~s|  fillcolor="#{bg}";\n|,
-        ~s|  color="#{stroke}";\n|,
-        ~s|  fontcolor="#{fg}";\n|,
-        ~s|  fontsize=12;\n|,
-        ~s|  fontname="system-ui Bold";\n|,
-        ~s|  margin=12;\n|,
-        rank_attr,
+      rows =
         Enum.map(indexed, fn {{domain, _resources}, idx} ->
-          {fill, dstroke, dfg} = domain_colors(idx, theme)
+          {fill, dstroke, _dfg} = domain_colors(idx, theme)
 
           [
-            "  ",
-            legend_id(domain),
-            ~s| [label="|,
-            domain_label(domain),
-            ~s|", |,
-            ~s|fillcolor="#{fill}", |,
-            ~s|color="#{dstroke}", |,
-            ~s|fontcolor="#{dfg}"];\n|
+            ~s|        <TR>|,
+            ~s|<TD WIDTH="20" HEIGHT="16" FIXEDSIZE="TRUE" BGCOLOR="#{fill}" |,
+            ~s|BORDER="1" COLOR="#{dstroke}"></TD>|,
+            ~s|<TD ALIGN="LEFT"> |,
+            escape_html(domain_label(domain)),
+            ~s| </TD>|,
+            ~s|</TR>\n|
           ]
-        end),
-        # Force legend entries onto a single rank so they render as a row
-        ~s|  {rank=same; |,
-        Enum.map_intersperse(indexed, "; ", fn {{domain, _r}, _idx} -> legend_id(domain) end),
-        ";}\n",
-        "}\n"
+        end)
+
+      [
+        ~s|  __legend [shape=plaintext, margin="0", label=<\n|,
+        ~s|    <TABLE BORDER="2" COLOR="#{stroke}" CELLBORDER="0" CELLSPACING="2" |,
+        ~s|CELLPADDING="4" BGCOLOR="#{bg}">\n|,
+        ~s|      <TR><TD COLSPAN="2" ALIGN="LEFT"><FONT POINT-SIZE="11" |,
+        ~s|COLOR="#{fg}"><B>DOMAINS</B></FONT></TD></TR>\n|,
+        rows,
+        ~s|    </TABLE>\n|,
+        ~s|  >];\n|
       ]
     end
 
-    # Invisible edges from the legend entries to one resource each, to anchor
-    # the legend ABOVE (for :top rankdir TB) or LEFT-OF (for :left rankdir LR)
-    # the diagram body. Anchors only added in :cluster mode where we have
-    # one cluster per domain to anchor to. For :color mode the array packing
-    # already produces a tight grid; the legend simply packs as one of the
-    # components.
-    @spec legend_anchors(
-            [{{module(), [module()]}, non_neg_integer()}],
-            :cluster | :color
-          ) :: iodata()
-    defp legend_anchors(_indexed, :color), do: []
+    # Invisible edge from the legend node to the first resource (or domain
+    # cluster) to anchor the legend at the source rank — top in TB layout,
+    # left in LR layout.
+    @spec legend_anchors([{{module(), [module()]}, non_neg_integer()}], :cluster | :color) ::
+            iodata()
+    defp legend_anchors([], _mode), do: []
 
-    defp legend_anchors(indexed, :cluster) do
-      Enum.flat_map(indexed, fn {{domain, resources}, _idx} ->
+    defp legend_anchors([{{domain, resources}, _idx} | _rest], :cluster) do
+      target =
         case resources do
-          [first | _] ->
-            [[legend_id(domain), " -> ", node_id(first), ";\n"]]
-
-          [] ->
-            []
+          [first | _] -> [node_id(first), " [lhead=", cluster_id(domain), "]"]
+          [] -> "__legend"
         end
-      end)
+
+      ["__legend -> ", target, ";\n"]
+    end
+
+    defp legend_anchors([{{_domain, [first | _]}, _idx} | _rest], :color) do
+      ["__legend -> ", node_id(first), ";\n"]
+    end
+
+    defp legend_anchors([{{_domain, []}, _idx} | _rest], :color), do: []
+
+    @spec escape_html(String.t()) :: iodata()
+    defp escape_html(string) do
+      string
+      |> String.replace("&", "&amp;")
+      |> String.replace("<", "&lt;")
+      |> String.replace(">", "&gt;")
     end
 
     @spec node_id(module()) :: iodata()
@@ -355,9 +351,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec cluster_id(module()) :: iodata()
     defp cluster_id(domain), do: ["cluster_dom_", safe_id(inspect(domain))]
-
-    @spec legend_id(module()) :: iodata()
-    defp legend_id(domain), do: ["legend_", safe_id(inspect(domain))]
 
     @spec safe_id(String.t()) :: String.t()
     defp safe_id(name), do: String.replace(name, ~r/[^A-Za-z0-9]/, "_")

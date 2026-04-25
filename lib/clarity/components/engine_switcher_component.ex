@@ -37,12 +37,7 @@ defmodule Clarity.EngineSwitcherComponent do
     %{
       id: "twopi",
       name: "Radial",
-      description: "Radial concentric circles around a chosen root."
-    },
-    %{
-      id: "patchwork",
-      name: "Treemap",
-      description: "Squarified treemap; cluster sizes proportional to weight."
+      description: "Radial concentric circles around a chosen root. Best with edges."
     }
   ]
 

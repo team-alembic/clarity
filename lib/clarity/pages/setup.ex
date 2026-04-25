@@ -13,7 +13,7 @@ defmodule Clarity.Pages.Setup do
           session :: map(),
           socket :: Socket.t()
         ) :: {:cont, Socket.t()} | {:halt, Socket.t()}
-  @engines ~w(dot neato fdp sfdp circo twopi osage patchwork)
+  @engines ~w(dot neato fdp sfdp circo twopi osage)
   @default_engine "dot"
 
   def on_mount(_name, _params, %{"prefix" => prefix} = session, socket) do
