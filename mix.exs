@@ -75,6 +75,7 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.ApplicationOverview,
           Clarity.Content.Ash.ApplicationDiagram,
           Clarity.Content.Ash.ApplicationDiagramD2,
+          Clarity.Content.Ash.ApplicationDiagramFlow,
           Clarity.Content.Ash.DomainOverview,
           Clarity.Content.Ash.DomainErDiagram,
           Clarity.Content.Ash.DomainClassDiagram,
