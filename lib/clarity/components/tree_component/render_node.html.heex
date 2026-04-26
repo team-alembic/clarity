@@ -6,13 +6,19 @@
     phx-toggle="toggle"
     phx-value-vertex_id={Vertex.id(@vertex)}
     phx-target={@myself}
-    class="select-none"
+    class="select-none group"
   >
-    <summary>
+    <summary class="flex items-start gap-1 list-none cursor-pointer [&::-webkit-details-marker]:hidden">
+      <span
+        aria-hidden="true"
+        class="flex-shrink-0 inline-block w-3 text-[0.6rem] leading-none mt-2 text-base-light-500 dark:text-base-dark-500 transition-transform group-open:rotate-90"
+      >
+        ▶
+      </span>
       <.link
         patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
         class={
-          "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
+          "min-w-0 flex-1 px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium break-words" <>
           if @vertex == @active_vertex, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
         }
       >
@@ -38,8 +44,8 @@
   <.link
     patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
     class={[
-      "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium select-none",
-      @any_sibling_has_children && "pl-[25px]",
+      "block px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium select-none break-words",
+      @any_sibling_has_children && "ml-4",
       @vertex == @active_vertex &&
         "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
     ]}
