@@ -16,7 +16,7 @@
           if @vertex == @active_vertex, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
         }
       >
-        <.vertex_name vertex={@vertex} />
+        <.vertex_name vertex={@vertex} name_style={@name_style} />
       </.link>
     </summary>
     <%= if open?(@vertex, @visible_ids) do %>
@@ -29,6 +29,7 @@
           prefix={@prefix}
           lens={@lens}
           myself={@myself}
+          name_style={@name_style}
         />
       </div>
     <% end %>
@@ -43,6 +44,6 @@
         "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
     ]}
   >
-    <.vertex_name vertex={@vertex} />
+    <.vertex_name vertex={@vertex} name_style={@name_style} />
   </.link>
 <% end %>

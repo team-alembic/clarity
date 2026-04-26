@@ -1,1 +1,3 @@
-<span data-tooltip={"tooltip-#{Vertex.id(@vertex)}"}>{Vertex.name(@vertex)}</span>
+<span data-tooltip={"tooltip-#{Vertex.id(@vertex)}"}>
+  {Clarity.Vertex.Name.display(@vertex, @name_style)}
+</span>

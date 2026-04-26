@@ -8,6 +8,7 @@ defmodule Clarity.PageLive do
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex
+  alias Clarity.Vertex.Name
   alias Clarity.Vertex.Root
   alias Phoenix.LiveView.AsyncResult
   alias Phoenix.LiveView.Socket
@@ -371,11 +372,13 @@ defmodule Clarity.PageLive do
     do: assign(socket, page_title: "Vertex Not Found")
 
   defp update_page_title(socket) do
+    name_style = Map.get(socket.assigns, :name_style, :qualified)
+
     page_title =
       socket.assigns.breadcrumbs
       |> Enum.drop(1)
       |> Enum.reverse()
-      |> Enum.map_join(" · ", &Vertex.name/1)
+      |> Enum.map_join(" · ", &Name.display(&1, name_style))
 
     assign(socket, page_title: page_title)
   end

@@ -25,6 +25,11 @@ defmodule Clarity.CoreComponents do
 
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :engine, :string, required: true, doc: "Current Graphviz layout engine id"
+
+  attr :name_style, :atom,
+    required: true,
+    doc: "Current vertex name style (:qualified or :short)"
+
   attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
@@ -153,6 +158,11 @@ defmodule Clarity.CoreComponents do
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :engine, :string, required: true, doc: "Current Graphviz layout engine id"
   attr :d2_layout, :string, required: true, doc: "Current D2 layout engine id (dagre or elk)"
+
+  attr :name_style, :atom,
+    required: true,
+    doc: "Current vertex name style (:qualified or :short)"
+
   attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
   attr :zoom_level, :any, required: true, doc: "Zoom level tuple {outgoing, incoming}"
   attr :shown_vertex_types, :list, required: true, doc: "List of vertex types currently shown"
@@ -167,6 +177,10 @@ defmodule Clarity.CoreComponents do
   Renders a vertex name with tooltip data attribute.
   """
   attr :vertex, :any, required: true, doc: "The vertex to display"
+
+  attr :name_style, :atom,
+    default: :qualified,
+    doc: "Display style for module-named vertices (:qualified or :short)"
 
   @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
   def vertex_name(assigns)

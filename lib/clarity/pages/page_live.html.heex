@@ -9,6 +9,7 @@
         lens={@lens}
         theme={@theme}
         engine={@engine}
+        name_style={@name_style}
         clarity_pid={@clarity_pid}
         class="header z-50"
       />
@@ -35,6 +36,7 @@
               prefix={@prefix}
               lens={lens}
               opened={@tree_opened}
+              name_style={@name_style}
             />
           </nav>
 
@@ -50,7 +52,7 @@
                       patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
                       class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
                     >
-                      {Vertex.name(breadcrumb)}
+                      {Clarity.Vertex.Name.display(breadcrumb, @name_style)}
                     </.link>
                   </li>
                 <% end %>
@@ -62,7 +64,7 @@
               </ol>
             </nav>
             <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
-              {Vertex.name(@vertex)}
+              {Clarity.Vertex.Name.display(@vertex, @name_style)}
             </h1>
           </div>
           <.tabs
@@ -84,6 +86,7 @@
               theme={@theme}
               engine={@engine}
               d2_layout={@d2_layout}
+              name_style={@name_style}
               prefix={@prefix}
               lens={lens}
               zoom_graph={data.zoom_graph}

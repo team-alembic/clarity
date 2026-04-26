@@ -34,6 +34,11 @@
       id="engine-switcher"
       engine={@engine}
     />
+    <.live_component
+      module={Clarity.NameStyleToggleComponent}
+      id="name-style-toggle"
+      name_style={@name_style}
+    />
     <.theme_toggle id="header-theme-toggle" theme={@theme} />
     <button
       type="button"

@@ -4,17 +4,21 @@ defmodule Clarity.Graph.DOT do
   import Phoenix.HTML
 
   alias Clarity.Vertex
+  alias Clarity.Vertex.Name
   alias Phoenix.HTML.Safe
 
   @type theme :: :light | :dark
+  @type name_style :: :qualified | :short
   @type options :: [
           theme: theme(),
+          name_style: name_style(),
           highlight: Vertex.t() | [Vertex.t()],
           max_vertices: pos_integer() | :infinity
         ]
 
   @default_dot_options [
     theme: :light,
+    name_style: :qualified,
     highlight: [],
     max_vertices: :infinity
   ]
@@ -170,6 +174,8 @@ defmodule Clarity.Graph.DOT do
 
   @spec render_vertices(vertices :: [Vertex.t()], options :: options()) :: iodata()
   defp render_vertices(vertices, options) do
+    name_style = Keyword.fetch!(options, :name_style)
+
     for vertex <- vertices do
       [
         encode_vertex_id(vertex),
@@ -178,7 +184,7 @@ defmodule Clarity.Graph.DOT do
           raw("<I><FONT POINT-SIZE=\"8\">"),
           Vertex.type_label(vertex),
           raw("</FONT></I><BR />"),
-          Vertex.name(vertex)
+          Name.display(vertex, name_style)
         ]),
         ", shape = ",
         Vertex.GraphShapeProvider.shape(vertex),

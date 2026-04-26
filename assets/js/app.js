@@ -55,13 +55,20 @@ const getInitialD2Layout = () => {
   return VALID_D2_LAYOUTS.includes(stored) ? stored : "dagre";
 };
 
+const VALID_NAME_STYLES = ["qualified", "short"];
+const getInitialNameStyle = () => {
+  const stored = localStorage.getItem("clarity-name-style");
+  return VALID_NAME_STYLES.includes(stored) ? stored : "qualified";
+};
+
 let liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
   params: {
     _csrf_token: csrfToken,
     user_agent: window.navigator.userAgent,
     theme: getInitialTheme(),
     engine: getInitialEngine(),
-    d2_layout: getInitialD2Layout()
+    d2_layout: getInitialD2Layout(),
+    name_style: getInitialNameStyle()
   },
   hooks: Hooks,
 });
@@ -82,6 +89,14 @@ window.addEventListener("phx:clarity:d2-layout-changed", (event) => {
   const layout = event.detail && event.detail.layout;
   if (VALID_D2_LAYOUTS.includes(layout)) {
     localStorage.setItem("clarity-d2-layout", layout);
+  }
+});
+
+// Persist name-style selection to localStorage when the server confirms a change.
+window.addEventListener("phx:clarity:name-style-changed", (event) => {
+  const style = event.detail && event.detail.style;
+  if (VALID_NAME_STYLES.includes(style)) {
+    localStorage.setItem("clarity-name-style", style);
   }
 });
 

@@ -21,6 +21,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     alias Clarity.Vertex.Application
     alias Clarity.Vertex.Ash.Resource
+    alias Clarity.Vertex.Name
     alias Clarity.Vertex.Util
 
     @impl Clarity.Content
@@ -42,7 +43,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Clarity.Content
     def render_static(%Application{app: app}, _lens) do
       # Used by the raw-content drawer fallback. Always cluster + top legend.
-      {:viz, fn %{theme: theme} -> to_dot(app, theme, :cluster, :top) end}
+      {:viz,
+       fn props ->
+         to_dot(app, props.theme, :cluster, :top, Map.get(props, :name_style, :qualified))
+       end}
     end
 
     @impl Phoenix.LiveComponent
@@ -123,7 +127,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         </div>
         <div class="flex-1 min-h-0 p-4">
           <.viz
-            graph={to_dot(@vertex.app, @theme, @mode, @legend)}
+            graph={to_dot(@vertex.app, @theme, @mode, @legend, @name_style)}
             engine={@engine}
             id="application-diagram-viz"
             class="h-full"
@@ -145,9 +149,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             app :: atom(),
             theme :: :light | :dark,
             mode :: :cluster | :color,
-            legend :: :top | :left
+            legend :: :top | :left,
+            name_style :: :qualified | :short
           ) :: iodata()
-    defp to_dot(app, theme, mode, legend) when is_atom(app) do
+    defp to_dot(app, theme, mode, legend, name_style) when is_atom(app) do
       domains_and_resources = Ash.Info.domains_and_resources(app)
       indexed = Enum.with_index(domains_and_resources)
       total_resources = Enum.sum_by(indexed, fn {{_, r}, _} -> length(r) end)
@@ -169,8 +174,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         "  packmode=\"array_t#{packing_columns(total_resources, mode)}\";\n",
         node_defaults(theme),
         edge_defaults(edge_color),
-        legend_block(indexed, theme),
-        body(indexed, theme, mode),
+        legend_block(indexed, theme, name_style),
+        body(indexed, theme, mode, name_style),
         legend_anchors(indexed, mode),
         "}\n"
       ]
@@ -209,22 +214,33 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ~s|  edge [color="#{color}", style=invis];\n|
     end
 
-    @spec body([{{module(), [module()]}, non_neg_integer()}], :light | :dark, :cluster | :color) ::
+    @spec body(
+            [{{module(), [module()]}, non_neg_integer()}],
+            :light | :dark,
+            :cluster | :color,
+            :qualified | :short
+          ) ::
             iodata()
-    defp body(indexed, theme, :cluster) do
+    defp body(indexed, theme, :cluster, name_style) do
       Enum.map(indexed, fn {{domain, resources}, idx} ->
-        cluster(domain, resources, theme, idx)
+        cluster(domain, resources, theme, idx, name_style)
       end)
     end
 
-    defp body(indexed, theme, :color) do
+    defp body(indexed, theme, :color, _name_style) do
       Enum.flat_map(indexed, fn {{_domain, resources}, idx} ->
         Enum.map(resources, &colored_node(&1, theme, idx))
       end)
     end
 
-    @spec cluster(module(), [module()], :light | :dark, non_neg_integer()) :: iodata()
-    defp cluster(domain, resources, theme, idx) do
+    @spec cluster(
+            module(),
+            [module()],
+            :light | :dark,
+            non_neg_integer(),
+            :qualified | :short
+          ) :: iodata()
+    defp cluster(domain, resources, theme, idx, name_style) do
       {fill, stroke, fg} = domain_colors(idx, theme)
 
       [
@@ -232,7 +248,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         cluster_id(domain),
         " {\n",
         ~s|  label="|,
-        domain_label(domain),
+        domain_label(domain, name_style),
         ~s|";\n|,
         ~s|  style=filled;\n|,
         ~s|  fillcolor="#{fill}";\n|,
@@ -284,8 +300,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     # name). This is visually distinct from resource boxes — clearly a key,
     # not just another node — and stays compact on engines that don't
     # honour subgraph cluster layout (twopi, circo, neato).
-    @spec legend_block([{{module(), [module()]}, non_neg_integer()}], :light | :dark) :: iodata()
-    defp legend_block(indexed, theme) do
+    @spec legend_block(
+            [{{module(), [module()]}, non_neg_integer()}],
+            :light | :dark,
+            :qualified | :short
+          ) :: iodata()
+    defp legend_block(indexed, theme, name_style) do
       {bg, fg, stroke} = neutral_colors(theme)
 
       rows =
@@ -297,7 +317,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             ~s|<TD WIDTH="20" HEIGHT="16" FIXEDSIZE="TRUE" BGCOLOR="#{fill}" |,
             ~s|BORDER="1" COLOR="#{dstroke}"></TD>|,
             ~s|<TD ALIGN="LEFT"> |,
-            escape_html(domain_label(domain)),
+            escape_html(domain_label(domain, name_style)),
             ~s| </TD>|,
             ~s|</TR>\n|
           ]
@@ -358,8 +378,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @spec short_name(module()) :: String.t()
     defp short_name(module), do: module |> Module.split() |> List.last()
 
-    @spec domain_label(module()) :: String.t()
-    defp domain_label(module), do: inspect(module)
+    @spec domain_label(module(), :qualified | :short) :: String.t()
+    defp domain_label(module, :short), do: Name.short_module_name(module)
+    defp domain_label(module, _), do: inspect(module)
 
     # 8-entry palettes. Each entry is `{fill, stroke, foreground}` chosen
     # for AAA-ish text contrast inside the filled box.

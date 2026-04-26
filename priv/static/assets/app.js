@@ -172494,13 +172494,19 @@ ${err && err.message || err}</div>`;
     const stored = localStorage.getItem("clarity-d2-layout");
     return VALID_D2_LAYOUTS.includes(stored) ? stored : "dagre";
   };
+  var VALID_NAME_STYLES = ["qualified", "short"];
+  var getInitialNameStyle = () => {
+    const stored = localStorage.getItem("clarity-name-style");
+    return VALID_NAME_STYLES.includes(stored) ? stored : "qualified";
+  };
   var liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
     params: {
       _csrf_token: csrfToken,
       user_agent: window.navigator.userAgent,
       theme: getInitialTheme(),
       engine: getInitialEngine(),
-      d2_layout: getInitialD2Layout()
+      d2_layout: getInitialD2Layout(),
+      name_style: getInitialNameStyle()
     },
     hooks: Hooks
   });
@@ -172515,6 +172521,12 @@ ${err && err.message || err}</div>`;
     const layout7 = event3.detail && event3.detail.layout;
     if (VALID_D2_LAYOUTS.includes(layout7)) {
       localStorage.setItem("clarity-d2-layout", layout7);
+    }
+  });
+  window.addEventListener("phx:clarity:name-style-changed", (event3) => {
+    const style3 = event3.detail && event3.detail.style;
+    if (VALID_NAME_STYLES.includes(style3)) {
+      localStorage.setItem("clarity-name-style", style3);
     }
   });
   liveSocket.disableDebug();

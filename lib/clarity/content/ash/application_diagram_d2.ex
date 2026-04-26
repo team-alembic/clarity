@@ -14,6 +14,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Clarity.Content.D2.Helpers
     alias Clarity.Vertex.Application
     alias Clarity.Vertex.Ash.Resource
+    alias Clarity.Vertex.Name
 
     @impl Clarity.Content
     def name, do: "Application Diagram (D2)"
@@ -33,30 +34,36 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @impl Clarity.Content
     def render_static(%Application{app: app}, _lens) do
-      {:d2, fn %{theme: theme} -> to_d2(app, theme) end}
+      {:d2,
+       fn props ->
+         to_d2(app, props.theme, Map.get(props, :name_style, :qualified))
+       end}
     end
 
-    @spec to_d2(atom(), Helpers.theme()) :: iodata()
-    defp to_d2(app, theme) when is_atom(app) do
+    @spec to_d2(atom(), Helpers.theme(), :qualified | :short) :: iodata()
+    defp to_d2(app, theme, name_style) when is_atom(app) do
       domains_and_resources = Ash.Info.domains_and_resources(app)
       indexed = Enum.with_index(domains_and_resources)
 
       [
         "direction: down\n",
-        Enum.map(indexed, &domain_container(&1, theme))
+        Enum.map(indexed, &domain_container(&1, theme, name_style))
       ]
     end
 
-    @spec domain_container({{module(), [module()]}, non_neg_integer()}, Helpers.theme()) ::
-            iodata()
-    defp domain_container({{domain, resources}, idx}, theme) do
+    @spec domain_container(
+            {{module(), [module()]}, non_neg_integer()},
+            Helpers.theme(),
+            :qualified | :short
+          ) :: iodata()
+    defp domain_container({{domain, resources}, idx}, theme, name_style) do
       {fill, stroke, fg} = Helpers.domain_palette(idx, theme)
       domain_id = Helpers.safe_id(inspect(domain))
 
       [
         domain_id,
         ": ",
-        Helpers.quoted(inspect(domain)),
+        Helpers.quoted(domain_label(domain, name_style)),
         " {\n",
         "  shape: package\n",
         "  style: { fill: \"",
@@ -70,6 +77,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         "}\n"
       ]
     end
+
+    @spec domain_label(module(), :qualified | :short) :: String.t()
+    defp domain_label(module, :short), do: Name.short_module_name(module)
+    defp domain_label(module, _), do: inspect(module)
 
     @spec resource_node(module(), Helpers.theme()) :: iodata()
     defp resource_node(resource, theme) do

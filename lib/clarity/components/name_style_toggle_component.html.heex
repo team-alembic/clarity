@@ -1,0 +1,25 @@
+<button
+  type="button"
+  phx-click="set-name-style"
+  phx-value-style={if @name_style == :short, do: "qualified", else: "short"}
+  class="inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 transition-colors"
+  aria-pressed={if @name_style == :short, do: "true", else: "false"}
+  aria-label={
+    if @name_style == :short,
+      do: "Switch to fully-qualified module names",
+      else: "Switch to short module names"
+  }
+  title={
+    if @name_style == :short,
+      do: "Names: Short (click for fully qualified)",
+      else: "Names: Fully qualified (click for short)"
+  }
+>
+  <span class="font-mono text-xs leading-none">
+    <%= if @name_style == :short do %>
+      .X
+    <% else %>
+      A.B
+    <% end %>
+  </span>
+</button>

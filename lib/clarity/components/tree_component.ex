@@ -53,6 +53,7 @@ defmodule Clarity.TreeComponent do
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
+  attr :name_style, :atom, default: :qualified
 
   @spec render_vertex(map()) :: Rendered.t()
   def render_vertex(assigns)
@@ -65,6 +66,7 @@ defmodule Clarity.TreeComponent do
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
   attr :any_sibling_has_children, :boolean, required: true
+  attr :name_style, :atom, default: :qualified
 
   @spec render_node(map()) :: Rendered.t()
   def render_node(assigns)

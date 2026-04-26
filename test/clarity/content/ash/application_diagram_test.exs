@@ -105,7 +105,8 @@ defmodule Clarity.Content.Ash.ApplicationDiagramTest do
           vertex: vertex,
           lens: nil,
           theme: :light,
-          engine: "dot"
+          engine: "dot",
+          name_style: :qualified
         )
 
       assert html =~ "Grouped"

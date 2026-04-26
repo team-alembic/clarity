@@ -27,10 +27,11 @@ defmodule Clarity.Content.Graph do
   @impl Clarity.Content
   def render_static(vertex, _lens) do
     {:viz,
-     fn %{theme: theme, zoom_subgraph: zoom_subgraph} ->
+     fn props ->
        Graph.DOT.to_dot(
-         zoom_subgraph,
-         theme: theme,
+         props.zoom_subgraph,
+         theme: props.theme,
+         name_style: Map.get(props, :name_style, :qualified),
          highlight: vertex,
          max_vertices: 50
        )
