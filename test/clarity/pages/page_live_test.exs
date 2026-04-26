@@ -24,15 +24,16 @@ defmodule Clarity.Pages.PageLiveTest do
     test "can toggle navigation visibility", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
-      # Initially navigation should be hidden
-      assert has_element?(view, ".navigation.hidden")
-
-      # Toggle navigation
-      view |> element("button[phx-click='toggle_navigation']") |> render_click()
-
-      # Navigation should now be visible
+      # Initially the sidebar is open
       refute has_element?(view, ".navigation.hidden")
       assert has_element?(view, ".navigation.block")
+      refute has_element?(view, ".layout-container.nav-collapsed")
+
+      # Toggle navigation closed
+      view |> element("button[phx-click='toggle_navigation']") |> render_click()
+
+      assert has_element?(view, ".navigation.hidden")
+      assert has_element?(view, ".layout-container.nav-collapsed")
     end
 
     test "shows navigation tree with correct structure", %{conn: conn} do

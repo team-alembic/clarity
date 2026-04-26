@@ -67,6 +67,15 @@ defmodule Clarity.IconComponents do
   def icon_menu(assigns)
 
   @doc """
+  Renders a sidebar icon (panel with left rail).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_sidebar(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_sidebar(assigns)
+
+  @doc """
   Renders a spinner icon (loading animation).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"

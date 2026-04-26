@@ -136,7 +136,7 @@
 
 @media (min-width: 48rem) {
   .layout-container {
-    grid-template-columns: minmax(20rem, 25vw) 1fr;
+    grid-template-columns: minmax(16rem, 22vw) 1fr;
     grid-template-rows: min-content min-content min-content 1fr;
     grid-template-areas:
       "header header"
@@ -147,6 +147,20 @@
 
     height: 100vh;
   }
+
+  .layout-container.nav-collapsed {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "title"
+      "tabs"
+      "main"
+      "splash";
+  }
+}
+
+.layout-container.nav-collapsed > .navigation {
+  display: none;
 }
 
 .layout-container > .header {

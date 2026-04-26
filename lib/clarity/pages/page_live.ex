@@ -27,7 +27,7 @@ defmodule Clarity.PageLive do
       socket
       |> assign(
         zoom_level: {1, 1},
-        show_navigation: false,
+        show_navigation: true,
         show_raw_drawer: false,
         tree_opened: MapSet.new(),
         data: AsyncResult.loading(),

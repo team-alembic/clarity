@@ -2,7 +2,10 @@
   <% nil -> %>
     <.lens_not_found_error prefix={@prefix} />
   <% lens -> %>
-    <article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
+    <article class={[
+      "layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100",
+      not @show_navigation && "nav-collapsed"
+    ]}>
       <.header
         socket={@socket}
         prefix={@prefix}
@@ -10,6 +13,7 @@
         theme={@theme}
         engine={@engine}
         name_style={@name_style}
+        show_navigation={@show_navigation}
         clarity_pid={@clarity_pid}
         class="header z-50"
       />
@@ -26,7 +30,10 @@
         </:failed>
 
         <%= if @vertex do %>
-          <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
+          <nav class={[
+            "navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4",
+            if(@show_navigation, do: "block", else: "hidden")
+          ]}>
             <.live_component
               module={Clarity.TreeComponent}
               id="navigation-tree"

@@ -2,6 +2,15 @@
   class={"flex items-center px-6 py-4 bg-base-light-100 dark:bg-base-dark-800 shadow-md #{@class}"}
   {@rest}
 >
+  <button
+    type="button"
+    class="inline-flex items-center justify-center p-2 mr-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700"
+    phx-click="toggle_navigation"
+    aria-label={if @show_navigation, do: "Hide sidebar", else: "Show sidebar"}
+    aria-pressed={if @show_navigation, do: "true", else: "false"}
+  >
+    <.icon_sidebar class="size-6" />
+  </button>
   <.link patch={@prefix} class="mr-4">
     <img
       src={Clarity.Resources.logo_uri()}
@@ -40,13 +49,5 @@
       name_style={@name_style}
     />
     <.theme_toggle id="header-theme-toggle" theme={@theme} />
-    <button
-      type="button"
-      class="inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 md:hidden"
-      phx-click="toggle_navigation"
-      aria-label="Toggle navigation"
-    >
-      <.icon_menu class="size-6" />
-    </button>
   </div>
 </header>

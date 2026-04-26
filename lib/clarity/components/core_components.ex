@@ -30,6 +30,10 @@ defmodule Clarity.CoreComponents do
     required: true,
     doc: "Current vertex name style (:qualified or :short)"
 
+  attr :show_navigation, :boolean,
+    required: true,
+    doc: "Whether the sidebar is currently visible"
+
   attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
