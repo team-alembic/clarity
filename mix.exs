@@ -71,6 +71,8 @@ defmodule Clarity.MixProject do
         clarity_content_providers: [
           Clarity.Content.Graph,
           Clarity.Content.Moduledoc,
+          Clarity.Content.C4.SystemContext,
+          Clarity.Content.C4.Containers,
           Clarity.Content.SupervisionTree,
           Clarity.Content.Ash.ApplicationOverview,
           Clarity.Content.Ash.ApplicationDiagram,
