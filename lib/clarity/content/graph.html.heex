@@ -1,5 +1,10 @@
 <div class="content flex flex-col h-full relative">
-  <div class="absolute top-4 right-4 z-10">
+  <div class="absolute top-4 right-4 z-10 flex items-start gap-2">
+    <.live_component
+      module={Clarity.EngineSwitcherComponent}
+      id="graph-engine-switcher"
+      engine={@engine}
+    />
     <button
       type="button"
       phx-click="toggle_controls"

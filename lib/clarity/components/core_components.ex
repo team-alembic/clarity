@@ -24,7 +24,6 @@ defmodule Clarity.CoreComponents do
     doc: "Current lens for perspective switching"
 
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
-  attr :engine, :string, required: true, doc: "Current Graphviz layout engine id"
 
   attr :name_style, :atom,
     required: true,

@@ -77,6 +77,11 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ~H"""
       <div class="content flex flex-col h-full relative">
         <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+          <.live_component
+            module={Clarity.EngineSwitcherComponent}
+            id="application-diagram-engine-switcher"
+            engine={@engine}
+          />
           <div class="flex gap-1 bg-base-light-100 dark:bg-base-dark-800 shadow-md border border-base-light-300 dark:border-base-dark-700 p-1">
             <button
               type="button"
