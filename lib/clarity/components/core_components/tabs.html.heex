@@ -20,7 +20,7 @@
   </ul>
 
   <div class="flex items-center gap-2">
-    <%= if @content && match?({type, _} when type in [:mermaid, :viz, :markdown], @content.render_static) do %>
+    <%= if @content && match?({type, _} when type in [:mermaid, :viz, :d2, :markdown], @content.render_static) do %>
       <button
         type="button"
         phx-click="toggle_raw_drawer"
