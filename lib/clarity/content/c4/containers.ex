@@ -199,24 +199,24 @@ defmodule Clarity.Content.C4.Containers do
         style.stroke: "#1168bd"
       }
 
-      page_live -> server: "Reads graph + queue\n[GenServer.call]"
-      page_live -> server: "Triggers introspection\n[GenServer.cast]"
-      page_live -> ui: "Pushes diff updates\n[LiveView WebSocket]"
+      page_live -> server: "Reads graph + queue [GenServer.call]"
+      page_live -> server: "Triggers introspection [GenServer.cast]"
+      page_live -> ui: "Pushes diff updates [LiveView WebSocket]"
       server -> pubsub: "Publishes work events"
       pubsub -> page_live: "Notifies of progress"
-      server -> workers: "Hands tasks out\n[GenServer.call :pull_task]"
-      workers -> server: "Acks / nacks / requeues\n[GenServer.cast]"
+      server -> workers: "Hands tasks out [GenServer.call :pull_task]"
+      workers -> server: "Acks / nacks / requeues [GenServer.cast]"
       server -> graph: "Reads / mutates"
-      cache -> graph: "Loads on boot;\nsnapshots on idle"
-      cache -> server: "Hands graph over\n[`:ets.give_away/3`]"
-      reloader -> server: "Triggers incremental\nintrospection"
+      cache -> graph: "Loads on boot; snapshots on idle"
+      cache -> server: "Hands graph over [:ets.give_away/3]"
+      reloader -> server: "Triggers incremental introspection"
     }
 
-    dev -> clarity.ui: "Browses code\n[HTTPS / WebSocket]"
-    clarity.workers -> host: "Reflects on modules,\ndomains, supervisors\n[BEAM]"
-    clarity.reloader -> host: "Listens for recompiles\n[Phoenix.CodeReloader]"
-    clarity.page_live -> editor: "Opens file:line:col\n[`System.cmd/3`]"
-    host -> clarity.page_live: "Mounts at `/clarity`\n[Phoenix Router]"
+    dev -> clarity.ui: "Browses code [HTTPS / WebSocket]"
+    clarity.workers -> host: "Reflects on modules, domains, supervisors [BEAM]"
+    clarity.reloader -> host: "Listens for recompiles [Phoenix.CodeReloader]"
+    clarity.page_live -> editor: "Opens file:line:col [System.cmd/3]"
+    host -> clarity.page_live: "Mounts at /clarity [Phoenix Router]"
 
     key: |md
       ### Key
