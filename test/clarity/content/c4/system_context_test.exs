@@ -33,7 +33,7 @@ defmodule Clarity.Content.C4.SystemContextTest do
 
       # Clarity is the system in scope; host, editor, forge are external
       assert d2 =~ "## Clarity"
-      assert d2 =~ "Host Phoenix Application"
+      assert d2 =~ "Host Phoenix App"
       assert d2 =~ "Code Editor"
       assert d2 =~ "Source Forge"
 

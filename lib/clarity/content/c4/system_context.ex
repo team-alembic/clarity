@@ -48,12 +48,10 @@ defmodule Clarity.Content.C4.SystemContext do
     dev: |md
       ## Elixir Developer
       [Person]
-
-      Application architect / developer exploring the structure of an
-      Elixir / Phoenix / Ash code base — domains, resources, supervision
-      trees, routers and the relationships between them.
     | {
       shape: c4-person
+      width: 200
+      height: 240
       style.fill: "#08427b"
       style.font-color: "#ffffff"
       style.stroke: "#073b6f"
@@ -63,24 +61,23 @@ defmodule Clarity.Content.C4.SystemContext do
       ## Clarity
       [Software System]
 
-      Interactive introspection and visualisation tool for Elixir
-      projects. Shipped as a library (`mix.exs` dependency); mounted into
-      the host Phoenix app under `/clarity` and serves a LiveView UI of
-      the host's discovered architecture.
+      Interactive introspection & visualisation for Elixir projects. Mounted into the host app at /clarity.
     | {
+      width: 320
+      height: 150
       style.fill: "#1168bd"
       style.font-color: "#ffffff"
       style.stroke: "#0b4884"
     }
 
     host: |md
-      ## Host Phoenix Application
+      ## Host Phoenix App
       [Software System]
 
-      The Elixir application that lists `:clarity` as a dependency. Owns
-      the modules, Ash domains/resources, Phoenix endpoint/router and
-      OTP supervision tree that Clarity introspects.
+      The user's Phoenix / Ash app. Owns the modules, domains, supervisors and routes.
     | {
+      width: 260
+      height: 140
       style.fill: "#999999"
       style.font-color: "#ffffff"
       style.stroke: "#6b6b6b"
@@ -90,10 +87,10 @@ defmodule Clarity.Content.C4.SystemContext do
       ## Code Editor
       [Software System]
 
-      Local editor process — VS Code, Cursor, Neovim, Emacs, … Clarity
-      shells out (or generates a deep link) so the developer can jump
-      from a vertex to its source at the exact line and column.
+      Local editor — VS Code, Cursor, Neovim, Emacs, …
     | {
+      width: 260
+      height: 140
       style.fill: "#999999"
       style.font-color: "#ffffff"
       style.stroke: "#6b6b6b"
@@ -103,53 +100,32 @@ defmodule Clarity.Content.C4.SystemContext do
       ## Source Forge
       [Software System]
 
-      GitHub / GitLab / Codeberg / Bitbucket. Used in URL mode to deep
-      link to a file/line on the project's `source_url` so the developer
-      can open code in the browser instead of a local editor.
+      GitHub / GitLab / Codeberg / Bitbucket.
     | {
+      width: 260
+      height: 140
       style.fill: "#999999"
       style.font-color: "#ffffff"
       style.stroke: "#6b6b6b"
     }
 
-    dev -> clarity: |md
-      Explores code structure via the **Clarity UI**
-
-      [HTTPS / WebSocket]
-    |
-    clarity -> host: |md
-      Introspects modules, domains, supervisors, routers and configuration
-
-      [BEAM reflection / `Code.fetch_docs/1`]
-    |
-    clarity -> editor: |md
-      Opens files at `__FILE__:__LINE__:__COLUMN__`
-
-      [`System.cmd/3`]
-    |
-    clarity -> forge: |md
-      Deep-links to the source on the configured branch / tag
-
-      [HTTPS]
-    |
-    host -> clarity: |md
-      Mounts the LiveView UI at `/clarity`
-
-      [Phoenix Router macro]
-    |
+    dev -> clarity: "Explores code [HTTPS / WebSocket]"
+    clarity -> host: "Introspects modules, domains [BEAM reflection]"
+    clarity -> editor: "Opens file:line:col [System.cmd/3]"
+    clarity -> forge: "Deep links to source [HTTPS]"
+    host -> clarity: "Mounts at /clarity [Phoenix Router]"
 
     key: |md
       ### Key
 
-      - Filled **blue** rectangle — the system in scope.
-      - Filled **dark blue** person — a human actor.
-      - Filled **grey** rectangle — an external system Clarity interacts with.
-      - Each arrow is labelled with the verb describing the interaction
-        and the protocol / mechanism in `[brackets]`.
+      - Filled **blue** rectangle — system in scope
+      - **Person** shape — human actor
+      - Filled **grey** rectangle — external system
+      - Arrow labels: verb + [mechanism]
     | {
       near: bottom-right
       shape: text
-      style.font-size: 11
+      style.font-size: 12
     }
     """
   end
