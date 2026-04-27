@@ -113,6 +113,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def resource_node(assigns) do
       ~H"""
       <div
+        id={"flow-resource-" <> @node.id}
+        phx-hook=".ResourceNodeClick"
+        phx-update="ignore"
+        data-vertex-id={@node.data.vertex_id}
         class="rounded-md shadow border-2 cursor-pointer select-none px-3 py-2 min-w-[180px] text-center font-semibold"
         style={[
           "background-color: ",
@@ -125,13 +129,58 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           @node.data.fg,
           ";"
         ]}
-        phx-click="lf:navigate_to_vertex"
-        phx-value-vertex-id={@node.data.vertex_id}
         title={@node.data.resource}
       >
         <div class="text-sm leading-tight">{@node.data.label}</div>
         <div class="text-[10px] opacity-70 mt-1 leading-none">{@node.data.domain}</div>
       </div>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".ResourceNodeClick">
+        // Distinguish click from drag-then-release. Browsers still fire
+        // `click` after small drags (mouseup near mousedown), which would
+        // navigate away mid-interaction. Track pointer movement on this
+        // element and swallow clicks that follow any meaningful movement.
+        const THRESHOLD = 5;
+        export default {
+          mounted() {
+            this._startX = 0;
+            this._startY = 0;
+            this._moved = false;
+            this._onPointerDown = (e) => {
+              this._startX = e.clientX;
+              this._startY = e.clientY;
+              this._moved = false;
+            };
+            this._onPointerMove = (e) => {
+              if (this._moved) return;
+              if (
+                Math.abs(e.clientX - this._startX) > THRESHOLD ||
+                Math.abs(e.clientY - this._startY) > THRESHOLD
+              ) {
+                this._moved = true;
+              }
+            };
+            this._onClick = (e) => {
+              if (this._moved) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                return;
+              }
+              const vertexId = this.el.dataset.vertexId;
+              if (vertexId) {
+                this.pushEvent("lf:navigate_to_vertex", { "vertex-id": vertexId });
+              }
+            };
+            this.el.addEventListener("pointerdown", this._onPointerDown);
+            window.addEventListener("pointermove", this._onPointerMove);
+            this.el.addEventListener("click", this._onClick, true);
+          },
+          destroyed() {
+            this.el.removeEventListener("pointerdown", this._onPointerDown);
+            window.removeEventListener("pointermove", this._onPointerMove);
+            this.el.removeEventListener("click", this._onClick, true);
+          }
+        };
+      </script>
       """
     end
 
