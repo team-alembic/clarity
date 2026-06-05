@@ -23,6 +23,7 @@ config :tailwind,
 case config_env() do
   env when env in [:dev, :test] ->
     config :clarity, DemoWeb.Endpoint,
+      adapter: Bandit.PhoenixAdapter,
       url: [host: "localhost"],
       secret_key_base: "Hu4qQN3iKzTV4fJxhorPQlA/osH9fAMtbtjVS58PFgfw3ja5Z18Q/WSNR9wP4OfW",
       live_view: [signing_salt: "hMegieSe"],
