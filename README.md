@@ -59,7 +59,7 @@ to your `mix.exs` dependencies.
 mix igniter.install clarity
 ```
 
-If you want to include Ash diagramming and visualisation support then also install ash_diagram:
+If you want to include Ash diagramming and visualisation support, which let's be honest you probably do, then also install `ash_diagram`:
 
 ```bash
 mix igniter.install clarity ash_diagram
@@ -82,7 +82,8 @@ Router:
 
 ```elixir
 import Clarity.Router
-clarity("/clarity")
+
+clarity "/clarity"
 ```
 
 <!-- ex_doc_ignore_start -->
@@ -108,7 +109,7 @@ testing, asset building, and code quality tools.
 
 ## License
 
-Copyright 2025 Alembic Pty Ltd
+Copyright 2026 Alembic Pty Ltd
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
