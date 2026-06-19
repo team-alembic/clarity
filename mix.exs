@@ -95,7 +95,7 @@ defmodule Clarity.MixProject do
       {:phoenix, "~> 1.8"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},
-      {:mdex, ">= 0.12.0 and < 0.12.3"},
+      {:mdex, ">= 0.12.0 and < 0.13.1"},
       {:telemetry, "~> 1.3"},
       {:telemetry_registry, "~> 0.3"},
       {:igniter, "~> 0.6", optional: true},
