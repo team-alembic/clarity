@@ -8,10 +8,14 @@ defmodule Clarity.Components.MarkdownComponent do
 
   use Phoenix.Component
 
-  alias Clarity.Components.CodeHighlighter
   alias Clarity.Perspective.Lens
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
+
+  @mdex_opts [
+    extension: [table: true, strikethrough: true],
+    syntax_highlight: [formatter: {:html_linked, pre_class: "highlight"}]
+  ]
 
   attr :content, :any, required: true, doc: "The markdown content to render"
   attr :prefix, :string, required: true, doc: "URL prefix for link generation"
@@ -36,118 +40,79 @@ defmodule Clarity.Components.MarkdownComponent do
           Phoenix.HTML.safe()
   defp render_markdown_with_vertex_links(content, prefix, lens) do
     content
-    |> IO.iodata_to_binary()
     |> parse_and_transform_markdown(prefix, lens)
     |> Phoenix.HTML.raw()
   end
 
-  @dialyzer {:nowarn_function, parse_and_transform_markdown: 3}
+  # iodata_to_binary lives inside the rescue so malformed/nil content (e.g. a
+  # third-party content provider returning non-iodata) degrades gracefully
+  # instead of crashing the surrounding render.
   @spec parse_and_transform_markdown(
-          markdown :: String.t(),
+          content :: String.t() | iodata(),
           prefix :: String.t(),
           lens :: Lens.t()
         ) :: String.t()
-  defp parse_and_transform_markdown(markdown, prefix, lens) do
-    case Earmark.Parser.as_ast(markdown) do
-      {:ok, ast, _messages} ->
-        ast
-        |> Earmark.Transform.map_ast(&transform_vertex_links(&1, prefix, lens))
-        |> Earmark.Transform.map_ast(&transform_code_blocks/1)
-        |> transform_inline_code_in_ast()
-        |> Earmark.Transform.transform()
-
-      {:error, _reason, _messages} ->
-        fallback_render(markdown)
-    end
+  defp parse_and_transform_markdown(content, prefix, lens) do
+    content
+    |> IO.iodata_to_binary()
+    |> MDEx.parse_document!(@mdex_opts)
+    |> MDEx.traverse_and_update(&transform_vertex_links(&1, prefix, lens))
+    |> MDEx.to_html!(syntax_highlight: @mdex_opts[:syntax_highlight])
+  rescue
+    _exception -> "<p>Error rendering markdown</p>"
   end
 
-  @spec transform_vertex_links(
-          ast_node :: Earmark.Parser.ast_node(),
-          prefix :: String.t(),
-          lens :: Lens.t()
-        ) ::
-          Earmark.Parser.ast_node()
-  defp transform_vertex_links({"a", attrs, content, meta} = node, prefix, lens) do
-    case Enum.find(attrs, fn {key, _value} -> key == "href" end) do
-      {"href", "vertex://" <> vertex_path} ->
-        new_href = build_clarity_path(vertex_path, prefix, lens)
-
-        new_attrs =
-          attrs
-          |> Enum.reject(fn {key, _value} -> key == "href" end)
-          |> Enum.concat([
-            {"href", new_href},
-            {"data-phx-link", "patch"},
-            {"data-phx-link-state", "push"}
-          ])
-
-        {"a", new_attrs, content, meta}
-
-      _other ->
-        node
+  @spec transform_vertex_links(MDEx.Document.md_node(), String.t(), Lens.t()) ::
+          MDEx.Document.md_node()
+  defp transform_vertex_links(%{nodes: children} = parent, prefix, lens) when is_list(children) do
+    if Enum.any?(children, &vertex_link?/1) do
+      %{parent | nodes: rewrite_vertex_links(children, prefix, lens)}
+    else
+      parent
     end
   end
 
   defp transform_vertex_links(node, _prefix, _lens), do: node
 
-  @spec transform_code_blocks(ast_node :: Earmark.Parser.ast_node()) ::
-          Earmark.Parser.ast_node() | {:replace, Earmark.Parser.ast_node()}
-  defp transform_code_blocks(
-         {"pre", pre_attrs, [{"code", code_attrs, [content], code_meta}], pre_meta} = node
-       ) do
-    language = extract_language(code_attrs)
+  @spec vertex_link?(node :: MDEx.Document.md_node()) :: boolean()
+  defp vertex_link?(%MDEx.Link{url: "vertex://" <> _}), do: true
+  defp vertex_link?(_), do: false
 
-    case CodeHighlighter.get_lexer(language) do
-      nil ->
-        node
+  # MDEx.Link has no HTML attributes field; use Raw nodes for data-phx-link attrs.
+  @spec rewrite_vertex_links([MDEx.Document.md_node()], String.t(), Lens.t()) ::
+          [MDEx.Document.md_node()]
+  defp rewrite_vertex_links(children, prefix, lens) do
+    Enum.flat_map(children, fn
+      %MDEx.Link{url: "vertex://" <> vertex_path, nodes: link_children, title: title} ->
+        vertex_path
+        |> build_clarity_path(prefix, lens)
+        |> raw_phx_link(link_children, title)
 
-      lexer ->
-        highlighted_spans = Makeup.highlight_inner_html(content, lexer: lexer)
-        code_meta_with_verbatim = Map.put(code_meta, :verbatim, true)
-        pre_meta_with_verbatim = Map.put(pre_meta, :verbatim, true)
-
-        new_node =
-          {"pre", [{"class", "highlight"} | pre_attrs],
-           [{"code", code_attrs, [highlighted_spans], code_meta_with_verbatim}],
-           pre_meta_with_verbatim}
-
-        {:replace, new_node}
-    end
+      other ->
+        [other]
+    end)
   end
 
-  defp transform_code_blocks(node), do: node
+  @spec raw_phx_link(
+          url :: String.t(),
+          children :: [MDEx.Document.md_node()],
+          title :: String.t() | nil
+        ) :: [MDEx.Document.md_node()]
+  defp raw_phx_link(url, children, title) do
+    title_attr = if title in [nil, ""], do: "", else: ~s( title="#{escape(title)}")
 
-  @spec transform_inline_code_in_ast(ast :: list()) :: list()
-  defp transform_inline_code_in_ast(ast) when is_list(ast) do
-    Enum.map(ast, &transform_inline_code_node/1)
+    open = %MDEx.Raw{
+      literal:
+        ~s(<a href="#{escape(url)}" data-phx-link="patch" data-phx-link-state="push"#{title_attr}>)
+    }
+
+    close = %MDEx.Raw{literal: "</a>"}
+    [open | children] ++ [close]
   end
 
-  @spec transform_inline_code_node(node :: Earmark.Parser.ast_node() | binary()) ::
-          Earmark.Parser.ast_node() | binary()
-  defp transform_inline_code_node({"pre", _, _, _} = node), do: node
-
-  defp transform_inline_code_node({"code", _attrs, content, meta}) do
-    {"strong", [{"class", "font-mono"}], content, meta}
-  end
-
-  defp transform_inline_code_node({tag, attrs, children, meta}) do
-    {tag, attrs, transform_inline_code_in_ast(children), meta}
-  end
-
-  defp transform_inline_code_node(other), do: other
-
-  @spec extract_language(attrs :: list()) :: String.t() | nil
-  defp extract_language(attrs) do
-    case Enum.find(attrs, fn {key, _value} -> key == "class" end) do
-      {"class", class_value} ->
-        class_value
-        |> String.split()
-        |> Enum.find(&(&1 not in ["", "inline"]))
-
-      _other ->
-        nil
-    end
-  end
+  # Escape untrusted values before splicing into Raw HTML literals.
+  @spec escape(value :: String.t()) :: String.t()
+  defp escape(value), do: value |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
   @spec build_clarity_path(
           vertex_path :: String.t(),
@@ -156,13 +121,5 @@ defmodule Clarity.Components.MarkdownComponent do
         ) :: String.t()
   defp build_clarity_path(vertex_path, prefix, lens) do
     Path.join([prefix, lens.id, vertex_path])
-  end
-
-  @spec fallback_render(markdown :: String.t()) :: String.t()
-  defp fallback_render(markdown) do
-    case Earmark.as_html(markdown) do
-      {:ok, html, _messages} -> html
-      {:error, reason, _messages} -> "<p>Error rendering markdown: #{reason}</p>"
-    end
   end
 end
