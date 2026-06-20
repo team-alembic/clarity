@@ -1,0 +1,10 @@
+# Clarity is a library: `Clarity.Router` only `use Phoenix.Router` inside macro
+# `quote` blocks, so sobelow cannot detect it as a router. Pointing `router:` at
+# it crashes the Config.CSP check on the `unquote(...)` AST, so we leave it
+# unset — sobelow prints a harmless "cannot find router" warning and
+# auto-ignores the router-specific Config.* checks.
+[
+  verbose: false,
+  private: false,
+  skip: true
+]

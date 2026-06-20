@@ -81,6 +81,8 @@ defmodule Clarity.Graph.Cache do
   end
 
   @spec persist(Graph.t(), Path.t()) :: :ok | {:error, term()}
+  # cache_path is an internal, app-controlled cache directory.
+  # sobelow_skip ["Traversal"]
   defp persist(graph, cache_path) do
     with :ok <- File.mkdir_p(cache_path),
          :ok <- Graph.persist(graph, cache_path) do
@@ -89,6 +91,8 @@ defmodule Clarity.Graph.Cache do
   end
 
   @spec persist_metadata(Path.t()) :: :ok | {:error, File.posix()}
+  # writes a fixed filename inside the app-controlled cache directory.
+  # sobelow_skip ["Traversal"]
   defp persist_metadata(cache_path) do
     metadata = %{
       version: clarity_version(),
@@ -102,6 +106,8 @@ defmodule Clarity.Graph.Cache do
   end
 
   @spec validate_cache(Path.t()) :: :ok | {:error, {:invalid, term()}}
+  # reads the app's own local cache file (fixed name, trusted source).
+  # sobelow_skip ["Traversal", "Misc.BinToTerm"]
   defp validate_cache(cache_path) do
     metadata_path = Path.join(cache_path, "metadata.etf")
 

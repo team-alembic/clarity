@@ -165,6 +165,8 @@ defmodule Clarity.OpenEditor do
     e -> {:error, {:system_error, e}}
   end
 
+  # editor command comes from trusted application config by design.
+  # sobelow_skip ["CI.System"]
   defp execute_system_command([editor | args]) do
     case System.cmd(editor, args, stderr_to_stdout: true) do
       {_output, 0} ->

@@ -38,6 +38,8 @@ defmodule Clarity.Components.MarkdownComponent do
           lens :: Lens.t()
         ) ::
           Phoenix.HTML.safe()
+  # HTML is produced and escaped by MDEx; prefix/lens are path-safe values, not user HTML.
+  # sobelow_skip ["XSS.Raw"]
   defp render_markdown_with_vertex_links(content, prefix, lens) do
     content
     |> parse_and_transform_markdown(prefix, lens)

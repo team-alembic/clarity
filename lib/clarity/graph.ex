@@ -682,6 +682,8 @@ defmodule Clarity.Graph do
   @spec persist(t(), Path.t()) :: result()
   def persist(%__MODULE__{subgraph: true}, _path), do: {:error, :subgraphs_are_readonly}
 
+  # path is an internal persistence dir from a trusted caller; appended segments are hardcoded.
+  # sobelow_skip ["Traversal"]
   def persist(%__MODULE__{} = graph, path) do
     with :ok <- File.mkdir_p(path),
          :ok <- persist_ets_table(graph.vertices, Path.join(path, "vertices.ets")),
