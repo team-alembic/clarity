@@ -123,7 +123,7 @@ defmodule Clarity.Components.MarkdownComponentTest do
 
       assert html =~ ~r/class="(?:lumis )?highlight"/
       assert html =~ ~s[class="language-elixir"]
-      assert html =~ ~s[class="keyword"]
+      assert html =~ ~s[class="l-keyword"]
       assert html =~ "defmodule"
       assert html =~ "Test"
       assert html =~ "hello"

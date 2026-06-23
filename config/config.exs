@@ -8,6 +8,8 @@ config :esbuild,
     env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
   ]
 
+config :mdex_native, syntax_highlighter: :lumis
+
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.1.14",
@@ -19,8 +21,6 @@ config :tailwind,
     ),
     cd: Path.expand("../assets", __DIR__)
   ]
-
-config :mdex_native, syntax_highlighter: :lumis
 
 case config_env() do
   env when env in [:dev, :test] ->
