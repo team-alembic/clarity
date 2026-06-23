@@ -2,7 +2,6 @@ defmodule Clarity.Layouts do
   @moduledoc false
 
   use Clarity.Web, :html
-  use Phoenix.Component
 
   embed_templates "layouts/*"
 

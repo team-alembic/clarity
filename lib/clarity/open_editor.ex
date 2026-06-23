@@ -47,8 +47,6 @@ defmodule Clarity.OpenEditor do
 
   """
 
-  require Logger
-
   @type action_result ::
           :editor_not_available
           | :action_not_available

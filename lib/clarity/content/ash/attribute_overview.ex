@@ -256,9 +256,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defp format_boolean(false), do: "No"
     defp format_boolean(_), do: "No"
 
-    @spec clean_description(String.t() | nil) :: String.t()
-    defp clean_description(nil), do: ""
-
+    @spec clean_description(String.t()) :: String.t()
     defp clean_description(description) when is_binary(description) do
       description
       |> String.trim()
