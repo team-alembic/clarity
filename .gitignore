@@ -33,3 +33,4 @@ clarity-*.tar
 /priv/static/assets/
 
 .claude
+.env*

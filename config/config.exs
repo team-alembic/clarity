@@ -20,6 +20,8 @@ config :tailwind,
     cd: Path.expand("../assets", __DIR__)
   ]
 
+config :mdex_native, syntax_highlighter: :lumis
+
 case config_env() do
   env when env in [:dev, :test] ->
     config :clarity, DemoWeb.Endpoint,
