@@ -38,13 +38,6 @@ defmodule Clarity.CoreComponents do
   @spec viz(assigns :: Socket.assigns()) :: Rendered.t()
   def viz(assigns)
 
-  attr :id, :string, required: true, doc: "The unique ID for the mermaid visualization"
-  attr :graph, :string, required: true, doc: "The mermaid graph definition in string format"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the graph container"
-
-  @spec mermaid(assigns :: Socket.assigns()) :: Rendered.t()
-  def mermaid(assigns)
-
   attr :id, :string, required: true, doc: "The unique ID for the theme toggle button"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :class, :string, default: "", doc: "CSS classes to apply to the theme toggle button"
@@ -148,10 +141,10 @@ defmodule Clarity.CoreComponents do
   def vertex_name(assigns)
 
   @doc """
-  Renders a drawer for displaying raw content (mermaid, viz, markdown).
+  Renders a drawer for displaying raw content (viz, markdown).
   """
   attr :show, :boolean, required: true, doc: "Whether the drawer is visible"
-  attr :content_type, :string, required: true, doc: "The type of content (mermaid, viz, markdown)"
+  attr :content_type, :string, required: true, doc: "The type of content (viz, markdown)"
   attr :raw_content, :string, required: true, doc: "The raw content to display"
   attr :rest, :global, doc: "Additional HTML attributes"
 

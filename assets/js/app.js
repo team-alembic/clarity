@@ -14,7 +14,6 @@
 //
 //     import "some-package"
 
-import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
 import Tooltip from "./tooltip.hook";
 import ThemeToggle, { getInitialTheme } from "./theme.hook";
@@ -26,7 +25,6 @@ let socketPath =
   document.querySelector("html").getAttribute("phx-socket") || "/live";
 
 const Hooks = {
-  Mermaid: Mermaid,
   Viz: Viz,
   Tooltip: Tooltip,
   ThemeToggle: ThemeToggle,

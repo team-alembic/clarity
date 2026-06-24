@@ -99,17 +99,6 @@
           />
           <% {content_type, raw_content} =
             case @content && @content.render_static do
-              {:mermaid, content_fn} ->
-                props = %{
-                  theme: @theme,
-                  zoom_subgraph: data.zoom_graph,
-                  zoom_level: @zoom_level,
-                  shown_vertex_types: @shown_vertex_types,
-                  available_vertex_types: @available_vertex_types
-                }
-
-                {"mermaid", IO.iodata_to_binary(content_fn.(props))}
-
               {:viz, content_fn} ->
                 props = %{
                   theme: @theme,
