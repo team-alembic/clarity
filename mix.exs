@@ -124,13 +124,30 @@ defmodule Clarity.MixProject do
     ]
   end
 
+  # Sourcemap-free on purpose: the CI publish job compiles before it packages,
+  # so a bootstrap sourcemap would linger and ship (the minified `assets.deploy`
+  # overwrites `app.js` but not its `.map`). `mix dev` watchers add sourcemaps.
+  defp build_assets_if_missing(_args) do
+    if !File.exists?("priv/static/assets/app.js") do
+      Mix.Task.run("tailwind", ["default"])
+      Mix.Task.run("esbuild", ["default"])
+    end
+  end
+
   defp aliases do
     [
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind default", "esbuild default --sourcemap=linked"],
-      "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
-      # Build assets before packaging so a published tarball can never ship stale
-      # `priv/static/assets`, regardless of whether publishing runs from CI or a
+      # No `phx.digest`: `Clarity.Resources` inlines the built assets into the
+      # page at compile time rather than serving them over HTTP, so digesting
+      # would only add unused duplicate files to the package.
+      "assets.deploy": ["tailwind default --minify", "esbuild default --minify"],
+      # `Clarity.Resources` reads the built assets at compile time, so a clean
+      # checkout must build them before compiling. Guarded by existence so it
+      # never runs for consumers, whose dependency copy already ships them.
+      compile: [&build_assets_if_missing/1, "compile"],
+      # Build assets before packaging so a published tarball can never ship
+      # stale `priv/static/assets`, whether publishing runs from CI or a
       # maintainer's machine.
       "hex.build": ["assets.deploy", "hex.build"],
       "hex.publish": ["assets.deploy", "hex.publish"],
