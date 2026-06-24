@@ -29,8 +29,11 @@ clarity-*.tar
 /priv/cache
 
 # Assets
+# The built `app.js`/`app.css` are committed (Clarity inlines them at compile
+# time, and CI has no frontend toolchain). Sourcemaps and digests are not.
 /assets/node_modules/
-/priv/static/assets/
+/priv/static/assets/*.map
+/priv/static/assets/cache_manifest.json
 
 .claude
 .env*

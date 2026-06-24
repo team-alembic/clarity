@@ -124,13 +124,13 @@ defmodule Clarity.MixProject do
     ]
   end
 
-  # Sourcemap-free on purpose: the CI publish job compiles before it packages,
-  # so a bootstrap sourcemap would linger and ship (the minified `assets.deploy`
-  # overwrites `app.js` but not its `.map`). `mix dev` watchers add sourcemaps.
-  defp build_assets_if_missing(_args) do
-    if !File.exists?("priv/static/assets/app.js") do
-      Mix.Task.run("tailwind", ["default"])
-      Mix.Task.run("esbuild", ["default"])
+  # Refresh the committed assets before packaging, but only where the frontend
+  # toolchain is present. CI has no `node_modules` (and can't build), so it
+  # packages the committed `app.js`/`app.css` as-is; a maintainer publishing
+  # locally gets a fresh build instead of shipping stale assets.
+  defp build_assets_for_publish(_args) do
+    if File.dir?("assets/node_modules") do
+      Mix.Task.run("assets.deploy")
     end
   end
 
@@ -142,15 +142,8 @@ defmodule Clarity.MixProject do
       # page at compile time rather than serving them over HTTP, so digesting
       # would only add unused duplicate files to the package.
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify"],
-      # `Clarity.Resources` reads the built assets at compile time, so a clean
-      # checkout must build them before compiling. Guarded by existence so it
-      # never runs for consumers, whose dependency copy already ships them.
-      compile: [&build_assets_if_missing/1, "compile"],
-      # Build assets before packaging so a published tarball can never ship
-      # stale `priv/static/assets`, whether publishing runs from CI or a
-      # maintainer's machine.
-      "hex.build": ["assets.deploy", "hex.build"],
-      "hex.publish": ["assets.deploy", "hex.publish"],
+      "hex.build": [&build_assets_for_publish/1, "hex.build"],
+      "hex.publish": [&build_assets_for_publish/1, "hex.publish"],
       dev: "run --no-halt --no-start dev.exs --config config",
       "usage_rules.update": [
         String.trim("""
