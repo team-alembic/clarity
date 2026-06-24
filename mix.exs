@@ -124,11 +124,26 @@ defmodule Clarity.MixProject do
     ]
   end
 
+  # Refresh the committed assets before packaging, but only where the frontend
+  # toolchain is present. CI has no `node_modules` (and can't build), so it
+  # packages the committed `app.js`/`app.css` as-is; a maintainer publishing
+  # locally gets a fresh build instead of shipping stale assets.
+  defp build_assets_for_publish(_args) do
+    if File.dir?("assets/node_modules") do
+      Mix.Task.run("assets.deploy")
+    end
+  end
+
   defp aliases do
     [
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind default", "esbuild default --sourcemap=linked"],
-      "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
+      # No `phx.digest`: `Clarity.Resources` inlines the built assets into the
+      # page at compile time rather than serving them over HTTP, so digesting
+      # would only add unused duplicate files to the package.
+      "assets.deploy": ["tailwind default --minify", "esbuild default --minify"],
+      "hex.build": [&build_assets_for_publish/1, "hex.build"],
+      "hex.publish": [&build_assets_for_publish/1, "hex.publish"],
       dev: "run --no-halt --no-start dev.exs --config config",
       "usage_rules.update": [
         String.trim("""
