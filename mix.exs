@@ -129,6 +129,11 @@ defmodule Clarity.MixProject do
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind default", "esbuild default --sourcemap=linked"],
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"],
+      # Build assets before packaging so a published tarball can never ship stale
+      # `priv/static/assets`, regardless of whether publishing runs from CI or a
+      # maintainer's machine.
+      "hex.build": ["assets.deploy", "hex.build"],
+      "hex.publish": ["assets.deploy", "hex.publish"],
       dev: "run --no-halt --no-start dev.exs --config config",
       "usage_rules.update": [
         String.trim("""
