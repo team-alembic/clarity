@@ -43,6 +43,11 @@ defmodule Mix.Tasks.Clarity.InstallTest do
        |end
        |
     """)
+    |> assert_has_patch("config/config.exs", """
+    ...|
+     + |config :mdex_native, syntax_highlighter: :lumis
+    ...|
+    """)
     |> apply_igniter!()
     |> Igniter.compose_task("clarity.install", [])
     |> assert_unchanged()

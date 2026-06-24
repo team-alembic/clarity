@@ -37,6 +37,7 @@ if Code.ensure_loaded?(Igniter) do
     alias Igniter.Code.List
     alias Igniter.Libs.Phoenix
     alias Igniter.Project.Application
+    alias Igniter.Project.Config
     alias Igniter.Project.Formatter
     alias Igniter.Project.MixProject
     alias Igniter.Project.Module
@@ -82,8 +83,17 @@ if Code.ensure_loaded?(Igniter) do
 
       igniter
       |> Formatter.import_dep(:clarity)
+      |> configure_syntax_highlighter()
       |> add_to_router(app_name, router)
       |> add_code_reloader()
+    end
+
+    # MDEx (>= 0.13) compiles syntax highlighting in via `mdex_native`'s
+    # compile-time config, which a library cannot set on a consumer's behalf.
+    # See Clarity.Components.MarkdownComponent for the runtime detection.
+    @spec configure_syntax_highlighter(igniter :: Igniter.t()) :: Igniter.t()
+    defp configure_syntax_highlighter(igniter) do
+      Config.configure_new(igniter, "config.exs", :mdex_native, [:syntax_highlighter], :lumis)
     end
 
     @spec add_to_router(igniter :: Igniter.t(), app_name :: atom(), router :: module() | nil) ::

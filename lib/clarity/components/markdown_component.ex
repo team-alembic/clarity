@@ -12,10 +12,10 @@ defmodule Clarity.Components.MarkdownComponent do
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
-  @mdex_opts [
-    extension: [table: true, strikethrough: true],
-    syntax_highlight: [formatter: {:html_linked, pre_class: "highlight"}]
-  ]
+  require Logger
+
+  @extension_opts [extension: [table: true, strikethrough: true]]
+  @highlight_opts [syntax_highlight: [formatter: {:html_linked, pre_class: "highlight"}]]
 
   attr :content, :any, required: true, doc: "The markdown content to render"
   attr :prefix, :string, required: true, doc: "URL prefix for link generation"
@@ -55,13 +55,48 @@ defmodule Clarity.Components.MarkdownComponent do
           lens :: Lens.t()
         ) :: String.t()
   defp parse_and_transform_markdown(content, prefix, lens) do
+    highlight_opts = highlight_opts()
+
     content
     |> IO.iodata_to_binary()
-    |> MDEx.parse_document!(@mdex_opts)
+    |> MDEx.parse_document!(@extension_opts ++ highlight_opts)
     |> MDEx.traverse_and_update(&transform_vertex_links(&1, prefix, lens))
-    |> MDEx.to_html!(syntax_highlight: @mdex_opts[:syntax_highlight])
+    |> MDEx.to_html!(highlight_opts)
   rescue
     _exception -> "<p>Error rendering markdown</p>"
+  end
+
+  # MDEx (>= 0.13) only highlights when `mdex_native` was compiled with Lumis,
+  # which is selected by the consuming app's compile-time config — a library
+  # cannot set it on their behalf. Without it, requesting the Lumis formatter
+  # raises, so we render unhighlighted instead and nudge towards the upgrade.
+  @spec highlight_opts() :: keyword()
+  defp highlight_opts do
+    if Application.get_env(:mdex_native, :syntax_highlighter) == :lumis do
+      @highlight_opts
+    else
+      warn_syntax_highlighting_disabled()
+      []
+    end
+  end
+
+  @spec warn_syntax_highlighting_disabled() :: :ok
+  defp warn_syntax_highlighting_disabled do
+    if :persistent_term.get({__MODULE__, :highlight_warning}, false) do
+      :ok
+    else
+      :persistent_term.put({__MODULE__, :highlight_warning}, true)
+
+      Logger.warning("""
+      Clarity: code blocks will render without syntax highlighting because \
+      `mdex_native` was compiled without Lumis support.
+
+      Run `mix igniter.upgrade clarity` to add the required configuration, or \
+      add it manually and recompile:
+
+          config :mdex_native, syntax_highlighter: :lumis
+      """)
+    end
   end
 
   @spec transform_vertex_links(MDEx.Document.md_node(), String.t(), Lens.t()) ::
