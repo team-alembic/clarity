@@ -5,6 +5,19 @@ See [Conventional Commits](Https://conventionalcommits.org) for commit guideline
 
 <!-- changelog -->
 
+## [v0.6.0](https://github.com/team-alembic/clarity/compare/v0.5.1...v0.6.0) (2026-06-25)
+
+
+
+
+### Bug Fixes:
+
+* ship lean built assets; unblock Hex publishing (#129) by [@jimsynz](https://github.com/jimsynz) [(#129)](https://github.com/team-alembic/clarity/pull/129)
+
+* configure `mdex_native` syntax highlighter for consumers (#128) by [@jimsynz](https://github.com/jimsynz) [(#128)](https://github.com/team-alembic/clarity/pull/128)
+
+* resolve compiler warnings under Elixir 1.20 by [@jimsynz](https://github.com/jimsynz)
+
 ## [v0.5.1](https://github.com/team-alembic/clarity/compare/v0.5.0...v0.5.1) (2026-06-05)
 
 
