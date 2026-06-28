@@ -79,6 +79,7 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.CalculationOverview,
           Clarity.Content.Ash.AggregateOverview,
           Clarity.Content.Ash.PolicyOverview,
+          Clarity.Content.Ash.SecurityOverview,
           Clarity.Content.Ash.RelationshipOverview,
           Clarity.Content.Phoenix.RouterRoutes
         ],
