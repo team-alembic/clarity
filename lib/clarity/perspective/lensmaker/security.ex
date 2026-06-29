@@ -33,12 +33,16 @@ defmodule Clarity.Perspective.Lensmaker.Security do
 
   @spec filter(Graph.t()) :: Graph.query()
   defp filter(graph) do
-    # Find applications with security-related edges (beyond :module and :dependency)
+    # Find applications with security-related edges (beyond :module and :dependency):
+    # Ash domains / Phoenix endpoints, or a dependency carrying a security advisory.
     application_ids =
       graph
       |> Graph.vertices({:==, :vertex_type, Vertex.Application})
       |> Enum.filter(fn vertex ->
-        Enum.any?([:domain, :router, :endpoint], &(Graph.out_degree(graph, vertex, &1) > 0))
+        Enum.any?(
+          [:domain, :router, :endpoint, :advisory],
+          &(Graph.out_degree(graph, vertex, &1) > 0)
+        )
       end)
       |> Enum.map(&Vertex.id/1)
 

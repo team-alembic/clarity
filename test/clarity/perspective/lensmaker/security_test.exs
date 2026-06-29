@@ -4,11 +4,37 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Security
+  alias Clarity.Vertex
+  alias Clarity.Vertex.Root
   alias Phoenix.LiveView.Rendered
 
   setup do
     graph = Graph.new()
     {:ok, graph: graph}
+  end
+
+  describe "filter/1" do
+    test "keeps applications that carry a security advisory, drops plain libraries",
+         %{graph: graph} do
+      root = %Root{}
+      plain = %Vertex.Application{app: :plain_lib, description: "Plain", version: "1.0.0"}
+      advised = %Vertex.Application{app: :mdex, description: "mdex", version: "0.13.1"}
+      advisory = %Vertex.Advisory{advisory: %Clarity.Advisory{id: "GHSA-x", package: "mdex"}}
+
+      Graph.add_vertex(graph, plain, root)
+      Graph.add_vertex(graph, advised, root)
+      Graph.add_vertex(graph, advisory, advised)
+      Graph.add_edge(graph, root, plain, :application)
+      Graph.add_edge(graph, root, advised, :application)
+      Graph.add_edge(graph, advised, advisory, :advisory)
+
+      query = Security.make_lens().filter.(graph)
+      visible = Graph.vertices(graph, query)
+
+      assert advised in visible
+      assert advisory in visible
+      refute plain in visible
+    end
   end
 
   describe "make_lens/0" do
