@@ -14,6 +14,17 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       is computed for a *representative actor with no privileged attributes*, so
       it answers "can an ordinary actor reach this action?" — admin/bypass paths
       are reported separately.
+
+    ## Representative actor
+
+    The actor used for `action_verdict/2` is, in order of preference:
+
+    1. `config :clarity, :security_actor, ...` — a resource module (instantiated
+       as an empty struct) or an actor struct/map.
+    2. The AshAuthentication installer convention `<App>.Accounts.User`, if that
+       module exists and is an Ash resource — instantiated as an empty struct so
+       its attributes take their declared defaults (an unprivileged user).
+    3. A bare `%{id: _}` map.
     """
 
     alias Ash.Policy.Authorizer
@@ -78,18 +89,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     defp condition_decides(_check, _action), do: :unknown
 
-    @representative_actor %{id: "00000000-0000-0000-0000-000000000000"}
+    @fallback_actor %{id: "00000000-0000-0000-0000-000000000000"}
 
     @spec solve(Ash.Resource.t(), Actions.action()) :: verdict()
     defp solve(resource, action) do
-      subject = subject(resource, action)
+      actor = representative_actor(resource)
+      subject = subject(resource, action, actor)
 
       authorizer =
         Checker.strict_check_all_facts(%Authorizer{
           resource: resource,
           action: action,
           policies: Ash.Policy.Info.policies(resource),
-          actor: @representative_actor,
+          actor: actor,
           query: if(action.type == :read, do: subject),
           changeset: if(action.type in [:create, :update, :destroy], do: subject),
           subject: subject,
@@ -105,32 +117,49 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
     end
 
-    @spec subject(Ash.Resource.t(), Actions.action()) :: Ash.Query.t() | Ash.Changeset.t()
-    defp subject(resource, %{type: :read} = action),
-      do:
-        Ash.Query.for_read(resource, action.name, %{},
-          actor: @representative_actor,
-          authorize?: false
-        )
+    @spec representative_actor(Ash.Resource.t()) :: struct() | map()
+    defp representative_actor(resource) do
+      configured_actor() || conventional_actor(resource)
+    end
 
-    defp subject(resource, %{type: :create} = action),
-      do:
-        Ash.Changeset.for_create(resource, action.name, %{},
-          actor: @representative_actor,
-          authorize?: false
-        )
+    @spec configured_actor() :: struct() | map() | nil
+    defp configured_actor do
+      case Application.get_env(:clarity, :security_actor) do
+        nil -> nil
+        module when is_atom(module) -> if ash_resource?(module), do: struct(module)
+        actor when is_map(actor) -> actor
+        _other -> nil
+      end
+    end
 
-    defp subject(resource, %{type: :update} = action),
+    @spec conventional_actor(Ash.Resource.t()) :: struct() | map()
+    defp conventional_actor(resource) do
+      candidate = Module.concat([resource |> Module.split() |> hd(), "Accounts", "User"])
+      if ash_resource?(candidate), do: struct(candidate), else: @fallback_actor
+    end
+
+    @spec ash_resource?(module()) :: boolean()
+    defp ash_resource?(module), do: Code.ensure_loaded?(module) and Info.resource?(module)
+
+    @spec subject(Ash.Resource.t(), Actions.action(), struct() | map()) ::
+            Ash.Query.t() | Ash.Changeset.t()
+    defp subject(resource, %{type: :read} = action, actor),
+      do: Ash.Query.for_read(resource, action.name, %{}, actor: actor, authorize?: false)
+
+    defp subject(resource, %{type: :create} = action, actor),
+      do: Ash.Changeset.for_create(resource, action.name, %{}, actor: actor, authorize?: false)
+
+    defp subject(resource, %{type: :update} = action, actor),
       do:
         Ash.Changeset.for_update(struct(resource), action.name, %{},
-          actor: @representative_actor,
+          actor: actor,
           authorize?: false
         )
 
-    defp subject(resource, %{type: :destroy} = action),
+    defp subject(resource, %{type: :destroy} = action, actor),
       do:
         Ash.Changeset.for_destroy(struct(resource), action.name, %{},
-          actor: @representative_actor,
+          actor: actor,
           authorize?: false
         )
   end
