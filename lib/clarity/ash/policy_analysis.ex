@@ -133,12 +133,23 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           context: %{}
         })
 
-      case Checker.strict_check_scenarios(authorizer) do
-        {:ok, true, _authorizer} -> :always
-        {:ok, scenarios, _authorizer} when is_list(scenarios) -> :conditional
-        _otherwise -> :never
-      end
+      scenarios_verdict(Checker.strict_check_scenarios(authorizer))
     end
+
+    # `strict_check_scenarios/1` has no spec, so dialyzer infers its boolean
+    # result as only ever `false` and rejects the `{:ok, true, _}` clause as an
+    # impossible pattern. A tautology does return `{:ok, true, _}` at runtime
+    # (verified), so the clause is real — silence the spurious warning.
+    @type scenario_result() :: {:ok, boolean() | [map()], term()} | {:error, term(), term()}
+
+    @dialyzer {:nowarn_function, scenarios_verdict: 1}
+    @spec scenarios_verdict(scenario_result()) :: verdict()
+    defp scenarios_verdict({:ok, scenarios, _authorizer}) when is_list(scenarios),
+      do: :conditional
+
+    defp scenarios_verdict({:ok, true, _authorizer}), do: :always
+    defp scenarios_verdict({:ok, false, _authorizer}), do: :never
+    defp scenarios_verdict({:error, _authorizer, _reason}), do: :never
 
     @spec default_profiles(Ash.Resource.t()) :: [{String.t(), struct() | nil}]
     defp default_profiles(resource) do
@@ -159,8 +170,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec conventional_resource(Ash.Resource.t(), String.t()) :: module() | nil
     defp conventional_resource(resource, name) do
-      candidate = Module.concat([resource |> Module.split() |> hd(), "Accounts", name])
+      candidate = Module.safe_concat([resource |> Module.split() |> hd(), "Accounts", name])
       if ash_resource?(candidate), do: candidate
+    rescue
+      ArgumentError -> nil
     end
 
     @spec build_actor(actor()) :: actor()
@@ -176,9 +189,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
     end
 
-    @spec ash_resource?(term()) :: boolean()
-    defp ash_resource?(module),
-      do: is_atom(module) and Code.ensure_loaded?(module) and Info.resource?(module)
+    @spec ash_resource?(module()) :: boolean()
+    defp ash_resource?(module), do: Code.ensure_loaded?(module) and Info.resource?(module)
 
     @spec subject(Ash.Resource.t(), Actions.action(), actor()) ::
             Ash.Query.t() | Ash.Changeset.t()
