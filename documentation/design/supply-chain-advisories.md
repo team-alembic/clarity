@@ -139,7 +139,12 @@ A failed fetch never breaks a render or the graph.
 1. **(done)** Fetcher + DETS cache (osv source) + `Advisory` vertex +
    introspector + Application/Advisory content. Validated end to end against
    live osv.dev data (`mdex` 0.13.1 → EEF-CVE-2026-53426/-54889).
-2. Hex registry source → retirement + outdated status on Application content.
+2. **(done)** Hex registry source (`Clarity.Dependency.Registry`, decoded with
+   `hex_core`) → latest-version, outdated, and retirement status on Application
+   content. Surfaced on Application vertices already visible under the security
+   lens (advisory- or domain/endpoint-bearing); making outdated-only deps
+   visible there would flood the lens, so a broader dependency/health view is
+   left as the open question.
 3. Dependency-path / blast-radius view, domain/app roll-up, and live rebuild on
    refresh.
 

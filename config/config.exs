@@ -57,6 +57,12 @@ case config_env() do
     :ok
 end
 
+if config_env() == :test do
+  # No network in tests; the advisory/registry introspectors then settle to
+  # empty immediately rather than waiting on a fetch that never runs.
+  config :clarity, :advisories, enabled?: false
+end
+
 if Mix.env() == :dev do
   config :git_ops,
     mix_project: Clarity.MixProject,

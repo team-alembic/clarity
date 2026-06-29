@@ -252,6 +252,10 @@ defmodule Clarity.Config do
     )
   end
 
+  @doc false
+  @spec hex_registry_url() :: String.t()
+  def hex_registry_url, do: advisories_config(:hex_registry_url, "https://repo.hex.pm/versions")
+
   @spec filter_by_config([application_details()]) :: [application_details()]
   defp filter_by_config(loaded_applications) do
     case get_filter_config() do

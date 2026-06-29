@@ -83,7 +83,8 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.SecurityOverview,
           Clarity.Content.Ash.RelationshipOverview,
           Clarity.Content.Phoenix.RouterRoutes,
-          Clarity.Content.Advisory
+          Clarity.Content.Advisory,
+          Clarity.Content.Dependency
         ],
         default_perspective_lens: "architect"
       ]
@@ -99,6 +100,7 @@ defmodule Clarity.MixProject do
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},
       {:req, "~> 0.5"},
+      {:hex_core, "~> 0.11"},
       {:mdex, "~> 0.13"},
       {:lumis, "~> 0.1"},
       {:telemetry, "~> 1.3"},
