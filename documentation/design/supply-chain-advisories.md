@@ -23,34 +23,42 @@ advisory database in bulk and matches locally. It never transmits dependency
 coordinates to a third-party query API. The only egress is fetching a static,
 public file that reveals nothing about the project.
 
-## Data source
+## Data sources
 
-- **osv.dev bulk export** — the per-ecosystem archive
+Both are bulk public downloads, matched locally — the dependency list never
+leaves the machine.
+
+- **osv.dev bulk export** (vulnerabilities) — the per-ecosystem archive
   `https://osv-vulnerabilities.storage.googleapis.com/Hex/all.zip` (ecosystem
-  name `Hex`; exact path to be confirmed at implementation). A zip of OSV-schema
-  JSON entries covering the whole Hex ecosystem.
-- **EEF coverage** — the Elixir/Erlang advisories the EEF Security WG curates are
-  published into the GitHub Advisory DB and mirrored into osv.dev's `Hex`
-  ecosystem, so the single bulk download subsumes EEF. (Verify the overlap; do
-  not query EEF separately unless a gap is found.)
-- **Retirement / outdated (deferred)** — Hex package retirement and
-  latest-version are *not* in osv. They'd require per-package Hex queries, which
-  reintroduces the egress concern, so they're out of scope for the first cut and
-  revisited as a separate, opt-in follow-up.
+  `Hex`; exact path to confirm). OSV-schema JSON for the whole Hex ecosystem.
+- **EEF coverage** — EEF-curated Elixir/Erlang advisories are mirrored into
+  osv.dev's `Hex` ecosystem, so the bulk download subsumes EEF. (Verify the
+  overlap; don't query EEF separately unless a gap is found.)
+- **Hex registry** (retirement + outdated) — the bulk registry (the `/versions`
+  resource, and the per-package resource if the retired flag/reason isn't in the
+  bulk one — fetched wholesale, never per-dependency) gives each package's
+  versions, retired flags, and latest version. Decoded with `hex_core`. This
+  covers retirement and "behind latest" without per-dependency egress.
+
+Retirement and outdatedness are **dependency-hygiene** signals, distinct from
+vulnerabilities — modelled as status on the Application vertex, not as advisory
+vertices (see below).
 
 ## Architecture
 
 Four pieces, all within Clarity's existing extension model and OTP structure.
 
-### 1. Advisory fetcher (`Clarity.Advisory.Source` — GenServer)
+### 1. Fetcher (`Clarity.Advisory.Source` — GenServer)
 
 - Supervised in Clarity's tree; refreshes on a timer (default daily).
-- Downloads the bulk export, unpacks and parses the OSV entries, and writes them
-  to disk under the existing `:cache_path` (so a restart is warm and an offline
-  start still has data), plus an in-memory/ETS copy for matching.
-- Records a `last_refreshed_at` timestamp.
+- Downloads both bulk sources, parses them (OSV JSON; Hex registry via
+  `hex_core`), and persists to a **DETS table** under the existing `:cache_path`
+  — the tzdata approach: a refresh rewrites the table, reads come from it (with
+  an ETS read-through for matching). A restart is warm; an offline start serves
+  the last persisted data.
+- Records `last_refreshed_at`.
 - On a successful refresh that changes the data, triggers an incremental graph
-  rebuild (the same mechanism code-reload already uses).
+  rebuild (the mechanism code-reload already uses).
 
 ### 2. `Clarity.Vertex.Advisory` (vertex type)
 
@@ -73,13 +81,19 @@ protocol; `name/1` = the advisory id, `type_label/1` = "Advisory".
 
 - A content provider under the **existing `security` lens**, applying to
   Application and Advisory vertices:
-  - **Application** → its advisories (severity, summary, fixed-in version), and
-    the **dependency path** back to the project's own app(s) — plain traversal
-    of `:dependency` edges, the blast-radius view.
+  - **Application** → its advisories (severity, summary, fixed-in version); its
+    **dependency-hygiene status** (retired — with reason where available — and
+    "behind latest"); and the **dependency path** back to the project's own
+    app(s) via `:dependency` edges (the blast-radius view).
   - **Advisory** → full detail and the affected apps.
-  - **Domain/app roll-up** → counts and a list of vulnerable dependencies.
+  - **Domain/app roll-up** → counts and a list of vulnerable/retired dependencies.
 - The security lens gains Application + Advisory in its `show_vertex_types`, so
   vulnerable nodes are visible when navigating the dependency graph.
+
+Retirement/outdated are status on the Application vertex, not vertices of their
+own. Being hygiene rather than vulnerability signals, they may also deserve
+visibility outside the security lens (e.g. a general dependency/health view) —
+flagged as an open question, not assumed.
 
 ## Matching
 
@@ -119,16 +133,23 @@ A failed fetch never breaks a render or the graph.
 
 ## Phasing
 
-1. Fetcher + on-disk cache + `Advisory` vertex + introspector + Application/
-   Advisory content (advisory listing). Proves the pipeline end to end.
-2. Dependency-path / blast-radius view and the domain/app roll-up.
-3. Retirement / outdated (revisits the per-package egress decision; likely
-   opt-in).
+1. Fetcher + DETS cache (osv source) + `Advisory` vertex + introspector +
+   Application/Advisory content. Proves the pipeline end to end.
+2. Hex registry source → retirement + outdated status on Application content.
+3. Dependency-path / blast-radius view and the domain/app roll-up.
+
+## Decisions
+
+- **Enabled by default** (`enabled?: true`); air-gapped users opt out. The egress
+  is only public static files.
+- **DETS cache**, tzdata-style: refresh rewrites the table, reads come from it.
+- **Retirement/outdated are in scope**, sourced from the bulk Hex registry (no
+  per-dependency egress), modelled as Application status distinct from advisories.
 
 ## Open questions
 
-- Exact osv.dev bulk path and `Hex` ecosystem naming — confirm at implementation.
-- `enabled?` default — on (fetch on first boot) or off (explicit opt-in)? Leaning
-  on, since the egress is only a public static file, but air-gap users need the
-  off switch regardless.
-- Cache format on disk — raw OSV JSON vs a pre-indexed term keyed by package.
+- Exact osv.dev bulk path / `Hex` ecosystem naming, and whether the Hex retired
+  flag/reason is in the bulk `versions` resource or the per-package resource —
+  confirm at implementation.
+- Whether dependency-hygiene status (retired/outdated) should also surface
+  outside the security lens, given it's tangential to vulnerabilities.
