@@ -56,9 +56,12 @@ Four pieces, all within Clarity's existing extension model and OTP structure.
   — the tzdata approach: a refresh rewrites the table, reads come from it (with
   an ETS read-through for matching). A restart is warm; an offline start serves
   the last persisted data.
-- Records `last_refreshed_at`.
-- On a successful refresh that changes the data, triggers an incremental graph
-  rebuild (the mechanism code-reload already uses).
+- Records `last_refreshed_at`, and an "attempted" flag so a failing/offline
+  fetch settles (empty results) rather than blocking the graph forever.
+- The fetcher does **not** kickstart introspection (that would defeat
+  `auto_start?: false`). The advisory listing reads the source live, so it's
+  always current; advisory *vertices* refresh on the next introspection.
+  Triggering a live rebuild on refresh is deferred (Phase 3).
 
 ### 2. `Clarity.Vertex.Advisory` (vertex type)
 
@@ -133,10 +136,12 @@ A failed fetch never breaks a render or the graph.
 
 ## Phasing
 
-1. Fetcher + DETS cache (osv source) + `Advisory` vertex + introspector +
-   Application/Advisory content. Proves the pipeline end to end.
+1. **(done)** Fetcher + DETS cache (osv source) + `Advisory` vertex +
+   introspector + Application/Advisory content. Validated end to end against
+   live osv.dev data (`mdex` 0.13.1 → EEF-CVE-2026-53426/-54889).
 2. Hex registry source → retirement + outdated status on Application content.
-3. Dependency-path / blast-radius view and the domain/app roll-up.
+3. Dependency-path / blast-radius view, domain/app roll-up, and live rebuild on
+   refresh.
 
 ## Decisions
 

@@ -61,7 +61,8 @@ defmodule Clarity.MixProject do
           Clarity.Introspector.Ash.Spark,
           Clarity.Introspector.Ash.Type,
           Clarity.Introspector.Phoenix.Endpoint,
-          Clarity.Introspector.Phoenix.Router
+          Clarity.Introspector.Phoenix.Router,
+          Clarity.Introspector.Advisory
         ],
         clarity_perspective_lensmakers: [
           Clarity.Perspective.Lensmaker.Architect,
@@ -81,7 +82,8 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.PolicyOverview,
           Clarity.Content.Ash.SecurityOverview,
           Clarity.Content.Ash.RelationshipOverview,
-          Clarity.Content.Phoenix.RouterRoutes
+          Clarity.Content.Phoenix.RouterRoutes,
+          Clarity.Content.Advisory
         ],
         default_perspective_lens: "architect"
       ]
@@ -96,6 +98,7 @@ defmodule Clarity.MixProject do
       {:phoenix, "~> 1.8"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},
+      {:req, "~> 0.5"},
       {:mdex, "~> 0.13"},
       {:lumis, "~> 0.1"},
       {:telemetry, "~> 1.3"},

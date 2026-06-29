@@ -49,6 +49,7 @@ defmodule Clarity.Perspective.Lensmaker.Security do
   @spec show_vertex_types([module()]) :: [module()]
   defp show_vertex_types(available_types) do
     security_types = [
+      Vertex.Advisory,
       Vertex.Application,
       Vertex.Ash.Action,
       Vertex.Ash.DataLayer,

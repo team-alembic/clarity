@@ -235,6 +235,23 @@ defmodule Clarity.Config do
     Application.get_env(:clarity, :auto_start?, false)
   end
 
+  @doc false
+  @spec advisories_enabled?() :: boolean()
+  def advisories_enabled?, do: advisories_config(:enabled?, true)
+
+  @doc false
+  @spec advisories_refresh_interval() :: pos_integer()
+  def advisories_refresh_interval, do: advisories_config(:refresh_interval, to_timeout(day: 1))
+
+  @doc false
+  @spec advisories_source_url() :: String.t()
+  def advisories_source_url do
+    advisories_config(
+      :source_url,
+      "https://osv-vulnerabilities.storage.googleapis.com/Hex/all.zip"
+    )
+  end
+
   @spec filter_by_config([application_details()]) :: [application_details()]
   defp filter_by_config(loaded_applications) do
     case get_filter_config() do
@@ -285,5 +302,10 @@ defmodule Clarity.Config do
 
   defp normalize_editor_config_value(value) when is_binary(value) do
     if String.match?(value, ~r/^__url__$/i), do: {:ok, :url}, else: {:ok, value}
+  end
+
+  @spec advisories_config(atom(), term()) :: term()
+  defp advisories_config(key, default) do
+    :clarity |> Application.get_env(:advisories, []) |> Keyword.get(key, default)
   end
 end
