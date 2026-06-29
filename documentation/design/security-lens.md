@@ -116,10 +116,13 @@ Phase 2.
 
 ## Phasing
 
-1. **Single-resource analysis (this spike).** A lens-aware `SecurityOverview`
+1. **Single-resource analysis (done).** A lens-aware `SecurityOverview`
    provider over Domain + Resource vertices. Reuses existing introspection;
    proves the lens-changes-content thesis cheaply.
-2. **Policy-level computed trace.** Make `PolicyOverview` lens-aware.
+2. **Policy-level computed trace (done).** `PolicyOverview` is lens-aware: under
+   the Security lens it replaces the generic evaluation note with the actions
+   this policy governs (resolved via `Clarity.Ash.PolicyAnalysis`, extracted as
+   the shared resolver's second caller) and flags `authorize_if always()`.
 3. **Cross-resource reachability.** New digraph traversal over relationship
    edges.
 

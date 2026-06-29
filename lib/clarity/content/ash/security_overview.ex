@@ -17,6 +17,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Policy.Policy
     alias Ash.Resource.Actions
     alias Ash.Resource.Info
+    alias Clarity.Ash.PolicyAnalysis
     alias Clarity.Perspective.Lens
     alias Clarity.Vertex.Ash.Domain
     alias Clarity.Vertex.Ash.Resource
@@ -178,9 +179,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @spec action_row(Actions.action(), Ash.Resource.t(), [Policy.t()], boolean()) ::
             iodata()
     defp action_row(action, resource, policies, authorized?) do
-      applying = Enum.filter(policies, &(policy_applies?(&1, action) == :applies))
+      applying = Enum.filter(policies, &(PolicyAnalysis.coverage(&1, action) == :applies))
       non_bypass = Enum.reject(applying, & &1.bypass?)
-      unknown? = Enum.any?(policies, &(policy_applies?(&1, action) == :unknown))
+      unknown? = Enum.any?(policies, &(PolicyAnalysis.coverage(&1, action) == :unknown))
 
       {governed_by, effective} =
         cond do
@@ -251,38 +252,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         " |\n"
       ]
     end
-
-    @spec policy_applies?(Policy.t(), Actions.action()) ::
-            :applies | :excluded | :unknown
-    defp policy_applies?(policy, action) do
-      policy.condition
-      |> List.wrap()
-      |> Enum.reduce(:applies, fn check, acc -> combine(acc, condition_decides(check, action)) end)
-    end
-
-    @spec combine(:applies | :excluded | :unknown, :applies | :excluded | :unknown) ::
-            :applies | :excluded | :unknown
-    defp combine(:excluded, _), do: :excluded
-    defp combine(_, :excluded), do: :excluded
-    defp combine(:unknown, _), do: :unknown
-    defp combine(_, :unknown), do: :unknown
-    defp combine(:applies, :applies), do: :applies
-
-    @spec condition_decides(term(), Actions.action()) ::
-            :applies | :excluded | :unknown
-    defp condition_decides({Ash.Policy.Check.Static, opts}, _action) do
-      if opts[:result], do: :applies, else: :excluded
-    end
-
-    defp condition_decides({Ash.Policy.Check.ActionType, opts}, action) do
-      if action.type in List.wrap(opts[:type]), do: :applies, else: :excluded
-    end
-
-    defp condition_decides({Ash.Policy.Check.Action, opts}, action) do
-      if action.name in List.wrap(opts[:action]), do: :applies, else: :excluded
-    end
-
-    defp condition_decides(_check, _action), do: :unknown
 
     @spec authorized?(Ash.Resource.t()) :: boolean()
     defp authorized?(resource), do: @authorizer in Info.authorizers(resource)
