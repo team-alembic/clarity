@@ -167,10 +167,11 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       [
         "## Action Coverage\n\n",
-        "Which policies govern each action, and the effective outcome for a " <>
-          "non-bypass actor. Computed by resolving each policy's condition " <>
-          "against the action.\n\n",
-        "| Action | Type | Governed by | Effective |\n| --- | --- | --- | --- |\n",
+        "Which policies govern each action, and whether an ordinary (non-privileged) " <>
+          "actor can reach it. **Reachable** is computed by Ash's SAT solver, treating " <>
+          "actor-dependent checks as free variables; admin/bypass paths are reported " <>
+          "above, not here.\n\n",
+        "| Action | Type | Governed by | Reachable |\n| --- | --- | --- | --- |\n",
         Enum.map(Info.actions(resource), &action_row(&1, resource, policies, authorized?)),
         "\n"
       ]
@@ -183,13 +184,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       non_bypass = Enum.reject(applying, & &1.bypass?)
       unknown? = Enum.any?(policies, &(PolicyAnalysis.coverage(&1, action) == :unknown))
 
-      {governed_by, effective} =
+      governed_by =
         cond do
-          not authorized? -> {"—", "Unrestricted (no authorizer)"}
-          non_bypass != [] -> {"#{length(applying)} policy(s)", "Governed"}
-          applying != [] -> {"bypass only", "⚠ Forbidden by default unless bypass passes"}
-          unknown? -> {"runtime condition", "Conditional (runtime checks)"}
-          true -> {"none", "⚠ Forbidden by default (no matching policy)"}
+          not authorized? -> "—"
+          non_bypass != [] -> "#{length(applying)} policy(s)"
+          applying != [] -> "bypass only"
+          unknown? -> "runtime condition"
+          true -> "none"
         end
 
       [
@@ -204,10 +205,16 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         " | ",
         governed_by,
         " | ",
-        effective,
+        verdict_label(PolicyAnalysis.action_verdict(resource, action)),
         " |\n"
       ]
     end
+
+    @spec verdict_label(PolicyAnalysis.verdict()) :: String.t()
+    defp verdict_label(:unrestricted), do: "⚠ Unrestricted (no authorizer)"
+    defp verdict_label(:always), do: "⚠ Always (any actor)"
+    defp verdict_label(:conditional), do: "Conditional (row/runtime checks)"
+    defp verdict_label(:never), do: "Never (ordinary actor — admin/bypass only)"
 
     @spec field_exposure_section(Ash.Resource.t()) :: iodata()
     defp field_exposure_section(resource) do

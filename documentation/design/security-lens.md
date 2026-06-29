@@ -81,17 +81,41 @@ file.
 The coverage matrix is the finding that justifies the work — it requires
 cross-referencing policies against actions, which is exactly the emergent value.
 
-**Effective outcome resolution** (conservative, statically decidable conditions
-only):
+The matrix has two columns from two analyses:
 
-- No authorizer → `Unrestricted (no authorizer)`
-- Authorizer + a policy whose condition statically matches → `Governed (N policies)`
-- Authorizer + no matching policy, none unknown → `Forbidden by default (no matching policy)`
-- Authorizer + only runtime/unknown conditions → `Conditional (runtime checks)`
+**Governed by** — syntactic condition resolution (`PolicyAnalysis.coverage/2`),
+using only statically decidable condition checks: `Ash.Policy.Check.Static`
+(`always`/`never` via `result:`), `ActionType` (`type:`), `Action` (`action:`).
+Anything else is reported as a runtime condition, never guessed.
 
-Condition checks resolved statically: `Ash.Policy.Check.Static` (`always`/`never`
-via `result:`), `Ash.Policy.Check.ActionType` (`type:`), `Ash.Policy.Check.Action`
-(`action:`). Anything else is reported honestly as runtime, never guessed.
+**Reachable** — a completeness check via **Ash's own SAT solver**
+(`PolicyAnalysis.action_verdict/2`). Rather than re-implement policy semantics,
+we build an `%Ash.Policy.Authorizer{}` for the action and call
+`Ash.Policy.Checker.strict_check_all_facts/1` + `strict_check_scenarios/1`, which
+reduce the policies to a boolean formula and solve it with `picosat_elixir`
+(already in the dep tree). Verdicts:
+
+- `:unrestricted` — no policy authorizer
+- `:always` — authorisation is a tautology (open to any actor)
+- `:never` — no scenario authorises the actor (admin/bypass-only, or a gap)
+- `:conditional` — depends on runtime checks (e.g. row filters)
+
+**Key assumption — the representative actor.** Ash's `strict_check` resolves
+actor-*attribute* checks against the concrete actor, so to get a useful
+structural answer we solve for a *representative actor with no privileged
+attributes* (`%{id: <placeholder>}`). The verdict therefore answers "can an
+ordinary, non-privileged actor reach this action?" — filter checks like
+`id == actor(:id)` defer to `:unknown` (free variables → `:conditional`), while
+admin checks like `actor_attribute_equals(:admin, true)` resolve false (→
+`:never`, surfaced as admin/bypass-only). On the demo this correctly proves
+reads are conditionally reachable and all writes are admin-only.
+
+**Limits.** The solver treats each check as an opaque boolean plus the
+relationships Ash encodes (action-type exclusivity, negation). It reasons about
+*structural* completeness — tautology, contradiction, unreachability — not the
+*semantics* of filter expressions, so it will not detect a filter that leaks
+rows. It also couples Clarity to Ash internals (`Checker`/`Authorizer`), taken
+on deliberately for the spike with no fallback.
 
 ### Policy (replaces the static evaluation note)
 
@@ -123,6 +147,10 @@ Phase 2.
    the Security lens it replaces the generic evaluation note with the actions
    this policy governs (resolved via `Clarity.Ash.PolicyAnalysis`, extracted as
    the shared resolver's second caller) and flags `authorize_if always()`.
+2.5. **SAT completeness check (done).** The resource action matrix's
+   **Reachable** column is solved by Ash's SAT solver
+   (`PolicyAnalysis.action_verdict/2`) rather than the syntactic resolver — see
+   the resource findings above.
 3. **Cross-resource reachability.** New digraph traversal over relationship
    edges.
 
