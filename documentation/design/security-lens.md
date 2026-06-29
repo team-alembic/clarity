@@ -100,15 +100,28 @@ reduce the policies to a boolean formula and solve it with `picosat_elixir`
 - `:never` — no scenario authorises the actor (admin/bypass-only, or a gap)
 - `:conditional` — depends on runtime checks (e.g. row filters)
 
-**Key assumption — the representative actor.** Ash's `strict_check` resolves
-actor-*attribute* checks against the concrete actor, so to get a useful
-structural answer we solve for a *representative actor with no privileged
-attributes* (`%{id: <placeholder>}`). The verdict therefore answers "can an
-ordinary, non-privileged actor reach this action?" — filter checks like
-`id == actor(:id)` defer to `:unknown` (free variables → `:conditional`), while
-admin checks like `actor_attribute_equals(:admin, true)` resolve false (→
-`:never`, surfaced as admin/bypass-only). On the demo this correctly proves
-reads are conditionally reachable and all writes are admin-only.
+**Actor profiles.** Ash's `strict_check` resolves actor-*attribute* checks
+against the concrete actor, so the verdict is always relative to *which* actor
+we solve for. Rather than one synthetic actor, the matrix has a column per
+actor profile (`PolicyAnalysis.actor_profiles/1`); the **delta between columns**
+is the finding (e.g. anonymous→user = "auth required"; user→api-key = "is the
+key scoped down?").
+
+Profiles come from `config :clarity, :security_actors` (a `label => spec` map),
+or, unconfigured, from AshAuthentication installer conventions:
+
+- `"Anonymous"` → `nil`
+- `"User"` → `<App>.Accounts.User` struct (defaults = unprivileged user)
+- `"API key"` → the user struct tagged `__metadata__.using_api_key?` (the
+  api-key actor in AshAuthentication is the user, flagged via metadata), when
+  `<App>.Accounts.ApiKey` is present
+
+Within a profile, filter checks like `id == actor(:id)` defer to `:unknown`
+(free variables → `:conditional`), while attribute checks like
+`actor_attribute_equals(:admin, true)` resolve against the actor's defaults
+(→ `:never`, i.e. admin/bypass-only). On the demo this proves reads need
+authentication (anonymous `Never` → user `Conditional`) and all writes are
+admin-only (`Never` for both shipped profiles).
 
 **Limits.** The solver treats each check as an opaque boolean plus the
 relationships Ash encodes (action-type exclusivity, negation). It reasons about

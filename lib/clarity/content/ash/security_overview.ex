@@ -162,59 +162,50 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec action_coverage_section(Ash.Resource.t()) :: iodata()
     defp action_coverage_section(resource) do
-      policies = policies(resource)
-      authorized? = authorized?(resource)
+      profiles = PolicyAnalysis.actor_profiles(resource)
+      labels = Enum.map(profiles, &elem(&1, 0))
 
       [
-        "## Action Coverage\n\n",
-        "Which policies govern each action, and whether an ordinary (non-privileged) " <>
-          "actor can reach it. **Reachable** is computed by Ash's SAT solver, treating " <>
-          "actor-dependent checks as free variables; admin/bypass paths are reported " <>
-          "above, not here.\n\n",
-        "| Action | Type | Governed by | Reachable |\n| --- | --- | --- | --- |\n",
-        Enum.map(Info.actions(resource), &action_row(&1, resource, policies, authorized?)),
+        "## Action Reachability\n\n",
+        "Whether each actor can reach each action, solved by Ash's SAT solver. " <>
+          "**Conditional** depends on runtime/row checks; **Never** means not authorised " <>
+          "(e.g. admin/bypass only); **⚠ Always** means open regardless of actor.\n\n",
+        "| Action | Type | ",
+        Enum.intersperse(labels, " | "),
+        " |\n| --- | --- | ",
+        Enum.map_intersperse(labels, " | ", fn _label -> "---" end),
+        " |\n",
+        Enum.map(Info.actions(resource), &action_row(&1, resource, profiles)),
         "\n"
       ]
     end
 
-    @spec action_row(Actions.action(), Ash.Resource.t(), [Policy.t()], boolean()) ::
+    @spec action_row(Actions.action(), Ash.Resource.t(), [{String.t(), PolicyAnalysis.actor()}]) ::
             iodata()
-    defp action_row(action, resource, policies, authorized?) do
-      applying = Enum.filter(policies, &(PolicyAnalysis.coverage(&1, action) == :applies))
-      non_bypass = Enum.reject(applying, & &1.bypass?)
-      unknown? = Enum.any?(policies, &(PolicyAnalysis.coverage(&1, action) == :unknown))
-
-      governed_by =
-        cond do
-          not authorized? -> "—"
-          non_bypass != [] -> "#{length(applying)} policy(s)"
-          applying != [] -> "bypass only"
-          unknown? -> "runtime condition"
-          true -> "none"
-        end
+    defp action_row(action, resource, profiles) do
+      verdicts =
+        Enum.map_intersperse(profiles, " | ", fn {_label, actor} ->
+          verdict_label(PolicyAnalysis.action_verdict(resource, action, actor))
+        end)
 
       [
         "| [",
         Atom.to_string(action.name),
         "](vertex://",
         Util.id(Clarity.Vertex.Ash.Action, [resource, action.name]),
-        ")",
-        " | `",
+        ") | `",
         Atom.to_string(action.type),
-        "`",
-        " | ",
-        governed_by,
-        " | ",
-        verdict_label(PolicyAnalysis.action_verdict(resource, action)),
+        "` | ",
+        verdicts,
         " |\n"
       ]
     end
 
     @spec verdict_label(PolicyAnalysis.verdict()) :: String.t()
-    defp verdict_label(:unrestricted), do: "⚠ Unrestricted (no authorizer)"
-    defp verdict_label(:always), do: "⚠ Always (any actor)"
-    defp verdict_label(:conditional), do: "Conditional (row/runtime checks)"
-    defp verdict_label(:never), do: "Never (ordinary actor — admin/bypass only)"
+    defp verdict_label(:unrestricted), do: "Unrestricted"
+    defp verdict_label(:always), do: "⚠ Always"
+    defp verdict_label(:conditional), do: "Conditional"
+    defp verdict_label(:never), do: "Never"
 
     @spec field_exposure_section(Ash.Resource.t()) :: iodata()
     defp field_exposure_section(resource) do

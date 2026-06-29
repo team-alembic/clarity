@@ -9,22 +9,29 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       only statically decidable condition checks (`Static`, `ActionType`,
       `Action`); anything runtime-only is `:unknown`, never guessed.
 
-    * `action_verdict/2` asks Ash's own SAT solver whether an action is
-      reachable, treating actor-dependent checks as free variables. The verdict
-      is computed for a *representative actor with no privileged attributes*, so
-      it answers "can an ordinary actor reach this action?" — admin/bypass paths
-      are reported separately.
+    * `action_verdict/3` asks Ash's own SAT solver whether a given actor can
+      reach an action; `actor_profiles/1` resolves the set of actors to test.
 
-    ## Representative actor
+    ## Actor profiles
 
-    The actor used for `action_verdict/2` is, in order of preference:
+    Configure explicitly with a `label => spec` map. A spec is an Ash resource
+    module (→ empty struct, so attributes take their declared defaults), a plain
+    struct module (→ empty struct), a non-struct module (→ used as-is), an actor
+    struct/map (→ used as-is), or `nil` for an anonymous actor:
 
-    1. `config :clarity, :security_actor, ...` — a resource module (instantiated
-       as an empty struct) or an actor struct/map.
-    2. The AshAuthentication installer convention `<App>.Accounts.User`, if that
-       module exists and is an Ash resource — instantiated as an empty struct so
-       its attributes take their declared defaults (an unprivileged user).
-    3. A bare `%{id: _}` map.
+        config :clarity, :security_actors, %{
+          "User" => MyApp.Accounts.User,
+          "System" => MyApp.SystemActor
+        }
+
+    Unconfigured, profiles are detected from the AshAuthentication installer
+    conventions:
+
+    * `"Anonymous"` → `nil`
+    * `"User"` → `<App>.Accounts.User`, when it is an Ash resource
+    * `"API key"` → the same user struct tagged `__metadata__.using_api_key?`,
+      when `<App>.Accounts.ApiKey` is also present (the api-key actor in
+      AshAuthentication is the user, flagged via metadata)
     """
 
     alias Ash.Policy.Authorizer
@@ -36,6 +43,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @type coverage() :: :applies | :excluded | :unknown
     @type verdict() :: :unrestricted | :always | :conditional | :never
+    @type actor() :: struct() | map() | module() | nil
 
     @doc """
     Whether `policy`'s condition governs `action`.
@@ -51,17 +59,35 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     @doc """
-    Whether an ordinary actor can reach `action`, via Ash's SAT solver.
+    The set of labelled actors to test for reachability.
+
+    See the module docs for configuration and the conventional defaults.
+    """
+    @spec actor_profiles(Ash.Resource.t()) :: [{String.t(), actor()}]
+    def actor_profiles(resource) do
+      case Application.get_env(:clarity, :security_actors) do
+        nil ->
+          default_profiles(resource)
+
+        actors when is_map(actors) ->
+          actors
+          |> Enum.map(fn {label, spec} -> {label, build_actor(spec)} end)
+          |> Enum.sort_by(&elem(&1, 0))
+      end
+    end
+
+    @doc """
+    Whether `actor` can reach `action`, via Ash's SAT solver.
 
     Returns `:unrestricted` when the resource has no policy authorizer,
     `:always` when authorisation is a tautology (open to any actor),
-    `:never` when no scenario authorises a representative non-privileged actor,
-    and `:conditional` when it depends on runtime checks (e.g. row filters).
+    `:never` when no scenario authorises `actor`, and `:conditional` when it
+    depends on runtime checks (e.g. row filters).
     """
-    @spec action_verdict(Ash.Resource.t(), Actions.action()) :: verdict()
-    def action_verdict(resource, action) do
+    @spec action_verdict(Ash.Resource.t(), Actions.action(), actor()) :: verdict()
+    def action_verdict(resource, action, actor) do
       if @authorizer in Info.authorizers(resource) do
-        solve(resource, action)
+        solve(resource, action, actor)
       else
         :unrestricted
       end
@@ -89,11 +115,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     defp condition_decides(_check, _action), do: :unknown
 
-    @fallback_actor %{id: "00000000-0000-0000-0000-000000000000"}
-
-    @spec solve(Ash.Resource.t(), Actions.action()) :: verdict()
-    defp solve(resource, action) do
-      actor = representative_actor(resource)
+    @spec solve(Ash.Resource.t(), Actions.action(), actor()) :: verdict()
+    defp solve(resource, action, actor) do
       subject = subject(resource, action, actor)
 
       authorizer =
@@ -117,31 +140,47 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
     end
 
-    @spec representative_actor(Ash.Resource.t()) :: struct() | map()
-    defp representative_actor(resource) do
-      configured_actor() || conventional_actor(resource)
-    end
+    @spec default_profiles(Ash.Resource.t()) :: [{String.t(), struct() | nil}]
+    defp default_profiles(resource) do
+      case conventional_resource(resource, "User") do
+        nil ->
+          [{"Anonymous", nil}]
 
-    @spec configured_actor() :: struct() | map() | nil
-    defp configured_actor do
-      case Application.get_env(:clarity, :security_actor) do
-        nil -> nil
-        module when is_atom(module) -> if ash_resource?(module), do: struct(module)
-        actor when is_map(actor) -> actor
-        _other -> nil
+        user ->
+          base = [{"Anonymous", nil}, {"User", struct(user)}]
+
+          if conventional_resource(resource, "ApiKey") do
+            base ++ [{"API key", struct(user, __metadata__: %{using_api_key?: true})}]
+          else
+            base
+          end
       end
     end
 
-    @spec conventional_actor(Ash.Resource.t()) :: struct() | map()
-    defp conventional_actor(resource) do
-      candidate = Module.concat([resource |> Module.split() |> hd(), "Accounts", "User"])
-      if ash_resource?(candidate), do: struct(candidate), else: @fallback_actor
+    @spec conventional_resource(Ash.Resource.t(), String.t()) :: module() | nil
+    defp conventional_resource(resource, name) do
+      candidate = Module.concat([resource |> Module.split() |> hd(), "Accounts", name])
+      if ash_resource?(candidate), do: candidate
     end
 
-    @spec ash_resource?(module()) :: boolean()
-    defp ash_resource?(module), do: Code.ensure_loaded?(module) and Info.resource?(module)
+    @spec build_actor(actor()) :: actor()
+    defp build_actor(nil), do: nil
+    defp build_actor(actor) when is_map(actor), do: actor
 
-    @spec subject(Ash.Resource.t(), Actions.action(), struct() | map()) ::
+    defp build_actor(module) when is_atom(module) do
+      cond do
+        not Code.ensure_loaded?(module) -> module
+        ash_resource?(module) -> struct(module)
+        function_exported?(module, :__struct__, 0) -> struct(module)
+        true -> module
+      end
+    end
+
+    @spec ash_resource?(term()) :: boolean()
+    defp ash_resource?(module),
+      do: is_atom(module) and Code.ensure_loaded?(module) and Info.resource?(module)
+
+    @spec subject(Ash.Resource.t(), Actions.action(), actor()) ::
             Ash.Query.t() | Ash.Changeset.t()
     defp subject(resource, %{type: :read} = action, actor),
       do: Ash.Query.for_read(resource, action.name, %{}, actor: actor, authorize?: false)
