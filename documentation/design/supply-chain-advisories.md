@@ -141,10 +141,11 @@ A failed fetch never breaks a render or the graph.
    live osv.dev data (`mdex` 0.13.1 → EEF-CVE-2026-53426/-54889).
 2. **(done)** Hex registry source (`Clarity.Dependency.Registry`, decoded with
    `hex_core`) → latest-version, outdated, and retirement status on Application
-   content. Surfaced on Application vertices already visible under the security
-   lens (advisory- or domain/endpoint-bearing); making outdated-only deps
-   visible there would flood the lens, so a broader dependency/health view is
-   left as the open question.
+   content, plus **update guidance**: compares the latest version against the
+   `mix.exs` requirement (`Clarity.Dependency.Constraints`, read via
+   `Mix.Project.config/0`) and says whether `mix deps.update` reaches it or the
+   constraint must be widened. The security-lens filter now keeps
+   outdated/retired apps visible (not just advisory-/architecture-bearing ones).
 3. Dependency-path / blast-radius view, domain/app roll-up, and live rebuild on
    refresh.
 

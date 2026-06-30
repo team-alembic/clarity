@@ -10,6 +10,7 @@ defmodule Clarity.Content.Dependency do
   @behaviour Clarity.Content
 
   alias Clarity.Dependency
+  alias Clarity.Dependency.Constraints
   alias Clarity.Dependency.Registry
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
@@ -39,15 +40,17 @@ defmodule Clarity.Content.Dependency do
         ["## Version Status\n\n", "_Hex registry not yet downloaded._\n\n"]
 
       summary = Registry.summary(app) ->
-        status_table(installed, summary)
+        status_table(app, installed, summary)
 
       true ->
         ["## Version Status\n\n", "`#{app}` is not published on Hex.\n\n"]
     end
   end
 
-  @spec status_table(String.t(), Dependency.summary()) :: iodata()
-  defp status_table(installed, %{latest: latest, retired: retired}) do
+  @spec status_table(atom(), String.t(), Dependency.summary()) :: iodata()
+  defp status_table(app, installed, %{latest: latest, retired: retired}) do
+    requirement = Constraints.requirement(app)
+
     [
       "## Version Status\n\n",
       "| Property | Value |\n| --- | --- |\n",
@@ -57,9 +60,14 @@ defmodule Clarity.Content.Dependency do
       "| **Latest** | ",
       if(latest, do: ["`", latest, "`"], else: "—"),
       " |\n",
+      case requirement do
+        nil -> []
+        req -> ["| **Constraint** | `", req, "` |\n"]
+      end,
       "| **Status** | ",
       status(installed, latest, retired),
-      " |\n\n"
+      " |\n\n",
+      update_note(app, installed, latest, retired, requirement)
     ]
   end
 
@@ -69,6 +77,45 @@ defmodule Clarity.Content.Dependency do
       installed in retired -> "⚠ retired"
       Dependency.outdated?(installed, latest) -> "⚠ outdated"
       true -> "up to date"
+    end
+  end
+
+  @spec update_note(atom(), String.t(), String.t() | nil, [String.t()], String.t() | nil) ::
+          iodata()
+  defp update_note(app, installed, latest, retired, requirement) do
+    case Dependency.update_status(installed, latest, requirement) do
+      :up_to_date ->
+        if installed in retired,
+          do: "> ⚠ This installed version is retired — move to a supported version.\n\n",
+          else: []
+
+      {:updatable, version} ->
+        [
+          "> ⬆ `mix deps.update ",
+          to_string(app),
+          "` will update to ",
+          version,
+          " (within `",
+          requirement,
+          "`).\n\n"
+        ]
+
+      {:constraint_blocks, version, req} ->
+        [
+          "> ⚠ Latest ",
+          version,
+          " is outside your constraint `",
+          req,
+          "` — widen the requirement in `mix.exs` to update.\n\n"
+        ]
+
+      {:unconstrained, version} ->
+        [
+          "> ",
+          version,
+          " is available. This is a transitive dependency, so it ",
+          "updates via its dependents (or add it directly with `override: true`).\n\n"
+        ]
     end
   end
 end
