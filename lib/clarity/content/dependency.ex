@@ -59,7 +59,10 @@ defmodule Clarity.Content.Dependency do
 
   @impl Phoenix.LiveComponent
   def handle_async(:update, {:ok, :ok}, socket) do
-    message = "Updated and reloaded #{socket.assigns.app}. Re-introspect to refresh the graph."
+    message =
+      "Updated #{socket.assigns.app}. Restart the server to load it — " <>
+        "Phoenix requires a restart after a dependency change."
+
     {:noreply, assign(socket, updating?: false, result: {:ok, message})}
   end
 
