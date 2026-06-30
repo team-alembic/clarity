@@ -163,9 +163,12 @@ defmodule Clarity.Content.Advisory do
   defp freshness_note do
     case Source.last_refreshed_at() do
       nil -> "_Advisory database not yet downloaded._\n\n"
-      at -> ["_Advisory data as of #{DateTime.to_iso8601(at)}._\n\n"]
+      at -> ["_Advisory data as of ", format_refreshed(at), "._\n\n"]
     end
   end
+
+  @spec format_refreshed(DateTime.t()) :: String.t()
+  defp format_refreshed(at), do: Calendar.strftime(at, "%-d %B %Y at %-I:%M %p UTC")
 
   @spec installed_version(String.t()) :: String.t() | nil
   defp installed_version(package) do
