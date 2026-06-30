@@ -7,6 +7,10 @@ defmodule Clarity.Content.DependencyUpdate do
   `requirement` to widen `mix.exs` to (or `nil`), and the button `label`. On
   click it runs `Clarity.Dependency.Updater` and reboots the node so the new
   version loads; the LiveView reconnects automatically.
+
+  The button is disabled from the moment it's clicked, through the update, and
+  through the reboot — it only becomes clickable again if the update fails (so a
+  retry is possible) or after the LiveView reconnects fresh post-restart.
   """
 
   use Clarity.Web, :live_component
@@ -18,8 +22,8 @@ defmodule Clarity.Content.DependencyUpdate do
     {:ok,
      socket
      |> assign(app: assigns.app, requirement: assigns.requirement, label: assigns.label)
-     |> assign_new(:updating?, fn -> false end)
-     |> assign_new(:result, fn -> nil end)}
+     |> assign_new(:phase, fn -> :idle end)
+     |> assign_new(:error, fn -> nil end)}
   end
 
   @impl Phoenix.LiveComponent
@@ -28,7 +32,7 @@ defmodule Clarity.Content.DependencyUpdate do
 
     {:noreply,
      socket
-     |> assign(updating?: true, result: nil)
+     |> assign(phase: :updating, error: nil)
      |> start_async(:update, fn -> Updater.update(app, requirement) end)}
   end
 
@@ -36,21 +40,21 @@ defmodule Clarity.Content.DependencyUpdate do
   def handle_async(:update, {:ok, :ok}, socket) do
     # The new code can't be hot-loaded into the running BEAM, so reboot the node;
     # the LiveView reconnects automatically. Delay briefly so this message lands.
+    # Stay in :restarting so the button remains disabled until the node is gone.
     Task.start(fn ->
       Process.sleep(500)
       System.restart()
     end)
 
-    message = "Updated #{socket.assigns.app}. Restarting the server to load it…"
-    {:noreply, assign(socket, updating?: false, result: {:ok, message})}
+    {:noreply, assign(socket, phase: :restarting)}
   end
 
   def handle_async(:update, {:ok, {:error, reason}}, socket) do
-    {:noreply, assign(socket, updating?: false, result: {:error, inspect(reason)})}
+    {:noreply, assign(socket, phase: :idle, error: inspect(reason))}
   end
 
   def handle_async(:update, {:exit, reason}, socket) do
-    {:noreply, assign(socket, updating?: false, result: {:error, inspect(reason)})}
+    {:noreply, assign(socket, phase: :idle, error: inspect(reason))}
   end
 
   @impl Phoenix.LiveComponent
@@ -61,21 +65,28 @@ defmodule Clarity.Content.DependencyUpdate do
         type="button"
         phx-click="update"
         phx-target={@myself}
-        disabled={@updating?}
-        class="px-3 py-2 rounded-md bg-primary-light dark:bg-primary-dark text-white hover:bg-primary-light/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors cursor-pointer"
+        disabled={@phase != :idle}
+        class="px-3 py-2 rounded-md bg-primary-light dark:bg-primary-dark text-white hover:bg-primary-light/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors cursor-pointer disabled:cursor-not-allowed"
       >
-        {if @updating?, do: "Updating…", else: @label}
+        <%= case @phase do %>
+          <% :updating -> %>
+            Updating…
+          <% :restarting -> %>
+            Restarting…
+          <% :idle -> %>
+            {@label}
+        <% end %>
       </button>
 
-      <%= case @result do %>
-        <% {:ok, message} -> %>
-          <p class="mt-2 text-green-700 dark:text-green-400">{message}</p>
-        <% {:error, message} -> %>
-          <p class="mt-2 font-semibold text-base-light-900 dark:text-base-dark-100">
-            Update failed: {message}
-          </p>
-        <% nil -> %>
-      <% end %>
+      <p :if={@phase == :restarting} class="mt-2 text-green-700 dark:text-green-400">
+        Updated {@app}. Restarting the server to load it…
+      </p>
+      <p
+        :if={@error}
+        class="mt-2 font-semibold text-base-light-900 dark:text-base-dark-100"
+      >
+        Update failed: {@error}
+      </p>
     </div>
     """
   end
