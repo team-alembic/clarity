@@ -146,14 +146,17 @@ A failed fetch never breaks a render or the graph.
    `Mix.Project.config/0`) and says whether `mix deps.update` reaches it or the
    constraint must be widened. The security-lens filter now keeps
    outdated/retired apps visible (not just advisory-/architecture-bearing ones).
-2.5. **(done)** Dev-only **update action**. Version Status is a LiveComponent;
-   in the dev environment it offers an Update button that runs
-   `Clarity.Dependency.Updater`: optionally widen the `mix.exs` requirement via
-   the in-tree `clarity.update_dep` igniter task, then `deps.update` +
-   `deps.compile`, then stop/unload/`ensure_all_started` the app to hot-load the
-   new version without a restart (best-effort; NIF deps may still need one). The
-   dev gate is compile-time (`if Mix.env() == :dev`, so it's release-safe and
-   the action compiles to `{:error, :not_dev}` elsewhere).
+2.5. **(done)** Dev-only **update action**, via a shared
+   `Clarity.Content.DependencyUpdate` button embedded by both the Version Status
+   tab (update an outdated dep to latest) and the Advisories tab (update to
+   resolve advisories that have a released, installable fix —
+   `Clarity.Advisory.fixed_version/2` extracts the fix; the button appears only
+   when a version ≥ fix is installable, widening `mix.exs` if needed). The button
+   runs `Clarity.Dependency.Updater`: optionally widen the requirement via the
+   in-tree `clarity.update_dep` igniter task, then `deps.update` + `deps.compile`
+   + `mix compile`, then `System.restart/0` to reboot and load the new version
+   (the LiveView reconnects). `Updater.update/2` is compile-time dev-gated
+   (`{:error, :not_dev}` elsewhere); the buttons hide where Mix isn't available.
 3. Dependency-path / blast-radius view, domain/app roll-up, and live rebuild on
    refresh.
 

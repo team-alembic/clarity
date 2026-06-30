@@ -66,6 +66,20 @@ defmodule Clarity.Dependency do
     end
   end
 
+  @doc """
+  The `mix.exs` requirement to set so a constraint-blocked update becomes
+  installable, or `nil` when no widening is needed.
+  """
+  @spec widen_requirement(update_status()) :: String.t() | nil
+  def widen_requirement({:constraint_blocks, latest, _requirement}) do
+    case Version.parse(latest) do
+      {:ok, %Version{major: major, minor: minor}} -> "~> #{major}.#{minor}"
+      :error -> nil
+    end
+  end
+
+  def widen_requirement(_status), do: nil
+
   @spec satisfies?(String.t(), String.t()) :: boolean()
   defp satisfies?(version, requirement) do
     match?({:ok, true}, safe_match(version, requirement))

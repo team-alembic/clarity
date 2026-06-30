@@ -70,6 +70,43 @@ defmodule Clarity.Advisory do
     version in versions or Enum.any?(ranges, &version_in_range?(version, &1))
   end
 
+  @doc """
+  The version that fixes this advisory for an install at `version`, or `nil`.
+
+  Returns the `fixed` boundary of the affected range containing `version` — the
+  smallest release that resolves it. `nil` when there is no released fix (an open
+  range) or the install isn't affected.
+  """
+  @spec fixed_version(t(), String.t()) :: String.t() | nil
+  def fixed_version(%__MODULE__{ranges: ranges}, version) do
+    ranges
+    |> Enum.flat_map(&fixed_in_range(&1, version))
+    |> Enum.min(&(compare(&1, &2) == :lt), fn -> nil end)
+  end
+
+  @spec fixed_in_range(map(), String.t()) :: [String.t()]
+  defp fixed_in_range(%{"events" => events}, version) do
+    events
+    |> Enum.reduce_while("0", fn
+      %{"introduced" => introduced}, _acc ->
+        {:cont, introduced}
+
+      %{"fixed" => fixed}, introduced ->
+        if gte?(version, introduced) and lt?(version, fixed),
+          do: {:halt, {:fixed, fixed}},
+          else: {:cont, "0"}
+
+      _event, introduced ->
+        {:cont, introduced}
+    end)
+    |> case do
+      {:fixed, fixed} -> [fixed]
+      _acc -> []
+    end
+  end
+
+  defp fixed_in_range(_range, _version), do: []
+
   @spec severity(map()) :: String.t() | nil
   defp severity(osv) do
     case osv["database_specific"] do

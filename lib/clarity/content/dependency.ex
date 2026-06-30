@@ -2,21 +2,20 @@ defmodule Clarity.Content.Dependency do
   @moduledoc """
   Security-lens content showing a dependency's version status: how it compares to
   the latest published version, whether the installed version is retired, and —
-  in the dev environment — an action to update it in place.
+  in the dev environment — an action (the shared `Clarity.Content.DependencyUpdate`
+  button) to update it to the latest.
 
-  Reads `Clarity.Dependency.Registry`. The update action (dev-only) runs
-  `Clarity.Dependency.Updater`, optionally widening the `mix.exs` requirement via
-  the `clarity.update_dep` igniter task first.
+  Reads `Clarity.Dependency.Registry`.
   """
 
   @behaviour Clarity.Content
 
   use Clarity.Web, :live_component
 
+  alias Clarity.Content.DependencyUpdate
   alias Clarity.Dependency
   alias Clarity.Dependency.Constraints
   alias Clarity.Dependency.Registry
-  alias Clarity.Dependency.Updater
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
 
@@ -37,46 +36,7 @@ defmodule Clarity.Content.Dependency do
   def update(assigns, socket) do
     %Vertex.Application{app: app, version: version} = assigns.vertex
     installed = to_string(version)
-
-    {:ok,
-     socket
-     |> assign(app: app, installed: installed, view: build_view(app, installed))
-     |> assign_new(:updating?, fn -> false end)
-     |> assign_new(:result, fn -> nil end)}
-  end
-
-  @impl Phoenix.LiveComponent
-  def handle_event("update", _params, socket) do
-    {:ok, data} = socket.assigns.view
-    app = socket.assigns.app
-    requirement = widen_requirement(data.status)
-
-    {:noreply,
-     socket
-     |> assign(updating?: true, result: nil)
-     |> start_async(:update, fn -> Updater.update(app, requirement) end)}
-  end
-
-  @impl Phoenix.LiveComponent
-  def handle_async(:update, {:ok, :ok}, socket) do
-    # A running BEAM can't hot-swap dependency code, so reboot the node to load
-    # the new version; the LiveView reconnects automatically. Delay briefly so
-    # this message reaches the browser before the socket drops.
-    Task.start(fn ->
-      Process.sleep(500)
-      System.restart()
-    end)
-
-    message = "Updated #{socket.assigns.app}. Restarting the server to load it…"
-    {:noreply, assign(socket, updating?: false, result: {:ok, message})}
-  end
-
-  def handle_async(:update, {:ok, {:error, reason}}, socket) do
-    {:noreply, assign(socket, updating?: false, result: {:error, inspect(reason)})}
-  end
-
-  def handle_async(:update, {:exit, reason}, socket) do
-    {:noreply, assign(socket, updating?: false, result: {:error, inspect(reason)})}
+    {:ok, assign(socket, app: app, installed: installed, view: build_view(app, installed))}
   end
 
   @impl Phoenix.LiveComponent
@@ -114,38 +74,25 @@ defmodule Clarity.Content.Dependency do
             </table>
 
             <%= if show_button?(data.status) do %>
-              <button
-                type="button"
-                phx-click="update"
-                phx-target={@myself}
-                disabled={@updating?}
-                class="px-3 py-2 rounded-md bg-primary-light dark:bg-primary-dark text-white hover:bg-primary-light/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors cursor-pointer"
-              >
-                {if @updating?, do: "Updating…", else: button_label(data.status)}
-              </button>
+              <.live_component
+                module={DependencyUpdate}
+                id="version-status-update"
+                app={@app}
+                requirement={Dependency.widen_requirement(data.status)}
+                label={button_label(data.status)}
+              />
             <% end %>
 
             <p :if={blocked_without_igniter?(data.status)} class="mt-2 opacity-70">
               Widen the requirement in <code>mix.exs</code> to allow {data.latest}.
             </p>
         <% end %>
-
-        <%= case @result do %>
-          <% {:ok, message} -> %>
-            <p class="mt-4 text-green-700 dark:text-green-400">{message}</p>
-          <% {:error, message} -> %>
-            <p class="mt-4 font-semibold text-base-light-900 dark:text-base-dark-100">
-              Update failed: {message}
-            </p>
-          <% nil -> %>
-        <% end %>
       </div>
     </section>
     """
   end
 
-  @spec build_view(atom(), String.t()) ::
-          :pending | :not_published | {:ok, map()}
+  @spec build_view(atom(), String.t()) :: :pending | :not_published | {:ok, map()}
   defp build_view(app, installed) do
     cond do
       not Registry.ready?() ->
@@ -176,48 +123,41 @@ defmodule Clarity.Content.Dependency do
     end
   end
 
-  # The update action only exists in dev (deps compile in the consumer's env),
-  # so the button-gating helpers are compiled away to `false` everywhere else.
-  if Mix.env() == :dev do
-    @spec show_button?(Dependency.update_status()) :: boolean()
-    defp show_button?({:updatable, _latest}), do: true
-    defp show_button?({:unconstrained, _latest}), do: true
-    defp show_button?({:constraint_blocks, _latest, _req}), do: can_widen?()
-    defp show_button?(:up_to_date), do: false
-
-    @spec blocked_without_igniter?(Dependency.update_status()) :: boolean()
-    defp blocked_without_igniter?({:constraint_blocks, _latest, _req}), do: not can_widen?()
-    defp blocked_without_igniter?(_status), do: false
-
-    @spec can_widen?() :: boolean()
-    defp can_widen?, do: Code.ensure_loaded?(Mix.Tasks.Clarity.UpdateDep)
-  else
-    @spec show_button?(Dependency.update_status()) :: boolean()
-    defp show_button?(_status), do: false
-
-    @spec blocked_without_igniter?(Dependency.update_status()) :: boolean()
-    defp blocked_without_igniter?(_status), do: false
-  end
-
   @spec button_label(Dependency.update_status()) :: String.t()
   defp button_label({:constraint_blocks, latest, _req}),
     do: "Widen mix.exs and update to #{latest}"
 
   defp button_label({_status, latest}), do: "Update to #{latest}"
 
-  @spec widen_requirement(Dependency.update_status()) :: String.t() | nil
-  defp widen_requirement({:constraint_blocks, latest, _req}) do
-    case Version.parse(latest) do
-      {:ok, %Version{major: major, minor: minor}} -> "~> #{major}.#{minor}"
-      :error -> nil
-    end
-  end
-
-  defp widen_requirement(_status), do: nil
-
   @spec raw_code(String.t()) :: Phoenix.LiveView.Rendered.t()
   defp raw_code(text) do
     assigns = %{text: text}
     ~H"<code>{@text}</code>"
   end
+
+  # Updates are a dev-time affordance, hidden where Mix isn't available (e.g. a
+  # release). `Code.ensure_loaded?/1` is release-safe and not constant-folded;
+  # the actual safety gate lives in Clarity.Dependency.Updater.
+  @spec show_button?(Dependency.update_status()) :: boolean()
+  defp show_button?(status) do
+    mix_available?() and
+      case status do
+        {:updatable, _latest} -> true
+        {:unconstrained, _latest} -> true
+        {:constraint_blocks, _latest, _req} -> can_widen?()
+        :up_to_date -> false
+      end
+  end
+
+  @spec blocked_without_igniter?(Dependency.update_status()) :: boolean()
+  defp blocked_without_igniter?({:constraint_blocks, _latest, _req}),
+    do: mix_available?() and not can_widen?()
+
+  defp blocked_without_igniter?(_status), do: false
+
+  @spec can_widen?() :: boolean()
+  defp can_widen?, do: Code.ensure_loaded?(Mix.Tasks.Clarity.UpdateDep)
+
+  @spec mix_available?() :: boolean()
+  defp mix_available?, do: Code.ensure_loaded?(Mix)
 end
