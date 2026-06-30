@@ -29,9 +29,15 @@ defmodule Clarity.Perspective.Lensmaker.Security do
         ~H"🛡️"
       end,
       filter: &filter/1,
-      show_vertex_types: &show_vertex_types/1
+      show_vertex_types: &show_vertex_types/1,
+      status_filter: &surface_status?/1
     }
   end
+
+  # The security lens surfaces both vulnerability (:security) and dependency
+  # hygiene (:hygiene) status indicators.
+  @spec surface_status?(Clarity.Status.t()) :: boolean()
+  defp surface_status?(%Clarity.Status{class: class}), do: class in [:security, :hygiene]
 
   @spec filter(Graph.t()) :: Graph.query()
   defp filter(graph) do

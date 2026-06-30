@@ -118,6 +118,14 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
       assert is_function(lens.filter, 1)
     end
 
+    test "security lens surfaces :security and :hygiene status indicators" do
+      filter = Security.make_lens().status_filter
+
+      assert filter.(%Clarity.Status{severity: :error, class: :security, message: "x", source: __MODULE__})
+      assert filter.(%Clarity.Status{severity: :info, class: :hygiene, message: "y", source: __MODULE__})
+      refute filter.(%Clarity.Status{severity: :info, class: :performance, message: "z", source: __MODULE__})
+    end
+
     test "security lens icon renders shield emoji" do
       lens = Security.make_lens()
 
