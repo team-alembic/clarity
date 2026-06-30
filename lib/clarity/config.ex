@@ -132,6 +132,16 @@ defmodule Clarity.Config do
     MyApp.InteractiveContent
   ]
   ```
+
+  ### Status Provider Registration (`:clarity_status_providers`)
+
+  Applications can register custom status providers:
+
+  ```elixir
+  config :my_app, :clarity_status_providers, [
+    MyApp.LicenceStatus
+  ]
+  ```
   """
 
   @typedoc false
@@ -214,6 +224,15 @@ defmodule Clarity.Config do
     Application.loaded_applications()
     |> Enum.map(&elem(&1, 0))
     |> Enum.flat_map(&Application.get_env(&1, :clarity_content_providers, []))
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec list_status_providers() :: [module()]
+  def list_status_providers do
+    Application.loaded_applications()
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.flat_map(&Application.get_env(&1, :clarity_status_providers, []))
     |> Enum.uniq()
   end
 
