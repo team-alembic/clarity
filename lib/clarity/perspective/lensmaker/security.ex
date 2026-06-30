@@ -52,27 +52,25 @@ defmodule Clarity.Perspective.Lensmaker.Security do
 
   # A supply-chain-flagged dependency is often transitive, reachable in the tree
   # only through framework applications that aren't themselves security-relevant
-  # (e.g. websock_adapter under phoenix). Keep those ancestor applications too,
-  # so the flagged app stays reachable from the root and its dependency path —
-  # how it's pulled in — is visible.
+  # (e.g. websock_adapter under phoenix). Keep the applications on its nav-tree
+  # path back to the root — and only those — so the flagged app stays reachable
+  # and its dependency path (how it's pulled in) is visible, without dragging in
+  # unrelated siblings that merely share an ancestor.
   @spec with_dependency_ancestors(Graph.t(), [Vertex.Application.t()]) :: MapSet.t(String.t())
   defp with_dependency_ancestors(graph, relevant) do
-    collect_ancestors(graph, relevant, MapSet.new(relevant, &Vertex.id/1))
+    Enum.reduce(relevant, MapSet.new(), fn vertex, acc ->
+      graph
+      |> path_applications(vertex)
+      |> Enum.reduce(acc, &MapSet.put(&2, Vertex.id(&1)))
+    end)
   end
 
-  @spec collect_ancestors(Graph.t(), [Vertex.Application.t()], MapSet.t(String.t())) ::
-          MapSet.t(String.t())
-  defp collect_ancestors(_graph, [], visited), do: visited
-
-  defp collect_ancestors(graph, [vertex | rest], visited) do
-    parents =
-      graph
-      |> Graph.in_neighbors(vertex)
-      |> Enum.filter(&match?(%Vertex.Application{}, &1))
-      |> Enum.reject(&MapSet.member?(visited, Vertex.id(&1)))
-
-    visited = Enum.reduce(parents, visited, &MapSet.put(&2, Vertex.id(&1)))
-    collect_ancestors(graph, rest ++ parents, visited)
+  @spec path_applications(Graph.t(), Vertex.Application.t()) :: [Vertex.Application.t()]
+  defp path_applications(graph, vertex) do
+    case Graph.breadcrumbs(graph, vertex) do
+      false -> [vertex]
+      path -> Enum.filter(path, &match?(%Vertex.Application{}, &1))
+    end
   end
 
   # An application is relevant to the security lens when it participates in the
