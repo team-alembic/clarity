@@ -10,6 +10,7 @@ defmodule Clarity.TreeComponent do
 
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
+  alias Clarity.Status.Index
   alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
 
@@ -25,8 +26,9 @@ defmodule Clarity.TreeComponent do
     socket = assign(socket, assigns)
 
     visible_ids = compute_visible_ids(socket.assigns)
+    status_index = Index.build(socket.assigns.graph, socket.assigns.lens)
 
-    {:ok, assign(socket, visible_ids: visible_ids)}
+    {:ok, assign(socket, visible_ids: visible_ids, status_index: status_index)}
   end
 
   @impl Phoenix.LiveComponent
@@ -53,6 +55,7 @@ defmodule Clarity.TreeComponent do
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
+  attr :status_index, :any, required: true
 
   @spec render_vertex(map()) :: Rendered.t()
   def render_vertex(assigns)
@@ -65,9 +68,41 @@ defmodule Clarity.TreeComponent do
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
   attr :any_sibling_has_children, :boolean, required: true
+  attr :status_index, :any, required: true
 
   @spec render_node(map()) :: Rendered.t()
   def render_node(assigns)
+
+  attr :entry, :any, default: nil
+
+  @doc false
+  @spec status_badge(map()) :: Rendered.t()
+  def status_badge(assigns) do
+    ~H"""
+    <%= if @entry do %>
+      <span
+        class="inline-flex items-center gap-0.5 ml-1 align-middle"
+        title={badge_title(@entry)}
+      >
+        <%= case @entry.severity do %>
+          <% :error -> %>
+            <.icon_error class="w-4 h-4 text-red-600 dark:text-red-400" />
+          <% :warning -> %>
+            <.icon_warning class="w-4 h-4 text-yellow-500 dark:text-yellow-400" />
+          <% :info -> %>
+            <.icon_info class="w-4 h-4 text-blue-500 dark:text-blue-400" />
+        <% end %>
+        <span :if={@entry.count > 1} class="text-xs font-medium tabular-nums">{@entry.count}</span>
+      </span>
+    <% end %>
+    """
+  end
+
+  @spec badge_title(Index.entry()) :: String.t()
+  defp badge_title(%{count: count}) do
+    noun = if count == 1, do: "issue", else: "issues"
+    "#{count} #{noun}"
+  end
 
   @spec compute_visible_ids(map()) :: MapSet.t()
   defp compute_visible_ids(assigns) do

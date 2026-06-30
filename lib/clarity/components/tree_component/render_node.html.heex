@@ -18,6 +18,7 @@
       >
         <.vertex_name vertex={@vertex} />
       </.link>
+      <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
     </summary>
     <%= if open?(@vertex, @visible_ids) do %>
       <div class="ml-4 group">
@@ -29,6 +30,7 @@
           prefix={@prefix}
           lens={@lens}
           myself={@myself}
+          status_index={@status_index}
         />
       </div>
     <% end %>
@@ -45,4 +47,5 @@
   >
     <.vertex_name vertex={@vertex} />
   </.link>
+  <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
 <% end %>
