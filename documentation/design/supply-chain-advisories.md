@@ -152,11 +152,15 @@ A failed fetch never breaks a render or the graph.
    resolve advisories that have a released, installable fix —
    `Clarity.Advisory.fixed_version/2` extracts the fix; the button appears only
    when a version ≥ fix is installable, widening `mix.exs` if needed). The button
-   runs `Clarity.Dependency.Updater`: optionally widen the requirement via the
-   in-tree `clarity.update_dep` igniter task, then `deps.update` + `deps.compile`
-   + `mix compile`, then `System.restart/0` to reboot and load the new version
-   (the LiveView reconnects). `Updater.update/2` is compile-time dev-gated
-   (`{:error, :not_dev}` elsewhere); the buttons hide where Mix isn't available.
+   runs `Clarity.Dependency.Updater`, which shells out to `mix` subprocesses:
+   optionally widen the requirement via the in-tree `clarity.update_dep` igniter
+   task, then `mix deps.update`, then `mix compile`; the LiveComponent then calls
+   `System.restart/0` to reboot and load the new version (the LiveView
+   reconnects). Subprocesses rather than in-process `Mix.Task` because a `mix`
+   CLI initialises Hex correctly — running `deps.update` in-process crashes in
+   `Hex.Mix.to_lock/1` (stringifying a `Hex.Solver.Constraints.Range`).
+   `Updater.update/2` is compile-time dev-gated (`{:error, :not_dev}` elsewhere);
+   the buttons hide where Mix isn't available.
 3. Dependency-path / blast-radius view, domain/app roll-up, and live rebuild on
    refresh.
 
