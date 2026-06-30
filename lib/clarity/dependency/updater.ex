@@ -47,24 +47,22 @@ defmodule Clarity.Dependency.Updater do
     defp maybe_widen(app, requirement),
       do: mix(["clarity.update_dep", to_string(app), requirement])
 
+    # Stream the subprocess output to the server console (rather than capturing
+    # it) so the update is visible as it runs.
     @spec mix([String.t()]) :: :ok | {:error, String.t()}
     defp mix(args) do
       case System.cmd("mix", args,
              cd: File.cwd!(),
              env: [{"MIX_ENV", "dev"}],
-             stderr_to_stdout: true
+             stderr_to_stdout: true,
+             into: IO.stream(:stdio, :line)
            ) do
-        {_output, 0} ->
+        {_stream, 0} ->
           :ok
 
-        {output, status} ->
-          {:error, "mix #{Enum.join(args, " ")} exited with #{status}\n\n#{tail(output)}"}
+        {_stream, status} ->
+          {:error, "mix #{Enum.join(args, " ")} exited with #{status} (see server log)"}
       end
-    end
-
-    @spec tail(String.t()) :: String.t()
-    defp tail(output) do
-      output |> String.split("\n", trim: true) |> Enum.take(-12) |> Enum.join("\n")
     end
   else
     def update(_app, _requirement), do: {:error, :not_dev}
