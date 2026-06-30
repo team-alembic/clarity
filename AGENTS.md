@@ -32,7 +32,7 @@ mix usage_rules.update
 
 ## Architecture
 
-Clarity is built around four main extension points, all registered via application configuration:
+Clarity is built around five main extension points, all registered via application configuration:
 
 ### 1. Vertex Types (`lib/clarity/vertex/`)
 
@@ -53,6 +53,10 @@ Display information about vertices in the UI. Implement `Clarity.Content` behavi
 ### 4. Lensmakers (`lib/clarity/perspective/lensmaker/`)
 
 Create filtered views of the graph for different audiences (architect, security, debug). Implement `Clarity.Perspective.Lensmaker` behaviour with `make_lens/0` and `update_lens/1`.
+
+### 5. Status Providers (`lib/clarity/status/`)
+
+Flag vertices with `info`/`warning`/`error` indicators that roll up the navigation tree. Implement the `Clarity.Status.Provider` behaviour with `statuses/2`, returning `Clarity.Status` structs (`severity`, semantic `class`, `message`, `source`). Lenses opt in to classes via their `status_filter`; `Clarity.Status.Index` aggregates the worst severity and a flagged-descendant count per subtree.
 
 ### Core Modules
 
@@ -122,6 +126,7 @@ Detailed extension guides are in `usage-rules/`:
 - `introspectors.md` - Creating introspectors
 - `content-providers.md` - Creating content providers
 - `lensmakers.md` - Creating lenses
+- `status-providers.md` - Creating status providers
 
 <!-- usage-rules-start -->
 <!-- usage-rules-header -->

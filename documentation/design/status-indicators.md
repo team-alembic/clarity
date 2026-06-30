@@ -120,12 +120,20 @@ threaded through `render_vertex`/`render_node`.
 
 ## Phases
 
-1. `Clarity.Status` value + `Status.Provider` behaviour + `Config.list_status_providers/0` + register list.
-2. `Clarity.Status.SupplyChain` provider (advisory edges + Registry → severities).
-3. `Lens.status_filter` field (default off) + `Lensmaker.Security` opts in.
-4. Aggregation (`status_index` with severity + count, post-order over the filtered tree).
-5. Rendering: badge + tooltip in `render_node.html.heex`; thread `status_index` through `TreeComponent`.
-6. Tests (provider, aggregation roll-up, lens filtering, render) + `usage-rules/status-providers.md`.
+All phases implemented.
+
+1. **(done)** `Clarity.Status` value + `Status.Provider` behaviour + `Config.list_status_providers/0` + register list.
+2. **(done)** `Clarity.Status.SupplyChain` provider (advisory edges + Registry → severities).
+3. **(done)** `Lens.status_filter` field (default off) + `Lensmaker.Security` opts in.
+4. **(done)** Aggregation (`Clarity.Status.Index`, severity + count, post-order over the filtered tree).
+5. **(done)** Rendering: soft tinted-pill badge in `render_node.html.heex`; `status_index` threaded through `TreeComponent`.
+6. **(done)** Tests (provider, aggregation roll-up, lens filtering, render) + `usage-rules/status-providers.md`.
+
+Deviation from plan: the badge ships as a severity-tinted pill (icon + count) with
+a native `title`, rather than a hover tooltip listing per-status messages — the
+roll-up entry carries only `{severity, count}`, and the detail lives in the
+selected vertex's content. A richer tooltip would mean threading messages through
+the index; deferred.
 
 ## Risks / unknowns
 
