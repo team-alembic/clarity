@@ -58,6 +58,36 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
       assert stale in visible
       refute fresh in visible
     end
+
+    test "keeps the dependency-path ancestors of a flagged transitive dependency",
+         %{graph: graph} do
+      :ets.new(Clarity.Dependency.Registry, [:named_table, :set, :public])
+      :ets.insert(Clarity.Dependency.Registry, {{:package, "websock_adapter"}, %{latest: "0.6.0", retired: []}})
+      :ets.insert(Clarity.Dependency.Registry, {{:package, "phoenix"}, %{latest: "1.0.0", retired: []}})
+      :ets.insert(Clarity.Dependency.Registry, {{:package, "telemetry"}, %{latest: "1.0.0", retired: []}})
+
+      root = %Root{}
+      # Up-to-date framework app with no security edge: relevant only as a path.
+      phoenix = %Vertex.Application{app: :phoenix, description: "Phoenix", version: "1.0.0"}
+      # Outdated, reachable from the root only through phoenix.
+      websock = %Vertex.Application{app: :websock_adapter, description: "WebSock", version: "0.5.9"}
+      # Up-to-date and not an ancestor of anything flagged: should drop.
+      telemetry = %Vertex.Application{app: :telemetry, description: "Telemetry", version: "1.0.0"}
+
+      Graph.add_vertex(graph, phoenix, root)
+      Graph.add_vertex(graph, websock, phoenix)
+      Graph.add_vertex(graph, telemetry, root)
+      Graph.add_edge(graph, root, phoenix, :application)
+      Graph.add_edge(graph, phoenix, websock, :dependency)
+      Graph.add_edge(graph, root, telemetry, :application)
+
+      query = Security.make_lens().filter.(graph)
+      visible = Graph.vertices(graph, query)
+
+      assert websock in visible
+      assert phoenix in visible
+      refute telemetry in visible
+    end
   end
 
   describe "make_lens/0" do

@@ -161,8 +161,17 @@ A failed fetch never breaks a render or the graph.
    `Hex.Mix.to_lock/1` (stringifying a `Hex.Solver.Constraints.Range`).
    `Updater.update/2` is compile-time dev-gated (`{:error, :not_dev}` elsewhere);
    the buttons hide where Mix isn't available.
-3. Dependency-path / blast-radius view, domain/app roll-up, and live rebuild on
-   refresh.
+2.6. **(done)** The security-lens filter keeps the **dependency-path ancestors**
+   of any flagged application, not just the flagged app itself. A flagged
+   transitive dependency (e.g. `websock_adapter`, reachable only through the
+   `phoenix` framework app) would otherwise be kept but orphaned — its sole
+   ancestor filtered out, so `Graph.filter`'s tree subgraph drops the connecting
+   edge and the nav tree can't render it. Walking up the `:dependency`/
+   `:application` edges and keeping those ancestors restores reachability and
+   shows how the flagged dep is pulled in. (Build-only deps that aren't started
+   OTP applications — e.g. `elixir_make` — remain invisible: the graph is the
+   OTP application graph, a stated limitation.)
+3. Fuller blast-radius view, domain/app roll-up, and live rebuild on refresh.
 
 ## Decisions
 
