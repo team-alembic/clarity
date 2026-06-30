@@ -25,13 +25,24 @@ defmodule Clarity.Dependency.Updater do
   # the consumer's build env, so this gates on *their* env.
   if Mix.env() == :dev do
     def update(app, requirement) do
-      with :ok <- maybe_widen(app, requirement),
+      with :ok <- ensure_hex(),
+           :ok <- maybe_widen(app, requirement),
            :ok <- run("deps.update", [to_string(app)]),
            :ok <- run("deps.compile", [to_string(app)]) do
         reload(app)
       end
     rescue
       error -> {:error, Exception.message(error)}
+    end
+
+    # A running app (unlike a `mix` CLI run) hasn't added the archive paths, so
+    # Hex's own modules aren't loadable and `deps.update` fails reaching them.
+    # Bootstrap the archives and start Hex before fetching.
+    @spec ensure_hex() :: :ok
+    defp ensure_hex do
+      Mix.Local.append_archives()
+      Mix.Hex.start()
+      :ok
     end
 
     @spec maybe_widen(atom(), String.t() | nil) :: :ok
