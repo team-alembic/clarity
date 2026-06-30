@@ -111,7 +111,7 @@ defmodule Clarity.Content.Dependency do
                 phx-click="update"
                 phx-target={@myself}
                 disabled={@updating?}
-                class="px-3 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
+                class="px-3 py-2 rounded-md bg-primary-light dark:bg-primary-dark text-white hover:bg-primary-light/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 {if @updating?, do: "Updating…", else: button_label(data.status)}
               </button>
@@ -124,9 +124,11 @@ defmodule Clarity.Content.Dependency do
 
         <%= case @result do %>
           <% {:ok, message} -> %>
-            <p class="mt-4 text-green-700">{message}</p>
+            <p class="mt-4 text-green-700 dark:text-green-400">{message}</p>
           <% {:error, message} -> %>
-            <p class="mt-4 text-red-700">Update failed: {message}</p>
+            <p class="mt-4 font-semibold text-base-light-900 dark:text-base-dark-100">
+              Update failed: {message}
+            </p>
           <% nil -> %>
         <% end %>
       </div>
