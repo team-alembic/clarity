@@ -23,30 +23,34 @@ defmodule Clarity.Introspector.ApplicationTest do
   end
 
   describe inspect(&ApplicationIntrospector.introspect_vertex/2) do
-    test "returns application vertices and edges for filtered applications" do
+    test "returns a vertex per filtered application and a connected dependency tree" do
       graph = Clarity.Graph.new()
       root_vertex = %Vertex.Root{}
 
       {:ok, result} = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
 
       filtered_apps = Config.filtered_applications()
+      app_names = MapSet.new(filtered_apps, fn {app, _, _} -> app end)
 
-      # Should return vertices and edges for filtered applications only
-      vertices = Enum.filter(result, &match?({:vertex, %Vertex.Application{}}, &1))
-      edges = Enum.filter(result, &match?({:edge, _, _, :application}, &1))
-
+      vertices = for {:vertex, %Vertex.Application{} = vertex} <- result, do: vertex
       assert length(vertices) == length(filtered_apps)
-      assert length(edges) == length(filtered_apps)
 
-      for {:vertex, app_vertex} <- vertices do
-        assert %Vertex.Application{} = app_vertex
-        assert app_vertex.app in Enum.map(filtered_apps, fn {app, _, _} -> app end)
+      for vertex <- vertices, do: assert(MapSet.member?(app_names, vertex.app))
+
+      # Top-level apps hang off the root; transitive deps hang off their dependents.
+      application_edges = for {:edge, from, to, :application} <- result, do: {from, to}
+      dependency_edges = for {:edge, from, to, :dependency} <- result, do: {from, to}
+
+      assert application_edges != []
+
+      for {from, to} <- application_edges do
+        assert from == root_vertex
+        assert %Vertex.Application{} = to
       end
 
-      for {:edge, from_vertex, to_vertex, :application} <- edges do
-        assert from_vertex == root_vertex
-        assert %Vertex.Application{} = to_vertex
-      end
+      # Every application is reachable: it is the target of a root or dependency edge.
+      reached = MapSet.new(application_edges ++ dependency_edges, fn {_from, to} -> to.app end)
+      assert MapSet.equal?(reached, app_names)
     end
 
     test "excludes OTP and Elixir applications by default" do

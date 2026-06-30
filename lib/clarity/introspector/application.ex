@@ -8,7 +8,7 @@ defmodule Clarity.Introspector.Application do
   alias Clarity.Vertex
 
   @impl Clarity.Introspector
-  def source_vertex_types, do: [Vertex.Root, Vertex.Application]
+  def source_vertex_types, do: [Vertex.Root]
 
   @impl Clarity.Introspector
   def introspect_vertex(%Vertex.Root{} = root_vertex, graph) do
@@ -18,66 +18,11 @@ defmodule Clarity.Introspector.Application do
     current_apps_map = Map.new(current_apps, fn {app, _, _} = tuple -> {app, tuple} end)
     cached_apps_map = Map.new(cached_apps, fn vertex -> {vertex.app, vertex} end)
 
-    purge_entries =
-      Enum.flat_map(cached_apps, fn cached_vertex ->
-        purge_app_if_changed(cached_vertex, current_apps_map)
-      end)
+    purge_entries = Enum.flat_map(cached_apps, &purge_app_if_changed(&1, current_apps_map))
+    vertex_entries = Enum.flat_map(current_apps, &vertex_entry(&1, cached_apps_map))
+    edge_entries = structural_edges(root_vertex, current_apps)
 
-    add_entries =
-      Enum.flat_map(current_apps, fn app_tuple ->
-        add_app_entries(app_tuple, cached_apps_map, root_vertex)
-      end)
-
-    {:ok, purge_entries ++ add_entries}
-  end
-
-  def introspect_vertex(%Vertex.Application{app: app} = app_vertex, graph) do
-    all_applications =
-      graph
-      |> Graph.vertices({:==, :vertex_type, Vertex.Application})
-      |> Map.new(&{&1.app, &1})
-
-    app_spec = Application.spec(app)
-
-    included_app_vertices =
-      app_spec[:included_applications]
-      |> List.wrap()
-      |> Enum.flat_map(fn app ->
-        case Map.fetch(all_applications, app) do
-          {:ok, vertex} -> [vertex]
-          :error -> []
-        end
-      end)
-
-    optional_app_vertices =
-      app_spec[:optional_applications]
-      |> List.wrap()
-      |> Enum.flat_map(fn app ->
-        case Map.fetch(all_applications, app) do
-          {:ok, vertex} -> [vertex]
-          :error -> []
-        end
-      end)
-
-    app_vertices =
-      app_spec[:applications]
-      |> List.wrap()
-      |> Enum.flat_map(fn app ->
-        case Map.fetch(all_applications, app) do
-          {:ok, vertex} -> [vertex]
-          :error -> []
-        end
-      end)
-
-    [
-      included_app_vertices,
-      optional_app_vertices,
-      app_vertices
-    ]
-    |> Enum.concat()
-    |> Enum.map(&{:edge, app_vertex, &1, :dependency})
-    |> Enum.uniq()
-    |> then(&{:ok, &1})
+    {:ok, purge_entries ++ vertex_entries ++ edge_entries}
   end
 
   @spec get_cached_applications(Graph.t()) :: [Vertex.Application.t()]
@@ -105,12 +50,11 @@ defmodule Clarity.Introspector.Application do
     end
   end
 
-  @spec add_app_entries(
+  @spec vertex_entry(
           {Application.app(), charlist(), charlist()},
-          %{Application.app() => Vertex.Application.t()},
-          Vertex.Root.t()
+          %{Application.app() => Vertex.Application.t()}
         ) :: [Clarity.Introspector.entry()]
-  defp add_app_entries(app_tuple, cached_apps_map, root_vertex) do
+  defp vertex_entry(app_tuple, cached_apps_map) do
     {app, _, _} = app_tuple
 
     case Map.fetch(cached_apps_map, app) do
@@ -120,19 +64,89 @@ defmodule Clarity.Introspector.Application do
         if cached_vertex.version == current_vertex.version do
           []
         else
-          [
-            {:vertex, current_vertex},
-            {:edge, root_vertex, current_vertex, :application}
-          ]
+          [{:vertex, current_vertex}]
         end
 
       :error ->
-        app_vertex = Vertex.Application.from_app_tuple(app_tuple)
-
-        [
-          {:vertex, app_vertex},
-          {:edge, root_vertex, app_vertex, :application}
-        ]
+        [{:vertex, Vertex.Application.from_app_tuple(app_tuple)}]
     end
+  end
+
+  # Emit application/dependency edges in BFS order from the dependency forest's
+  # roots (apps nothing else depends on). The nav tree keeps the shortest path
+  # from the root, so receiving edges parent-before-child nests transitive
+  # dependencies under the application that pulls them in, rather than listing
+  # every app flat under the root.
+  @spec structural_edges(Vertex.Root.t(), [{Application.app(), charlist(), charlist()}]) ::
+          [Clarity.Introspector.entry()]
+  defp structural_edges(root_vertex, current_apps) do
+    app_names = Enum.map(current_apps, fn {app, _, _} -> app end)
+    current_set = MapSet.new(app_names)
+
+    vertices =
+      Map.new(current_apps, fn {app, _, _} = tuple ->
+        {app, Vertex.Application.from_app_tuple(tuple)}
+      end)
+
+    deps_of = Map.new(app_names, fn app -> {app, app_dependencies(app, current_set)} end)
+    depended = deps_of |> Map.values() |> Enum.concat() |> MapSet.new()
+    roots = Enum.reject(app_names, &MapSet.member?(depended, &1))
+
+    initial = Enum.map(roots, &{:edge, root_vertex, Map.fetch!(vertices, &1), :application})
+    bfs(roots, MapSet.new(roots), app_names, deps_of, vertices, root_vertex, initial)
+  end
+
+  @spec app_dependencies(Application.app(), MapSet.t(Application.app())) :: [Application.app()]
+  defp app_dependencies(app, current_set) do
+    spec = Application.spec(app) || []
+
+    [spec[:applications], spec[:included_applications], spec[:optional_applications]]
+    |> Enum.flat_map(&List.wrap/1)
+    |> Enum.filter(&MapSet.member?(current_set, &1))
+    |> Enum.uniq()
+  end
+
+  @spec bfs(
+          [Application.app()],
+          MapSet.t(Application.app()),
+          [Application.app()],
+          %{Application.app() => [Application.app()]},
+          %{Application.app() => Vertex.Application.t()},
+          Vertex.Root.t(),
+          [Clarity.Introspector.entry()]
+        ) :: [Clarity.Introspector.entry()]
+  defp bfs([], visited, app_names, deps_of, vertices, root_vertex, acc) do
+    case Enum.find(app_names, &(not MapSet.member?(visited, &1))) do
+      nil ->
+        acc
+
+      leftover ->
+        # Cycle with no external entry point: seed it as an additional root.
+        acc = acc ++ [{:edge, root_vertex, Map.fetch!(vertices, leftover), :application}]
+
+        bfs(
+          [leftover],
+          MapSet.put(visited, leftover),
+          app_names,
+          deps_of,
+          vertices,
+          root_vertex,
+          acc
+        )
+    end
+  end
+
+  defp bfs([app | rest], visited, app_names, deps_of, vertices, root_vertex, acc) do
+    deps = Map.fetch!(deps_of, app)
+
+    acc =
+      acc ++
+        Enum.map(deps, fn dep ->
+          {:edge, Map.fetch!(vertices, app), Map.fetch!(vertices, dep), :dependency}
+        end)
+
+    new_deps = Enum.reject(deps, &MapSet.member?(visited, &1))
+    visited = Enum.reduce(new_deps, visited, &MapSet.put(&2, &1))
+    bfs(rest ++ new_deps, visited, app_names, deps_of, vertices, root_vertex, acc)
   end
 end
