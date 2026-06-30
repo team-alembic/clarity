@@ -1,14 +1,16 @@
 defmodule Clarity.Dependency.Updater do
   @moduledoc """
-  Updates a dependency in the development environment and hot-reloads it without
-  a server restart.
+  Updates a dependency in the development environment, leaving the project
+  compiled and ready for the caller to reboot.
 
   Steps: optionally widen the `mix.exs` requirement (via the `clarity.update_dep`
-  igniter task), then `deps.update` + `deps.compile` the dependency, then stop,
-  unload and restart its application so the new version is running.
+  igniter task), then `deps.update` + `deps.compile` the dependency, then a full
+  `mix compile` so the project is rebuilt against it and the compile manifest is
+  fresh (otherwise Phoenix's stale-config check raises after the reboot).
 
-  Dev-only and best-effort: dependencies with native (NIF) code may not fully
-  reload until a real restart.
+  A running BEAM can't hot-swap dependency code (and NIFs can't reload at all),
+  so the caller restarts the VM (`System.restart/0`) to actually load the new
+  version. Dev-only.
   """
 
   @doc """
@@ -29,7 +31,7 @@ defmodule Clarity.Dependency.Updater do
            :ok <- maybe_widen(app, requirement),
            :ok <- run("deps.update", [to_string(app)]),
            :ok <- run("deps.compile", [to_string(app)]) do
-        reload(app)
+        run("compile", [])
       end
     rescue
       error -> {:error, Exception.message(error)}
@@ -55,17 +57,6 @@ defmodule Clarity.Dependency.Updater do
     defp run(task, args) do
       Mix.Task.rerun(task, args)
       :ok
-    end
-
-    @spec reload(atom()) :: :ok | {:error, term()}
-    defp reload(app) do
-      _ = Application.stop(app)
-      _ = Application.unload(app)
-
-      case Application.ensure_all_started(app) do
-        {:ok, _started} -> :ok
-        {:error, reason} -> {:error, reason}
-      end
     end
   else
     def update(_app, _requirement), do: {:error, :not_dev}

@@ -59,10 +59,15 @@ defmodule Clarity.Content.Dependency do
 
   @impl Phoenix.LiveComponent
   def handle_async(:update, {:ok, :ok}, socket) do
-    message =
-      "Updated #{socket.assigns.app}. Restart the server to load it — " <>
-        "Phoenix requires a restart after a dependency change."
+    # A running BEAM can't hot-swap dependency code, so reboot the node to load
+    # the new version; the LiveView reconnects automatically. Delay briefly so
+    # this message reaches the browser before the socket drops.
+    Task.start(fn ->
+      Process.sleep(500)
+      System.restart()
+    end)
 
+    message = "Updated #{socket.assigns.app}. Restarting the server to load it…"
     {:noreply, assign(socket, updating?: false, result: {:ok, message})}
   end
 
