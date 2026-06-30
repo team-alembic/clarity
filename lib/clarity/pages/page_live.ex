@@ -7,6 +7,7 @@ defmodule Clarity.PageLive do
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
+  alias Clarity.Status
   alias Clarity.Vertex
   alias Clarity.Vertex.Root
   alias Phoenix.LiveView.AsyncResult
@@ -182,7 +183,8 @@ defmodule Clarity.PageLive do
          assign(socket,
            vertex: nil,
            content: nil,
-           contents: []
+           contents: [],
+           vertex_status_classes: %{}
          ), :vertex_not_found}
 
       vertex ->
@@ -191,12 +193,16 @@ defmodule Clarity.PageLive do
 
         breadcrumbs = Graph.breadcrumbs(socket.assigns.clarity.graph, vertex) || [vertex]
 
+        vertex_status_classes =
+          Status.Index.vertex_classes(socket.assigns.clarity.graph, vertex, socket.assigns.lens)
+
         {:ok,
          assign(socket,
            vertex: vertex,
            contents: contents,
            content: content,
-           breadcrumbs: breadcrumbs
+           breadcrumbs: breadcrumbs,
+           vertex_status_classes: vertex_status_classes
          )}
     end
   end

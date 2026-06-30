@@ -135,6 +135,17 @@ roll-up entry carries only `{severity, count}`, and the detail lives in the
 selected vertex's content. A richer tooltip would mean threading messages through
 the index; deferred.
 
+### Follow-up: flag the explaining tab
+
+So a developer who lands on a flagged node can see *which* tab explains it, a
+content provider declares the status classes it explains via an optional
+`Clarity.Content` callback `status_classes/0` (e.g. Version Status →
+`[:hygiene]`, Advisories → `[:security]`). `Clarity.Status.Index.vertex_classes/3`
+returns the active vertex's own lens-surfaced statuses grouped to
+`%{class => worst_severity}`; the `tabs` component flags any tab whose
+`status_classes` intersect that map with a severity-coloured dot. Class-keyed and
+lens-gated like the tree badges.
+
 ## Risks / unknowns
 
 - **Performance**: aggregation is O(visible tree). Fine for supply-chain; revisit

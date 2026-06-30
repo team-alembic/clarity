@@ -89,10 +89,31 @@ defmodule Clarity.CoreComponents do
     required: true,
     doc: "Current vertex being viewed (implements Clarity.Vertex protocol)"
 
+  attr :vertex_status_classes, :map,
+    default: %{},
+    doc: "Map of the active vertex's status classes to worst severity, for tab flags"
+
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the tabs container"
 
   @spec tabs(assigns :: Socket.assigns()) :: Rendered.t()
   def tabs(assigns)
+
+  @spec tab_status_severity(Content.t(), %{atom() => Clarity.Status.severity()}) ::
+          Clarity.Status.severity() | nil
+  defp tab_status_severity(%Content{status_classes: classes}, vertex_status_classes) do
+    classes
+    |> Enum.map(&Map.get(vertex_status_classes, &1))
+    |> Enum.reject(&is_nil/1)
+    |> case do
+      [] -> nil
+      severities -> Enum.reduce(severities, &Clarity.Status.max_severity/2)
+    end
+  end
+
+  @spec tab_status_dot(Clarity.Status.severity()) :: String.t()
+  defp tab_status_dot(:error), do: "bg-red-500"
+  defp tab_status_dot(:warning), do: "bg-yellow-500"
+  defp tab_status_dot(:info), do: "bg-blue-500"
 
   @doc """
   Renders an error page when a lens cannot be found.

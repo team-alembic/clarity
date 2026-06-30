@@ -96,7 +96,8 @@ defmodule Clarity.Content do
           live_view?: boolean(),
           live_component?: boolean(),
           render_static: rendered_static_content() | nil,
-          sort_priority: integer()
+          sort_priority: integer(),
+          status_classes: [atom()]
         }
 
   @enforce_keys [:id, :name, :provider, :live_view?, :live_component?]
@@ -108,7 +109,8 @@ defmodule Clarity.Content do
     :live_view?,
     :live_component?,
     :render_static,
-    sort_priority: 0
+    sort_priority: 0,
+    status_classes: []
   ]
 
   @doc """
@@ -151,7 +153,19 @@ defmodule Clarity.Content do
   """
   @callback sort_priority() :: integer()
 
-  @optional_callbacks [render_static: 2, sort_priority: 0]
+  @doc """
+  Returns the status classes this content explains.
+
+  When the vertex carries a `Clarity.Status` of one of these classes (and the
+  lens surfaces it), the content's tab is flagged with a severity indicator, so a
+  developer can see which tab explains a flagged node. Defaults to `[]`.
+
+  For example, the Version Status tab returns `[:hygiene]` and the Advisories tab
+  returns `[:security]`.
+  """
+  @callback status_classes() :: [atom()]
+
+  @optional_callbacks [render_static: 2, sort_priority: 0, status_classes: 0]
 
   @doc false
   @spec get_contents_for_vertex(Vertex.t(), Lens.t()) :: [t()]
@@ -192,6 +206,11 @@ defmodule Clarity.Content do
         do: provider.sort_priority(),
         else: 0
 
+    status_classes =
+      if function_exported?(provider, :status_classes, 0),
+        do: provider.status_classes(),
+        else: []
+
     %__MODULE__{
       id: content_id(provider),
       name: provider.name(),
@@ -200,7 +219,8 @@ defmodule Clarity.Content do
       live_view?: live_view?,
       live_component?: live_component?,
       render_static: render_static,
-      sort_priority: sort_priority
+      sort_priority: sort_priority,
+      status_classes: status_classes
     }
   end
 

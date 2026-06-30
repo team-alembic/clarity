@@ -93,4 +93,24 @@ defmodule Clarity.Status.IndexTest do
       assert Index.build(graph, lens(&Lens.reject_all_statuses/1)) == %{}
     end
   end
+
+  describe "vertex_classes/3" do
+    test "groups a vertex's own statuses by class to the worst severity",
+         %{graph: graph, vertices: v} do
+      lens = lens(&(&1.class in [:security, :hygiene]))
+
+      assert Index.vertex_classes(graph, v.err, lens) == %{security: :error}
+      assert Index.vertex_classes(graph, v.info, lens) == %{hygiene: :info}
+      # parent has no own status; this is not a roll-up
+      assert Index.vertex_classes(graph, v.parent, lens) == %{}
+    end
+
+    test "excludes classes the lens does not surface", %{graph: graph, vertices: v} do
+      lens = lens(&(&1.class == :security))
+
+      assert Index.vertex_classes(graph, v.err, lens) == %{security: :error}
+      assert Index.vertex_classes(graph, v.info, lens) == %{}
+      assert Index.vertex_classes(graph, v.other, lens) == %{}
+    end
+  end
 end

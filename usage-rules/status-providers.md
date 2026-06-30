@@ -156,6 +156,16 @@ You produce statuses per vertex; `Clarity.Status.Index` does the aggregation:
 
 You don't call the index yourself — just return accurate per-vertex statuses.
 
+## Flagging the Tab That Explains a Status
+
+A content provider can declare the status classes it explains via the optional
+`status_classes/0` callback (see [content providers](content-providers.md)). When
+the selected vertex carries a surfaced status of that class, the content's tab is
+flagged with a severity dot — so a developer who lands on a flagged node can see
+which tab explains it. For example `Clarity.Content.Dependency` returns
+`[:hygiene]` and `Clarity.Content.Advisory` returns `[:security]`. Match the
+classes your provider produces to the content that explains them.
+
 ## Testing Status Providers
 
 Test `statuses/2` directly with hand-built vertices and a graph:

@@ -34,6 +34,9 @@ defmodule Clarity.Content.Advisory do
   def sort_priority, do: -100
 
   @impl Clarity.Content
+  def status_classes, do: [:security]
+
+  @impl Clarity.Content
   def applies?(%Vertex.Application{}, %Lens{id: "security"}), do: true
   def applies?(%Vertex.Advisory{}, _lens), do: true
   def applies?(_vertex, _lens), do: false

@@ -38,6 +38,23 @@ defmodule Clarity.Status.Index do
     end
   end
 
+  @doc """
+  The worst severity per status class for a single vertex, under `lens`.
+
+  Unlike `build/2` this does not roll up the tree — it returns only the vertex's
+  own lens-surfaced statuses, grouped to `%{class => worst_severity}`. Used to
+  flag the content tab that explains a status.
+  """
+  @spec vertex_classes(Graph.t(), Vertex.t(), Lens.t()) :: %{atom() => Status.severity()}
+  def vertex_classes(graph, vertex, lens) do
+    Config.list_status_providers()
+    |> Enum.flat_map(&safe_statuses(&1, vertex, graph))
+    |> Enum.filter(lens.status_filter)
+    |> Enum.reduce(%{}, fn status, acc ->
+      Map.update(acc, status.class, status.severity, &Status.max_severity(&1, status.severity))
+    end)
+  end
+
   @spec rollup(Graph.t(), Vertex.t(), [module()], Lens.t(), t()) :: {t(), entry() | nil}
   defp rollup(graph, vertex, providers, lens, index) do
     children = graph |> Graph.navigation_children(vertex) |> Map.values() |> List.flatten()

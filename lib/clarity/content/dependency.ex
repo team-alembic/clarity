@@ -29,6 +29,9 @@ defmodule Clarity.Content.Dependency do
   def sort_priority, do: -90
 
   @impl Clarity.Content
+  def status_classes, do: [:hygiene]
+
+  @impl Clarity.Content
   def applies?(%Vertex.Application{}, %Lens{id: "security"}), do: true
   def applies?(_vertex, _lens), do: false
 
