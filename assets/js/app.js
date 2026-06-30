@@ -21,6 +21,7 @@ import ThemeToggle, { getInitialTheme } from "./theme.hook";
 import Flash from "./flash.hook";
 import Details from "./details.hook";
 import ResizableDrawer from "./resizable-drawer.hook";
+import LocalTime from "./local_time.hook";
 
 let socketPath =
   document.querySelector("html").getAttribute("phx-socket") || "/live";
@@ -33,6 +34,7 @@ const Hooks = {
   Flash: Flash,
   Details: Details,
   ResizableDrawer: ResizableDrawer,
+  LocalTime: LocalTime,
 };
 
 let csrfToken = document

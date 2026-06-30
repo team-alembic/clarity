@@ -47,6 +47,7 @@ defmodule Clarity.Content.Advisory do
        prefix: assigns.prefix,
        lens: assigns.lens,
        markdown: application_markdown(app, installed),
+       freshness: freshness(Source.last_refreshed_at()),
        update: build_update(app, installed)
      )}
   end
@@ -59,6 +60,7 @@ defmodule Clarity.Content.Advisory do
        prefix: assigns.prefix,
        lens: assigns.lens,
        markdown: advisory_markdown(advisory, installed),
+       freshness: nil,
        update: installed && build_update(app_atom(advisory.package), installed)
      )}
   end
@@ -69,6 +71,20 @@ defmodule Clarity.Content.Advisory do
     <section class="content w-full flex justify-center">
       <div class="p-4 max-w-[100ch] w-full">
         <.markdown content={@markdown} prefix={@prefix} lens={@lens} />
+
+        <%= case @freshness do %>
+          <% {:at, at} -> %>
+            <p class="mt-2 text-sm italic opacity-70">
+              Advisory data as of <time
+                id="advisory-freshness"
+                phx-hook="LocalTime"
+                datetime={DateTime.to_iso8601(at)}
+              >{format_refreshed(at)}</time>.
+            </p>
+          <% :never -> %>
+            <p class="mt-2 text-sm italic opacity-70">Advisory database not yet downloaded.</p>
+          <% nil -> %>
+        <% end %>
 
         <%= if @update do %>
           <.live_component
@@ -90,7 +106,6 @@ defmodule Clarity.Content.Advisory do
 
     [
       "## Security Advisories\n\n",
-      freshness_note(),
       case advisories do
         [] ->
           "No known advisories for `#{app}` #{installed}.\n\n"
@@ -159,13 +174,9 @@ defmodule Clarity.Content.Advisory do
     ["## References\n\n", Enum.map(references, &["- <", &1, ">\n"]), "\n"]
   end
 
-  @spec freshness_note() :: iodata()
-  defp freshness_note do
-    case Source.last_refreshed_at() do
-      nil -> "_Advisory database not yet downloaded._\n\n"
-      at -> ["_Advisory data as of ", format_refreshed(at), "._\n\n"]
-    end
-  end
+  @spec freshness(DateTime.t() | nil) :: {:at, DateTime.t()} | :never
+  defp freshness(nil), do: :never
+  defp freshness(%DateTime{} = at), do: {:at, at}
 
   @spec format_refreshed(DateTime.t()) :: String.t()
   defp format_refreshed(at), do: Calendar.strftime(at, "%-d %B %Y at %-I:%M %p UTC")
