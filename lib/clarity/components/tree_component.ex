@@ -81,22 +81,39 @@ defmodule Clarity.TreeComponent do
     ~H"""
     <%= if @entry do %>
       <span
-        class="inline-flex items-center gap-0.5 ml-1 align-middle"
+        class={[
+          "inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-full align-middle",
+          "text-xs font-medium leading-none ring-1 ring-inset",
+          badge_classes(@entry.severity)
+        ]}
         title={badge_title(@entry)}
       >
         <%= case @entry.severity do %>
           <% :error -> %>
-            <.icon_error class="w-4 h-4 text-red-600 dark:text-red-400" />
+            <.icon_error class="w-3 h-3" />
           <% :warning -> %>
-            <.icon_warning class="w-4 h-4 text-yellow-500 dark:text-yellow-400" />
+            <.icon_warning class="w-3 h-3" />
           <% :info -> %>
-            <.icon_info class="w-4 h-4 text-blue-500 dark:text-blue-400" />
+            <.icon_info class="w-3 h-3" />
         <% end %>
-        <span :if={@entry.count > 1} class="text-xs font-medium tabular-nums">{@entry.count}</span>
+        <span :if={@entry.count > 1} class="tabular-nums">{@entry.count}</span>
       </span>
     <% end %>
     """
   end
+
+  @spec badge_classes(Clarity.Status.severity()) :: String.t()
+  defp badge_classes(:error),
+    do:
+      "bg-red-100 text-red-700 ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30"
+
+  defp badge_classes(:warning),
+    do:
+      "bg-yellow-100 text-yellow-800 ring-yellow-600/20 dark:bg-yellow-500/15 dark:text-yellow-300 dark:ring-yellow-400/30"
+
+  defp badge_classes(:info),
+    do:
+      "bg-blue-100 text-blue-700 ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30"
 
   @spec badge_title(Index.entry()) :: String.t()
   defp badge_title(%{count: count}) do

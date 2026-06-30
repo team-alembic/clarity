@@ -12,10 +12,11 @@ defmodule Clarity.TreeComponentTest do
       refute html =~ "svg"
     end
 
-    test "renders an error icon without a count for a single issue" do
+    test "renders an error pill without a count for a single issue" do
       html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 1})
 
-      assert html =~ "text-red-600"
+      assert html =~ "rounded-full"
+      assert html =~ "bg-red-100"
       # the count span (tabular-nums) is only shown for more than one issue
       refute html =~ "tabular-nums"
     end
@@ -23,7 +24,7 @@ defmodule Clarity.TreeComponentTest do
     test "shows the count when more than one issue" do
       html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 3})
 
-      assert html =~ "text-red-600"
+      assert html =~ "bg-red-100"
       assert html =~ "tabular-nums"
       assert html =~ "3"
     end
@@ -32,11 +33,11 @@ defmodule Clarity.TreeComponentTest do
       warning =
         render_component(&TreeComponent.status_badge/1, entry: %{severity: :warning, count: 1})
 
-      assert warning =~ "text-yellow-500"
+      assert warning =~ "bg-yellow-100"
 
       info = render_component(&TreeComponent.status_badge/1, entry: %{severity: :info, count: 1})
 
-      assert info =~ "text-blue-500"
+      assert info =~ "bg-blue-100"
     end
   end
 end
