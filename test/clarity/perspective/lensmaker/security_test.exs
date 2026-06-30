@@ -1,5 +1,7 @@
 defmodule Clarity.Perspective.Lensmaker.SecurityTest do
-  use ExUnit.Case, async: true
+  # async: false — one test installs the globally-named Clarity.Dependency.Registry
+  # ETS table, which must not race with concurrent tests reading it via the lens.
+  use ExUnit.Case, async: false
 
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
@@ -34,6 +36,27 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
       assert advised in visible
       assert advisory in visible
       refute plain in visible
+    end
+
+    test "keeps outdated applications visible, drops up-to-date ones", %{graph: graph} do
+      :ets.new(Clarity.Dependency.Registry, [:named_table, :set, :public])
+      :ets.insert(Clarity.Dependency.Registry, {{:package, "stale"}, %{latest: "2.0.0", retired: []}})
+      :ets.insert(Clarity.Dependency.Registry, {{:package, "fresh"}, %{latest: "1.0.0", retired: []}})
+
+      root = %Root{}
+      stale = %Vertex.Application{app: :stale, description: "Stale", version: "1.0.0"}
+      fresh = %Vertex.Application{app: :fresh, description: "Fresh", version: "1.0.0"}
+
+      Graph.add_vertex(graph, stale, root)
+      Graph.add_vertex(graph, fresh, root)
+      Graph.add_edge(graph, root, stale, :application)
+      Graph.add_edge(graph, root, fresh, :application)
+
+      query = Security.make_lens().filter.(graph)
+      visible = Graph.vertices(graph, query)
+
+      assert stale in visible
+      refute fresh in visible
     end
   end
 

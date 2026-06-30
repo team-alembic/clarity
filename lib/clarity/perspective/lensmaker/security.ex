@@ -11,6 +11,8 @@ defmodule Clarity.Perspective.Lensmaker.Security do
 
   import Phoenix.Component
 
+  alias Clarity.Dependency
+  alias Clarity.Dependency.Registry
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
@@ -33,21 +35,42 @@ defmodule Clarity.Perspective.Lensmaker.Security do
 
   @spec filter(Graph.t()) :: Graph.query()
   defp filter(graph) do
-    # Find applications with security-related edges (beyond :module and :dependency):
-    # Ash domains / Phoenix endpoints, or a dependency carrying a security advisory.
     application_ids =
       graph
       |> Graph.vertices({:==, :vertex_type, Vertex.Application})
-      |> Enum.filter(fn vertex ->
-        Enum.any?(
-          [:domain, :router, :endpoint, :advisory],
-          &(Graph.out_degree(graph, vertex, &1) > 0)
-        )
-      end)
+      |> Enum.filter(&relevant_application?(graph, &1))
       |> Enum.map(&Vertex.id/1)
 
-    # Show: if Application type, only those with security edges; otherwise allow all
+    # Show: if Application type, only the relevant ones; otherwise allow all
     {:or, {:in, :vertex_id, application_ids}, {:!=, :vertex_type, Vertex.Application}}
+  end
+
+  # An application is relevant to the security lens when it participates in the
+  # architecture (Ash domains / Phoenix endpoints) or carries a supply-chain
+  # concern: a security advisory, or an outdated/retired installed version.
+  @spec relevant_application?(Graph.t(), Vertex.Application.t()) :: boolean()
+  defp relevant_application?(graph, vertex) do
+    has_security_edge?(graph, vertex) or supply_chain_flagged?(vertex)
+  end
+
+  @spec has_security_edge?(Graph.t(), Vertex.Application.t()) :: boolean()
+  defp has_security_edge?(graph, vertex) do
+    Enum.any?(
+      [:domain, :router, :endpoint, :advisory],
+      &(Graph.out_degree(graph, vertex, &1) > 0)
+    )
+  end
+
+  @spec supply_chain_flagged?(Vertex.Application.t()) :: boolean()
+  defp supply_chain_flagged?(%{app: app, version: version}) do
+    case Registry.summary(app) do
+      %{latest: latest, retired: retired} ->
+        installed = to_string(version)
+        installed in retired or Dependency.outdated?(installed, latest)
+
+      nil ->
+        false
+    end
   end
 
   @spec show_vertex_types([module()]) :: [module()]
