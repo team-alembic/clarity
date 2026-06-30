@@ -86,6 +86,9 @@ defmodule Clarity.MixProject do
           Clarity.Content.Advisory,
           Clarity.Content.Dependency
         ],
+        clarity_status_providers: [
+          Clarity.Status.SupplyChain
+        ],
         default_perspective_lens: "architect"
       ]
     ]
