@@ -14,10 +14,12 @@ defmodule Clarity.Status.SupplyChainTest do
     {:ok, graph: graph}
   end
 
+  @spec put_summary(String.t(), map()) :: true
   defp put_summary(package, summary) do
     :ets.insert(Clarity.Dependency.Registry, {{:package, package}, summary})
   end
 
+  @spec app(Graph.t(), atom(), String.t()) :: Vertex.Application.t()
   defp app(graph, name, version) do
     root = %Root{}
     vertex = %Vertex.Application{app: name, description: to_string(name), version: version}

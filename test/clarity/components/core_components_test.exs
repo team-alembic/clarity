@@ -8,6 +8,7 @@ defmodule Clarity.CoreComponentsTest do
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex.Root
 
+  @spec content(String.t(), String.t(), [atom()]) :: Content.t()
   defp content(id, name, status_classes) do
     %Content{
       id: id,
@@ -19,6 +20,7 @@ defmodule Clarity.CoreComponentsTest do
     }
   end
 
+  @spec tabs(map()) :: String.t()
   defp tabs(vertex_status_classes) do
     render_component(&CoreComponents.tabs/1,
       contents: [content("overview", "Overview", []), content("version", "Version Status", [:hygiene])],

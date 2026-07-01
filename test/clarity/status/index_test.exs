@@ -54,6 +54,7 @@ defmodule Clarity.Status.IndexTest do
     {:ok, graph: graph, vertices: %{root: root, parent: parent, err: err, info: info, other: other}}
   end
 
+  @spec lens((Status.t() -> boolean())) :: Lens.t()
   defp lens(status_filter) do
     %Lens{id: "t", name: "T", icon: fn -> nil end, filter: true, status_filter: status_filter}
   end
