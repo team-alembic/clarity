@@ -23,6 +23,38 @@
   </div>
 
   <div class="flex items-center space-x-2">
+    <% has_reports = @lens && Clarity.Report.applicable(@lens) != [] %>
+    <div
+      :if={has_reports}
+      class="inline-flex rounded-md overflow-hidden ring-1 ring-inset ring-base-light-300 dark:ring-base-dark-600 mr-1"
+    >
+      <.link
+        patch={Path.join([@prefix, @lens.id])}
+        class={[
+          "px-3 py-1.5 text-sm font-medium transition-colors",
+          if(@mode == :explore,
+            do: "bg-primary-light dark:bg-primary-dark text-white",
+            else:
+              "text-base-light-600 dark:text-base-dark-400 hover:bg-base-light-200 dark:hover:bg-base-dark-700"
+          )
+        ]}
+      >
+        Explore
+      </.link>
+      <.link
+        patch={Path.join([@prefix, @lens.id, "report"])}
+        class={[
+          "px-3 py-1.5 text-sm font-medium transition-colors",
+          if(@mode == :report,
+            do: "bg-primary-light dark:bg-primary-dark text-white",
+            else:
+              "text-base-light-600 dark:text-base-dark-400 hover:bg-base-light-200 dark:hover:bg-base-dark-700"
+          )
+        ]}
+      >
+        Reports
+      </.link>
+    </div>
     <.live_component
       module={Clarity.LensSwitcherComponent}
       id="lens-switcher"
