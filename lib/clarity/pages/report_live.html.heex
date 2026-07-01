@@ -1,0 +1,51 @@
+<div class="min-h-screen bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
+  <.header
+    socket={@socket}
+    prefix={@prefix}
+    lens={@lens}
+    theme={@theme}
+    clarity_pid={@clarity_pid}
+    mode={:report}
+    class="shadow-md"
+  />
+
+  <%= if @lens do %>
+    <div class="max-w-[100ch] mx-auto p-6">
+      <%= if @reports == [] do %>
+        <p class="italic opacity-70">
+          No reports are available for the {@lens.name} lens.
+        </p>
+      <% else %>
+        <nav class="flex gap-1 border-b border-base-light-300 dark:border-base-dark-700 mb-6">
+          <.link
+            :for={report <- @reports}
+            patch={Path.join([@prefix, @lens.id, "report", Clarity.Report.report_id(report)])}
+            title={Clarity.Report.description(report)}
+            class={[
+              "inline-block px-4 py-2 rounded-t-md font-medium transition-colors",
+              if(report == @selected,
+                do:
+                  "bg-base-light-200 dark:bg-base-dark-800 text-primary-light dark:text-primary-dark border-b-2 border-primary-light dark:border-primary-dark",
+                else:
+                  "text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark hover:bg-base-light-200 dark:hover:bg-base-dark-800"
+              )
+            ]}
+          >
+            {report.name()}
+          </.link>
+        </nav>
+
+        <.live_component
+          :if={@selected}
+          module={@selected}
+          id="report"
+          graph={@graph}
+          lens={@lens}
+          prefix={@prefix}
+        />
+      <% end %>
+    </div>
+  <% else %>
+    <.lens_not_found_error prefix={@prefix} />
+  <% end %>
+</div>
