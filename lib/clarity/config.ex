@@ -142,6 +142,16 @@ defmodule Clarity.Config do
     MyApp.LicenceStatus
   ]
   ```
+
+  ### Report Registration (`:clarity_reports`)
+
+  Applications can register custom reports:
+
+  ```elixir
+  config :my_app, :clarity_reports, [
+    MyApp.Report.Compliance
+  ]
+  ```
   """
 
   @typedoc false
@@ -233,6 +243,15 @@ defmodule Clarity.Config do
     Application.loaded_applications()
     |> Enum.map(&elem(&1, 0))
     |> Enum.flat_map(&Application.get_env(&1, :clarity_status_providers, []))
+    |> Enum.uniq()
+  end
+
+  @doc false
+  @spec list_reports() :: [module()]
+  def list_reports do
+    Application.loaded_applications()
+    |> Enum.map(&elem(&1, 0))
+    |> Enum.flat_map(&Application.get_env(&1, :clarity_reports, []))
     |> Enum.uniq()
   end
 
