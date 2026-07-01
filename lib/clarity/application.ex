@@ -18,6 +18,8 @@ defmodule Clarity.Application do
         {Clarity.Telemetry, clarity_server: Clarity.Server},
         {Cache,
          clarity_server: Clarity.Server, cache_path: Clarity.Config.cache_path(), name: Cache},
+        Clarity.Advisory.Source,
+        Clarity.Dependency.Registry,
         {Clarity.Server, cache: Cache, auto_start?: Clarity.Config.auto_start?()},
         {PartitionSupervisor,
          child_spec: {Clarity.Server.Worker, clarity_server: Clarity.Server},

@@ -12,5 +12,6 @@ defmodule Demo.Accounts.Domain do
 
   resources do
     resource Demo.Accounts.User
+    resource Demo.Accounts.ApiKey
   end
 end

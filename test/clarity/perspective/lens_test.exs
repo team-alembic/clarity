@@ -177,4 +177,42 @@ defmodule Clarity.Perspective.LensTest do
       assert lens.show_vertex_types.(types) == [Clarity.Vertex.Module]
     end
   end
+
+  describe "status_filter" do
+    test "defaults to surfacing no statuses (opt-in per lens)" do
+      lens = %Lens{
+        id: "test",
+        name: "Test",
+        icon: fn ->
+          assigns = %{}
+          ~H"🔍"
+        end,
+        filter: true
+      }
+
+      assert lens.status_filter == (&Lens.reject_all_statuses/1)
+
+      status = %Clarity.Status{severity: :error, class: :security, message: "x", source: __MODULE__}
+      refute lens.status_filter.(status)
+    end
+
+    test "can be customized to surface specific classes" do
+      lens = %Lens{
+        id: "test",
+        name: "Test",
+        icon: fn ->
+          assigns = %{}
+          ~H"🔍"
+        end,
+        filter: true,
+        status_filter: &(&1.class == :security)
+      }
+
+      security = %Clarity.Status{severity: :error, class: :security, message: "x", source: __MODULE__}
+      hygiene = %Clarity.Status{severity: :info, class: :hygiene, message: "y", source: __MODULE__}
+
+      assert lens.status_filter.(security)
+      refute lens.status_filter.(hygiene)
+    end
+  end
 end

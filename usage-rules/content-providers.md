@@ -76,6 +76,11 @@ end
 - **`description/0`** - Optional description for tooltips
 - **`applies?/2`** - Whether to show for given vertex and lens
   (required)
+- **`status_classes/0`** - Optional list of [status](status-providers.md)
+  classes this tab explains (e.g. `[:hygiene]`). When the vertex carries a
+  surfaced status of one of these classes, the tab is flagged with a severity
+  dot so the developer can see which tab explains a flagged node. Defaults to
+  `[]`.
 
 ### 3. Implement `render_static/2`
 

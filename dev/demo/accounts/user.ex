@@ -21,6 +21,11 @@ defmodule Demo.Accounts.User do
     policy action_type(:read) do
       authorize_if expr(id == ^actor(:id))
     end
+
+    policy action(:by_name) do
+      forbid_if Demo.Accounts.Checks.ApiKeyActor
+      authorize_if always()
+    end
   end
 
   actions do

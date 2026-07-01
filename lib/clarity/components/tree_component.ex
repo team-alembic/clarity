@@ -10,6 +10,7 @@ defmodule Clarity.TreeComponent do
 
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
+  alias Clarity.Status.Index
   alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
 
@@ -25,8 +26,9 @@ defmodule Clarity.TreeComponent do
     socket = assign(socket, assigns)
 
     visible_ids = compute_visible_ids(socket.assigns)
+    status_index = Index.build(socket.assigns.graph, socket.assigns.lens)
 
-    {:ok, assign(socket, visible_ids: visible_ids)}
+    {:ok, assign(socket, visible_ids: visible_ids, status_index: status_index)}
   end
 
   @impl Phoenix.LiveComponent
@@ -53,6 +55,7 @@ defmodule Clarity.TreeComponent do
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
+  attr :status_index, :any, required: true
 
   @spec render_vertex(map()) :: Rendered.t()
   def render_vertex(assigns)
@@ -65,9 +68,60 @@ defmodule Clarity.TreeComponent do
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
   attr :any_sibling_has_children, :boolean, required: true
+  attr :status_index, :any, required: true
 
   @spec render_node(map()) :: Rendered.t()
   def render_node(assigns)
+
+  attr :entry, :any, default: nil
+
+  @doc false
+  @spec status_badge(map()) :: Rendered.t()
+  def status_badge(assigns) do
+    ~H"""
+    <%= if @entry do %>
+      <span
+        class={[
+          "inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-full align-middle",
+          "text-xs font-medium leading-none ring-1 ring-inset",
+          badge_classes(@entry.severity)
+        ]}
+        title={badge_title(@entry)}
+      >
+        <%= case @entry.severity do %>
+          <% :error -> %>
+            <.icon_error class="w-3 h-3" />
+          <% :warning -> %>
+            <.icon_warning class="w-3 h-3" />
+          <% :info -> %>
+            <.icon_info class="w-3 h-3" />
+        <% end %>
+        <span :if={@entry.count > 0} class="tabular-nums">{@entry.count}</span>
+      </span>
+    <% end %>
+    """
+  end
+
+  @spec badge_classes(Clarity.Status.severity()) :: String.t()
+  defp badge_classes(:error),
+    do:
+      "bg-red-100 text-red-700 ring-red-600/20 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-400/30"
+
+  defp badge_classes(:warning),
+    do:
+      "bg-yellow-100 text-yellow-800 ring-yellow-600/20 dark:bg-yellow-500/15 dark:text-yellow-300 dark:ring-yellow-400/30"
+
+  defp badge_classes(:info),
+    do:
+      "bg-blue-100 text-blue-700 ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30"
+
+  @spec badge_title(Index.entry()) :: String.t()
+  defp badge_title(%{count: 0}), do: "flagged"
+
+  defp badge_title(%{count: count}) do
+    noun = if count == 1, do: "issue", else: "issues"
+    "#{count} nested #{noun}"
+  end
 
   @spec compute_visible_ids(map()) :: MapSet.t()
   defp compute_visible_ids(assigns) do

@@ -27,6 +27,24 @@ defmodule Clarity.ContentTest do
     end
   end
 
+  defmodule StatusClassProvider do
+    @moduledoc false
+    @behaviour Content
+
+    @impl Content
+    def name, do: "Status Class Content"
+
+    @impl Content
+    def applies?(%Root{}, _lens), do: true
+    def applies?(_vertex, _lens), do: false
+
+    @impl Content
+    def render_static(_vertex, _lens), do: {:markdown, "x"}
+
+    @impl Content
+    def status_classes, do: [:hygiene]
+  end
+
   defmodule TestLiveViewProvider do
     @moduledoc false
     @behaviour Content
@@ -164,6 +182,22 @@ defmodule Clarity.ContentTest do
              } = content
 
       assert is_function(render_fn, 1)
+    end
+
+    test "defaults status_classes to []", %{vertex: vertex, lens: lens} do
+      Application.put_env(:clarity, :clarity_content_providers, [TestContentProvider])
+
+      [content] = Content.get_contents_for_vertex(vertex, lens)
+
+      assert content.status_classes == []
+    end
+
+    test "captures status_classes from the provider", %{vertex: vertex, lens: lens} do
+      Application.put_env(:clarity, :clarity_content_providers, [StatusClassProvider])
+
+      [content] = Content.get_contents_for_vertex(vertex, lens)
+
+      assert content.status_classes == [:hygiene]
     end
 
     test "detects LiveView providers", %{vertex: vertex, lens: lens} do

@@ -102,7 +102,7 @@ defmodule Clarity.ServerTest do
       assert Enum.all?(tasks, &(&1.vertex == app_vertex))
 
       expected_introspectors = [
-        Clarity.Introspector.Application,
+        Clarity.Introspector.Advisory,
         Clarity.Introspector.Module
       ]
 

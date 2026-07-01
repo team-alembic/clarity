@@ -15,6 +15,17 @@
         title={content.description}
       >
         {content.name}
+        <%= case tab_status_severity(content, @vertex_status_classes) do %>
+          <% nil -> %>
+          <% severity -> %>
+            <span
+              class={[
+                "inline-block w-2 h-2 rounded-full ml-1 align-middle",
+                tab_status_dot(severity)
+              ]}
+              title={"#{severity} — see this tab"}
+            ></span>
+        <% end %>
       </.link>
     </li>
   </ul>

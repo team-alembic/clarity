@@ -90,4 +90,26 @@ defmodule Clarity.ConfigTest do
       refute Config.should_process_module?(DynamicTestModule)
     end
   end
+
+  describe inspect(&Config.list_status_providers/0) do
+    setup do
+      on_exit(fn -> Application.delete_env(:clarity, :clarity_status_providers) end)
+    end
+
+    defmodule DummyStatusProvider do
+      @moduledoc false
+    end
+
+    test "returns providers registered under :clarity_status_providers" do
+      Application.put_env(:clarity, :clarity_status_providers, [DummyStatusProvider])
+
+      assert DummyStatusProvider in Config.list_status_providers()
+    end
+
+    test "defaults to empty when unset" do
+      Application.delete_env(:clarity, :clarity_status_providers)
+
+      assert Config.list_status_providers() == []
+    end
+  end
 end

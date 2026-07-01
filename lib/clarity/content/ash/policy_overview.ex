@@ -10,6 +10,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @behaviour Clarity.Content
 
     alias Ash.Policy.Check
+    alias Ash.Resource.Info
+    alias Clarity.Ash.PolicyAnalysis
+    alias Clarity.Perspective.Lens
     alias Clarity.Vertex.Ash.Policy
     alias Clarity.Vertex.Ash.Resource
     alias Clarity.Vertex.Util
@@ -28,6 +31,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def applies?(_vertex, _lens), do: false
 
     @impl Clarity.Content
+    def render_static(%Policy{policy: policy, resource: resource}, %Lens{id: "security"}) do
+      {:markdown, fn _props -> security_markdown(policy, resource) end}
+    end
+
     def render_static(%Policy{policy: policy, resource: resource}, _lens) do
       {:markdown, fn _props -> generate_markdown(policy, resource) end}
     end
@@ -41,6 +48,83 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         checks_section(policy),
         evaluation_note()
       ]
+    end
+
+    @spec security_markdown(Ash.Policy.Policy.t(), Ash.Resource.t()) :: iodata()
+    defp security_markdown(policy, resource) do
+      [
+        policy_header(policy),
+        policy_info_section(policy, resource),
+        condition_section(policy),
+        checks_section(policy),
+        governed_actions_section(policy, resource),
+        effectively_open_note(policy)
+      ]
+    end
+
+    @spec governed_actions_section(Ash.Policy.Policy.t(), Ash.Resource.t()) :: iodata()
+    defp governed_actions_section(policy, resource) do
+      coverage = Enum.map(Info.actions(resource), &{&1, PolicyAnalysis.coverage(policy, &1)})
+      governed = for {action, :applies} <- coverage, do: action
+      unknown = for {action, :unknown} <- coverage, do: action
+
+      [
+        "## Governed Actions\n\n",
+        "Actions this policy controls, resolved from its condition:\n\n",
+        case governed do
+          [] ->
+            "_No actions are statically matched by this policy's condition._\n\n"
+
+          _ ->
+            [
+              "| Action | Type |\n| --- | --- |\n",
+              Enum.map(governed, &action_row(&1, resource)),
+              "\n"
+            ]
+        end,
+        case unknown do
+          [] ->
+            []
+
+          _ ->
+            [
+              "> Some actions depend on runtime checks and could not be resolved ",
+              "statically: ",
+              Enum.map_join(unknown, ", ", &("`" <> Atom.to_string(&1.name) <> "`")),
+              ".\n\n"
+            ]
+        end
+      ]
+    end
+
+    @spec action_row(Ash.Resource.Actions.action(), Ash.Resource.t()) :: iodata()
+    defp action_row(action, resource) do
+      [
+        "| [",
+        Atom.to_string(action.name),
+        "](vertex://",
+        Util.id(Clarity.Vertex.Ash.Action, [resource, action.name]),
+        ") | `",
+        Atom.to_string(action.type),
+        "` |\n"
+      ]
+    end
+
+    @spec effectively_open_note(Ash.Policy.Policy.t()) :: iodata()
+    defp effectively_open_note(policy) do
+      if authorizes_anyone?(policy) do
+        "> ⚠ This policy authorises **any actor** when reached (`authorize_if always()`).\n\n"
+      else
+        []
+      end
+    end
+
+    @spec authorizes_anyone?(Ash.Policy.Policy.t()) :: boolean()
+    defp authorizes_anyone?(policy) do
+      Enum.any?(policy.policies, fn check ->
+        check.type == :authorize_if and check.check_module == Ash.Policy.Check.Static and
+          check.check_opts[:result] == true
+      end)
     end
 
     @spec policy_header(Ash.Policy.Policy.t()) :: iodata()
