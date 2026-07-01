@@ -5,9 +5,9 @@ defmodule Clarity.Status.Index do
   For a graph and lens, runs the registered status providers on each vertex,
   keeps the statuses whose `class` the lens surfaces (`lens.status_filter`), and
   aggregates them up the tree so every vertex's entry carries the most severe
-  status in its subtree and how many vertices in that subtree are flagged
-  (including the vertex itself). A vertex with nothing flagged in its subtree has
-  no entry.
+  status in its subtree and how many *descendants* are flagged (the count
+  excludes the vertex itself — a badge counts what's flagged beneath it). A
+  vertex with nothing flagged in its subtree has no entry.
 
   The walk covers the whole tree, not just the rendered (expanded) nodes, so a
   collapsed parent's badge still reflects what's buried beneath it.
@@ -21,7 +21,7 @@ defmodule Clarity.Status.Index do
 
   require Logger
 
-  @type entry() :: %{severity: Status.severity(), count: pos_integer()}
+  @type entry() :: %{severity: Status.severity(), count: non_neg_integer()}
   @type t() :: %{String.t() => entry()}
 
   @doc """
@@ -55,21 +55,25 @@ defmodule Clarity.Status.Index do
     end)
   end
 
-  @spec rollup(Graph.t(), Vertex.t(), [module()], Lens.t(), t()) :: {t(), entry() | nil}
+  # Returns the subtree summary `{severity, total_including_self}` for the
+  # recursion, while the stored entry's `count` is descendants only (excludes the
+  # vertex itself), since a node's badge counts what's flagged *beneath* it.
+  @spec rollup(Graph.t(), Vertex.t(), [module()], Lens.t(), t()) ::
+          {t(), {Status.severity(), non_neg_integer()} | nil}
   defp rollup(graph, vertex, providers, lens, index) do
     children = graph |> Graph.navigation_children(vertex) |> Map.values() |> List.flatten()
 
-    {index, child_entries} =
-      Enum.reduce(children, {index, []}, fn child, {idx, entries} ->
-        {idx, entry} = rollup(graph, child, providers, lens, idx)
-        {idx, [entry | entries]}
+    {index, child_summaries} =
+      Enum.reduce(children, {index, []}, fn child, {idx, summaries} ->
+        {idx, summary} = rollup(graph, child, providers, lens, idx)
+        {idx, [summary | summaries]}
       end)
 
-    child_entries = Enum.reject(child_entries, &is_nil/1)
+    child_summaries = Enum.reject(child_summaries, &is_nil/1)
     {own_severity, own_count} = own_status(graph, vertex, providers, lens)
 
     severity =
-      [own_severity | Enum.map(child_entries, & &1.severity)]
+      [own_severity | Enum.map(child_summaries, fn {severity, _total} -> severity end)]
       |> Enum.reject(&is_nil/1)
       |> max_severity()
 
@@ -78,9 +82,11 @@ defmodule Clarity.Status.Index do
         {index, nil}
 
       severity ->
-        count = own_count + (child_entries |> Enum.map(& &1.count) |> Enum.sum())
-        entry = %{severity: severity, count: count}
-        {Map.put(index, Vertex.id(vertex), entry), entry}
+        descendants =
+          child_summaries |> Enum.map(fn {_severity, total} -> total end) |> Enum.sum()
+
+        entry = %{severity: severity, count: descendants}
+        {Map.put(index, Vertex.id(vertex), entry), {severity, own_count + descendants}}
     end
   end
 

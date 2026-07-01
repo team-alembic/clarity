@@ -12,16 +12,16 @@ defmodule Clarity.TreeComponentTest do
       refute html =~ "svg"
     end
 
-    test "renders an error pill without a count for a single issue" do
-      html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 1})
+    test "renders a pill with no count for a flagged leaf (no nested issues)" do
+      html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 0})
 
       assert html =~ "rounded-full"
       assert html =~ "bg-red-100"
-      # the count span (tabular-nums) is only shown for more than one issue
+      # the count span (tabular-nums) is only shown when there are nested issues
       refute html =~ "tabular-nums"
     end
 
-    test "shows the count when more than one issue" do
+    test "shows the count of nested issues" do
       html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 3})
 
       assert html =~ "bg-red-100"

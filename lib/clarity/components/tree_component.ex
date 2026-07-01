@@ -96,7 +96,7 @@ defmodule Clarity.TreeComponent do
           <% :info -> %>
             <.icon_info class="w-3 h-3" />
         <% end %>
-        <span :if={@entry.count > 1} class="tabular-nums">{@entry.count}</span>
+        <span :if={@entry.count > 0} class="tabular-nums">{@entry.count}</span>
       </span>
     <% end %>
     """
@@ -116,9 +116,11 @@ defmodule Clarity.TreeComponent do
       "bg-blue-100 text-blue-700 ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30"
 
   @spec badge_title(Index.entry()) :: String.t()
+  defp badge_title(%{count: 0}), do: "flagged"
+
   defp badge_title(%{count: count}) do
     noun = if count == 1, do: "issue", else: "issues"
-    "#{count} #{noun}"
+    "#{count} nested #{noun}"
   end
 
   @spec compute_visible_ids(map()) :: MapSet.t()

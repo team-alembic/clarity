@@ -62,30 +62,30 @@ defmodule Clarity.Status.IndexTest do
     test "rolls up worst severity and a count of flagged descendants", %{graph: graph, vertices: v} do
       index = Index.build(graph, lens(&(&1.class in [:security, :hygiene])))
 
-      assert index[Vertex.id(v.err)] == %{severity: :error, count: 1}
-      assert index[Vertex.id(v.info)] == %{severity: :info, count: 1}
-      # parent itself isn't flagged; rolls up err (:error) + info (:info) = error, count 2
+      # flagged leaves: no descendants, so count 0 (the node itself isn't counted)
+      assert index[Vertex.id(v.err)] == %{severity: :error, count: 0}
+      assert index[Vertex.id(v.info)] == %{severity: :info, count: 0}
+      # parent isn't flagged; rolls up err (:error) + info (:info) = error, 2 below
       assert index[Vertex.id(v.parent)] == %{severity: :error, count: 2}
       assert index[Vertex.id(v.root)] == %{severity: :error, count: 2}
     end
 
-    test "counts the vertex itself when it is flagged", %{graph: graph, vertices: v} do
-      # :other is flagged but its class is filtered out below; flag-and-count uses err/info only
+    test "does not count the vertex itself", %{graph: graph, vertices: v} do
       index = Index.build(graph, lens(&(&1.class in [:security, :hygiene])))
 
-      # err is a flagged leaf: count includes itself
-      assert index[Vertex.id(v.err)].count == 1
+      # err is a flagged leaf with no flagged descendants
+      assert index[Vertex.id(v.err)].count == 0
     end
 
     test "only rolls up statuses the lens surfaces", %{graph: graph, vertices: v} do
       index = Index.build(graph, lens(&(&1.class == :security)))
 
-      assert index[Vertex.id(v.err)] == %{severity: :error, count: 1}
+      assert index[Vertex.id(v.err)] == %{severity: :error, count: 0}
       # :info is :hygiene, filtered out
       refute Map.has_key?(index, Vertex.id(v.info))
       # :other is :other class, filtered out
       refute Map.has_key?(index, Vertex.id(v.other))
-      # parent now rolls up only err
+      # parent now rolls up only err (1 flagged descendant)
       assert index[Vertex.id(v.parent)] == %{severity: :error, count: 1}
     end
 

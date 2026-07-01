@@ -97,8 +97,9 @@ status_index :: %{Vertex.id() => %{severity: severity(), count: non_neg_integer(
 ```
 
 Post-order walk: each node's entry = max severity over {own filtered statuses} ∪
-{children's entries}, and count = number of flagged vertices in the subtree
-(including self). Built once per `(graph update_count, lens id, status epoch)`.
+{children's entries}, and count = number of flagged **descendants** (excludes the
+vertex itself — a badge counts what's flagged beneath it). Built once per
+`(graph update_count, lens id, status epoch)`.
 
 The **status epoch** matters: producer output depends on *external* data (the
 advisory DB / Hex registry refresh), which doesn't bump the graph's
@@ -112,7 +113,7 @@ measured to matter.
 In `render_node.html.heex`, next to `<.vertex_name>` (both the `<summary>` and
 leaf branches): a badge driven by `status_index[Vertex.id(@vertex)]` —
 `icon_info`/`icon_warning`/`icon_error` (already exist) coloured from the flash
-palette (info=blue, warning=yellow, error=red), with the count when > 1, and a
+palette (info=blue, warning=yellow, error=red), with the count when > 0, and a
 tooltip (existing `Tooltip` hook) listing the reasons. No entry → no badge.
 
 `status_index` is computed in `TreeComponent.update/2` (it has graph + lens) and
@@ -163,8 +164,10 @@ lens-gated like the tree badges.
 - **Class granularity**: two classes — `:security` (advisories) and `:hygiene`
   (outdated/retired). The security lens surfaces both.
 - **Default `status_filter`**: opt-in (off) everywhere except the security lens.
-- **Count**: includes the vertex's own status (a flagged parent with two flagged
-  children reads "3"), so it matches what you'd find by drilling in.
+- **Count**: flagged **descendants** only — excludes the vertex's own status, so
+  the number tells you how many issues are nested *below* a (collapsed) node. A
+  parent with two flagged children reads "2"; a flagged leaf shows just the icon.
+  Shown when > 0.
 - **Leaf nodes**: icon only, no count (the count is only meaningful as a roll-up).
 - **Class as data vs predicate**: predicate only for now (`&(&1.class in […])`);
   add a declarative `status_classes` later only if tooling needs to introspect it.
