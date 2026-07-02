@@ -1,31 +1,36 @@
 defmodule Clarity.Report.SupplyChain do
   @moduledoc """
-  Supply-chain security report: every dependency flagged by
-  `Clarity.Status.SupplyChain` — a security advisory, or an outdated/retired
-  version — rolled up into one interactive view under the security lens.
+  Supply-chain security report: a written review of the dependencies flagged by
+  `Clarity.Status.SupplyChain` — known security advisories, and outdated or
+  retired versions — under the security lens.
 
-  Findings can be filtered by kind (advisory / outdated / retired) and the table
-  sorted by dependency or severity.
+  The report is prose: it explains, in sentences, which dependencies carry a
+  concern and why it matters, rather than presenting a table to operate.
   """
 
   @behaviour Clarity.Report
 
   use Clarity.Web, :live_component
 
+  import Clarity.Components.MarkdownComponent
+
+  alias Clarity.Advisory
   alias Clarity.Advisory.Source
+  alias Clarity.Dependency.Registry
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Status
   alias Clarity.Vertex
-  alias Phoenix.LiveView.Rendered
 
-  @type row() :: %{
-          vertex: Vertex.Application.t(),
-          app: String.t(),
-          version: String.t(),
-          statuses: [Status.t()],
-          severity: Status.severity()
-        }
+  @typep finding() :: %{
+           app: String.t(),
+           version: String.t(),
+           latest: String.t() | nil,
+           advisories: [Advisory.t()],
+           advisory?: boolean(),
+           outdated?: boolean(),
+           retired?: boolean()
+         }
 
   @impl Clarity.Report
   def name, do: "Supply chain security"
@@ -39,290 +44,235 @@ defmodule Clarity.Report.SupplyChain do
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
-    rows = build_rows(assigns.graph, assigns.lens)
-
     {:ok,
-     socket
-     |> assign(prefix: assigns.prefix, lens: assigns.lens)
-     |> assign(rows: rows, totals: totals(rows), refreshed_at: Source.last_refreshed_at())
-     |> assign_new(:filter, fn -> :all end)
-     |> assign_new(:sort, fn -> {:severity, :desc} end)}
-  end
-
-  @impl Phoenix.LiveComponent
-  def handle_event("filter", %{"kind" => kind}, socket) do
-    {:noreply, assign(socket, filter: String.to_existing_atom(kind))}
-  end
-
-  def handle_event("sort", %{"field" => field}, socket) do
-    field = String.to_existing_atom(field)
-
-    sort =
-      case socket.assigns.sort do
-        {^field, :asc} -> {field, :desc}
-        {^field, :desc} -> {field, :asc}
-        _other -> {field, default_dir(field)}
-      end
-
-    {:noreply, assign(socket, sort: sort)}
+     assign(socket,
+       prefix: assigns.prefix,
+       lens: assigns.lens,
+       markdown: markdown(assigns.graph, assigns.lens)
+     )}
   end
 
   @impl Phoenix.LiveComponent
   def render(assigns) do
-    assigns =
-      assign(
-        assigns,
-        :visible,
-        assigns.rows |> filter_rows(assigns.filter) |> sort_rows(assigns.sort)
-      )
-
     ~H"""
     <section>
-      <h2 class="text-2xl font-bold mb-2">Supply chain security</h2>
-
-      <p class="opacity-80 mb-3 leading-relaxed max-w-[70ch]">
-        This report gathers every dependency that carries a supply-chain concern — a
-        known security advisory, a newer published version, or a version that has been
-        retired from Hex. Each row is a <em>finding</em>: a fact about a dependency and
-        why it might matter, not a verdict that you are vulnerable. Filter to a category
-        below, and follow a dependency's link to see its full detail in the graph.
-      </p>
-
-      <p :if={@refreshed_at} class="text-sm italic opacity-60 mb-4">
-        Advisories are matched against a database last refreshed {Calendar.strftime(
-          @refreshed_at,
-          "%-d %B %Y at %H:%M UTC"
-        )}; findings are only
-        as current as that refresh.
-      </p>
-
-      <%= if @rows == [] do %>
-        <p class="opacity-80 max-w-[70ch]">
-          No dependency is flagged under this lens: there are no known advisories, and
-          every dependency is on a current, non-retired version. This reflects the last
-          advisory-database refresh noted above.
-        </p>
-      <% else %>
-        <p class="opacity-70 mb-3">{summary(@totals)}</p>
-
-        <dl class="text-sm space-y-1 mb-4 max-w-[70ch]">
-          <div class="flex gap-2">
-            <dt class="font-semibold w-20 shrink-0 text-red-700 dark:text-red-300">Advisory</dt>
-            <dd class="opacity-80">
-              A published security advisory affects the installed version. A fixed
-              version may be available — see the dependency's Advisories tab.
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="font-semibold w-20 shrink-0 text-yellow-700 dark:text-yellow-300">Retired</dt>
-            <dd class="opacity-80">
-              The installed version has been retired from Hex by its maintainer (often
-              for a security issue or a serious bug).
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="font-semibold w-20 shrink-0 text-blue-700 dark:text-blue-300">Outdated</dt>
-            <dd class="opacity-80">
-              A newer version is published on Hex; the installed version is behind.
-            </dd>
-          </div>
-        </dl>
-
-        <div class="flex flex-wrap gap-1 mb-4">
-          <.chip myself={@myself} kind={:all} active={@filter} label="All" count={@totals.deps} />
-          <.chip
-            myself={@myself}
-            kind={:advisory}
-            active={@filter}
-            label="Advisories"
-            count={@totals.advisories}
-          />
-          <.chip
-            myself={@myself}
-            kind={:outdated}
-            active={@filter}
-            label="Outdated"
-            count={@totals.outdated}
-          />
-          <.chip
-            myself={@myself}
-            kind={:retired}
-            active={@filter}
-            label="Retired"
-            count={@totals.retired}
-          />
-        </div>
-
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left border-b border-base-light-300 dark:border-base-dark-700">
-              <.sort_header myself={@myself} field={:app} sort={@sort} label="Dependency" />
-              <.sort_header myself={@myself} field={:severity} sort={@sort} label="Severity" />
-              <th class="py-2 font-semibold">Findings</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              :for={row <- @visible}
-              class="border-b border-base-light-200 dark:border-base-dark-800 align-top"
-            >
-              <td class="py-2 pr-4 font-medium">
-                <.link
-                  navigate={Path.join([@prefix, @lens.id, Vertex.id(row.vertex)])}
-                  class="text-primary-light dark:text-primary-dark hover:underline"
-                >
-                  {row.app}
-                </.link>
-                <span class="opacity-60 tabular-nums ml-1">{row.version}</span>
-              </td>
-              <td class="py-2 pr-4">
-                <span class={["capitalize font-medium", finding_class(row.severity)]}>
-                  {row.severity}
-                </span>
-              </td>
-              <td class="py-2">
-                <ul class="space-y-1">
-                  <li :for={status <- row.statuses} class={finding_class(status.severity)}>
-                    {status.message}
-                  </li>
-                </ul>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      <% end %>
+      <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
     </section>
     """
   end
 
-  attr :myself, :any, required: true
-  attr :kind, :atom, required: true
-  attr :active, :atom, required: true
-  attr :label, :string, required: true
-  attr :count, :integer, required: true
+  @spec markdown(Graph.t(), Lens.t()) :: iodata()
+  defp markdown(graph, lens) do
+    findings = findings(graph, lens)
 
-  @spec chip(map()) :: Rendered.t()
-  defp chip(assigns) do
-    ~H"""
-    <button
-      type="button"
-      phx-click="filter"
-      phx-value-kind={@kind}
-      phx-target={@myself}
-      class={[
-        "px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset transition-colors",
-        if(@active == @kind,
-          do: "bg-primary-light dark:bg-primary-dark text-white ring-transparent",
-          else:
-            "text-base-light-700 dark:text-base-dark-300 ring-base-light-300 dark:ring-base-dark-600 hover:bg-base-light-200 dark:hover:bg-base-dark-700"
-        )
-      ]}
-    >
-      {@label} <span class="tabular-nums opacity-80">{@count}</span>
-    </button>
-    """
+    [
+      "## Supply chain security\n\n",
+      "This report reviews the dependencies your project runs for supply-chain risk: ",
+      "known security advisories, versions that have fallen behind their latest release, ",
+      "and versions their maintainers have retired. Each item is a *finding* — a fact and ",
+      "why it might matter — not a verdict that you are exploitable.\n\n",
+      freshness(),
+      overview(findings),
+      advisories_section(findings),
+      hygiene_section(findings)
+    ]
   end
 
-  attr :myself, :any, required: true
-  attr :field, :atom, required: true
-  attr :sort, :any, required: true
-  attr :label, :string, required: true
+  @spec freshness() :: iodata()
+  defp freshness do
+    case Source.last_refreshed_at() do
+      nil ->
+        "The advisory database has not been downloaded yet, so advisory findings may be incomplete.\n\n"
 
-  @spec sort_header(map()) :: Rendered.t()
-  defp sort_header(assigns) do
-    ~H"""
-    <th class="py-2 pr-4 font-semibold">
-      <button
-        type="button"
-        phx-click="sort"
-        phx-value-field={@field}
-        phx-target={@myself}
-        class="inline-flex items-center gap-1 hover:text-primary-light dark:hover:text-primary-dark"
-      >
-        {@label}
-        <span class="text-xs opacity-70">{sort_caret(@sort, @field)}</span>
-      </button>
-    </th>
-    """
+      at ->
+        [
+          "Advisories are matched against a database last refreshed on ",
+          Calendar.strftime(at, "%-d %B %Y at %H:%M UTC"),
+          "; findings are only as current as that refresh.\n\n"
+        ]
+    end
   end
 
-  @spec sort_caret({atom(), :asc | :desc}, atom()) :: String.t()
-  defp sort_caret({field, :asc}, field), do: "▲"
-  defp sort_caret({field, :desc}, field), do: "▼"
-  defp sort_caret(_sort, _field), do: ""
+  @spec overview([finding()]) :: iodata()
+  defp overview([]) do
+    "**Nothing is flagged.** Every dependency Clarity can see is on a current, " <>
+      "non-retired version with no known security advisory.\n\n"
+  end
 
-  @spec build_rows(Graph.t(), Lens.t()) :: [row()]
-  defp build_rows(graph, lens) do
+  defp overview(findings) do
+    total = length(findings)
+    advisories = Enum.count(findings, & &1.advisory?)
+    outdated = Enum.count(findings, & &1.outdated?)
+    retired = Enum.count(findings, & &1.retired?)
+
+    [
+      "Of the dependencies Clarity can see, **",
+      Integer.to_string(total),
+      pluralize(total, " dependency carries", " dependencies carry"),
+      " a supply-chain concern**: ",
+      Enum.join(
+        Enum.reject(
+          [
+            phrase(advisories, "a security advisory", "security advisories"),
+            phrase(outdated, "an outdated version", "outdated versions"),
+            phrase(retired, "a retired version", "retired versions")
+          ],
+          &(&1 == nil)
+        ),
+        ", "
+      ),
+      ".\n\n"
+    ]
+  end
+
+  @spec advisories_section([finding()]) :: iodata()
+  defp advisories_section(findings) do
+    advised = Enum.filter(findings, & &1.advisory?)
+
+    [
+      "### Security advisories\n\n",
+      case advised do
+        [] ->
+          "No dependency has a known security advisory.\n\n"
+
+        _present ->
+          [
+            "A published advisory means a known vulnerability affects the installed version; ",
+            "where a maintainer has shipped a fix, updating resolves it.\n\n",
+            Enum.map(advised, &advisory_paragraph/1)
+          ]
+      end
+    ]
+  end
+
+  @spec advisory_paragraph(finding()) :: iodata()
+  defp advisory_paragraph(finding) do
+    ids = Enum.map_join(finding.advisories, ", ", & &1.id)
+    fixed = fixed_versions(finding)
+
+    [
+      "**",
+      finding.app,
+      " ",
+      finding.version,
+      "** is affected by ",
+      Integer.to_string(length(finding.advisories)),
+      " ",
+      pluralize(length(finding.advisories), "advisory", "advisories"),
+      " (",
+      ids,
+      "). ",
+      case fixed do
+        [] -> "No fixed version is published yet. "
+        versions -> ["A fix is available — update to #{Enum.join(versions, " or ")}. "]
+      end,
+      summaries(finding.advisories),
+      "\n\n"
+    ]
+  end
+
+  @spec hygiene_section([finding()]) :: iodata()
+  defp hygiene_section(findings) do
+    retired = Enum.filter(findings, & &1.retired?)
+    outdated = Enum.filter(findings, &(&1.outdated? and not &1.retired?))
+
+    [
+      "### Dependency hygiene\n\n",
+      retired_prose(retired),
+      outdated_prose(outdated),
+      if(retired == [] and outdated == [],
+        do: "Every dependency is on a current, non-retired version.\n\n",
+        else: []
+      )
+    ]
+  end
+
+  @spec retired_prose([finding()]) :: iodata()
+  defp retired_prose([]), do: []
+
+  defp retired_prose(retired) do
+    [
+      "The maintainers of ",
+      Enum.map_join(retired, ", ", &"**#{&1.app} #{&1.version}**"),
+      " have retired the installed version from Hex — usually a sign of a security ",
+      "problem or serious bug — so you should move off ",
+      pluralize(length(retired), "it", "them"),
+      ".\n\n"
+    ]
+  end
+
+  @spec outdated_prose([finding()]) :: iodata()
+  defp outdated_prose([]), do: []
+
+  defp outdated_prose(outdated) do
+    [
+      if(length(outdated) == 1,
+        do: "One dependency is",
+        else: "#{length(outdated)} dependencies are"
+      ),
+      " behind the latest published release: ",
+      Enum.map_join(outdated, ", ", &"**#{&1.app}** (#{&1.version} → #{&1.latest || "?"})"),
+      ". Staying current is the simplest way to pick up upstream fixes.\n\n"
+    ]
+  end
+
+  @spec summaries([Advisory.t()]) :: iodata()
+  defp summaries(advisories) do
+    advisories
+    |> Enum.map(& &1.summary)
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.map_join(" ", &String.trim/1)
+  end
+
+  @spec fixed_versions(finding()) :: [String.t()]
+  defp fixed_versions(finding) do
+    finding.advisories
+    |> Enum.map(&Advisory.fixed_version(&1, finding.version))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+  end
+
+  @spec findings(Graph.t(), Lens.t()) :: [finding()]
+  defp findings(graph, lens) do
     graph
     |> Graph.vertices({:==, :vertex_type, Vertex.Application})
     |> Enum.map(fn vertex ->
       {vertex, Enum.filter(Status.SupplyChain.statuses(vertex, graph), lens.status_filter)}
     end)
     |> Enum.reject(fn {_vertex, statuses} -> statuses == [] end)
-    |> Enum.map(&build_row/1)
+    |> Enum.map(&finding/1)
+    |> Enum.sort_by(& &1.app)
   end
 
-  @spec build_row({Vertex.Application.t(), [Status.t()]}) :: row()
-  defp build_row({vertex, statuses}) do
-    severity =
-      statuses |> Enum.map(& &1.severity) |> Enum.reduce(&Status.max_severity/2)
+  @spec finding({Vertex.Application.t(), [Status.t()]}) :: finding()
+  defp finding({vertex, statuses}) do
+    version = to_string(vertex.version)
 
     %{
-      vertex: vertex,
       app: to_string(vertex.app),
-      version: to_string(vertex.version),
-      statuses: statuses,
-      severity: severity
+      version: version,
+      latest: latest(vertex.app),
+      advisories: Source.advisories_for(vertex.app, version),
+      advisory?: Enum.any?(statuses, &(&1.class == :security)),
+      outdated?: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :info)),
+      retired?: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :warning))
     }
   end
 
-  @spec filter_rows([row()], atom()) :: [row()]
-  defp filter_rows(rows, :all), do: rows
-  defp filter_rows(rows, kind), do: Enum.filter(rows, &row_matches?(&1, kind))
-
-  @spec row_matches?(row(), atom()) :: boolean()
-  defp row_matches?(%{statuses: statuses}, :advisory),
-    do: Enum.any?(statuses, &(&1.class == :security))
-
-  defp row_matches?(%{statuses: statuses}, :outdated),
-    do: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :info))
-
-  defp row_matches?(%{statuses: statuses}, :retired),
-    do: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :warning))
-
-  @spec sort_rows([row()], {atom(), :asc | :desc}) :: [row()]
-  defp sort_rows(rows, {:app, dir}), do: Enum.sort_by(rows, & &1.app, dir)
-  defp sort_rows(rows, {:severity, dir}), do: Enum.sort_by(rows, &Status.rank(&1.severity), dir)
-
-  @spec default_dir(atom()) :: :asc | :desc
-  defp default_dir(:severity), do: :desc
-  defp default_dir(_field), do: :asc
-
-  @spec totals([row()]) :: %{atom() => non_neg_integer()}
-  defp totals(rows) do
-    %{
-      deps: length(rows),
-      advisories: Enum.count(rows, &row_matches?(&1, :advisory)),
-      outdated: Enum.count(rows, &row_matches?(&1, :outdated)),
-      retired: Enum.count(rows, &row_matches?(&1, :retired))
-    }
+  @spec latest(atom()) :: String.t() | nil
+  defp latest(app) do
+    case Registry.summary(app) do
+      %{latest: latest} -> latest
+      nil -> nil
+    end
   end
 
-  @spec summary(%{atom() => non_neg_integer()}) :: String.t()
-  defp summary(%{deps: 0}), do: "No dependencies are flagged under this lens."
+  @spec phrase(non_neg_integer(), String.t(), String.t()) :: String.t() | nil
+  defp phrase(0, _singular, _plural), do: nil
+  defp phrase(1, singular, _plural), do: "1 with #{singular}"
+  defp phrase(count, _singular, plural), do: "#{count} with #{plural}"
 
-  defp summary(%{deps: deps, advisories: advisories, outdated: outdated, retired: retired}) do
-    "#{deps} #{plural(deps, "dependency", "dependencies")} flagged · " <>
-      "#{advisories} #{plural(advisories, "advisory", "advisories")} · " <>
-      "#{outdated} outdated · #{retired} retired"
-  end
-
-  @spec plural(non_neg_integer(), String.t(), String.t()) :: String.t()
-  defp plural(1, singular, _plural), do: singular
-  defp plural(_count, _singular, plural), do: plural
-
-  @spec finding_class(Status.severity()) :: String.t()
-  defp finding_class(:error), do: "text-red-700 dark:text-red-300"
-  defp finding_class(:warning), do: "text-yellow-700 dark:text-yellow-300"
-  defp finding_class(:info), do: "text-blue-700 dark:text-blue-300"
+  @spec pluralize(non_neg_integer(), String.t(), String.t()) :: String.t()
+  defp pluralize(1, singular, _plural), do: singular
+  defp pluralize(_count, _singular, plural), do: plural
 end

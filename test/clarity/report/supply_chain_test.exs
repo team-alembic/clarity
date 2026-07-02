@@ -35,34 +35,29 @@ defmodule Clarity.Report.SupplyChainTest do
   end
 
   describe "render" do
-    test "lists a flagged (outdated) dependency", %{graph: graph, lens: lens} do
+    test "reviews a flagged (outdated) dependency in prose", %{graph: graph, lens: lens} do
       :ets.insert(Clarity.Dependency.Registry, {{:package, "stale"}, %{latest: "2.0.0", retired: []}})
       stale = %Vertex.Application{app: :stale, description: "Stale", version: "1.0.0"}
       Graph.add_vertex(graph, stale, %Root{})
 
       html = render_report(graph, lens)
 
+      assert html =~ "Supply chain security"
       assert html =~ "stale"
       assert html =~ "2.0.0"
-      assert html =~ "flagged"
-      # interactive controls: filter chips + sortable headers
-      assert html =~ "Advisories"
-      assert html =~ "Outdated"
-      assert html =~ ~s(phx-click="filter")
-      assert html =~ ~s(phx-click="sort")
-      # dependency links must navigate (cross-LiveView), not patch
-      assert html =~ ~s(data-phx-link="redirect")
-      refute html =~ ~s(data-phx-link="patch")
+      # narrative prose, not an interactive table
+      assert html =~ "behind the latest"
+      refute html =~ ~s(phx-click)
     end
 
-    test "shows an all-clear when nothing is flagged", %{graph: graph, lens: lens} do
+    test "says nothing is flagged when all clear", %{graph: graph, lens: lens} do
       :ets.insert(Clarity.Dependency.Registry, {{:package, "fresh"}, %{latest: "1.0.0", retired: []}})
       fresh = %Vertex.Application{app: :fresh, description: "Fresh", version: "1.0.0"}
       Graph.add_vertex(graph, fresh, %Root{})
 
       html = render_report(graph, lens)
 
-      assert html =~ "No dependency is flagged under this lens"
+      assert html =~ "Nothing is flagged"
     end
   end
 end
