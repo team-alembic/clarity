@@ -50,6 +50,9 @@ defmodule Clarity.Report.SupplyChainTest do
       assert html =~ "Outdated"
       assert html =~ ~s(phx-click="filter")
       assert html =~ ~s(phx-click="sort")
+      # dependency links must navigate (cross-LiveView), not patch
+      assert html =~ ~s(data-phx-link="redirect")
+      refute html =~ ~s(data-phx-link="patch")
     end
 
     test "shows an all-clear when nothing is flagged", %{graph: graph, lens: lens} do

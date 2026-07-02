@@ -36,6 +36,10 @@ defmodule Clarity.Report.SecurityPostureTest do
       assert html =~ "Open"
       assert html =~ "Exposed fields"
       assert html =~ ~s(phx-click="filter")
+      # resource links must navigate (cross-LiveView), not patch — a patch would
+      # crash when clicked from ReportLive into PageLive
+      assert html =~ ~s(data-phx-link="redirect")
+      refute html =~ ~s(data-phx-link="patch")
     end
 
     test "shows an empty state with no resources" do

@@ -2,7 +2,7 @@
   class={"flex items-center h-12 px-4 bg-base-light-100 dark:bg-base-dark-800 border-b border-base-light-300 dark:border-base-dark-700 #{@class}"}
   {@rest}
 >
-  <.link patch={@prefix} class="mr-2.5">
+  <.link navigate={@prefix} class="mr-2.5">
     <img
       src={Clarity.Resources.logo_uri()}
       alt="Clarity logo"
@@ -10,7 +10,7 @@
     />
   </.link>
   <h1 class="text-base font-semibold tracking-tight flex-1 truncate text-base-light-900 dark:text-base-dark-50">
-    <.link patch={@prefix}>
+    <.link navigate={@prefix}>
       Clarity
     </.link>
   </h1>
@@ -29,7 +29,7 @@
       class="inline-flex rounded-md overflow-hidden ring-1 ring-inset ring-base-light-300 dark:ring-base-dark-600 mr-1"
     >
       <.link
-        patch={Path.join([@prefix, @lens.id])}
+        navigate={Path.join([@prefix, @lens.id])}
         class={[
           "px-3 py-1.5 text-sm font-medium transition-colors",
           if(@mode == :explore,
@@ -42,7 +42,7 @@
         Explore
       </.link>
       <.link
-        patch={Path.join([@prefix, @lens.id, "report"])}
+        navigate={Path.join([@prefix, @lens.id, "report"])}
         class={[
           "px-3 py-1.5 text-sm font-medium transition-colors",
           if(@mode == :report,
