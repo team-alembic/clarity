@@ -2,7 +2,10 @@ defmodule Clarity.Report.SupplyChain do
   @moduledoc """
   Supply-chain security report: every dependency flagged by
   `Clarity.Status.SupplyChain` — a security advisory, or an outdated/retired
-  version — rolled up into one view under the security lens.
+  version — rolled up into one interactive view under the security lens.
+
+  Findings can be filtered by kind (advisory / outdated / retired) and the table
+  sorted by dependency or severity.
   """
 
   @behaviour Clarity.Report
@@ -14,6 +17,15 @@ defmodule Clarity.Report.SupplyChain do
   alias Clarity.Perspective.Lens
   alias Clarity.Status
   alias Clarity.Vertex
+  alias Phoenix.LiveView.Rendered
+
+  @type row() :: %{
+          vertex: Vertex.Application.t(),
+          app: String.t(),
+          version: String.t(),
+          statuses: [Status.t()],
+          severity: Status.severity()
+        }
 
   @impl Clarity.Report
   def name, do: "Supply chain security"
@@ -32,11 +44,38 @@ defmodule Clarity.Report.SupplyChain do
     {:ok,
      socket
      |> assign(prefix: assigns.prefix, lens: assigns.lens)
-     |> assign(rows: rows, totals: totals(rows), refreshed_at: Source.last_refreshed_at())}
+     |> assign(rows: rows, totals: totals(rows), refreshed_at: Source.last_refreshed_at())
+     |> assign_new(:filter, fn -> :all end)
+     |> assign_new(:sort, fn -> {:severity, :desc} end)}
+  end
+
+  @impl Phoenix.LiveComponent
+  def handle_event("filter", %{"kind" => kind}, socket) do
+    {:noreply, assign(socket, filter: String.to_existing_atom(kind))}
+  end
+
+  def handle_event("sort", %{"field" => field}, socket) do
+    field = String.to_existing_atom(field)
+
+    sort =
+      case socket.assigns.sort do
+        {^field, :asc} -> {field, :desc}
+        {^field, :desc} -> {field, :asc}
+        _other -> {field, default_dir(field)}
+      end
+
+    {:noreply, assign(socket, sort: sort)}
   end
 
   @impl Phoenix.LiveComponent
   def render(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :visible,
+        assigns.rows |> filter_rows(assigns.filter) |> sort_rows(assigns.sort)
+      )
+
     ~H"""
     <section>
       <h2 class="text-2xl font-bold mb-1">Supply chain security</h2>
@@ -48,31 +87,61 @@ defmodule Clarity.Report.SupplyChain do
       <%= if @rows == [] do %>
         <p class="opacity-70">No flagged dependencies under this lens.</p>
       <% else %>
+        <div class="flex flex-wrap gap-1 mb-4">
+          <.chip myself={@myself} kind={:all} active={@filter} label="All" count={@totals.deps} />
+          <.chip
+            myself={@myself}
+            kind={:advisory}
+            active={@filter}
+            label="Advisories"
+            count={@totals.advisories}
+          />
+          <.chip
+            myself={@myself}
+            kind={:outdated}
+            active={@filter}
+            label="Outdated"
+            count={@totals.outdated}
+          />
+          <.chip
+            myself={@myself}
+            kind={:retired}
+            active={@filter}
+            label="Retired"
+            count={@totals.retired}
+          />
+        </div>
+
         <table class="w-full text-sm">
           <thead>
             <tr class="text-left border-b border-base-light-300 dark:border-base-dark-700">
-              <th class="py-2 pr-4 font-semibold">Dependency</th>
-              <th class="py-2 pr-4 font-semibold">Installed</th>
+              <.sort_header myself={@myself} field={:app} sort={@sort} label="Dependency" />
+              <.sort_header myself={@myself} field={:severity} sort={@sort} label="Severity" />
               <th class="py-2 font-semibold">Findings</th>
             </tr>
           </thead>
           <tbody>
             <tr
-              :for={{vertex, statuses} <- @rows}
+              :for={row <- @visible}
               class="border-b border-base-light-200 dark:border-base-dark-800 align-top"
             >
               <td class="py-2 pr-4 font-medium">
                 <.link
-                  patch={Path.join([@prefix, @lens.id, Vertex.id(vertex)])}
+                  patch={Path.join([@prefix, @lens.id, Vertex.id(row.vertex)])}
                   class="text-primary-light dark:text-primary-dark hover:underline"
                 >
-                  {vertex.app}
+                  {row.app}
                 </.link>
+                <span class="opacity-60 tabular-nums ml-1">{row.version}</span>
               </td>
-              <td class="py-2 pr-4 tabular-nums">{vertex.version}</td>
+              <td class="py-2 pr-4">
+                <span class={["capitalize font-medium", finding_class(row.severity)]}>
+                  {row.severity}
+                </span>
+              </td>
               <td class="py-2">
                 <ul class="space-y-1">
-                  <li :for={status <- statuses} class={finding_class(status.severity)}>
+                  <li :for={status <- row.statuses} class={finding_class(status.severity)}>
                     {status.message}
                   </li>
                 </ul>
@@ -85,7 +154,63 @@ defmodule Clarity.Report.SupplyChain do
     """
   end
 
-  @spec build_rows(Graph.t(), Lens.t()) :: [{Vertex.Application.t(), [Status.t()]}]
+  attr :myself, :any, required: true
+  attr :kind, :atom, required: true
+  attr :active, :atom, required: true
+  attr :label, :string, required: true
+  attr :count, :integer, required: true
+
+  @spec chip(map()) :: Rendered.t()
+  defp chip(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="filter"
+      phx-value-kind={@kind}
+      phx-target={@myself}
+      class={[
+        "px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset transition-colors",
+        if(@active == @kind,
+          do: "bg-primary-light dark:bg-primary-dark text-white ring-transparent",
+          else:
+            "text-base-light-700 dark:text-base-dark-300 ring-base-light-300 dark:ring-base-dark-600 hover:bg-base-light-200 dark:hover:bg-base-dark-700"
+        )
+      ]}
+    >
+      {@label} <span class="tabular-nums opacity-80">{@count}</span>
+    </button>
+    """
+  end
+
+  attr :myself, :any, required: true
+  attr :field, :atom, required: true
+  attr :sort, :any, required: true
+  attr :label, :string, required: true
+
+  @spec sort_header(map()) :: Rendered.t()
+  defp sort_header(assigns) do
+    ~H"""
+    <th class="py-2 pr-4 font-semibold">
+      <button
+        type="button"
+        phx-click="sort"
+        phx-value-field={@field}
+        phx-target={@myself}
+        class="inline-flex items-center gap-1 hover:text-primary-light dark:hover:text-primary-dark"
+      >
+        {@label}
+        <span class="text-xs opacity-70">{sort_caret(@sort, @field)}</span>
+      </button>
+    </th>
+    """
+  end
+
+  @spec sort_caret({atom(), :asc | :desc}, atom()) :: String.t()
+  defp sort_caret({field, :asc}, field), do: "▲"
+  defp sort_caret({field, :desc}, field), do: "▼"
+  defp sort_caret(_sort, _field), do: ""
+
+  @spec build_rows(Graph.t(), Lens.t()) :: [row()]
   defp build_rows(graph, lens) do
     graph
     |> Graph.vertices({:==, :vertex_type, Vertex.Application})
@@ -93,18 +218,52 @@ defmodule Clarity.Report.SupplyChain do
       {vertex, Enum.filter(Status.SupplyChain.statuses(vertex, graph), lens.status_filter)}
     end)
     |> Enum.reject(fn {_vertex, statuses} -> statuses == [] end)
-    |> Enum.sort_by(fn {vertex, _statuses} -> to_string(vertex.app) end)
+    |> Enum.map(&build_row/1)
   end
 
-  @spec totals([{Vertex.Application.t(), [Status.t()]}]) :: %{atom() => non_neg_integer()}
-  defp totals(rows) do
-    statuses = Enum.flat_map(rows, fn {_vertex, statuses} -> statuses end)
+  @spec build_row({Vertex.Application.t(), [Status.t()]}) :: row()
+  defp build_row({vertex, statuses}) do
+    severity =
+      statuses |> Enum.map(& &1.severity) |> Enum.reduce(&Status.max_severity/2)
 
     %{
+      vertex: vertex,
+      app: to_string(vertex.app),
+      version: to_string(vertex.version),
+      statuses: statuses,
+      severity: severity
+    }
+  end
+
+  @spec filter_rows([row()], atom()) :: [row()]
+  defp filter_rows(rows, :all), do: rows
+  defp filter_rows(rows, kind), do: Enum.filter(rows, &row_matches?(&1, kind))
+
+  @spec row_matches?(row(), atom()) :: boolean()
+  defp row_matches?(%{statuses: statuses}, :advisory),
+    do: Enum.any?(statuses, &(&1.class == :security))
+
+  defp row_matches?(%{statuses: statuses}, :outdated),
+    do: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :info))
+
+  defp row_matches?(%{statuses: statuses}, :retired),
+    do: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :warning))
+
+  @spec sort_rows([row()], {atom(), :asc | :desc}) :: [row()]
+  defp sort_rows(rows, {:app, dir}), do: Enum.sort_by(rows, & &1.app, dir)
+  defp sort_rows(rows, {:severity, dir}), do: Enum.sort_by(rows, &Status.rank(&1.severity), dir)
+
+  @spec default_dir(atom()) :: :asc | :desc
+  defp default_dir(:severity), do: :desc
+  defp default_dir(_field), do: :asc
+
+  @spec totals([row()]) :: %{atom() => non_neg_integer()}
+  defp totals(rows) do
+    %{
       deps: length(rows),
-      advisories: Enum.count(statuses, &(&1.class == :security)),
-      outdated: Enum.count(statuses, &(&1.class == :hygiene and &1.severity == :info)),
-      retired: Enum.count(statuses, &(&1.class == :hygiene and &1.severity == :warning))
+      advisories: Enum.count(rows, &row_matches?(&1, :advisory)),
+      outdated: Enum.count(rows, &row_matches?(&1, :outdated)),
+      retired: Enum.count(rows, &row_matches?(&1, :retired))
     }
   end
 

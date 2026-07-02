@@ -45,6 +45,11 @@ defmodule Clarity.Report.SupplyChainTest do
       assert html =~ "stale"
       assert html =~ "2.0.0"
       assert html =~ "flagged"
+      # interactive controls: filter chips + sortable headers
+      assert html =~ "Advisories"
+      assert html =~ "Outdated"
+      assert html =~ ~s(phx-click="filter")
+      assert html =~ ~s(phx-click="sort")
     end
 
     test "shows an all-clear when nothing is flagged", %{graph: graph, lens: lens} do
