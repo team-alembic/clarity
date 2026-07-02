@@ -41,7 +41,7 @@ defmodule Clarity.Report.SecurityPostureTest do
     test "shows an empty state with no resources" do
       html = render_report(Graph.new(), Security.make_lens())
 
-      assert html =~ "No Ash resources are visible under this lens."
+      assert html =~ "No Ash resources are visible under this lens"
     end
   end
 end

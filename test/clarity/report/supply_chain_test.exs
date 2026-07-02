@@ -59,7 +59,7 @@ defmodule Clarity.Report.SupplyChainTest do
 
       html = render_report(graph, lens)
 
-      assert html =~ "No flagged dependencies under this lens."
+      assert html =~ "No dependency is flagged under this lens"
     end
   end
 end

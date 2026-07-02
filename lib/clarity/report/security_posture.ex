@@ -61,12 +61,49 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       ~H"""
       <section>
-        <h2 class="text-2xl font-bold mb-1">Security posture</h2>
-        <p class="opacity-70 mb-4">{summary(@totals)}</p>
+        <h2 class="text-2xl font-bold mb-2">Security posture</h2>
+
+        <p class="opacity-80 mb-3 leading-relaxed max-w-[70ch]">
+          This report summarises how each Ash resource is protected. It surfaces facts
+          that aren't obvious from any single file: whether a resource is governed by
+          policies, whether a bypass can skip them, and whether sensitive fields are
+          exposed. These are <em>findings, not verdicts</em> — Ash has legitimate reasons
+          for each pattern, so you decide what warrants attention. Follow a resource's
+          link for its full per-action breakdown.
+        </p>
 
         <%= if @rows == [] do %>
-          <p class="opacity-70">No Ash resources are visible under this lens.</p>
+          <p class="opacity-80 max-w-[70ch]">
+            No Ash resources are visible under this lens, so there is no authorisation
+            posture to report.
+          </p>
         <% else %>
+          <p class="opacity-70 mb-3">{summary(@totals)}</p>
+
+          <dl class="text-sm space-y-1 mb-4 max-w-[70ch]">
+            <div class="flex gap-2">
+              <dt class="font-semibold w-24 shrink-0 text-yellow-700 dark:text-yellow-300">Open</dt>
+              <dd class="opacity-80">
+                The resource has no policy authorizer, so Ash policies do not restrict
+                access — every action is allowed, subject to the domain's authorisation mode.
+              </dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-semibold w-24 shrink-0 text-blue-700 dark:text-blue-300">Bypass</dt>
+              <dd class="opacity-80">
+                The resource carries a bypass policy; a passing bypass skips all other
+                policies for that request.
+              </dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="font-semibold w-24 shrink-0 text-red-700 dark:text-red-300">Exposed</dt>
+              <dd class="opacity-80">
+                A <code>sensitive?</code> attribute that is also <code>public?</code> with
+                no field policy covering it — visible wherever the resource is rendered.
+              </dd>
+            </div>
+          </dl>
+
           <div class="flex flex-wrap gap-1 mb-4">
             <.chip myself={@myself} kind={:all} active={@filter} label="All" count={@totals.resources} />
             <.chip
