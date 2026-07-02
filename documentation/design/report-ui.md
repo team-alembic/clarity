@@ -91,14 +91,23 @@ vertex/content redirect chain).
 
 ## Phasing
 
-1. `Clarity.Report` behaviour + `Config.list_reports/0` + registration.
-2. `ReportLive` + `:report` routes + report picker + header Explore/Reports
-   toggle (with one minimal report to prove the seam end-to-end).
-3. Supply-chain security report (interactive: filter by severity/status, sortable
-   affected-deps table, roll-up header, freshness).
-4. Security posture report (per-domain resources, who-can matrix, sensitive-field
-   exposure, roll-up header).
-5. Tests + `usage-rules/reports.md` + rebuild assets.
+All phases implemented.
+
+1. **(done)** `Clarity.Report` behaviour + `Config.list_reports/0` + registration.
+2. **(done)** `ReportLive` + `:report` routes + report picker + header
+   Explore/Reports toggle.
+3. **(done)** Supply-chain security report — interactive: filter chips
+   (All/Advisories/Outdated/Retired) and sortable columns (dependency, severity),
+   roll-up header, freshness.
+4. **(done)** Security posture report — per-resource enforcement (governed /
+   open / bypass) and sensitive-field exposure, filterable by concern.
+5. **(done)** Component + `ReportLive` integration tests + `usage-rules/reports.md`.
+
+Deviation from the sketch: the posture report is a per-resource table (not
+grouped by domain) with a concern filter, and the full who-can matrix stays in
+the per-resource `SecurityOverview` content (reachable via a row's vertex link)
+rather than being duplicated into the report. Grouping by domain and embedding
+the matrix are natural follow-ups.
 
 ## The two reports (content sketch)
 

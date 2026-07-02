@@ -119,6 +119,7 @@ The same environment keys exist for the other extension points:
 | Introspectors     | `:clarity_introspectors`          |
 | Lensmakers        | `:clarity_perspective_lensmakers` |
 | Status providers  | `:clarity_status_providers`       |
+| Reports           | `:clarity_reports`                |
 
 ### 3. Declare Clarity as an optional dependency
 
