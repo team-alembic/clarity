@@ -168,7 +168,7 @@ defmodule Clarity.Report.SupplyChain do
             >
               <td class="py-2 pr-4 font-medium">
                 <.link
-                  patch={Path.join([@prefix, @lens.id, Vertex.id(row.vertex)])}
+                  navigate={Path.join([@prefix, @lens.id, Vertex.id(row.vertex)])}
                   class="text-primary-light dark:text-primary-dark hover:underline"
                 >
                   {row.app}
