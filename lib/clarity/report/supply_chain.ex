@@ -78,15 +78,56 @@ defmodule Clarity.Report.SupplyChain do
 
     ~H"""
     <section>
-      <h2 class="text-2xl font-bold mb-1">Supply chain security</h2>
-      <p class="opacity-70 mb-4">{summary(@totals)}</p>
+      <h2 class="text-2xl font-bold mb-2">Supply chain security</h2>
+
+      <p class="opacity-80 mb-3 leading-relaxed max-w-[70ch]">
+        This report gathers every dependency that carries a supply-chain concern — a
+        known security advisory, a newer published version, or a version that has been
+        retired from Hex. Each row is a <em>finding</em>: a fact about a dependency and
+        why it might matter, not a verdict that you are vulnerable. Filter to a category
+        below, and follow a dependency's link to see its full detail in the graph.
+      </p>
+
       <p :if={@refreshed_at} class="text-sm italic opacity-60 mb-4">
-        Advisory data as of {Calendar.strftime(@refreshed_at, "%-d %B %Y %H:%M UTC")}.
+        Advisories are matched against a database last refreshed {Calendar.strftime(
+          @refreshed_at,
+          "%-d %B %Y at %H:%M UTC"
+        )}; findings are only
+        as current as that refresh.
       </p>
 
       <%= if @rows == [] do %>
-        <p class="opacity-70">No flagged dependencies under this lens.</p>
+        <p class="opacity-80 max-w-[70ch]">
+          No dependency is flagged under this lens: there are no known advisories, and
+          every dependency is on a current, non-retired version. This reflects the last
+          advisory-database refresh noted above.
+        </p>
       <% else %>
+        <p class="opacity-70 mb-3">{summary(@totals)}</p>
+
+        <dl class="text-sm space-y-1 mb-4 max-w-[70ch]">
+          <div class="flex gap-2">
+            <dt class="font-semibold w-20 shrink-0 text-red-700 dark:text-red-300">Advisory</dt>
+            <dd class="opacity-80">
+              A published security advisory affects the installed version. A fixed
+              version may be available — see the dependency's Advisories tab.
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="font-semibold w-20 shrink-0 text-yellow-700 dark:text-yellow-300">Retired</dt>
+            <dd class="opacity-80">
+              The installed version has been retired from Hex by its maintainer (often
+              for a security issue or a serious bug).
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="font-semibold w-20 shrink-0 text-blue-700 dark:text-blue-300">Outdated</dt>
+            <dd class="opacity-80">
+              A newer version is published on Hex; the installed version is behind.
+            </dd>
+          </div>
+        </dl>
+
         <div class="flex flex-wrap gap-1 mb-4">
           <.chip myself={@myself} kind={:all} active={@filter} label="All" count={@totals.deps} />
           <.chip
