@@ -64,10 +64,13 @@ vertex/content redirect chain).
 2. **`Clarity.Report` extension point now** — a registered behaviour, consistent
    with content/status providers. A report declares its name, which lens(es) it
    applies to, and renders interactive content.
-3. **Interactive reports** — each report is a **LiveComponent** (like interactive
-   content providers), so it can filter/sort/expand. `ReportLive` embeds the
-   selected report and passes it the graph + lens. Rows still use `vertex://`
-   links back into the graph.
+3. **Reports are prose** (revised). They were first built interactive
+   (filter/sort/expand) and cross-linked to vertices, but a report reads better as
+   *prose that explains what's going on*: narrative markdown with the data woven
+   into sentences and the "why it matters" spelled out — not a dashboard to
+   operate, and not cross-linking away. Each report is still a **LiveComponent**
+   (embedded by `ReportLive` with graph + lens), but it renders generated markdown
+   via `<.markdown>` with no interactivity and no `vertex://` links.
 4. **Header toggle (Explore | Reports)** — a segmented control in `<.header>`,
    shown only when the active lens has ≥1 applicable report. Switches the whole
    view via `push_patch`, reusing the lens-switcher navigation pattern.
@@ -96,11 +99,12 @@ All phases implemented.
 1. **(done)** `Clarity.Report` behaviour + `Config.list_reports/0` + registration.
 2. **(done)** `ReportLive` + `:report` routes + report picker + header
    Explore/Reports toggle.
-3. **(done)** Supply-chain security report — interactive: filter chips
-   (All/Advisories/Outdated/Retired) and sortable columns (dependency, severity),
-   roll-up header, freshness.
-4. **(done)** Security posture report — per-resource enforcement (governed /
-   open / bypass) and sensitive-field exposure, filterable by concern.
+3. **(done)** Supply-chain security report — prose: an overview sentence, then
+   narrative sections for security advisories (per affected dep, with fix
+   availability and summaries) and dependency hygiene (retired/outdated).
+4. **(done)** Security posture report — prose: an overview sentence, then
+   narrative sections for open resources, bypass policies, and sensitive-field
+   exposure. (The per-action who-can matrix stays in the resource's Security tab.)
 5. **(done)** Component + `ReportLive` integration tests + `usage-rules/reports.md`.
 
 Deviation from the sketch: the posture report is a per-resource table (not

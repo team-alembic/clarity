@@ -24,25 +24,21 @@ defmodule Clarity.Report.SecurityPostureTest do
   end
 
   describe "render" do
-    test "rolls up a resource's enforcement and exposure" do
+    test "reviews a resource's posture in prose" do
       graph = Graph.new()
       Graph.add_vertex(graph, %Resource{resource: User}, %Root{})
 
       html = render_report(graph, Security.make_lens())
 
+      assert html =~ "Security posture"
       assert html =~ "User"
-      # User has a policy authorizer (governed) and interactive filter chips
-      assert html =~ "Governed"
-      assert html =~ "Open"
-      assert html =~ "Exposed fields"
-      assert html =~ ~s(phx-click="filter")
-      # resource links must navigate (cross-LiveView), not patch — a patch would
-      # crash when clicked from ReportLive into PageLive
-      assert html =~ ~s(data-phx-link="redirect")
-      refute html =~ ~s(data-phx-link="patch")
+      # narrative sections, not an interactive table
+      assert html =~ "Sensitive field exposure"
+      assert html =~ "date_of_birth"
+      refute html =~ ~s(phx-click)
     end
 
-    test "shows an empty state with no resources" do
+    test "says there is nothing to report with no resources" do
       html = render_report(Graph.new(), Security.make_lens())
 
       assert html =~ "No Ash resources are visible under this lens"

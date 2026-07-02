@@ -1,10 +1,11 @@
 # Creating Reports
 
-Reports are **lens-scoped roll-ups** of the graph, rendered as a single
-interactive view — an alternative to navigating the graph vertex by vertex. For
-users who want all the relevant information in one place (e.g. a "Supply chain
-security" or "Security posture" report), a report gathers the relevant vertices
-and presents them together.
+Reports are **lens-scoped roll-ups** of the graph, rendered as a single written
+document — an alternative to navigating the graph vertex by vertex. A report is
+*prose*: it explains, in sentences, what's going on and why it matters, rather
+than presenting a dashboard to operate. For users who want the relevant
+information in one place (e.g. a "Supply chain security" or "Security posture"
+report), a report gathers the relevant vertices and narrates them.
 
 The navigation header shows an **Explore | Reports** toggle whenever the active
 lens has at least one report; `Clarity.ReportLive` renders the lens's reports as
@@ -21,14 +22,14 @@ vertices. If you're adding a view for a *single* vertex, use a
 
 - A report declares its `name/0`, an optional `description/0`, and which lens it
   `applies?/1` to.
-- The module is also a **LiveComponent** (`use Clarity.Web, :live_component`), so
-  it can be interactive (filter, sort, expand). `ReportLive` embeds it and passes
-  `graph`, `lens`, and `prefix` assigns.
+- The module is also a **LiveComponent** (`use Clarity.Web, :live_component`);
+  `ReportLive` embeds it and passes `graph`, `lens`, and `prefix` assigns. In
+  practice a report builds a markdown string and renders it with `<.markdown>` —
+  it reads as prose.
 - The report queries the graph itself — typically
   `Clarity.Graph.vertices(graph, {:==, :vertex_type, SomeVertex})` — and reuses
-  the per-vertex analysis (status providers, `Clarity.Ash.PolicyAnalysis`, etc.).
-- Rows link back into the graph with a `patch` to
-  `Path.join([prefix, lens.id, Clarity.Vertex.id(vertex)])`.
+  the per-vertex analysis (status providers, `Clarity.Ash.PolicyAnalysis`, etc.)
+  to compose its narrative.
 
 Reports are registered per-application under `:clarity_reports` and discovered
 via `Clarity.Config.list_reports/0`.
@@ -66,42 +67,48 @@ def applies?(_lens), do: false
 
 ### 3. Implement the LiveComponent
 
-`update/2` receives `graph`, `lens`, and `prefix`. Build the report data there,
-then render (and handle events for interactivity):
+`update/2` receives `graph`, `lens`, and `prefix`. Build the narrative markdown
+there and render it with `<.markdown>` (wrapped in a single root element, as a
+stateful LiveComponent requires):
 
 ```elixir
+import Clarity.Components.MarkdownComponent
+
 @impl Phoenix.LiveComponent
 def update(assigns, socket) do
-  rows =
-    assigns.graph
-    |> Graph.vertices({:==, :vertex_type, Vertex.Ash.Resource})
-    |> Enum.map(&build_row/1)
-
-  {:ok, assign(socket, prefix: assigns.prefix, lens: assigns.lens, rows: rows)}
+  {:ok,
+   assign(socket,
+     prefix: assigns.prefix,
+     lens: assigns.lens,
+     markdown: build_markdown(assigns.graph, assigns.lens)
+   )}
 end
 
 @impl Phoenix.LiveComponent
 def render(assigns) do
   ~H"""
   <section>
-    <h2>Compliance</h2>
-    <table>
-      <tr :for={row <- @rows}>
-        <td>
-          <.link patch={Path.join([@prefix, @lens.id, Vertex.id(row.vertex)])}>
-            {row.name}
-          </.link>
-        </td>
-      </tr>
-    </table>
+    <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
   </section>
   """
 end
+
+defp build_markdown(graph, _lens) do
+  resources = Graph.vertices(graph, {:==, :vertex_type, Vertex.Ash.Resource})
+
+  [
+    "## Compliance\n\n",
+    "This report reviews compliance across #{length(resources)} resources.\n\n",
+    # ... narrative sections built from the analysis ...
+  ]
+end
 ```
 
-For interactivity (filter/sort), keep the choice in the socket and re-derive the
-visible rows in `render/1`, with `phx-target={@myself}` on the controls — see
-`Clarity.Report.SupplyChain` for a worked example.
+Prefer prose — sentences and short sections that explain what's going on and why
+it matters — over tables of raw data. `Clarity.Report.SupplyChain` and
+`Clarity.Report.SecurityPosture` are worked examples. (The module is a
+LiveComponent, so a report *can* be interactive if a case genuinely needs it, but
+the default and intent is a written report.)
 
 ### 4. Register the Report
 
@@ -156,9 +163,10 @@ For the end-to-end route + toggle, drive `Clarity.ReportLive` with
 
 ## Real-World Examples
 
-- `lib/clarity/report/supply_chain.ex` — filter chips + sortable table.
-- `lib/clarity/report/security_posture.ex` — per-resource enforcement/exposure
-  roll-up (Ash-guarded).
+- `lib/clarity/report/supply_chain.ex` — narrates advisories and dependency
+  hygiene (retired/outdated) from the supply-chain status data.
+- `lib/clarity/report/security_posture.ex` — narrates policy enforcement, bypass
+  policies, and sensitive-field exposure across resources (Ash-guarded).
 
 ## Next Steps
 

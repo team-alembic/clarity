@@ -1,14 +1,19 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Report.SecurityPosture do
     @moduledoc """
-    Security posture report: every Ash resource under the security lens, rolled up
-    with its enforcement (policy authorizer / open / bypass) and sensitive-field
-    exposure. Filter to the resources that carry a concern.
+    Security posture report: a written review of how each Ash resource under the
+    security lens is protected — policy enforcement, bypass policies, and
+    sensitive-field exposure.
+
+    The report is prose: it explains, in sentences, which resources carry a
+    concern and why it matters, rather than presenting a table to operate.
     """
 
     @behaviour Clarity.Report
 
     use Clarity.Web, :live_component
+
+    import Clarity.Components.MarkdownComponent
 
     alias Ash.Policy.Info, as: PolicyInfo
     alias Ash.Resource.Info
@@ -16,18 +21,16 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Clarity.Perspective.Lens
     alias Clarity.Vertex
     alias Clarity.Vertex.Ash.Resource
-    alias Phoenix.LiveView.Rendered
 
     @authorizer Ash.Policy.Authorizer
 
-    @type row() :: %{
-            vertex: Resource.t(),
-            name: String.t(),
-            governed?: boolean(),
-            bypass?: boolean(),
-            sensitive: non_neg_integer(),
-            exposed: non_neg_integer()
-          }
+    @typep finding() :: %{
+             name: String.t(),
+             governed?: boolean(),
+             bypass?: boolean(),
+             exposed: [String.t()],
+             sensitive: non_neg_integer()
+           }
 
     @impl Clarity.Report
     def name, do: "Security posture"
@@ -41,226 +44,202 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @impl Phoenix.LiveComponent
     def update(assigns, socket) do
-      rows = build_rows(assigns.graph)
-
       {:ok,
-       socket
-       |> assign(prefix: assigns.prefix, lens: assigns.lens)
-       |> assign(rows: rows, totals: totals(rows))
-       |> assign_new(:filter, fn -> :all end)}
-    end
-
-    @impl Phoenix.LiveComponent
-    def handle_event("filter", %{"kind" => kind}, socket) do
-      {:noreply, assign(socket, filter: String.to_existing_atom(kind))}
+       assign(socket,
+         prefix: assigns.prefix,
+         lens: assigns.lens,
+         markdown: build_markdown(assigns.graph)
+       )}
     end
 
     @impl Phoenix.LiveComponent
     def render(assigns) do
-      assigns = assign(assigns, :visible, filter_rows(assigns.rows, assigns.filter))
-
       ~H"""
       <section>
-        <h2 class="text-2xl font-bold mb-2">Security posture</h2>
-
-        <p class="opacity-80 mb-3 leading-relaxed max-w-[70ch]">
-          This report summarises how each Ash resource is protected. It surfaces facts
-          that aren't obvious from any single file: whether a resource is governed by
-          policies, whether a bypass can skip them, and whether sensitive fields are
-          exposed. These are <em>findings, not verdicts</em> — Ash has legitimate reasons
-          for each pattern, so you decide what warrants attention. Follow a resource's
-          link for its full per-action breakdown.
-        </p>
-
-        <%= if @rows == [] do %>
-          <p class="opacity-80 max-w-[70ch]">
-            No Ash resources are visible under this lens, so there is no authorisation
-            posture to report.
-          </p>
-        <% else %>
-          <p class="opacity-70 mb-3">{summary(@totals)}</p>
-
-          <dl class="text-sm space-y-1 mb-4 max-w-[70ch]">
-            <div class="flex gap-2">
-              <dt class="font-semibold w-24 shrink-0 text-yellow-700 dark:text-yellow-300">Open</dt>
-              <dd class="opacity-80">
-                The resource has no policy authorizer, so Ash policies do not restrict
-                access — every action is allowed, subject to the domain's authorisation mode.
-              </dd>
-            </div>
-            <div class="flex gap-2">
-              <dt class="font-semibold w-24 shrink-0 text-blue-700 dark:text-blue-300">Bypass</dt>
-              <dd class="opacity-80">
-                The resource carries a bypass policy; a passing bypass skips all other
-                policies for that request.
-              </dd>
-            </div>
-            <div class="flex gap-2">
-              <dt class="font-semibold w-24 shrink-0 text-red-700 dark:text-red-300">Exposed</dt>
-              <dd class="opacity-80">
-                A <code>sensitive?</code> attribute that is also <code>public?</code> with
-                no field policy covering it — visible wherever the resource is rendered.
-              </dd>
-            </div>
-          </dl>
-
-          <div class="flex flex-wrap gap-1 mb-4">
-            <.chip myself={@myself} kind={:all} active={@filter} label="All" count={@totals.resources} />
-            <.chip
-              myself={@myself}
-              kind={:unprotected}
-              active={@filter}
-              label="Open"
-              count={@totals.unprotected}
-            />
-            <.chip
-              myself={@myself}
-              kind={:bypass}
-              active={@filter}
-              label="Bypass"
-              count={@totals.bypass}
-            />
-            <.chip
-              myself={@myself}
-              kind={:exposed}
-              active={@filter}
-              label="Exposed fields"
-              count={@totals.exposed}
-            />
-          </div>
-
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left border-b border-base-light-300 dark:border-base-dark-700">
-                <th class="py-2 pr-4 font-semibold">Resource</th>
-                <th class="py-2 pr-4 font-semibold">Enforcement</th>
-                <th class="py-2 pr-4 font-semibold">Bypass</th>
-                <th class="py-2 font-semibold">Sensitive fields</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                :for={row <- @visible}
-                class="border-b border-base-light-200 dark:border-base-dark-800"
-              >
-                <td class="py-2 pr-4 font-medium">
-                  <.link
-                    navigate={Path.join([@prefix, @lens.id, Vertex.id(row.vertex)])}
-                    class="text-primary-light dark:text-primary-dark hover:underline"
-                  >
-                    {row.name}
-                  </.link>
-                </td>
-                <td class="py-2 pr-4">
-                  <span :if={row.governed?} class="text-green-700 dark:text-green-300">Governed</span>
-                  <span :if={not row.governed?} class="text-yellow-700 dark:text-yellow-300">
-                    ⚠ Open
-                  </span>
-                </td>
-                <td class="py-2 pr-4">
-                  <span :if={row.bypass?} class="text-blue-700 dark:text-blue-300">⚠ Bypass</span>
-                  <span :if={not row.bypass?} class="opacity-50">—</span>
-                </td>
-                <td class="py-2">
-                  <span
-                    :if={row.exposed > 0}
-                    class="text-red-700 dark:text-red-300"
-                  >{row.exposed} exposed</span>
-                  <span class="opacity-60">
-                    <span :if={row.exposed > 0}>/</span> {row.sensitive} sensitive
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        <% end %>
+        <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
       </section>
       """
     end
 
-    attr :myself, :any, required: true
-    attr :kind, :atom, required: true
-    attr :active, :atom, required: true
-    attr :label, :string, required: true
-    attr :count, :integer, required: true
+    @spec build_markdown(Graph.t()) :: iodata()
+    defp build_markdown(graph) do
+      findings = findings(graph)
+      domains = graph |> Graph.vertices({:==, :vertex_type, Vertex.Ash.Domain}) |> length()
 
-    @spec chip(map()) :: Rendered.t()
-    defp chip(assigns) do
-      ~H"""
-      <button
-        type="button"
-        phx-click="filter"
-        phx-value-kind={@kind}
-        phx-target={@myself}
-        class={[
-          "px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset transition-colors",
-          if(@active == @kind,
-            do: "bg-primary-light dark:bg-primary-dark text-white ring-transparent",
-            else:
-              "text-base-light-700 dark:text-base-dark-300 ring-base-light-300 dark:ring-base-dark-600 hover:bg-base-light-200 dark:hover:bg-base-dark-700"
-          )
-        ]}
-      >
-        {@label} <span class="tabular-nums opacity-80">{@count}</span>
-      </button>
-      """
+      [
+        "## Security posture\n\n",
+        "This report reviews how each Ash resource is protected. It surfaces facts that ",
+        "aren't obvious from any single file: whether a resource is governed by policies, ",
+        "whether a bypass can skip them, and whether sensitive fields are exposed. These are ",
+        "*findings, not verdicts* — Ash has legitimate reasons for each pattern, so you decide ",
+        "what warrants attention.\n\n",
+        overview(findings, domains),
+        enforcement_section(findings),
+        bypass_section(findings),
+        exposure_section(findings)
+      ]
     end
 
-    @spec build_rows(Graph.t()) :: [row()]
-    defp build_rows(graph) do
+    @spec overview([finding()], non_neg_integer()) :: iodata()
+    defp overview([], _domains) do
+      "No Ash resources are visible under this lens, so there is no authorisation posture to report.\n\n"
+    end
+
+    defp overview(findings, domains) do
+      total = length(findings)
+      governed = Enum.count(findings, & &1.governed?)
+
+      [
+        "Clarity can see ",
+        Integer.to_string(total),
+        pluralize(total, " resource", " resources"),
+        if(domains > 0,
+          do: [" across ", Integer.to_string(domains), pluralize(domains, " domain", " domains")],
+          else: []
+        ),
+        ". ",
+        Integer.to_string(governed),
+        " of them ",
+        pluralize(governed, "enforces", "enforce"),
+        " policies; the rest are open. ",
+        Integer.to_string(Enum.count(findings, & &1.bypass?)),
+        " carry a bypass, and ",
+        Integer.to_string(Enum.count(findings, &(&1.exposed != []))),
+        " expose sensitive fields.\n\n"
+      ]
+    end
+
+    @spec enforcement_section([finding()]) :: iodata()
+    defp enforcement_section([]), do: []
+
+    defp enforcement_section(findings) do
+      open = Enum.filter(findings, &(not &1.governed?))
+
+      [
+        "### Policy enforcement\n\n",
+        case open do
+          [] ->
+            "Every resource is governed by a policy authorizer, so Ash policies apply to each.\n\n"
+
+          _present ->
+            [
+              names(open),
+              " ",
+              pluralize(length(open), "has", "have"),
+              " no policy authorizer. Ash policies therefore place no restriction on ",
+              pluralize(length(open), "it", "them"),
+              " — every action is allowed, subject to the domain's authorisation mode. If ",
+              pluralize(length(open), "it exposes", "they expose"),
+              " or mutate anything sensitive, add policies.\n\n"
+            ]
+        end
+      ]
+    end
+
+    @spec bypass_section([finding()]) :: iodata()
+    defp bypass_section([]), do: []
+
+    defp bypass_section(findings) do
+      bypass = Enum.filter(findings, & &1.bypass?)
+
+      [
+        "### Bypass policies\n\n",
+        case bypass do
+          [] ->
+            "No resource uses a bypass policy.\n\n"
+
+          _present ->
+            [
+              names(bypass),
+              " ",
+              pluralize(length(bypass), "carries", "carry"),
+              " a bypass policy. A passing bypass short-circuits every other policy for the ",
+              "request — usually an admin escape hatch — so confirm the bypass condition is as ",
+              "tight as you intend.\n\n"
+            ]
+        end
+      ]
+    end
+
+    @spec exposure_section([finding()]) :: iodata()
+    defp exposure_section([]), do: []
+
+    defp exposure_section(findings) do
+      exposed = Enum.filter(findings, &(&1.exposed != []))
+
+      [
+        "### Sensitive field exposure\n\n",
+        case exposed do
+          [] ->
+            "No sensitive attribute is publicly exposed without a field policy.\n\n"
+
+          _present ->
+            [
+              "A sensitive attribute that is also public, with no field policy covering it, is ",
+              "visible wherever the resource is rendered — APIs, serialised responses, admin UIs.\n\n",
+              Enum.map(exposed, &exposure_paragraph/1)
+            ]
+        end
+      ]
+    end
+
+    @spec exposure_paragraph(finding()) :: iodata()
+    defp exposure_paragraph(finding) do
+      [
+        "**",
+        finding.name,
+        "** exposes ",
+        Enum.map_join(finding.exposed, ", ", &"`#{&1}`"),
+        ".\n\n"
+      ]
+    end
+
+    @spec names([finding()]) :: iodata()
+    defp names(findings) do
+      findings
+      |> Enum.map(&"**#{&1.name}**")
+      |> to_sentence()
+    end
+
+    @spec to_sentence([String.t()]) :: String.t()
+    defp to_sentence([one]), do: one
+    defp to_sentence([first, second]), do: "#{first} and #{second}"
+
+    defp to_sentence(list) do
+      {rest, [last]} = Enum.split(list, -1)
+      "#{Enum.join(rest, ", ")}, and #{last}"
+    end
+
+    @spec findings(Graph.t()) :: [finding()]
+    defp findings(graph) do
       graph
       |> Graph.vertices({:==, :vertex_type, Resource})
-      |> Enum.map(&build_row/1)
+      |> Enum.map(&finding/1)
       |> Enum.sort_by(& &1.name)
     end
 
-    @spec build_row(Resource.t()) :: row()
-    defp build_row(%Resource{resource: resource} = vertex) do
+    @spec finding(Resource.t()) :: finding()
+    defp finding(%Resource{resource: resource} = vertex) do
       sensitive = Enum.filter(Info.attributes(resource), & &1.sensitive?)
 
       %{
-        vertex: vertex,
         name: Vertex.name(vertex),
         governed?: @authorizer in Info.authorizers(resource),
         bypass?: Enum.any?(PolicyInfo.policies(resource), & &1.bypass?),
-        sensitive: length(sensitive),
-        exposed: Enum.count(sensitive, &exposed?(&1, resource))
+        exposed:
+          sensitive |> Enum.filter(&exposed?(resource, &1)) |> Enum.map(&to_string(&1.name)),
+        sensitive: length(sensitive)
       }
     end
 
-    @spec exposed?(Ash.Resource.Attribute.t(), Ash.Resource.t()) :: boolean()
-    defp exposed?(attribute, resource) do
+    @spec exposed?(Ash.Resource.t(), Ash.Resource.Attribute.t()) :: boolean()
+    defp exposed?(resource, attribute) do
       attribute.public? and
         PolicyInfo.field_policies_for_field(resource, attribute.name) in [nil, []]
     end
 
-    @spec filter_rows([row()], atom()) :: [row()]
-    defp filter_rows(rows, :all), do: rows
-    defp filter_rows(rows, :unprotected), do: Enum.reject(rows, & &1.governed?)
-    defp filter_rows(rows, :bypass), do: Enum.filter(rows, & &1.bypass?)
-    defp filter_rows(rows, :exposed), do: Enum.filter(rows, &(&1.exposed > 0))
-
-    @spec totals([row()]) :: %{atom() => non_neg_integer()}
-    defp totals(rows) do
-      %{
-        resources: length(rows),
-        unprotected: Enum.count(rows, &(not &1.governed?)),
-        bypass: Enum.count(rows, & &1.bypass?),
-        exposed: Enum.count(rows, &(&1.exposed > 0))
-      }
-    end
-
-    @spec summary(%{atom() => non_neg_integer()}) :: String.t()
-    defp summary(%{resources: 0}), do: "No Ash resources are visible under this lens."
-
-    defp summary(totals) do
-      "#{totals.resources} #{plural(totals.resources, "resource", "resources")} · " <>
-        "#{totals.unprotected} open · #{totals.bypass} with bypass · " <>
-        "#{totals.exposed} with exposed fields"
-    end
-
-    @spec plural(non_neg_integer(), String.t(), String.t()) :: String.t()
-    defp plural(1, singular, _plural), do: singular
-    defp plural(_count, _singular, plural), do: plural
+    @spec pluralize(non_neg_integer(), String.t(), String.t()) :: String.t()
+    defp pluralize(1, singular, _plural), do: singular
+    defp pluralize(_count, _singular, plural), do: plural
   end
 end
