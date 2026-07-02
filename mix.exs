@@ -90,7 +90,8 @@ defmodule Clarity.MixProject do
           Clarity.Status.SupplyChain
         ],
         clarity_reports: [
-          Clarity.Report.SupplyChain
+          Clarity.Report.SupplyChain,
+          Clarity.Report.SecurityPosture
         ],
         default_perspective_lens: "architect"
       ]
