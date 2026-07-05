@@ -19,6 +19,7 @@ defmodule Clarity.Report.SupplyChain do
   alias Clarity.Dependency.Registry
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
+  alias Clarity.Report.Charts
   alias Clarity.Status
   alias Clarity.Vertex
 
@@ -44,29 +45,62 @@ defmodule Clarity.Report.SupplyChain do
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
+    findings = findings(assigns.graph, assigns.lens)
+    total = assigns.graph |> Graph.vertices({:==, :vertex_type, Vertex.Application}) |> length()
+
     {:ok,
      assign(socket,
        prefix: assigns.prefix,
        lens: assigns.lens,
-       markdown: markdown(assigns.graph, assigns.lens)
+       markdown: build_markdown(findings),
+       dashboard: dashboard(findings, total)
      )}
   end
 
   @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
-    <section>
+    <section class="space-y-6">
+      <div class="space-y-4">
+        <h2 class="text-2xl font-bold">Supply chain security</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Charts.stat label="Dependencies" value={@dashboard.total} />
+          <Charts.stat label="Advisories" value={@dashboard.advisories} tone={:error} />
+          <Charts.stat label="Outdated" value={@dashboard.outdated} tone={:info} />
+          <Charts.stat label="Retired" value={@dashboard.retired} tone={:warning} />
+        </div>
+        <Charts.pie title="Dependency health" segments={@dashboard.segments} />
+      </div>
+
       <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
     </section>
     """
   end
 
-  @spec markdown(Graph.t(), Lens.t()) :: iodata()
-  defp markdown(graph, lens) do
-    findings = findings(graph, lens)
+  @spec dashboard([finding()], non_neg_integer()) :: map()
+  defp dashboard(findings, total) do
+    advisory = Enum.count(findings, & &1.advisory?)
+    retired_only = Enum.count(findings, &(&1.retired? and not &1.advisory?))
+    outdated_only = Enum.count(findings, &(&1.outdated? and not &1.advisory? and not &1.retired?))
+    healthy = max(total - length(findings), 0)
 
+    %{
+      total: total,
+      advisories: advisory,
+      outdated: Enum.count(findings, & &1.outdated?),
+      retired: Enum.count(findings, & &1.retired?),
+      segments: [
+        %{label: "Healthy", value: healthy, tone: :ok},
+        %{label: "Advisory", value: advisory, tone: :error},
+        %{label: "Retired", value: retired_only, tone: :warning},
+        %{label: "Outdated", value: outdated_only, tone: :info}
+      ]
+    }
+  end
+
+  @spec build_markdown([finding()]) :: iodata()
+  defp build_markdown(findings) do
     [
-      "## Supply chain security\n\n",
       "This report reviews the dependencies your project runs for supply-chain risk: ",
       "known security advisories, versions that have fallen behind their latest release, ",
       "and versions their maintainers have retired. Each item is a *finding* — a fact and ",

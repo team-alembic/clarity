@@ -36,6 +36,9 @@ defmodule Clarity.Report.SecurityPostureTest do
       assert html =~ "Sensitive field exposure"
       assert html =~ "date_of_birth"
       refute html =~ ~s(phx-click)
+      # executive dashboard: KPI cards + a contex SVG chart
+      assert html =~ "Policy coverage"
+      assert html =~ "<svg"
     end
 
     test "says there is nothing to report with no resources" do

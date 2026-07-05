@@ -71,6 +71,13 @@ vertex/content redirect chain).
    operate, and not cross-linking away. Each report is still a **LiveComponent**
    (embedded by `ReportLive` with graph + lens), but it renders generated markdown
    via `<.markdown>` with no interactivity and no `vertex://` links.
+
+   Each report opens with an **executive dashboard** above the prose — KPI stat
+   cards and a server-rendered SVG pie chart (via
+   [`contex`](https://hex.pm/packages/contex), no JavaScript). Shared components
+   live in `Clarity.Report.Charts` (`stat/1`, `pie/1`); one CSS rule
+   (`.contex-chart text { fill: currentColor }`) makes contex's SVG text follow
+   the theme in dark mode.
 4. **Header toggle (Explore | Reports)** — a segmented control in `<.header>`,
    shown only when the active lens has ≥1 applicable report. Switches the whole
    view via `push_patch`, reusing the lens-switcher navigation pattern.
