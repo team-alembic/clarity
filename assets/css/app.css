@@ -21,6 +21,14 @@
   }
 }
 
+/* contex SVGs carry only a viewBox (no width), so they stretch to fill their
+   container. Cap the rendered size so the chart stays compact. */
+.contex-chart svg {
+  width: 100%;
+  height: auto;
+  max-width: 20rem;
+}
+
 /* contex renders its own <style>text{fill:black}</style> inside each SVG, which
    is invisible in dark mode. The .contex-chart wrapper sets a theme-aware text
    colour; make the SVG text follow it. */
