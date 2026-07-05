@@ -207,46 +207,41 @@ defmodule Clarity.Report.SupplyChain do
 
   @spec hygiene_section([finding()]) :: iodata()
   defp hygiene_section(findings) do
-    retired = Enum.filter(findings, & &1.retired?)
-    outdated = Enum.filter(findings, &(&1.outdated? and not &1.retired?))
+    hygiene = Enum.filter(findings, &(&1.retired? or &1.outdated?))
 
     [
       "### Dependency hygiene\n\n",
-      retired_prose(retired),
-      outdated_prose(outdated),
-      if(retired == [] and outdated == [],
-        do: "Every dependency is on a current, non-retired version.\n\n",
-        else: []
-      )
+      case hygiene do
+        [] ->
+          "Every dependency is on a current, non-retired version.\n\n"
+
+        rows ->
+          [
+            "Retired versions have been pulled from Hex and should be moved off; ",
+            "outdated ones are simply behind their latest release.\n\n",
+            "| Dependency | Installed | Latest | Status |\n",
+            "| --- | --- | --- | --- |\n",
+            Enum.map(rows, &hygiene_row/1),
+            "\n"
+          ]
+      end
     ]
   end
 
-  @spec retired_prose([finding()]) :: iodata()
-  defp retired_prose([]), do: []
+  @spec hygiene_row(finding()) :: iodata()
+  defp hygiene_row(finding) do
+    status = if finding.retired?, do: "Retired", else: "Outdated"
 
-  defp retired_prose(retired) do
     [
-      "The maintainers of ",
-      Enum.map_join(retired, ", ", &"**#{&1.app} #{&1.version}**"),
-      " have retired the installed version from Hex — usually a sign of a security ",
-      "problem or serious bug — so you should move off ",
-      pluralize(length(retired), "it", "them"),
-      ".\n\n"
-    ]
-  end
-
-  @spec outdated_prose([finding()]) :: iodata()
-  defp outdated_prose([]), do: []
-
-  defp outdated_prose(outdated) do
-    [
-      if(length(outdated) == 1,
-        do: "One dependency is",
-        else: "#{length(outdated)} dependencies are"
-      ),
-      " behind the latest published release: ",
-      Enum.map_join(outdated, ", ", &"**#{&1.app}** (#{&1.version} → #{&1.latest || "?"})"),
-      ". Staying current is the simplest way to pick up upstream fixes.\n\n"
+      "| **",
+      finding.app,
+      "** | ",
+      finding.version,
+      " | ",
+      finding.latest || "—",
+      " | ",
+      status,
+      " |\n"
     ]
   end
 
