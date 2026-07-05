@@ -45,9 +45,10 @@ defmodule Clarity.Report.SupplyChainTest do
       assert html =~ "Supply chain security"
       assert html =~ "stale"
       assert html =~ "2.0.0"
-      # dependency hygiene renders as a table
+      # dependency hygiene renders as a table with a "Via" column
       assert html =~ "Dependency hygiene"
       assert html =~ "<table"
+      assert html =~ "Via"
       assert html =~ "Outdated"
       refute html =~ ~s(phx-click)
       # executive dashboard: KPI cards + a contex SVG chart

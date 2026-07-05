@@ -27,6 +27,7 @@ defmodule Clarity.Report.SupplyChain do
            app: String.t(),
            version: String.t(),
            latest: String.t() | nil,
+           via: [String.t()],
            advisories: [Advisory.t()],
            advisory?: boolean(),
            outdated?: boolean(),
@@ -218,9 +219,10 @@ defmodule Clarity.Report.SupplyChain do
         rows ->
           [
             "Retired versions have been pulled from Hex and should be moved off; ",
-            "outdated ones are simply behind their latest release.\n\n",
-            "| Dependency | Installed | Latest | Status |\n",
-            "| --- | --- | --- | --- |\n",
+            "outdated ones are simply behind their latest release. *Via* names the ",
+            "direct dependency that pulls a transitive one in.\n\n",
+            "| Dependency | Via | Installed | Latest | Status |\n",
+            "| --- | --- | --- | --- | --- |\n",
             Enum.map(rows, &hygiene_row/1),
             "\n"
           ]
@@ -236,6 +238,8 @@ defmodule Clarity.Report.SupplyChain do
       "| **",
       finding.app,
       "** | ",
+      via_label(finding.via),
+      " | ",
       finding.version,
       " | ",
       finding.latest || "—",
@@ -244,6 +248,10 @@ defmodule Clarity.Report.SupplyChain do
       " |\n"
     ]
   end
+
+  @spec via_label([String.t()]) :: String.t()
+  defp via_label([]), do: "direct"
+  defp via_label(via), do: Enum.join(via, ", ")
 
   @spec summaries([Advisory.t()]) :: iodata()
   defp summaries(advisories) do
@@ -263,29 +271,53 @@ defmodule Clarity.Report.SupplyChain do
 
   @spec findings(Graph.t(), Lens.t()) :: [finding()]
   defp findings(graph, lens) do
-    graph
-    |> Graph.vertices({:==, :vertex_type, Vertex.Application})
+    apps = Graph.vertices(graph, {:==, :vertex_type, Vertex.Application})
+    roots = apps |> Enum.filter(&(dependents(graph, &1) == [])) |> MapSet.new(& &1.app)
+
+    apps
     |> Enum.map(fn vertex ->
       {vertex, Enum.filter(Status.SupplyChain.statuses(vertex, graph), lens.status_filter)}
     end)
     |> Enum.reject(fn {_vertex, statuses} -> statuses == [] end)
-    |> Enum.map(&finding/1)
+    |> Enum.map(fn {vertex, statuses} -> finding(vertex, statuses, via(graph, vertex, roots)) end)
     |> Enum.sort_by(& &1.app)
   end
 
-  @spec finding({Vertex.Application.t(), [Status.t()]}) :: finding()
-  defp finding({vertex, statuses}) do
+  @spec finding(Vertex.Application.t(), [Status.t()], [String.t()]) :: finding()
+  defp finding(vertex, statuses, via) do
     version = to_string(vertex.version)
 
     %{
       app: to_string(vertex.app),
       version: version,
       latest: latest(vertex.app),
+      via: via,
       advisories: Source.advisories_for(vertex.app, version),
       advisory?: Enum.any?(statuses, &(&1.class == :security)),
       outdated?: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :info)),
       retired?: Enum.any?(statuses, &(&1.class == :hygiene and &1.severity == :warning))
     }
+  end
+
+  # Applications that directly depend on `vertex` (the `:dependency` edges point
+  # dependent → dependency, so dependents are the in-neighbours).
+  @spec dependents(Graph.t(), Vertex.Application.t()) :: [Vertex.Application.t()]
+  defp dependents(graph, vertex) do
+    graph |> Graph.in_neighbors(vertex) |> Enum.filter(&match?(%Vertex.Application{}, &1))
+  end
+
+  # Which of the project's dependencies pull `vertex` in. If a root project app
+  # depends on it directly, it's a direct dependency (empty list → "direct");
+  # otherwise it's the transitive dependents that require it.
+  @spec via(Graph.t(), Vertex.Application.t(), MapSet.t(atom())) :: [String.t()]
+  defp via(graph, vertex, roots) do
+    deps = graph |> dependents(vertex) |> Enum.map(& &1.app)
+
+    if Enum.any?(deps, &MapSet.member?(roots, &1)) do
+      []
+    else
+      deps |> Enum.uniq() |> Enum.sort() |> Enum.map(&to_string/1)
+    end
   end
 
   @spec latest(atom()) :: String.t() | nil
