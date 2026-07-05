@@ -19,6 +19,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Resource.Info
     alias Clarity.Graph
     alias Clarity.Perspective.Lens
+    alias Clarity.Report.Charts
     alias Clarity.Vertex
     alias Clarity.Vertex.Ash.Resource
 
@@ -44,30 +45,60 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @impl Phoenix.LiveComponent
     def update(assigns, socket) do
+      findings = findings(assigns.graph)
+
+      domains =
+        assigns.graph |> Graph.vertices({:==, :vertex_type, Vertex.Ash.Domain}) |> length()
+
       {:ok,
        assign(socket,
          prefix: assigns.prefix,
          lens: assigns.lens,
-         markdown: build_markdown(assigns.graph)
+         markdown: build_markdown(findings, domains),
+         dashboard: dashboard(findings)
        )}
     end
 
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <section>
+      <section class="space-y-6">
+        <div class="space-y-4">
+          <h2 class="text-2xl font-bold">Security posture</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Charts.stat label="Resources" value={@dashboard.resources} />
+            <Charts.stat label="Open" value={@dashboard.open} tone={:warning} />
+            <Charts.stat label="Bypass" value={@dashboard.bypass} tone={:info} />
+            <Charts.stat label="Exposed fields" value={@dashboard.exposed} tone={:error} />
+          </div>
+          <Charts.pie title="Policy coverage" segments={@dashboard.segments} />
+        </div>
+
         <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
       </section>
       """
     end
 
-    @spec build_markdown(Graph.t()) :: iodata()
-    defp build_markdown(graph) do
-      findings = findings(graph)
-      domains = graph |> Graph.vertices({:==, :vertex_type, Vertex.Ash.Domain}) |> length()
+    @spec dashboard([finding()]) :: map()
+    defp dashboard(findings) do
+      total = length(findings)
+      governed = Enum.count(findings, & &1.governed?)
 
+      %{
+        resources: total,
+        open: total - governed,
+        bypass: Enum.count(findings, & &1.bypass?),
+        exposed: Enum.count(findings, &(&1.exposed != [])),
+        segments: [
+          %{label: "Governed", value: governed, tone: :ok},
+          %{label: "Open", value: total - governed, tone: :warning}
+        ]
+      }
+    end
+
+    @spec build_markdown([finding()], non_neg_integer()) :: iodata()
+    defp build_markdown(findings, domains) do
       [
-        "## Security posture\n\n",
         "This report reviews how each Ash resource is protected. It surfaces facts that ",
         "aren't obvious from any single file: whether a resource is governed by policies, ",
         "whether a bypass can skip them, and whether sensitive fields are exposed. These are ",

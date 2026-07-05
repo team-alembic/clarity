@@ -106,6 +106,7 @@ defmodule Clarity.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:req, "~> 0.5"},
       {:hex_core, "~> 0.11"},
+      {:contex, "~> 0.5"},
       {:mdex, "~> 0.14"},
       {:lumis, "~> 0.10"},
       # Lumis ships no grammars; each language is its own package. These cover

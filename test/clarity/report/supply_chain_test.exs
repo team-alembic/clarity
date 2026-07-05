@@ -48,6 +48,9 @@ defmodule Clarity.Report.SupplyChainTest do
       # narrative prose, not an interactive table
       assert html =~ "behind the latest"
       refute html =~ ~s(phx-click)
+      # executive dashboard: KPI cards + a contex SVG chart
+      assert html =~ "Dependencies"
+      assert html =~ "<svg"
     end
 
     test "says nothing is flagged when all clear", %{graph: graph, lens: lens} do

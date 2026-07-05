@@ -21,6 +21,13 @@
   }
 }
 
+/* contex renders its own <style>text{fill:black}</style> inside each SVG, which
+   is invisible in dark mode. The .contex-chart wrapper sets a theme-aware text
+   colour; make the SVG text follow it. */
+.contex-chart text {
+  fill: currentColor;
+}
+
 /* Alerts and form errors used by phx.new */
 .alert {
   padding: 15px;
