@@ -112,4 +112,26 @@ defmodule Clarity.ConfigTest do
       assert Config.list_status_providers() == []
     end
   end
+
+  describe inspect(&Config.list_reports/0) do
+    setup do
+      on_exit(fn -> Application.delete_env(:clarity, :clarity_reports) end)
+    end
+
+    defmodule DummyReport do
+      @moduledoc false
+    end
+
+    test "returns reports registered under :clarity_reports" do
+      Application.put_env(:clarity, :clarity_reports, [DummyReport])
+
+      assert DummyReport in Config.list_reports()
+    end
+
+    test "defaults to empty when unset" do
+      Application.delete_env(:clarity, :clarity_reports)
+
+      assert Config.list_reports() == []
+    end
+  end
 end

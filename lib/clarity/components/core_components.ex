@@ -25,6 +25,11 @@ defmodule Clarity.CoreComponents do
 
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
+
+  attr :mode, :atom,
+    default: :explore,
+    doc: "Which view is active (:explore or :report), for the Explore/Reports toggle"
+
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
 

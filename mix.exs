@@ -89,6 +89,10 @@ defmodule Clarity.MixProject do
         clarity_status_providers: [
           Clarity.Status.SupplyChain
         ],
+        clarity_reports: [
+          Clarity.Report.SupplyChain,
+          Clarity.Report.SecurityPosture
+        ],
         default_perspective_lens: "architect"
       ]
     ]
@@ -104,6 +108,7 @@ defmodule Clarity.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:req, "~> 0.5"},
       {:hex_core, "~> 0.11"},
+      {:contex, "~> 0.5"},
       {:mdex, "~> 0.13"},
       {:lumis, "~> 0.1"},
       {:telemetry, "~> 1.3"},

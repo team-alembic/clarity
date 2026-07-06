@@ -37,6 +37,6 @@ defmodule Clarity.LensSwitcherComponent do
     {:noreply,
      socket
      |> assign(show_dropdown: false)
-     |> push_patch(to: path)}
+     |> push_navigate(to: path)}
   end
 end

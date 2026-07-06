@@ -113,6 +113,22 @@ defmodule Clarity.Router do
           private: private
         )
 
+        # Report routes use the literal "report" segment, so they must precede
+        # the `:lens/:vertex` routes for the literal to win over the param.
+        live(
+          "#{path}/:lens/report",
+          Clarity.ReportLive,
+          :index,
+          private: private
+        )
+
+        live(
+          "#{path}/:lens/report/:report_id",
+          Clarity.ReportLive,
+          :show,
+          private: private
+        )
+
         live(
           "#{path}/:lens/:vertex",
           Clarity.PageLive,
