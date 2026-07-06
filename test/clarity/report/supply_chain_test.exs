@@ -4,6 +4,7 @@ defmodule Clarity.Report.SupplyChainTest do
 
   import Phoenix.LiveViewTest
 
+  alias Clarity.Advisory.Source
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Security
@@ -54,6 +55,24 @@ defmodule Clarity.Report.SupplyChainTest do
       # executive dashboard: KPI cards + a contex SVG chart
       assert html =~ "Dependencies"
       assert html =~ "<svg"
+    end
+
+    test "renders security advisories as a table", %{graph: graph, lens: lens} do
+      :ets.new(Source, [:named_table, :set, :public])
+      advisory = %Clarity.Advisory{id: "GHSA-xyz", package: "vuln", summary: "A nasty hole", versions: ["1.0.0"]}
+      :ets.insert(Source, {{:package, "vuln"}, [advisory]})
+
+      vuln = %Vertex.Application{app: :vuln, description: "Vuln", version: "1.0.0"}
+      Graph.add_vertex(graph, vuln, %Root{})
+      Graph.add_vertex(graph, %Vertex.Advisory{advisory: advisory}, vuln)
+      Graph.add_edge(graph, vuln, %Vertex.Advisory{advisory: advisory}, :advisory)
+
+      html = render_report(graph, lens)
+
+      assert html =~ "Security advisories"
+      assert html =~ "<table"
+      assert html =~ "GHSA-xyz"
+      assert html =~ "A nasty hole"
     end
 
     test "says nothing is flagged when all clear", %{graph: graph, lens: lens} do

@@ -170,40 +170,46 @@ defmodule Clarity.Report.SupplyChain do
         [] ->
           "No dependency has a known security advisory.\n\n"
 
-        _present ->
+        rows ->
           [
             "A published advisory means a known vulnerability affects the installed version; ",
-            "where a maintainer has shipped a fix, updating resolves it.\n\n",
-            Enum.map(advised, &advisory_paragraph/1)
+            "where a maintainer has shipped a fix, updating to it resolves the advisory.\n\n",
+            "| Dependency | Via | Advisory | Fixed in | Summary |\n",
+            "| --- | --- | --- | --- | --- |\n",
+            Enum.flat_map(rows, &advisory_rows/1),
+            "\n"
           ]
       end
     ]
   end
 
-  @spec advisory_paragraph(finding()) :: iodata()
-  defp advisory_paragraph(finding) do
-    ids = Enum.map_join(finding.advisories, ", ", & &1.id)
-    fixed = fixed_versions(finding)
+  @spec advisory_rows(finding()) :: [iodata()]
+  defp advisory_rows(finding) do
+    Enum.map(finding.advisories, fn advisory ->
+      [
+        "| **",
+        finding.app,
+        " ",
+        finding.version,
+        "** | ",
+        via_label(finding.via),
+        " | ",
+        advisory.id,
+        " | ",
+        Advisory.fixed_version(advisory, finding.version) || "—",
+        " | ",
+        cell(advisory.summary),
+        " |\n"
+      ]
+    end)
+  end
 
-    [
-      "**",
-      finding.app,
-      " ",
-      finding.version,
-      "** is affected by ",
-      Integer.to_string(length(finding.advisories)),
-      " ",
-      pluralize(length(finding.advisories), "advisory", "advisories"),
-      " (",
-      ids,
-      "). ",
-      case fixed do
-        [] -> "No fixed version is published yet. "
-        versions -> ["A fix is available — update to #{Enum.join(versions, " or ")}. "]
-      end,
-      summaries(finding.advisories),
-      "\n\n"
-    ]
+  # Free text into a single markdown table cell: escape pipes, collapse whitespace.
+  @spec cell(String.t() | nil) :: String.t()
+  defp cell(text) when text in [nil, ""], do: "—"
+
+  defp cell(text) do
+    text |> String.replace("|", "\\|") |> String.replace(~r/\s+/, " ") |> String.trim()
   end
 
   @spec hygiene_section([finding()]) :: iodata()
@@ -252,22 +258,6 @@ defmodule Clarity.Report.SupplyChain do
   @spec via_label([String.t()]) :: String.t()
   defp via_label([]), do: "direct"
   defp via_label(via), do: Enum.join(via, ", ")
-
-  @spec summaries([Advisory.t()]) :: iodata()
-  defp summaries(advisories) do
-    advisories
-    |> Enum.map(& &1.summary)
-    |> Enum.reject(&(&1 in [nil, ""]))
-    |> Enum.map_join(" ", &String.trim/1)
-  end
-
-  @spec fixed_versions(finding()) :: [String.t()]
-  defp fixed_versions(finding) do
-    finding.advisories
-    |> Enum.map(&Advisory.fixed_version(&1, finding.version))
-    |> Enum.reject(&is_nil/1)
-    |> Enum.uniq()
-  end
 
   @spec findings(Graph.t(), Lens.t()) :: [finding()]
   defp findings(graph, lens) do
