@@ -2,11 +2,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Report.SecurityPosture do
     @moduledoc """
     Security posture report: a written review of how each Ash resource under the
-    security lens is protected — policy enforcement, bypass policies, and
-    sensitive-field exposure.
+    security lens is protected — the domain authorisation mode, which actor can
+    reach which action (solved by Ash's policies), policy enforcement, bypass
+    policies, and sensitive-field exposure.
 
-    The report is prose: it explains, in sentences, which resources carry a
-    concern and why it matters, rather than presenting a table to operate.
+    Prose and tables explain what's going on and why it matters; these are
+    findings, not verdicts.
     """
 
     @behaviour Clarity.Report
@@ -17,27 +18,33 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     alias Ash.Policy.Info, as: PolicyInfo
     alias Ash.Resource.Info
+    alias Clarity.Ash.PolicyAnalysis
     alias Clarity.Graph
     alias Clarity.Perspective.Lens
     alias Clarity.Report.Charts
     alias Clarity.Vertex
+    alias Clarity.Vertex.Ash.Domain
     alias Clarity.Vertex.Ash.Resource
 
     @authorizer Ash.Policy.Authorizer
 
     @typep finding() :: %{
              name: String.t(),
+             domain: String.t(),
              governed?: boolean(),
              bypass?: boolean(),
              exposed: [String.t()],
-             sensitive: non_neg_integer()
+             reach: %{String.t() => [String.t()]},
+             anon_read?: boolean(),
+             anon_verdicts: [PolicyAnalysis.verdict()]
            }
 
     @impl Clarity.Report
     def name, do: "Security posture"
 
     @impl Clarity.Report
-    def description, do: "Policy enforcement and sensitive-field exposure across resources"
+    def description,
+      do: "Authorisation posture, action reachability, and sensitive-field exposure"
 
     @impl Clarity.Report
     def applies?(%Lens{id: "security"}), do: true
@@ -46,15 +53,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Phoenix.LiveComponent
     def update(assigns, socket) do
       findings = findings(assigns.graph)
-
-      domains =
-        assigns.graph |> Graph.vertices({:==, :vertex_type, Vertex.Ash.Domain}) |> length()
+      modes = domain_modes(assigns.graph)
 
       {:ok,
        assign(socket,
          prefix: assigns.prefix,
          lens: assigns.lens,
-         markdown: build_markdown(findings, domains),
+         markdown: build_markdown(findings, modes),
          dashboard: dashboard(findings)
        )}
     end
@@ -71,7 +76,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             <Charts.stat label="Bypass" value={@dashboard.bypass} tone={:info} />
             <Charts.stat label="Exposed fields" value={@dashboard.exposed} tone={:error} />
           </div>
-          <Charts.pie title="Policy coverage" segments={@dashboard.segments} />
+          <div class="flex flex-wrap gap-8">
+            <Charts.pie title="Policy coverage" segments={@dashboard.coverage} />
+            <Charts.pie title="Anonymous reach" segments={@dashboard.reach} />
+          </div>
         </div>
 
         <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
@@ -83,153 +91,177 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defp dashboard(findings) do
       total = length(findings)
       governed = Enum.count(findings, & &1.governed?)
+      verdicts = Enum.flat_map(findings, & &1.anon_verdicts)
+      open = Enum.count(verdicts, &(&1 in [:always, :unrestricted]))
+      conditional = Enum.count(verdicts, &(&1 == :conditional))
 
       %{
         resources: total,
         open: total - governed,
         bypass: Enum.count(findings, & &1.bypass?),
         exposed: Enum.count(findings, &(&1.exposed != [])),
-        segments: [
+        coverage: [
           %{label: "Governed", value: governed, tone: :ok},
           %{label: "Open", value: total - governed, tone: :warning}
+        ],
+        reach: [
+          %{label: "Open to anyone", value: open, tone: :error},
+          %{label: "Conditional", value: conditional, tone: :warning},
+          %{label: "Restricted", value: length(verdicts) - open - conditional, tone: :ok}
         ]
       }
     end
 
-    @spec build_markdown([finding()], non_neg_integer()) :: iodata()
-    defp build_markdown(findings, domains) do
-      [
-        "This report reviews how each Ash resource is protected. It surfaces facts that ",
-        "aren't obvious from any single file: whether a resource is governed by policies, ",
-        "whether a bypass can skip them, and whether sensitive fields are exposed. These are ",
-        "*findings, not verdicts* — Ash has legitimate reasons for each pattern, so you decide ",
-        "what warrants attention.\n\n",
-        overview(findings, domains),
-        enforcement_section(findings),
-        bypass_section(findings),
-        exposure_section(findings)
-      ]
-    end
-
-    @spec overview([finding()], non_neg_integer()) :: iodata()
-    defp overview([], _domains) do
+    @spec build_markdown([finding()], [{String.t(), atom()}]) :: iodata()
+    defp build_markdown([], _modes) do
       "No Ash resources are visible under this lens, so there is no authorisation posture to report.\n\n"
     end
 
-    defp overview(findings, domains) do
+    defp build_markdown(findings, modes) do
+      [
+        "This report reviews how each Ash resource is protected. It surfaces facts that ",
+        "aren't obvious from any single file: the domain authorisation mode, which actor can ",
+        "reach which action, whether a bypass can skip policies, and whether sensitive fields ",
+        "are exposed. These are *findings, not verdicts* — you decide what warrants attention.\n\n",
+        overview(findings),
+        authorisation_mode_section(modes),
+        highest_risk_section(findings),
+        reachability_section(findings),
+        resources_section(findings)
+      ]
+    end
+
+    @spec overview([finding()]) :: iodata()
+    defp overview(findings) do
       total = length(findings)
       governed = Enum.count(findings, & &1.governed?)
+      bypass = Enum.count(findings, & &1.bypass?)
+      exposed = Enum.count(findings, &(&1.exposed != []))
 
       [
         "Clarity can see ",
         Integer.to_string(total),
         pluralize(total, " resource", " resources"),
-        if(domains > 0,
-          do: [" across ", Integer.to_string(domains), pluralize(domains, " domain", " domains")],
-          else: []
-        ),
         ". ",
         Integer.to_string(governed),
         " of them ",
         pluralize(governed, "enforces", "enforce"),
         " policies; the rest are open. ",
-        Integer.to_string(Enum.count(findings, & &1.bypass?)),
-        " carry a bypass, and ",
-        Integer.to_string(Enum.count(findings, &(&1.exposed != []))),
-        " expose sensitive fields.\n\n"
-      ]
-    end
-
-    @spec enforcement_section([finding()]) :: iodata()
-    defp enforcement_section([]), do: []
-
-    defp enforcement_section(findings) do
-      open = Enum.filter(findings, &(not &1.governed?))
-
-      [
-        "### Policy enforcement\n\n",
-        case open do
-          [] ->
-            "Every resource is governed by a policy authorizer, so Ash policies apply to each.\n\n"
-
-          _present ->
-            [
-              names(open),
-              " ",
-              pluralize(length(open), "has", "have"),
-              " no policy authorizer. Ash policies therefore place no restriction on ",
-              pluralize(length(open), "it", "them"),
-              " — every action is allowed, subject to the domain's authorisation mode. If ",
-              pluralize(length(open), "it exposes", "they expose"),
-              " or mutate anything sensitive, add policies.\n\n"
-            ]
-        end
-      ]
-    end
-
-    @spec bypass_section([finding()]) :: iodata()
-    defp bypass_section([]), do: []
-
-    defp bypass_section(findings) do
-      bypass = Enum.filter(findings, & &1.bypass?)
-
-      [
-        "### Bypass policies\n\n",
-        case bypass do
-          [] ->
-            "No resource uses a bypass policy.\n\n"
-
-          _present ->
-            [
-              names(bypass),
-              " ",
-              pluralize(length(bypass), "carries", "carry"),
-              " a bypass policy. A passing bypass short-circuits every other policy for the ",
-              "request — usually an admin escape hatch — so confirm the bypass condition is as ",
-              "tight as you intend.\n\n"
-            ]
-        end
-      ]
-    end
-
-    @spec exposure_section([finding()]) :: iodata()
-    defp exposure_section([]), do: []
-
-    defp exposure_section(findings) do
-      exposed = Enum.filter(findings, &(&1.exposed != []))
-
-      [
-        "### Sensitive field exposure\n\n",
-        case exposed do
-          [] ->
-            "No sensitive attribute is publicly exposed without a field policy.\n\n"
-
-          _present ->
-            [
-              "A sensitive attribute that is also public, with no field policy covering it, is ",
-              "visible wherever the resource is rendered — APIs, serialised responses, admin UIs.\n\n",
-              Enum.map(exposed, &exposure_paragraph/1)
-            ]
-        end
-      ]
-    end
-
-    @spec exposure_paragraph(finding()) :: iodata()
-    defp exposure_paragraph(finding) do
-      [
-        "**",
-        finding.name,
-        "** exposes ",
-        Enum.map_join(finding.exposed, ", ", &"`#{&1}`"),
+        Integer.to_string(bypass),
+        pluralize(bypass, " carries a bypass", " carry a bypass"),
+        ", and ",
+        Integer.to_string(exposed),
+        pluralize(exposed, " exposes sensitive fields", " expose sensitive fields"),
         ".\n\n"
       ]
     end
 
-    @spec names([finding()]) :: iodata()
-    defp names(findings) do
-      findings
-      |> Enum.map(&"**#{&1.name}**")
-      |> to_sentence()
+    @spec authorisation_mode_section([{String.t(), atom()}]) :: iodata()
+    defp authorisation_mode_section(modes) do
+      lax = for {name, :when_requested} <- modes, do: name
+
+      [
+        "### Authorisation mode\n\n",
+        case lax do
+          [] ->
+            "Every domain enforces policies by default.\n\n"
+
+          names ->
+            [
+              "⚠ ",
+              to_sentence(Enum.map(names, &"**#{&1}**")),
+              " ",
+              pluralize(length(names), "runs", "run"),
+              " policies **only** when a caller passes `authorize?: true` — any call that ",
+              "doesn't is unrestricted. This is the single biggest posture lever; confirm it ",
+              "is intended.\n\n"
+            ]
+        end
+      ]
+    end
+
+    @spec highest_risk_section([finding()]) :: iodata()
+    defp highest_risk_section(findings) do
+      at_risk = Enum.filter(findings, &(&1.exposed != [] and &1.anon_read?))
+
+      case at_risk do
+        [] ->
+          []
+
+        rows ->
+          [
+            "### Highest risk\n\n",
+            "These resources expose sensitive fields **and** their read is reachable without ",
+            "authentication — sensitive data may be readable by anyone:\n\n",
+            Enum.map(rows, fn f ->
+              ["- **", f.name, "** exposes ", Enum.map_join(f.exposed, ", ", &"`#{&1}`"), "\n"]
+            end),
+            "\n"
+          ]
+      end
+    end
+
+    @spec reachability_section([finding()]) :: iodata()
+    defp reachability_section(findings) do
+      labels = findings |> Enum.flat_map(&Map.keys(&1.reach)) |> Enum.uniq() |> Enum.sort()
+
+      [
+        "### Action reachability\n\n",
+        "Which actions each actor can reach, solved by Ash's policies. *Conditional* checks ",
+        "(runtime or row-level) are treated as reachable. An empty cell means the actor cannot ",
+        "reach any action.\n\n",
+        "| Resource | ",
+        Enum.join(labels, " | "),
+        " |\n| --- | ",
+        Enum.map_intersperse(labels, " | ", fn _ -> "---" end),
+        " |\n",
+        Enum.map(findings, &reachability_row(&1, labels)),
+        "\n"
+      ]
+    end
+
+    @spec reachability_row(finding(), [String.t()]) :: iodata()
+    defp reachability_row(finding, labels) do
+      cells =
+        Enum.map_intersperse(labels, " | ", fn label ->
+          case Map.get(finding.reach, label, []) do
+            [] -> "—"
+            actions -> Enum.join(actions, ", ")
+          end
+        end)
+
+      ["| **", finding.name, "** | ", cells, " |\n"]
+    end
+
+    @spec resources_section([finding()]) :: iodata()
+    defp resources_section(findings) do
+      [
+        "### Resources\n\n",
+        "| Resource | Domain | Enforcement | Bypass | Sensitive exposed |\n",
+        "| --- | --- | --- | --- | --- |\n",
+        Enum.map(findings, &resource_row/1),
+        "\n"
+      ]
+    end
+
+    @spec resource_row(finding()) :: iodata()
+    defp resource_row(finding) do
+      [
+        "| **",
+        finding.name,
+        "** | ",
+        finding.domain,
+        " | ",
+        if(finding.governed?, do: "Governed", else: "⚠ Open"),
+        " | ",
+        if(finding.bypass?, do: "⚠ Bypass", else: "—"),
+        " | ",
+        case finding.exposed do
+          [] -> "—"
+          attrs -> Enum.map_join(attrs, ", ", &"`#{&1}`")
+        end,
+        " |\n"
+      ]
     end
 
     @spec to_sentence([String.t()]) :: String.t()
@@ -251,16 +283,60 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec finding(Resource.t()) :: finding()
     defp finding(%Resource{resource: resource} = vertex) do
+      actions = Info.actions(resource)
       sensitive = Enum.filter(Info.attributes(resource), & &1.sensitive?)
+      anon_verdicts = Enum.map(actions, &PolicyAnalysis.action_verdict(resource, &1, nil))
 
       %{
         name: Vertex.name(vertex),
+        domain: domain_name(resource),
         governed?: @authorizer in Info.authorizers(resource),
         bypass?: Enum.any?(PolicyInfo.policies(resource), & &1.bypass?),
         exposed:
           sensitive |> Enum.filter(&exposed?(resource, &1)) |> Enum.map(&to_string(&1.name)),
-        sensitive: length(sensitive)
+        reach: reach(resource, actions),
+        anon_read?: anon_read?(resource, actions),
+        anon_verdicts: anon_verdicts
       }
+    end
+
+    @spec reach(Ash.Resource.t(), [term()]) :: %{String.t() => [String.t()]}
+    defp reach(resource, actions) do
+      resource
+      |> PolicyAnalysis.actor_profiles()
+      |> Map.new(fn {label, actor} ->
+        reachable =
+          actions
+          |> Enum.filter(&(PolicyAnalysis.action_verdict(resource, &1, actor) != :never))
+          |> Enum.map(&to_string(&1.name))
+
+        {label, reachable}
+      end)
+    end
+
+    @spec anon_read?(Ash.Resource.t(), [term()]) :: boolean()
+    defp anon_read?(resource, actions) do
+      actions
+      |> Enum.filter(&(&1.type == :read))
+      |> Enum.any?(&(PolicyAnalysis.action_verdict(resource, &1, nil) != :never))
+    end
+
+    @spec domain_modes(Graph.t()) :: [{String.t(), atom()}]
+    defp domain_modes(graph) do
+      graph
+      |> Graph.vertices({:==, :vertex_type, Domain})
+      |> Enum.map(fn %Domain{domain: domain} ->
+        {inspect(domain), Ash.Domain.Info.authorize(domain)}
+      end)
+      |> Enum.sort()
+    end
+
+    @spec domain_name(Ash.Resource.t()) :: String.t()
+    defp domain_name(resource) do
+      case Info.domain(resource) do
+        nil -> "—"
+        domain -> inspect(domain)
+      end
     end
 
     @spec exposed?(Ash.Resource.t(), Ash.Resource.Attribute.t()) :: boolean()
