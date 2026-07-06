@@ -32,12 +32,14 @@ defmodule Clarity.Report.SecurityPostureTest do
 
       assert html =~ "Security posture"
       assert html =~ "User"
-      # narrative sections, not an interactive table
-      assert html =~ "Sensitive field exposure"
+      # narrative + tables: reachability and a resources roll-up
+      assert html =~ "Action reachability"
+      assert html =~ "Resources"
       assert html =~ "date_of_birth"
       refute html =~ ~s(phx-click)
-      # executive dashboard: KPI cards + a contex SVG chart
+      # executive dashboard: KPI cards + two contex SVG charts
       assert html =~ "Policy coverage"
+      assert html =~ "Anonymous reach"
       assert html =~ "<svg"
     end
 
