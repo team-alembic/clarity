@@ -174,6 +174,9 @@ For the end-to-end routes, drive `Clarity.ReportLive` with
   hygiene (retired/outdated) from the supply-chain status data.
 - `lib/clarity/report/security_posture.ex` — narrates policy enforcement, bypass
   policies, and sensitive-field exposure across resources (Ash-guarded).
+- `lib/clarity/report/ontology.ex` — rolls up the domain vocabulary: entities
+  and their terms (attributes, calculations, aggregates, relationships), plus
+  documentation coverage as a worklist of undocumented terms (Ash-guarded).
 
 ## Next Steps
 

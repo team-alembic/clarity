@@ -3,11 +3,11 @@ defmodule Clarity.ReportLiveTest do
 
   describe "ReportLive" do
     test "the reports index opens on the first report", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/reports/security-posture"}}} = live(conn, "/reports")
+      assert {:error, {:live_redirect, %{to: "/reports/ontology"}}} = live(conn, "/reports")
     end
 
     test "an unknown report id patches to the first report", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/reports/security-posture"}}} =
+      assert {:error, {:live_redirect, %{to: "/reports/ontology"}}} =
                live(conn, "/reports/nope")
     end
 
@@ -25,6 +25,15 @@ defmodule Clarity.ReportLiveTest do
       assert html =~ "Dependency health"
       assert has_element?(view, ".title h1", "Supply chain security")
       assert has_element?(view, "#reports-tree a[aria-current=page]", "Supply chain security")
+    end
+
+    test "renders the ontology report under its name, in the Architecture category", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/reports/ontology")
+
+      # The test graph has no Ash resources.
+      assert html =~ "found any Ash resources"
+      assert has_element?(view, ".title h1", "Ontology")
+      assert has_element?(view, "#report-category-architecture a[aria-current=page]", "Ontology")
     end
 
     test "renders the security posture report once its analysis finishes", %{conn: conn} do

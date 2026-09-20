@@ -90,6 +90,7 @@ defmodule Clarity.MixProject do
           Clarity.Status.SupplyChain
         ],
         clarity_reports: [
+          Clarity.Report.Ontology,
           Clarity.Report.SupplyChain,
           Clarity.Report.SecurityPosture
         ],
