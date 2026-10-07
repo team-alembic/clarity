@@ -134,7 +134,6 @@ defmodule Clarity.MixProject do
       {:bandit, "~> 1.0", only: [:dev, :test]},
       {:floki, ">= 0.30.0", only: [:test]},
       {:lazy_html, ">= 0.1.0", only: [:test]},
-      {:mix_audit, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:sobelow, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.18", only: [:dev, :test]},
