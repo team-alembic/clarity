@@ -199,7 +199,7 @@ defmodule Clarity.TreeComponent do
       aria-current={@vertex == @active_vertex && "page"}
       {Tooltip.attrs(@vertex)}
       class={[
-        "flex min-w-0 items-center gap-1 px-1.5 py-px rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
+        "flex min-w-0 items-center gap-1 px-1 py-px rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
         @vertex == @active_vertex &&
           "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
       ]}

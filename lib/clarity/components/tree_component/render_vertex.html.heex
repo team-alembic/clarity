@@ -15,7 +15,7 @@
     >
       <summary class="flex items-center cursor-pointer text-base-light-600 dark:text-base-dark-400">
         <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
-        <span class="min-w-0 truncate px-1.5 py-px">{group.label}</span>
+        <span class="min-w-0 truncate px-1 py-px">{group.label}</span>
       </summary>
       <.group_items :if={group.open?} group={group} class="tree-children" {tree_assigns(assigns)} />
     </details>

@@ -37,7 +37,7 @@
         </:failed>
 
         <%= if @vertex do %>
-          <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 p-4 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
+          <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 px-2 py-3 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
             <.live_component
               module={Clarity.TreeComponent}
               id="navigation-tree"
