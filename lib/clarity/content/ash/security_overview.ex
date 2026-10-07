@@ -169,7 +169,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         "## Action Reachability\n\n",
         "Whether each actor can reach each action, solved by Ash's SAT solver. " <>
           "**Conditional** depends on runtime/row checks; **Never** means not authorised " <>
-          "(e.g. admin/bypass only); **⚠ Always** means open regardless of actor.\n\n",
+          "(e.g. admin/bypass only); **⚠ Always** means open regardless of actor; " <>
+          "**Unknown** means the action's own code failed on empty input, so it couldn't be analysed.\n\n",
         "| Action | Type | ",
         Enum.intersperse(labels, " | "),
         " |\n| --- | --- | ",
@@ -206,6 +207,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defp verdict_label(:always), do: "⚠ Always"
     defp verdict_label(:conditional), do: "Conditional"
     defp verdict_label(:never), do: "Never"
+    defp verdict_label(:unknown), do: "Unknown"
 
     @spec field_exposure_section(Ash.Resource.t()) :: iodata()
     defp field_exposure_section(resource) do

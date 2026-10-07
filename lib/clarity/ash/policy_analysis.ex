@@ -42,7 +42,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @authorizer Authorizer
 
     @type coverage() :: :applies | :excluded | :unknown
-    @type verdict() :: :unrestricted | :always | :conditional | :never
+    @type verdict() :: :unrestricted | :always | :conditional | :never | :unknown
     @type actor() :: struct() | map() | module() | nil
 
     @doc """
@@ -82,7 +82,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     Returns `:unrestricted` when the resource has no policy authorizer,
     `:always` when authorisation is a tautology (open to any actor),
     `:never` when no scenario authorises `actor`, and `:conditional` when it
-    depends on runtime checks (e.g. row filters).
+    depends on runtime checks (e.g. row filters). Returns `:unknown` when the
+    action can't be analysed: building its query, changeset or input from empty
+    params runs its own preparations and changes, which may raise.
     """
     @spec action_verdict(Ash.Resource.t(), Actions.action(), actor()) :: verdict()
     def action_verdict(resource, action, actor) do
@@ -117,8 +119,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec solve(Ash.Resource.t(), Actions.action(), actor()) :: verdict()
     defp solve(resource, action, actor) do
-      subject = subject(resource, action, actor)
+      case build_subject(resource, action, actor) do
+        {:ok, subject} -> solve(resource, action, actor, subject)
+        :error -> :unknown
+      end
+    end
 
+    @spec solve(
+            Ash.Resource.t(),
+            Actions.action(),
+            actor(),
+            Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
+          ) :: verdict()
+    defp solve(resource, action, actor, subject) do
       authorizer =
         Checker.strict_check_all_facts(%Authorizer{
           resource: resource,
@@ -192,6 +205,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec ash_resource?(module()) :: boolean()
     defp ash_resource?(module), do: Code.ensure_loaded?(module) and Info.resource?(module)
+
+    @spec build_subject(Ash.Resource.t(), Actions.action(), actor()) ::
+            {:ok, Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()} | :error
+    defp build_subject(resource, action, actor) do
+      {:ok, subject(resource, action, actor)}
+    rescue
+      _exception -> :error
+    end
 
     @spec subject(Ash.Resource.t(), Actions.action(), actor()) ::
             Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()

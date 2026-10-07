@@ -107,7 +107,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         reach: [
           %{label: "Open to anyone", value: open, tone: :error},
           %{label: "Conditional", value: conditional, tone: :warning},
-          %{label: "Restricted", value: length(verdicts) - open - conditional, tone: :ok}
+          %{label: "Restricted", value: Enum.count(verdicts, &(&1 == :never)), tone: :ok},
+          %{label: "Not analysed", value: Enum.count(verdicts, &(&1 == :unknown)), tone: :neutral}
         ]
       }
     end
