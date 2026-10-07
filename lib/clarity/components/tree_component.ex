@@ -2,8 +2,10 @@ defmodule Clarity.TreeComponent do
   @moduledoc """
   A lazy-loading navigation tree component that only renders visible nodes.
 
-  This component maintains user-opened branches across graph updates and only
-  renders nodes that are visible (root, breadcrumb path, and user-opened branches).
+  A node is open when it is on the breadcrumb path or the user expanded it,
+  unless the user has collapsed it since the last navigation. The parent owns
+  both sets so they survive graph updates, and clears the collapsed set when
+  the path changes, revealing the newly current vertex.
   """
 
   use Clarity.Web, :live_component
@@ -14,6 +16,7 @@ defmodule Clarity.TreeComponent do
   alias Clarity.Tooltip
   alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
+  alias Phoenix.LiveView.Socket
 
   embed_templates "tree_component/*"
 
@@ -33,20 +36,26 @@ defmodule Clarity.TreeComponent do
   end
 
   @impl Phoenix.LiveComponent
-  def handle_event("toggle", %{"vertex_id" => vertex_id}, socket) do
-    opened =
-      if MapSet.member?(socket.assigns.opened, vertex_id) do
-        MapSet.delete(socket.assigns.opened, vertex_id)
-      else
-        MapSet.put(socket.assigns.opened, vertex_id)
-      end
+  def handle_event("toggle", %{"vertex_id" => vertex_id, "open" => true}, socket) do
+    %{opened: opened, collapsed: collapsed} = socket.assigns
 
-    visible_ids = compute_visible_ids(%{socket.assigns | opened: opened})
+    set_tree_state(socket, MapSet.put(opened, vertex_id), MapSet.delete(collapsed, vertex_id))
+  end
 
-    # Notify parent to persist the opened state
-    send(self(), {:update_tree_opened, opened})
+  def handle_event("toggle", %{"vertex_id" => vertex_id, "open" => false}, socket) do
+    %{opened: opened, collapsed: collapsed} = socket.assigns
 
-    {:noreply, assign(socket, opened: opened, visible_ids: visible_ids)}
+    set_tree_state(socket, MapSet.delete(opened, vertex_id), MapSet.put(collapsed, vertex_id))
+  end
+
+  @spec set_tree_state(Socket.t(), MapSet.t(), MapSet.t()) :: {:noreply, Socket.t()}
+  defp set_tree_state(socket, opened, collapsed) do
+    # Notify parent to persist the tree state
+    send(self(), {:update_tree_state, opened, collapsed})
+
+    socket = assign(socket, opened: opened, collapsed: collapsed)
+
+    {:noreply, assign(socket, visible_ids: compute_visible_ids(socket.assigns))}
   end
 
   attr :graph, :any, required: true
@@ -83,7 +92,7 @@ defmodule Clarity.TreeComponent do
     <%= if @entry do %>
       <span
         class={[
-          "inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-full align-middle",
+          "inline-flex shrink-0 items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-full align-middle",
           "text-xs font-medium leading-none ring-1 ring-inset",
           badge_classes(@entry.severity)
         ]}
@@ -130,7 +139,9 @@ defmodule Clarity.TreeComponent do
   defp compute_visible_ids(assigns) do
     breadcrumb_ids = MapSet.new(assigns.breadcrumbs, &Vertex.id/1)
 
-    MapSet.union(breadcrumb_ids, assigns.opened)
+    breadcrumb_ids
+    |> MapSet.union(assigns.opened)
+    |> MapSet.difference(assigns.collapsed)
   end
 
   @spec has_children?(Graph.t(), Vertex.t()) :: boolean()

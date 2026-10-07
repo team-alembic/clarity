@@ -301,4 +301,101 @@ defmodule Clarity.Pages.PageLiveTest do
       assert tabs_html =~ "text-primary-light" or tabs_html =~ "dark:text-primary-dark"
     end
   end
+
+  describe "PageLive navigation tree" do
+    @clarity_node "details[id='tree-node-application:clarity']"
+
+    test "navigating to a vertex opens the tree down to it", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+
+      refute has_element?(view, "#{@clarity_node}[open]")
+
+      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_node}[open]")
+    end
+
+    test "a node on the path to the current vertex can be collapsed", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      toggle_clarity(view, false)
+
+      refute has_element?(view, "#{@clarity_node}[open]")
+    end
+
+    test "a collapsed node stays collapsed until the user navigates elsewhere", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+      toggle_clarity(view, false)
+
+      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      refute has_element?(view, "#{@clarity_node}[open]")
+
+      render_patch(view, "/debug/root/graph")
+      render_async(view)
+      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_node}[open]")
+    end
+
+    test "a node opened only by navigation closes when navigating elsewhere", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      render_patch(view, "/debug/root/graph")
+      render_async(view)
+
+      refute has_element?(view, "#{@clarity_node}[open]")
+    end
+
+    test "a node the user expanded stays open when navigating elsewhere", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+      toggle_clarity(view, true)
+
+      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+      render_patch(view, "/debug/root/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_node}[open]")
+    end
+
+    test "toggling sets the state the user asked for", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+
+      toggle_clarity(view, true)
+      toggle_clarity(view, true)
+
+      assert has_element?(view, "#{@clarity_node}[open]")
+
+      toggle_clarity(view, false)
+      toggle_clarity(view, false)
+
+      refute has_element?(view, "#{@clarity_node}[open]")
+    end
+
+    test "marks the current vertex's label so it can toggle in place", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, ".navigation a[aria-current='page'][data-tooltip-title='clarity']")
+      assert has_element?(view, ".navigation a[data-tooltip-title='Demo.Accounts.Domain']")
+      refute has_element?(view, ".navigation a[aria-current][data-tooltip-title='Demo.Accounts.Domain']")
+    end
+
+    @spec toggle_clarity(%Phoenix.LiveViewTest.View{}, boolean()) :: String.t()
+    defp toggle_clarity(view, open) do
+      view
+      |> element(@clarity_node)
+      |> render_hook("toggle", %{"vertex_id" => "application:clarity", "open" => open})
+    end
+  end
 end

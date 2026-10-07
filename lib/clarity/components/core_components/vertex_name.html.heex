@@ -1,1 +1,2 @@
-<span>{Vertex.name(@vertex)}</span>
+<%!-- Unformatted: whitespace between segments would render as spaces --%>
+<span phx-no-format><%= for {segment, index} <- Enum.with_index(name_segments(Vertex.name(@vertex))) do %><wbr :if={index > 0} />{segment}<% end %></span>

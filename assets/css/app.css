@@ -294,6 +294,20 @@
   @apply inline-block mr-1 mb-0.5 rounded px-1 bg-base-light-100 dark:bg-base-dark-700;
 }
 
+/* Navigation tree: a chevron stands in for the native disclosure marker and
+   turns down while its own node (not an ancestor) is open. */
+.tree-node > summary {
+  list-style: none;
+}
+
+.tree-node > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tree-node[open] > summary > .tree-chevron {
+  transform: rotate(90deg);
+}
+
 /* Clarity Splash Screen Animation */
 @keyframes draw-frame {
   from {

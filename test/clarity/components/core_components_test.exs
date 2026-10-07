@@ -152,4 +152,18 @@ defmodule Clarity.CoreComponentsTest do
       end
     end
   end
+
+  describe "vertex_name/1" do
+    test "lets a dotted name wrap between its segments, not mid-word" do
+      html =
+        render_component(&CoreComponents.vertex_name/1,
+          vertex: %Vertex.Ash.Domain{domain: Demo.Accounts.Domain}
+        )
+
+      doc = LazyHTML.from_fragment(html)
+
+      assert LazyHTML.text(doc) == "Demo.Accounts.Domain"
+      assert doc |> LazyHTML.query("span > wbr") |> Enum.count() == 2
+    end
+  end
 end

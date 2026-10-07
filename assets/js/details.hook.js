@@ -1,35 +1,38 @@
+// Expands and collapses a <details> node in the navigation tree.
+//
+// The server owns each node's open state, so the hook reports the state the
+// user asked for rather than a bare "toggle". It acts on clicks, not on the
+// `toggle` event, because `toggle` also fires when a LiveView patch opens or
+// closes the node, and echoing those back would act on nodes nobody clicked.
 export default {
   mounted() {
-    // Track user interaction to distinguish from DOM patches
-    this.userInteracted = false;
+    this.el.addEventListener("click", (event) => {
+      // Nested nodes sit inside this element; their clicks are theirs.
+      const summary = event.target.closest("summary");
+      if (summary?.parentElement !== this.el) return;
 
-    this.el.addEventListener('click', (event) => {
-      // Only count clicks on summary as user interaction
-      if (event.target.closest('summary')) {
-        this.userInteracted = true;
-      }
-    }, { capture: true });
+      // A label link navigates, and the server opens the node it lands on.
+      // The current node's label has nowhere to go, so it toggles in place
+      // like the chevron.
+      const link = event.target.closest("a");
+      if (link && link.getAttribute("aria-current") !== "page") return;
 
-    this.el.addEventListener('toggle', (event) => {
-      if(this.el.getAttribute('phx-hook-loading')) return;
+      event.preventDefault();
+      if (link) event.stopPropagation();
+      this.el.open = !this.el.open;
 
-      // Only send event for user-initiated toggles, not DOM patches
-      if (!this.userInteracted) return;
-      this.userInteracted = false;
-
-      const eventName = this.el.getAttribute('phx-toggle');
+      const eventName = this.el.getAttribute("phx-toggle");
       if (!eventName) return;
 
-      // Extract all phx-value-* attributes
-      const values = {};
+      const values = { open: this.el.open };
       for (const attr of this.el.attributes) {
-        if (attr.name.startsWith('phx-value-')) {
-          const key = attr.name.replace('phx-value-', '').replace(/-/g, '_');
+        if (attr.name.startsWith("phx-value-")) {
+          const key = attr.name.replace("phx-value-", "").replace(/-/g, "_");
           values[key] = attr.value;
         }
       }
 
       this.pushEventTo(this.el, eventName, values);
     });
-  }
+  },
 };

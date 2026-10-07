@@ -31,6 +31,7 @@ defmodule Clarity.PageLive do
         show_navigation: false,
         show_raw_drawer: false,
         tree_opened: MapSet.new(),
+        tree_collapsed: MapSet.new(),
         data: AsyncResult.loading(),
         page_title: "Loading...",
         shown_vertex_types: [],
@@ -198,13 +199,31 @@ defmodule Clarity.PageLive do
           Status.Index.vertex_classes(socket.assigns.clarity.graph, vertex, socket.assigns.lens)
 
         {:ok,
-         assign(socket,
+         socket
+         |> reveal_tree_path(breadcrumbs)
+         |> assign(
            vertex: vertex,
            contents: contents,
            content: content,
            breadcrumbs: breadcrumbs,
            vertex_status_classes: vertex_status_classes
          )}
+    end
+  end
+
+  # The tree opens the path to the current vertex. Collapses the user made along
+  # the old path are dropped when the path changes, so navigating always reveals
+  # the new vertex; re-rendering the same path (a tab switch, a graph refresh)
+  # keeps them.
+  @spec reveal_tree_path(Socket.t(), [Vertex.t()]) :: Socket.t()
+  defp reveal_tree_path(socket, breadcrumbs) do
+    path = Enum.map(breadcrumbs, &Vertex.id/1)
+    previous_path = socket.assigns |> Map.get(:breadcrumbs, []) |> Enum.map(&Vertex.id/1)
+
+    if path == previous_path do
+      socket
+    else
+      assign(socket, tree_collapsed: MapSet.new())
     end
   end
 
@@ -359,8 +378,8 @@ defmodule Clarity.PageLive do
     {:noreply, socket |> assign(shown_vertex_types: shown_vertex_types) |> load_data_async()}
   end
 
-  def handle_info({:update_tree_opened, opened}, socket) do
-    {:noreply, assign(socket, tree_opened: opened)}
+  def handle_info({:update_tree_state, opened, collapsed}, socket) do
+    {:noreply, assign(socket, tree_opened: opened, tree_collapsed: collapsed)}
   end
 
   @spec update_page_title(Socket.t()) :: Socket.t()

@@ -121,6 +121,15 @@ defmodule Clarity.IconComponents do
   def icon_chevron_down(assigns)
 
   @doc """
+  Renders a chevron right icon (disclosure arrow).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_chevron_right(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_chevron_right(assigns)
+
+  @doc """
   Renders a check icon (checkmark).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"

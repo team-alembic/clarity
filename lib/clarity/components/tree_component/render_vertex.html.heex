@@ -3,7 +3,7 @@
     <span class="cursor-pointer select-none text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark px-2 py-1 rounded-xs group-open:bg-base-light-200 dark:group-open:bg-base-dark-700 transition-colors">
       {label}
     </span>
-    <ul class="border-l border-base-light-300 dark:border-base-dark-700 pl-2 space-y-1">
+    <ul class="border-l border-base-light-300 dark:border-base-dark-700 pl-2">
       <li :for={child <- children}>
         <.render_node
           graph={@graph}
