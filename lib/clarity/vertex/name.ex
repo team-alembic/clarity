@@ -37,20 +37,61 @@ defmodule Clarity.Vertex.Name do
   """
   @spec display(Vertex.t(), style()) :: String.t()
   def display(vertex, :short) do
-    canonical = Vertex.name(vertex)
-
-    case ModuleProvider.module(vertex) do
-      module when is_atom(module) and not is_nil(module) ->
-        if canonical == inspect(module),
-          do: short_module_name(module),
-          else: canonical
-
-      _ ->
-        canonical
+    case module_segments(vertex) do
+      nil -> Vertex.name(vertex)
+      segments -> List.last(segments)
     end
   end
 
   def display(vertex, _style), do: Vertex.name(vertex)
+
+  @doc """
+  Render sibling `vertices` using the requested `style`, in order.
+
+  As `display/2`, except that in the `:short` style module names that would
+  read the same are told apart: each takes the fewest trailing segments of
+  its module that no clashing sibling ends in, so `Demo.Billing.Domain` and
+  `Demo.Org.Domain` read `Billing.Domain` and `Org.Domain`.
+  """
+  @spec display_all([Vertex.t()], style()) :: [String.t()]
+  def display_all(vertices, :short) do
+    segments = Enum.map(vertices, &module_segments/1)
+    clashes = segments |> Enum.reject(&is_nil/1) |> Enum.group_by(&List.last/1)
+
+    Enum.zip_with(vertices, segments, fn
+      vertex, nil ->
+        Vertex.name(vertex)
+
+      _vertex, segments ->
+        segments |> unique_suffix(clashes[List.last(segments)]) |> Enum.join(".")
+    end)
+  end
+
+  def display_all(vertices, style), do: Enum.map(vertices, &display(&1, style))
+
+  # The segments of the vertex's module, when the vertex is named after it.
+  @spec module_segments(Vertex.t()) :: [String.t()] | nil
+  defp module_segments(vertex) do
+    with module when is_atom(module) and not is_nil(module) <- ModuleProvider.module(vertex),
+         true <- Vertex.name(vertex) == inspect(module),
+         "Elixir." <> _ <- Atom.to_string(module) do
+      Module.split(module)
+    else
+      _ -> nil
+    end
+  end
+
+  # The fewest trailing segments that no other module in `clash` ends in; a
+  # module that ends another keeps all of its segments.
+  @spec unique_suffix([String.t()], [[String.t()]]) :: [String.t()]
+  defp unique_suffix(segments, clash) do
+    others = List.delete(clash, segments)
+
+    Enum.find_value(1..length(segments), segments, fn count ->
+      suffix = Enum.take(segments, -count)
+      if Enum.all?(others, &(Enum.take(&1, -count) != suffix)), do: suffix
+    end)
+  end
 
   @doc """
   Last segment of a module name. Falls back to `inspect/1` for atoms that

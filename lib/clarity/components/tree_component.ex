@@ -23,6 +23,7 @@ defmodule Clarity.TreeComponent do
   alias Clarity.Status.Index
   alias Clarity.Tooltip
   alias Clarity.Vertex
+  alias Clarity.Vertex.Name
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
@@ -129,6 +130,7 @@ defmodule Clarity.TreeComponent do
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
   attr :name_style, :atom, required: true
+  attr :name, :string, required: true, doc: "The vertex's name among its siblings"
   attr :any_sibling_has_children, :boolean, required: true
   attr :status_index, :any, required: true
 
@@ -139,7 +141,7 @@ defmodule Clarity.TreeComponent do
   attr :active_vertex, :any, required: true
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
-  attr :name_style, :atom, required: true
+  attr :name, :string, required: true
 
   # A vertex's label: its type icon, in its colour, then its name.
   @spec node_link(map()) :: Rendered.t()
@@ -160,7 +162,7 @@ defmodule Clarity.TreeComponent do
       <svg class="tree-icon" data-tone={@type_icon.tone} aria-hidden="true">
         <use href={"#clarity-icon-#{@type_icon.icon}"} />
       </svg>
-      <.vertex_name vertex={@vertex} name_style={@name_style} />
+      <.vertex_name vertex={@vertex} name={@name} />
     </.link>
     """
   end
@@ -226,15 +228,16 @@ defmodule Clarity.TreeComponent do
     |> MapSet.difference(assigns.collapsed)
   end
 
-  @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t()) :: [map()]
-  defp navigation_groups(graph, vertex, collapsed) do
+  # Children are named together, so siblings whose names clash are told apart.
+  @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t(), Name.style()) :: [map()]
+  defp navigation_groups(graph, vertex, collapsed, name_style) do
     for {label, children} <- Graph.navigation_children(graph, vertex), label != :content do
       id = group_id(vertex, label)
 
       %{
         id: id,
         label: label,
-        children: children,
+        children: Enum.zip(children, Name.display_all(children, name_style)),
         open?: not MapSet.member?(collapsed, id),
         any_has_children?: Enum.any?(children, &has_children?(graph, &1))
       }

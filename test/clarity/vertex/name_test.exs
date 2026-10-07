@@ -56,6 +56,49 @@ defmodule Clarity.Vertex.NameTest do
     end
   end
 
+  describe inspect(&Name.display_all/2) do
+    @spec modules([module()]) :: [ModuleVertex.t()]
+    defp modules(names), do: Enum.map(names, &%ModuleVertex{module: &1})
+
+    test "uses the short name when siblings' short names differ" do
+      assert Name.display_all(modules([Demo.Accounts, Demo.Billing.Plan]), :short) ==
+               ["Accounts", "Plan"]
+    end
+
+    test "adds the module before a short name that clashes, until it is unique" do
+      siblings = modules([Demo.Billing.Domain, Demo.Org.Domain, Demo.Accounts])
+
+      assert Name.display_all(siblings, :short) == ["Billing.Domain", "Org.Domain", "Accounts"]
+    end
+
+    test "keeps adding modules while the clash continues" do
+      siblings = modules([A.Shared.Domain, B.Shared.Domain])
+
+      assert Name.display_all(siblings, :short) == ["A.Shared.Domain", "B.Shared.Domain"]
+    end
+
+    test "a module that ends another keeps its full name" do
+      siblings = modules([Shared.Domain, Other.Shared.Domain])
+
+      assert Name.display_all(siblings, :short) == ["Shared.Domain", "Other.Shared.Domain"]
+    end
+
+    test "leaves vertices that aren't named after a module alone" do
+      siblings = [
+        %Application{app: :clarity, description: nil, version: "0.4.0"}
+        | modules([Demo.Billing.Domain, Demo.Org.Domain])
+      ]
+
+      assert Name.display_all(siblings, :short) == ["clarity", "Billing.Domain", "Org.Domain"]
+    end
+
+    test "shows qualified names unchanged" do
+      siblings = modules([Demo.Billing.Domain, Demo.Org.Domain])
+
+      assert Name.display_all(siblings, :qualified) == ["Demo.Billing.Domain", "Demo.Org.Domain"]
+    end
+  end
+
   describe inspect(&Name.short_module_name/1) do
     test "returns the last segment for elixir modules" do
       assert Name.short_module_name(Baz) == "Baz"

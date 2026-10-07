@@ -174,6 +174,10 @@ defmodule Clarity.CoreComponents do
     default: :qualified,
     doc: "Display style for module-named vertices (:qualified or :short)"
 
+  attr :name, :string,
+    default: nil,
+    doc: "The name to show instead, e.g. one told apart from its siblings' names"
+
   @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
   def vertex_name(assigns)
 

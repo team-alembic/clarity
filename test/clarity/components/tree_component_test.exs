@@ -3,7 +3,51 @@ defmodule Clarity.TreeComponentTest do
 
   import Phoenix.LiveViewTest
 
+  alias Clarity.Graph
+  alias Clarity.Perspective.Lensmaker
   alias Clarity.TreeComponent
+  alias Clarity.Vertex
+
+  describe "short names" do
+    test "siblings whose short names clash are told apart by the module before" do
+      app = %Vertex.Application{
+        app: :clarity,
+        description: "Clarity App",
+        version: Version.parse!("0.4.0")
+      }
+
+      graph = Graph.new()
+      Graph.add_vertex(graph, app, %Vertex.Root{})
+      Graph.add_edge(graph, %Vertex.Root{}, app, :child)
+
+      for module <- [Demo.Billing.Domain, Demo.Org.Domain, Demo.Accounts] do
+        vertex = %Vertex.Module{module: module}
+        Graph.add_vertex(graph, vertex, app)
+        Graph.add_edge(graph, app, vertex, :module)
+      end
+
+      {:ok, lens} = Lensmaker.get_lens_by_id("debug")
+
+      labels =
+        TreeComponent
+        |> render_component(
+          id: "tree",
+          graph: graph,
+          lens: lens,
+          prefix: "/",
+          active_vertex: app,
+          breadcrumbs: [%Vertex.Root{}, app],
+          opened: MapSet.new(),
+          collapsed: MapSet.new(),
+          name_style: :short
+        )
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("a[data-tooltip-type='Module']")
+        |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+
+      assert labels == ["Accounts", "Billing.Domain", "Org.Domain"]
+    end
+  end
 
   describe "status_badge/1" do
     test "renders nothing without an entry" do

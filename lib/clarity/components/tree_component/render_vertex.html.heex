@@ -1,5 +1,5 @@
 <details
-  :for={group <- navigation_groups(@graph, @vertex, @collapsed)}
+  :for={group <- navigation_groups(@graph, @vertex, @collapsed, @name_style)}
   id={"tree-group-#{group.id}"}
   open={group.open?}
   phx-hook="Details"
@@ -13,10 +13,11 @@
     <span class="px-1.5 py-px">{group.label}</span>
   </summary>
   <ul :if={group.open?} class="tree-children">
-    <li :for={child <- group.children}>
+    <li :for={{child, name} <- group.children}>
       <.render_node
         graph={@graph}
         vertex={child}
+        name={name}
         visible_ids={@visible_ids}
         collapsed={@collapsed}
         active_vertex={@active_vertex}
