@@ -207,6 +207,44 @@ Here the hint reads the vertex name, its type label and `vertex.description`.
 **Returns:** Markdown string or `nil`. Without a prose paragraph the hint shows
 just the name and type label.
 
+#### HintProvider - Icon, Badges and Facts
+
+Adds structure to the hover hint: an **icon** on the type pill, **badges** for
+notable flags, and **facts** shown as label/value rows. Read them straight
+from the vertex rather than repeating them in the tooltip markdown:
+
+```elixir
+defimpl Clarity.Vertex.HintProvider,
+       for: MyApp.Vertex.CustomEntity do
+
+  @impl Clarity.Vertex.HintProvider
+  def icon(_vertex), do: :module
+
+  @impl Clarity.Vertex.HintProvider
+  def badges(vertex), do: if(vertex.deprecated?, do: ["deprecated"], else: [])
+
+  @impl Clarity.Vertex.HintProvider
+  def facts(vertex) do
+    [
+      {"Category", to_string(vertex.category)},
+      {"Owners", Enum.map(vertex.owners, &to_string/1)}
+    ]
+  end
+end
+```
+
+- `icon/1` picks from `Clarity.Tooltip.icons/0` (`:action`, `:resource`,
+  `:module`, …); each icon also sets the pill's colour. Anything else shows
+  the generic icon.
+- `badges/1` returns short strings.
+- `facts/1` returns `{label, value}` tuples, most useful first. A list value
+  is shown as chips.
+
+Hints show at most 5 facts, cut values at 60 characters and lists at 6 items.
+The protocol is optional: without an implementation a vertex gets the generic
+icon and no badges or facts. Like `TooltipProvider`, it runs for every vertex
+rendered in the tree and graph, so keep it cheap.
+
 ## Complete Example
 
 Here's a complete vertex type implementation:
