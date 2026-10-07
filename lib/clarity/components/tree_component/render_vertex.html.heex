@@ -1,13 +1,19 @@
 <%!--
-  Each list of a node's items draws a guide down its left edge, marked active
-  when it holds the current vertex; the top level, under the root, has none.
+  Each list of a node's items draws a guide down its left edge; the top level,
+  under the root, has none. As in VS Code, the active guide is the one beside
+  the current vertex's own items when it is open, or else the one beside it
+  and its siblings.
 --%>
-<%= case navigation_groups(@graph, @vertex, @collapsed, @name_style, @active_vertex) do %>
+<%= case navigation_groups(@graph, @vertex, @collapsed, @name_style, @active_vertex, @visible_ids) do %>
   <% [group] -> %>
     <%!-- A lone group says nothing the items' icons don't, so it gets no row. --%>
-    <.group_items group={group} class={!@root? && guide_class(group)} {tree_assigns(assigns)} />
+    <.group_items
+      group={group}
+      class={!@root? && guide_class(group.active? or current?(@vertex, @active_vertex))}
+      {tree_assigns(assigns)}
+    />
   <% groups -> %>
-    <div class={!@root? && "tree-children"}>
+    <div class={!@root? && guide_class(current?(@vertex, @active_vertex))}>
       <details
         :for={group <- groups}
         id={"tree-group-#{group.id}"}
@@ -25,7 +31,7 @@
         <.group_items
           :if={group.open?}
           group={group}
-          class={guide_class(group)}
+          class={guide_class(group.active?)}
           {tree_assigns(assigns)}
         />
       </details>

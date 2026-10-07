@@ -278,9 +278,12 @@ defmodule Clarity.TreeComponent do
   end
 
   # Children are named together, so siblings whose names clash are told apart.
-  @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t(), Name.style(), Vertex.t()) :: [map()]
-  defp navigation_groups(graph, vertex, collapsed, name_style, active_vertex) do
+  @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t(), Name.style(), Vertex.t(), MapSet.t()) ::
+          [map()]
+  defp navigation_groups(graph, vertex, collapsed, name_style, active_vertex, visible_ids) do
     active_id = Vertex.id(active_vertex)
+    # An open current vertex has its own guide active instead (see current?/2).
+    active_is_open? = open?(active_vertex, visible_ids) and has_children?(graph, active_vertex)
 
     for {label, children} <- Graph.navigation_children(graph, vertex), label != :content do
       id = group_id(vertex, label)
@@ -290,15 +293,18 @@ defmodule Clarity.TreeComponent do
         label: label,
         children: Enum.zip(children, Name.display_all(children, name_style)),
         open?: not MapSet.member?(collapsed, id),
-        active?: Enum.any?(children, &(Vertex.id(&1) == active_id)),
+        active?: not active_is_open? and Enum.any?(children, &(Vertex.id(&1) == active_id)),
         any_has_children?: Enum.any?(children, &has_children?(graph, &1))
       }
     end
   end
 
-  # The guide beside the current vertex and its siblings stays visible.
-  @spec guide_class(map()) :: [String.t() | false]
-  defp guide_class(group), do: ["tree-children", group.active? && "tree-guide-active"]
+  # The active guide stays visible; see render_vertex.html.heex.
+  @spec guide_class(boolean()) :: [String.t() | false]
+  defp guide_class(active?), do: ["tree-children", active? && "tree-guide-active"]
+
+  @spec current?(Vertex.t(), Vertex.t()) :: boolean()
+  defp current?(vertex, active_vertex), do: Vertex.id(vertex) == Vertex.id(active_vertex)
 
   @spec has_children?(Graph.t(), Vertex.t()) :: boolean()
   defp has_children?(graph, vertex) do

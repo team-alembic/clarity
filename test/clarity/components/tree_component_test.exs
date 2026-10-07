@@ -99,7 +99,75 @@ defmodule Clarity.TreeComponentTest do
       assert tree |> LazyHTML.query("[data-tooltip-delay='1500'] a[data-tooltip-title]") |> Enum.count() > 0
     end
 
-    test "only the guide beside the current vertex and its siblings is marked active" do
+    test "a current item that is expanded marks the guide beside its own items" do
+      # The application is current, and open on its modules.
+      tree =
+        render_app_tree([
+          {%Vertex.Module{module: Demo.Accounts}, :module},
+          {%Vertex.Module{module: Demo.Billing}, :module}
+        ])
+
+      active = LazyHTML.query(tree, ".tree-guide-active")
+      assert Enum.count(active) == 1
+
+      rows = active |> LazyHTML.query("li a[data-tooltip-type='Module']") |> Enum.map(&String.trim(LazyHTML.text(&1)))
+      assert rows == ["Accounts", "Billing"]
+    end
+
+    test "a current item open on several groups marks the guide beside its group rows" do
+      tree =
+        render_app_tree([
+          {%Vertex.Module{module: Demo.Accounts}, :module},
+          {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain}
+        ])
+
+      active = LazyHTML.query(tree, ".tree-guide-active")
+      assert Enum.count(active) == 1
+      assert active |> LazyHTML.query("[id^='tree-group-'] > summary") |> Enum.count() == 2
+    end
+
+    test "a current item that is open marks only its own guide, not its siblings'" do
+      app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
+      domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
+      other_domain = %Vertex.Ash.Domain{domain: Demo.Billing}
+      resource = %Vertex.Ash.Resource{resource: Demo.Accounts.User}
+
+      graph = Graph.new()
+      Graph.add_vertex(graph, app, %Vertex.Root{})
+      Graph.add_edge(graph, %Vertex.Root{}, app, :child)
+
+      for d <- [domain, other_domain] do
+        Graph.add_vertex(graph, d, app)
+        Graph.add_edge(graph, app, d, :domain)
+      end
+
+      Graph.add_vertex(graph, resource, domain)
+      Graph.add_edge(graph, domain, resource, :resource)
+
+      {:ok, lens} = Lensmaker.get_lens_by_id("debug")
+
+      active =
+        TreeComponent
+        |> render_component(
+          id: "tree",
+          graph: graph,
+          lens: lens,
+          prefix: "/",
+          active_vertex: domain,
+          breadcrumbs: [%Vertex.Root{}, app, domain],
+          opened: MapSet.new(),
+          collapsed: MapSet.new(),
+          name_style: :short
+        )
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query(".tree-guide-active")
+
+      assert Enum.count(active) == 1
+      assert active |> LazyHTML.query("a[data-tooltip-type='Ash.Resource']") |> Enum.count() == 1
+      assert active |> LazyHTML.query("a[data-tooltip-type='Ash.Domain']") |> Enum.count() == 0
+    end
+
+    test "a current item without items of its own marks the guide beside it and its siblings" do
       module = %Vertex.Module{module: Demo.Accounts}
       tree = render_app_tree([{module, :module}, {%Vertex.Module{module: Demo.Billing}, :module}], module)
 
