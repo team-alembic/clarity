@@ -12,6 +12,8 @@ jobs:
     with:
       postgres: false
       doctor: true
+      # mix_audit was dropped for hex.audit, which the hex-audit step still runs
+      deps-audit: false
       community-files: true
       conventional-commit: false
       tenants: false
