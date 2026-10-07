@@ -22,55 +22,27 @@ config :tailwind,
     cd: Path.expand("../assets", __DIR__)
   ]
 
-case config_env() do
-  env when env in [:dev, :test] ->
-    # Required since Ash 3.34 for the demo resources' string length constraints.
-    config :ash, default_string_length_count: :codepoints
-
-    config :clarity, DemoWeb.Endpoint,
-      adapter: Bandit.PhoenixAdapter,
-      url: [host: "localhost"],
-      secret_key_base: "Hu4qQN3iKzTV4fJxhorPQlA/osH9fAMtbtjVS58PFgfw3ja5Z18Q/WSNR9wP4OfW",
-      live_view: [signing_salt: "hMegieSe"],
-      http: [port: System.get_env("PORT", "4000")],
-      debug_errors: true,
-      check_origin: false,
-      pubsub_server: Demo.PubSub,
-      watchers: [
-        esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=linked --watch)]},
-        tailwind: {Tailwind, :install_and_run, [:default, ~w(--watch)]}
-      ],
-      live_reload: [
-        patterns: [
-          ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
-          ~r"priv/gettext/.*(po)$",
-          ~r"lib/clarity/(live|views|pages|components)/.*(ex)$",
-          ~r"lib/clarity/templates/.*(eex)$"
-        ]
-      ]
-
-    config :clarity,
-      ash_domains: [
-        Demo.Accounts,
-        Demo.Projects,
-        Demo.Helpdesk,
-        Demo.Billing
-      ]
-
-    config :clarity, auto_start?: false
-
-    config :logger, level: :debug
-
-  _ ->
-    :ok
-end
-
 if config_env() == :test do
+  # Required since Ash 3.34 for the demo resources' string length constraints.
+  config :ash, default_string_length_count: :codepoints
+
+  # No network in tests; the advisory/registry introspectors then settle to
+  # empty immediately rather than waiting on a fetch that never runs.
   config :clarity, :advisories, enabled?: false
+
+  config :clarity,
+    ash_domains: [
+      Demo.Accounts,
+      Demo.Projects,
+      Demo.Helpdesk,
+      Demo.Billing
+    ]
+
+  config :clarity, auto_start?: false
+
+  config :logger, level: :debug
 end
 
-# No network in tests; the advisory/registry introspectors then settle to
-# empty immediately rather than waiting on a fetch that never runs.
 if Mix.env() == :dev do
   config :git_ops,
     mix_project: Clarity.MixProject,

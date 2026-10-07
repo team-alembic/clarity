@@ -94,13 +94,16 @@ and published on [HexDocs](https://hexdocs.pm).The docs can be found at
 
 ## Development
 
-To run the development server with the demo application:
+The demo application in `demo/` is its own Mix project that depends on Clarity
+like any host app. To run it:
 
 ```bash
+(cd demo && mix deps.get)
 mix dev
 ```
 
-This starts a Phoenix server at http://localhost:4000 with live reload enabled.
+This starts the demo's Phoenix server at http://localhost:4000 with live reload
+enabled for both the demo and Clarity.
 
 See [usage-rules/development.md](usage-rules/development.md) for more details on
 testing, asset building, and code quality tools.

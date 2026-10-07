@@ -51,7 +51,7 @@ defmodule Clarity.Vertex.Ash.ResourceTest do
       assert source_location.module == User
 
       file_path = Clarity.SourceLocation.file_path(source_location)
-      if file_path, do: assert(String.ends_with?(file_path, "dev/demo/accounts/user.ex"))
+      if file_path, do: assert(String.ends_with?(file_path, "demo/lib/demo/accounts/user.ex"))
     end
   end
 

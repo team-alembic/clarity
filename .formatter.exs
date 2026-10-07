@@ -9,7 +9,12 @@ locals_without_parens = [
   import_deps: [:ash, :phoenix],
   locals_without_parens: locals_without_parens,
   plugins: [Styler, DoctestFormatter, Phoenix.LiveView.HTMLFormatter],
-  inputs: ["{mix,.formatter,.credo}.exs", "{config,lib,test,dev}/**/*.{ex,exs,heex}"],
+  inputs: [
+    "{mix,.formatter,.credo}.exs",
+    "{config,lib,test}/**/*.{ex,exs,heex}",
+    "demo/mix.exs",
+    "demo/{config,lib}/**/*.{ex,exs,heex}"
+  ],
   export: [
     locals_without_parens: locals_without_parens
   ]

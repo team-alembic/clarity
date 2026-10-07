@@ -1,22 +1,18 @@
 defmodule DemoWeb.Endpoint do
   @moduledoc false
 
-  use Phoenix.Endpoint, otp_app: :clarity
+  use Phoenix.Endpoint, otp_app: :demo
 
   socket "/live", Phoenix.LiveView.Socket
-  socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
 
-  plug Phoenix.LiveReloader
-  plug Phoenix.CodeReloader
+  if code_reloading? do
+    socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
+    plug Phoenix.LiveReloader
+    plug Phoenix.CodeReloader
+  end
 
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
-
-  plug Plug.Static,
-    at: "/",
-    from: :clarity,
-    gzip: false,
-    only: ~w(assets fonts images favicon.ico robots.txt)
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],

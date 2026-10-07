@@ -4,23 +4,25 @@ Instructions for developing and testing Clarity locally.
 
 ## Running the Dev Server
 
-First, ensure asset tools are installed at the correct versions:
+The demo in `demo/` is a separate Phoenix application that depends on Clarity
+the way any host app would, with `{:clarity, path: ".."}` in its `mix.exs`.
+Fetch its dependencies once:
 
 ```bash
-mix esbuild.install
-mix tailwind.install
+cd demo && mix deps.get
 ```
 
-Then start the development server with the demo application:
+Then start it from the repository root:
 
 ```bash
 mix dev
 ```
 
-This runs the demo Phoenix application at http://localhost:4000 with:
-- Live reload for code changes
-- Asset watchers (esbuild, tailwind)
-- The Demo application with sample Ash domains
+or from inside `demo/` with `mix phx.server`. This runs the demo at
+http://localhost:4000 with:
+- Live reload for both the demo's and Clarity's code
+- Watchers that rebuild Clarity's assets (esbuild, tailwind)
+- Sample Ash domains, resources and Phoenix routes to introspect
 
 To use a different port:
 
@@ -30,13 +32,14 @@ PORT=4001 mix dev
 
 ## Project Structure
 
-The development environment uses:
+- `demo/` - Demo application (its own Mix project)
+  - `demo/lib/demo/` - Demo Ash domains and resources
+  - `demo/lib/demo_web/` - Demo Phoenix endpoint and router
+  - `demo/config/` - Demo configuration, including the dev server
+- `config/config.exs` - Clarity's asset and test configuration
 
-- `dev/` - Demo application code
-  - `dev/demo/` - Demo Ash domains and resources
-  - `dev/demo_web/` - Demo Phoenix endpoint and router
-- `dev.exs` - Development server startup script
-- `config/config.exs` - Development configuration
+Clarity's test build also compiles `demo/lib`, so the tests run against the
+demo's domains, resources and router.
 
 ## Building Assets
 

@@ -13,7 +13,6 @@ defmodule Clarity.MixProject do
       consolidate_protocols: Mix.env() != :test,
       deps: deps(),
       aliases: aliases(),
-      listeners: [Phoenix.CodeReloader],
       name: "Clarity",
       description:
         "Clarity is an interactive introspection and visualization tool for Elixir projects, providing navigable graphs and diagrams for frameworks like Ash, Phoenix, and Ecto.",
@@ -39,8 +38,7 @@ defmodule Clarity.MixProject do
   end
 
   defp elixirc_paths(env)
-  defp elixirc_paths(:dev), do: ["lib", "dev"]
-  defp elixirc_paths(:test), do: ["test/support", "lib", "dev"]
+  defp elixirc_paths(:test), do: ["test/support", "lib", "demo/lib"]
   defp elixirc_paths(_env), do: ["lib"]
 
   def application do
@@ -129,9 +127,7 @@ defmodule Clarity.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:doctest_formatter, "~> 0.4", only: [:dev, :test], runtime: false},
-      {:phoenix_live_reload, "~> 1.2", only: [:dev, :test]},
       {:picosat_elixir, "~> 0.2.3", only: [:dev, :test]},
-      {:bandit, "~> 1.0", only: [:dev, :test]},
       {:floki, ">= 0.30.0", only: [:test]},
       {:lazy_html, ">= 0.1.0", only: [:test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
@@ -162,7 +158,7 @@ defmodule Clarity.MixProject do
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify"],
       "hex.build": [&build_assets_for_publish/1, "hex.build"],
       "hex.publish": [&build_assets_for_publish/1, "hex.publish"],
-      dev: "run --no-halt --no-start dev.exs --config config",
+      dev: "cmd --cd demo mix phx.server",
       "usage_rules.update": [
         String.trim("""
         usage_rules.sync CLAUDE.md --all \

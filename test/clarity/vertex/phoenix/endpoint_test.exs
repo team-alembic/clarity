@@ -49,7 +49,7 @@ defmodule Clarity.Vertex.Phoenix.EndpointTest do
       assert source_location.module == DemoWeb.Endpoint
 
       file_path = Clarity.SourceLocation.file_path(source_location)
-      if file_path, do: assert(String.ends_with?(file_path, "dev/demo_web/endpoint.ex"))
+      if file_path, do: assert(String.ends_with?(file_path, "demo/lib/demo_web/endpoint.ex"))
     end
   end
 

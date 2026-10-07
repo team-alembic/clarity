@@ -9,7 +9,7 @@ Clarity is an interactive introspection and visualisation tool for Elixir projec
 ## Development Commands
 
 ```bash
-# Start development server (runs esbuild/tailwind watchers, starts endpoint at :4000)
+# Start the demo app at :4000 (runs `mix phx.server` in demo/, with esbuild/tailwind watchers)
 mix dev
 
 # Run full check suite (formatter, credo, dialyzer, tests, etc.)
@@ -116,7 +116,7 @@ config :my_app, :clarity_perspective_lensmakers, [MyApp.CustomLensmaker]
 
 ## Testing
 
-Tests mirror the lib structure. Integration tests for graph operations, component tests for LiveView. The `dev/` directory contains a demo app (Demo, DemoWeb) used during development.
+Tests mirror the lib structure. Integration tests for graph operations, component tests for LiveView. The `demo/` directory is a separate Mix project (Demo, DemoWeb) that depends on Clarity like a host app; it is used during development, and the test build compiles `demo/lib` so tests can use its domains and router.
 
 ## Usage Rules Documentation
 

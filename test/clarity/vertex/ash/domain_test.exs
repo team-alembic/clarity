@@ -50,7 +50,7 @@ defmodule Clarity.Vertex.Ash.DomainTest do
       assert source_location.module == TestDomain
 
       file_path = Clarity.SourceLocation.file_path(source_location)
-      if file_path, do: assert(String.ends_with?(file_path, "dev/demo/accounts.ex"))
+      if file_path, do: assert(String.ends_with?(file_path, "demo/lib/demo/accounts.ex"))
     end
   end
 

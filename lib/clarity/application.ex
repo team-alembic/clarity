@@ -8,8 +8,7 @@ defmodule Clarity.Application do
   case Mix.env() do
     :test ->
       @children [
-        {Registry, keys: :duplicate, name: Clarity.PubSub},
-        DemoWeb.Endpoint
+        {Registry, keys: :duplicate, name: Clarity.PubSub}
       ]
 
     _env ->
