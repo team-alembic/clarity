@@ -127,6 +127,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           actor: actor,
           query: if(action.type == :read, do: subject),
           changeset: if(action.type in [:create, :update, :destroy], do: subject),
+          action_input: if(action.type == :action, do: subject),
           subject: subject,
           domain: Info.domain(resource),
           facts: %{true => true, false => false},
@@ -193,7 +194,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defp ash_resource?(module), do: Code.ensure_loaded?(module) and Info.resource?(module)
 
     @spec subject(Ash.Resource.t(), Actions.action(), actor()) ::
-            Ash.Query.t() | Ash.Changeset.t()
+            Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
     defp subject(resource, %{type: :read} = action, actor),
       do: Ash.Query.for_read(resource, action.name, %{}, actor: actor, authorize?: false)
 
@@ -213,5 +214,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           actor: actor,
           authorize?: false
         )
+
+    # Generic actions (`action :name do ... end`), e.g. one run by a Reactor.
+    defp subject(resource, %{type: :action} = action, actor),
+      do: Ash.ActionInput.for_action(resource, action.name, %{}, actor: actor, authorize?: false)
   end
 end
