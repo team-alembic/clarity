@@ -1,6 +1,7 @@
 %Doctor.Config{
-  ignore_modules: [~r/^Demo/],
-  ignore_paths: [],
+  ignore_modules: [],
+  # The demo app, including protocol impls Ash derives for it (Inspect.Demo.*)
+  ignore_paths: [~r{^dev/}],
   min_module_doc_coverage: 40,
   min_module_spec_coverage: 0,
   min_overall_doc_coverage: 50,
