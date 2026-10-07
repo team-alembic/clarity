@@ -137,6 +137,50 @@ defmodule Clarity.TreeComponent do
   @spec render_node(map()) :: Rendered.t()
   def render_node(assigns)
 
+  attr :group, :map, required: true
+  attr :class, :string, default: nil
+  attr :graph, :any, required: true
+  attr :visible_ids, :any, required: true
+  attr :collapsed, :any, required: true
+  attr :active_vertex, :any, required: true
+  attr :prefix, :string, required: true
+  attr :lens, Lens, required: true
+  attr :myself, :any, required: true
+  attr :name_style, :atom, required: true
+  attr :status_index, :any, required: true
+
+  @spec group_items(assigns :: Socket.assigns()) :: Rendered.t()
+  defp group_items(assigns) do
+    ~H"""
+    <ul class={@class}>
+      <li :for={{child, name} <- @group.children}>
+        <.render_node
+          vertex={child}
+          name={name}
+          any_sibling_has_children={@group.any_has_children?}
+          {tree_assigns(assigns)}
+        />
+      </li>
+    </ul>
+    """
+  end
+
+  # The assigns every level of the tree passes down unchanged.
+  @spec tree_assigns(map()) :: map()
+  defp tree_assigns(assigns) do
+    Map.take(assigns, [
+      :graph,
+      :visible_ids,
+      :collapsed,
+      :active_vertex,
+      :prefix,
+      :lens,
+      :myself,
+      :name_style,
+      :status_index
+    ])
+  end
+
   attr :vertex, :any, required: true
   attr :active_vertex, :any, required: true
   attr :prefix, :string, required: true

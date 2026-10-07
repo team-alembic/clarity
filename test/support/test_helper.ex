@@ -13,6 +13,8 @@ defmodule Clarity.Test.Helper do
 
     * `:internals` - also add an `ash` dependency owning one of Ash's shadow
       domains, a framework internal (see `Clarity.Perspective.Internals`)
+    * `:modules` - also give the `clarity` application a module, so its
+      children fall into two groups (a lone group gets no row in the tree)
   """
   @spec build_test_clarity(keyword()) :: Clarity.t()
   def build_test_clarity(opts \\ []) do
@@ -32,6 +34,12 @@ defmodule Clarity.Test.Helper do
 
     Clarity.Graph.add_edge(clarity_graph, %Vertex.Root{}, app_vertex, :child)
     Clarity.Graph.add_edge(clarity_graph, app_vertex, domain_vertex, :child)
+
+    if opts[:modules] do
+      module_vertex = %Vertex.Module{module: Demo.Accounts}
+      Clarity.Graph.add_vertex(clarity_graph, module_vertex, app_vertex)
+      Clarity.Graph.add_edge(clarity_graph, app_vertex, module_vertex, :module)
+    end
 
     if opts[:internals] do
       ash_vertex = %Vertex.Application{

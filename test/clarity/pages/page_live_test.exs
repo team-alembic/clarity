@@ -482,6 +482,7 @@ defmodule Clarity.Pages.PageLiveTest do
              )
     end
 
+    @tag test_graph: [modules: true]
     test "a group row is a plain label, like a folder", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       render_async(view)
@@ -490,6 +491,7 @@ defmodule Clarity.Pages.PageLiveTest do
       refute has_element?(view, "#{@clarity_group} > summary svg use")
     end
 
+    @tag test_graph: [modules: true]
     test "a group can be collapsed and expanded", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       render_async(view)
@@ -505,6 +507,7 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "#{@clarity_group}[open]")
     end
 
+    @tag test_graph: [modules: true]
     test "navigating into a collapsed group reveals it", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       render_async(view)
@@ -516,6 +519,7 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "#{@clarity_group}[open]")
     end
 
+    @tag test_graph: [modules: true]
     test "a collapsed group stays collapsed when navigating past it", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
       render_async(view)
