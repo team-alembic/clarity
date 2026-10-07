@@ -20,9 +20,19 @@ defmodule Clarity.Test.DummyServer do
     {:reply, clarity, clarity}
   end
 
+  def handle_call({:put_graph, graph}, _from, clarity) do
+    {:reply, :ok, %{clarity | graph: graph}}
+  end
+
   def handle_call(:subscribe, _from, clarity) do
     # Return a dummy unsubscribe function for testing
     unsubscribe = fn -> :ok end
     {:reply, unsubscribe, clarity}
+  end
+
+  # Sent by :ets.give_away/3 when the test hands the graph over.
+  @impl GenServer
+  def handle_info({:"ETS-TRANSFER", _table, _from, :graph_handover}, clarity) do
+    {:noreply, clarity}
   end
 end

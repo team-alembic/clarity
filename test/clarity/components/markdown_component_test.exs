@@ -104,6 +104,58 @@ defmodule Clarity.Components.MarkdownComponentTest do
       assert html =~ ~s[data-phx-link-state="push"]
     end
 
+    # Without its grammar package installed, Lumis still wraps each line in an
+    # `l-line` span but emits no token spans, so the block renders as plain text.
+    @spec token_classes(String.t()) :: [String.t()]
+    defp token_classes(html) do
+      ~r/class="(l-[\w.-]+)"/
+      |> Regex.scan(html, capture: :all_but_first)
+      |> List.flatten()
+      |> Enum.uniq()
+      |> List.delete("l-line")
+    end
+
+    @spec highlight(String.t(), String.t()) :: String.t()
+    defp highlight(language, code) do
+      render_markdown(%{
+        content: "```#{language}\n#{code}\n```\n",
+        prefix: "/clarity",
+        lens: test_lens("test"),
+        class: ""
+      })
+    end
+
+    test "highlights comment markers through the injected comment grammar" do
+      html = highlight("elixir", "# TODO: tidy this up\ndef answer, do: 42")
+
+      assert "l-keyword-function" in token_classes(html)
+      # Only the injected `comment` grammar tags TODO markers.
+      assert "l-comment-todo" in token_classes(html)
+    end
+
+    test "highlights iex sessions" do
+      assert "iex" |> highlight("iex> Enum.map([1, 2], &(&1 * 2))\n[2, 4]") |> token_classes() != []
+    end
+
+    test "highlights HEEx templates" do
+      assert "heex" |> highlight(~s|<.link navigate={~p"/users"}>{@name}</.link>|) |> token_classes() != []
+    end
+
+    test "highlights JavaScript under either fence name" do
+      for language <- ["javascript", "js"] do
+        assert language |> highlight("const answer = () => 42;") |> token_classes() != [],
+               "expected a #{language} fence to be highlighted"
+      end
+    end
+
+    test "highlights JSON" do
+      assert "json" |> highlight(~s|{"name": "clarity", "count": 2}|) |> token_classes() != []
+    end
+
+    test "highlights shell commands" do
+      assert "bash" |> highlight(~s|mix deps.get && echo "done"|) |> token_classes() != []
+    end
+
     test "highlights Elixir code blocks" do
       html =
         render_markdown(%{

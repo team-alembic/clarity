@@ -5,7 +5,6 @@ defmodule Clarity.CoreComponents do
 
   import Clarity.Components.MarkdownComponent
   import Clarity.IconComponents
-  import Phoenix.HTML
 
   alias Clarity.Content
   alias Clarity.Perspective.Lens

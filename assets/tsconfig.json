@@ -10,5 +10,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["js/**/*", "test/**/*", "vitest.config.ts"]
+  "include": ["js/**/*", "test/**/*", "vitest.config.mts"]
 }

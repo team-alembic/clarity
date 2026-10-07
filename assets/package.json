@@ -7,8 +7,8 @@
     "@tailwindcss/typography": "^0.5.19",
     "happy-dom": "^20.10.6",
     "tailwindcss": "^4.1.14",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
     "@viz-js/viz": "^3.19.0",

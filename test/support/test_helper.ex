@@ -44,6 +44,15 @@ defmodule Clarity.Test.Helper do
   """
   @spec setup_test_clarity(clarity :: Clarity.t()) :: pid()
   def setup_test_clarity(clarity \\ build_test_clarity()) do
-    start_supervised!({Clarity.Test.DummyServer, clarity})
+    pid = start_supervised!({Clarity.Test.DummyServer, clarity})
+
+    # The graph's ETS tables die with their owner. Left with the test process,
+    # they vanish the moment the test exits, while a LiveView under test can
+    # still be rendering a late async result against them. The supervised
+    # server outlives that LiveView, so it should own them.
+    {:ok, graph} = Clarity.Graph.handover(clarity.graph, pid)
+    :ok = GenServer.call(pid, {:put_graph, graph})
+
+    pid
   end
 end

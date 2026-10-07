@@ -64,6 +64,8 @@ defmodule Clarity.Resources do
   Renders the CSS required for Clarity.
   """
   @spec css(assigns :: Socket.assigns()) :: Rendered.t()
+  # Inlines Clarity's own compiled asset, embedded from priv at compile time.
+  # sobelow_skip ["XSS.Raw"]
   def css(assigns) do
     ~H"""
     <style type="text/css">
@@ -76,11 +78,25 @@ defmodule Clarity.Resources do
   Renders the JS required for Clarity.
   """
   @spec js(assigns :: Socket.assigns()) :: Rendered.t()
+  # Inlines Clarity's own compiled asset, embedded from priv at compile time.
+  # sobelow_skip ["XSS.Raw"]
   def js(assigns) do
     ~H"""
     <script defer type="text/javascript">
       <%= raw(resource(:js)) %>
     </script>
+    """
+  end
+
+  @doc """
+  Renders the splash screen artwork inline.
+  """
+  @spec splash_svg(assigns :: Socket.assigns()) :: Rendered.t()
+  # Inlines Clarity's own splash SVG, embedded from priv at compile time.
+  # sobelow_skip ["XSS.Raw"]
+  def splash_svg(assigns) do
+    ~H"""
+    {raw(splash())}
     """
   end
 

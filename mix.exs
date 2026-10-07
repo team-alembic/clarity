@@ -104,8 +104,18 @@ defmodule Clarity.MixProject do
       {:phoenix_live_view, "~> 1.0"},
       {:req, "~> 0.5"},
       {:hex_core, "~> 0.11"},
-      {:mdex, "~> 0.13"},
-      {:lumis, "~> 0.1"},
+      {:mdex, "~> 0.14"},
+      {:lumis, "~> 0.10"},
+      # Lumis ships no grammars; each language is its own package. These cover
+      # nearly every code block in Elixir project and dependency docs. Elixir
+      # needs `comment` too, as it injects that grammar into comments.
+      {:lumis_wasm_elixir, "~> 0.26"},
+      {:lumis_wasm_comment, "~> 0.26"},
+      {:lumis_wasm_iex, "~> 0.26"},
+      {:lumis_wasm_heex, "~> 0.26"},
+      {:lumis_wasm_bash, "~> 0.26"},
+      {:lumis_wasm_javascript, "~> 0.26"},
+      {:lumis_wasm_json, "~> 0.26"},
       {:telemetry, "~> 1.3"},
       {:telemetry_registry, "~> 0.3"},
       {:igniter, "~> 0.6", optional: true},
