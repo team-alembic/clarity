@@ -4,6 +4,11 @@ defmodule Clarity.Test.HintVertex do
 
   alias Clarity.Vertex.HintProvider
 
+  @type t() :: %__MODULE__{
+          icon: atom(),
+          badges: [String.t()],
+          facts: [HintProvider.fact()]
+        }
   defstruct icon: :generic, badges: [], facts: []
 
   defimpl Clarity.Vertex do
