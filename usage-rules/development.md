@@ -5,8 +5,8 @@ Instructions for developing and testing Clarity locally.
 ## Running the Dev Server
 
 The demo in `demo/` is a separate Phoenix application that depends on Clarity
-the way any host app would, with `{:clarity, path: ".."}` in its `mix.exs`.
-Fetch its dependencies once:
+the way any host app would, through a path dependency on this checkout, and
+also uses `ash_diagram`'s diagram tabs. Fetch its dependencies once:
 
 ```bash
 cd demo && mix deps.get
