@@ -26,6 +26,9 @@ defmodule Clarity.Introspector.Spark.SectionTest do
       assert {:ok,
               [
                 {:edge, ^module_vertex, ^dsl_vertex, :uses_dsl},
+                {:vertex, %SectionVertex{module: Domain, path: [:domain]}},
+                {:edge, ^module_vertex, %SectionVertex{path: [:domain]}, :section},
+                {:edge, %SectionVertex{path: [:domain]}, ^dsl_vertex, :section_of},
                 {:vertex, %SectionVertex{module: Domain, path: [:resources]}},
                 {:edge, ^module_vertex, %SectionVertex{path: [:resources]}, :section},
                 {:edge, %SectionVertex{path: [:resources]}, ^dsl_vertex, :section_of}
@@ -73,6 +76,9 @@ defmodule Clarity.Introspector.Spark.SectionTest do
                 {:vertex, %SectionVertex{module: User, path: [:relationships]} = relationships_section},
                 {:edge, ^module_vertex, relationships_section, :section},
                 {:edge, relationships_section, ^dsl_vertex, :section_of},
+                {:vertex, %SectionVertex{module: User, path: [:resource]} = resource_section},
+                {:edge, ^module_vertex, resource_section, :section},
+                {:edge, resource_section, ^dsl_vertex, :section_of},
                 {:vertex, %SectionVertex{module: User, path: [:validations]} = validations_section},
                 {:edge, ^module_vertex, validations_section, :section},
                 {:edge, validations_section, ^dsl_vertex, :section_of}
@@ -96,9 +102,12 @@ defmodule Clarity.Introspector.Spark.SectionTest do
       assert {:ok,
               [
                 {:edge, ^module_vertex, ^dsl_vertex, :uses_dsl},
-                {:vertex, %SectionVertex{module: Domain, path: [:resources]} = section_vertex},
-                {:edge, ^module_vertex, section_vertex, :section},
-                {:edge, section_vertex, ^dsl_vertex, :section_of}
+                {:vertex, %SectionVertex{module: Domain, path: [:domain]} = domain_section},
+                {:edge, ^module_vertex, domain_section, :section},
+                {:edge, domain_section, ^dsl_vertex, :section_of},
+                {:vertex, %SectionVertex{module: Domain, path: [:resources]} = resources_section},
+                {:edge, ^module_vertex, resources_section, :section},
+                {:edge, resources_section, ^dsl_vertex, :section_of}
               ]} = SectionIntrospector.introspect_vertex(module_vertex, graph)
     end
 

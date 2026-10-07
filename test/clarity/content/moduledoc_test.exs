@@ -7,7 +7,6 @@ defmodule Clarity.Content.ModuledocTest do
   alias Clarity.Vertex.Module
   alias Clarity.Vertex.Root
   alias Demo.Accounts.Domain, as: TestDomain
-  alias Demo.Accounts.User
 
   describe inspect(&Moduledoc.name/0) do
     test "returns module documentation name" do
@@ -36,8 +35,21 @@ defmodule Clarity.Content.ModuledocTest do
       assert Moduledoc.applies?(vertex, lens) == true
     end
 
+    defmodule TestResourceWithoutDoc do
+      @moduledoc false
+      use Ash.Resource, domain: nil, data_layer: Ash.DataLayer.Ets, validate_domain_inclusion?: false
+
+      actions do
+        defaults [:read]
+      end
+
+      attributes do
+        uuid_primary_key :id
+      end
+    end
+
     test "returns false for Resource vertex without moduledoc" do
-      vertex = %Resource{resource: User}
+      vertex = %Resource{resource: TestResourceWithoutDoc}
       lens = nil
 
       assert Moduledoc.applies?(vertex, lens) == false

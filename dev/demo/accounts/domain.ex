@@ -10,8 +10,21 @@ defmodule Demo.Accounts.Domain do
 
   use Ash.Domain
 
+  domain do
+    description """
+    Identity and tenancy: Organizations, Users, Memberships, ApiKeys,
+    ApiTokens, AuditEvents. Other domains depend on this one for
+    `actor` and `tenant`; cross-domain relationships fan out from
+    `Organization` and `User`.
+    """
+  end
+
   resources do
+    resource Demo.Accounts.Organization
     resource Demo.Accounts.User
+    resource Demo.Accounts.Membership
     resource Demo.Accounts.ApiKey
+    resource Demo.Accounts.ApiToken
+    resource Demo.Accounts.AuditEvent
   end
 end

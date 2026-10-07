@@ -59,8 +59,11 @@ defmodule Clarity.Introspector.Spark.EntityTest do
 
       assert {:ok,
               [
-                {:vertex, %EntityVertex{module: User, path: [:relationships], entity: %{name: :manager}}},
-                {:edge, ^section_vertex, %EntityVertex{}, :entity}
+                {:vertex,
+                 %EntityVertex{module: User, path: [:relationships], entity: %{name: :manager}} =
+                   manager_entity},
+                {:edge, ^section_vertex, manager_entity, :entity}
+                | _rest
               ]} = EntityIntrospector.introspect_vertex(section_vertex, graph)
     end
 
