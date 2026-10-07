@@ -410,14 +410,22 @@ defmodule Clarity.Pages.PageLiveTest do
 
     @clarity_group "details[id='tree-group-application:clarity/child']"
 
-    test "a group shows its type's icon and colour", %{conn: conn} do
+    test "a vertex row shows its type's icon in its colour", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(
                view,
-               "#{@clarity_group} > summary [data-tone='structure'] use[href='#clarity-icon-domain']"
+               ".navigation a[data-tooltip-title='Demo.Accounts'] .tree-icon[data-tone='structure'] use[href='#clarity-icon-domain']"
              )
+    end
+
+    test "a group row is a plain label, like a folder", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_group} > summary", "child")
+      refute has_element?(view, "#{@clarity_group} > summary svg use")
     end
 
     test "a group can be collapsed and expanded", %{conn: conn} do

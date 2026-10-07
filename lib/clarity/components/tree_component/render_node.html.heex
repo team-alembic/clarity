@@ -10,18 +10,13 @@
   >
     <summary class="flex items-center cursor-pointer">
       <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
-      <.link
-        patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
-        aria-current={@vertex == @active_vertex && "page"}
-        {Tooltip.attrs(@vertex)}
-        class={[
-          "min-w-0 break-words px-1.5 py-0.5 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
-          @vertex == @active_vertex &&
-            "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
-        ]}
-      >
-        <.vertex_name vertex={@vertex} name_style={@name_style} />
-      </.link>
+      <.node_link
+        vertex={@vertex}
+        active_vertex={@active_vertex}
+        prefix={@prefix}
+        lens={@lens}
+        name_style={@name_style}
+      />
       <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
     </summary>
     <div :if={open?(@vertex, @visible_ids)} class="tree-children">
@@ -40,20 +35,15 @@
     </div>
   </details>
 <% else %>
-  <div class="flex items-center">
+  <div class="flex items-center select-none">
     <span :if={@any_sibling_has_children} class="w-4 shrink-0" aria-hidden="true"></span>
-    <.link
-      patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
-      aria-current={@vertex == @active_vertex && "page"}
-      {Tooltip.attrs(@vertex)}
-      class={[
-        "min-w-0 break-words px-1.5 py-0.5 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium select-none",
-        @vertex == @active_vertex &&
-          "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
-      ]}
-    >
-      <.vertex_name vertex={@vertex} name_style={@name_style} />
-    </.link>
+    <.node_link
+      vertex={@vertex}
+      active_vertex={@active_vertex}
+      prefix={@prefix}
+      lens={@lens}
+      name_style={@name_style}
+    />
     <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
   </div>
 <% end %>

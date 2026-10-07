@@ -8,14 +8,9 @@
   phx-target={@myself}
   class="tree-node select-none"
 >
-  <summary class="flex items-center min-h-6 cursor-pointer">
+  <summary class="flex items-center cursor-pointer text-base-light-600 dark:text-base-dark-400">
     <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
-    <span class="clarity-tooltip-pill ml-1" data-tone={group.tone}>
-      <svg class="clarity-tooltip-icon" aria-hidden="true">
-        <use href={"#clarity-icon-#{group.icon}"} />
-      </svg>
-      {group.label}
-    </span>
+    <span class="px-1.5 py-px">{group.label}</span>
   </summary>
   <ul :if={group.open?} class="tree-children">
     <li :for={child <- group.children}>

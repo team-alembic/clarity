@@ -167,6 +167,18 @@ defmodule Clarity.TooltipTest do
     end
   end
 
+  describe inspect(&Tooltip.type_icon/1) do
+    test "gives the icon and colour tone of the vertex's type" do
+      assert Tooltip.type_icon(%Vertex.Ash.Resource{resource: User}) ==
+               %{icon: "resource", tone: "structure"}
+    end
+
+    test "an icon outside Clarity's set falls back to the generic icon" do
+      assert Tooltip.type_icon(%HintVertex{icon: :unheard_of}) ==
+               %{icon: "generic", tone: "neutral"}
+    end
+  end
+
   describe inspect(&Tooltip.icons/0) do
     test "lists every icon a HintProvider can choose" do
       assert :resource in Tooltip.icons()

@@ -5,8 +5,9 @@ defmodule Clarity.TreeComponent do
   Module-named vertices are labelled in the `:name_style` the parent passes
   (see `Clarity.Vertex.Name`); their hints keep the qualified name.
 
-  Each node's children are grouped by edge label (actions, attributes, …) under
-  collapsible group rows showing the children's type icon and colour.
+  Like a file explorer, each vertex is shown with its type icon in its colour,
+  and its children are grouped by edge label (actions, attributes, …) under
+  plain, collapsible group rows, like folders.
 
   A node is open when it is on the breadcrumb path or the user expanded it,
   unless the user has collapsed it; a group is open unless the user has
@@ -134,6 +135,36 @@ defmodule Clarity.TreeComponent do
   @spec render_node(map()) :: Rendered.t()
   def render_node(assigns)
 
+  attr :vertex, :any, required: true
+  attr :active_vertex, :any, required: true
+  attr :prefix, :string, required: true
+  attr :lens, Lens, required: true
+  attr :name_style, :atom, required: true
+
+  # A vertex's label: its type icon, in its colour, then its name.
+  @spec node_link(map()) :: Rendered.t()
+  defp node_link(assigns) do
+    assigns = assign(assigns, :type_icon, Tooltip.type_icon(assigns.vertex))
+
+    ~H"""
+    <.link
+      patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
+      aria-current={@vertex == @active_vertex && "page"}
+      {Tooltip.attrs(@vertex)}
+      class={[
+        "flex min-w-0 items-center gap-1 px-1.5 py-px rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
+        @vertex == @active_vertex &&
+          "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
+      ]}
+    >
+      <svg class="tree-icon" data-tone={@type_icon.tone} aria-hidden="true">
+        <use href={"#clarity-icon-#{@type_icon.icon}"} />
+      </svg>
+      <.vertex_name vertex={@vertex} name_style={@name_style} />
+    </.link>
+    """
+  end
+
   attr :entry, :any, default: nil
 
   @doc false
@@ -195,22 +226,16 @@ defmodule Clarity.TreeComponent do
     |> MapSet.difference(assigns.collapsed)
   end
 
-  # A group takes its icon and colour from its first child; the children of
-  # one edge label share a vertex type.
   @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t()) :: [map()]
   defp navigation_groups(graph, vertex, collapsed) do
-    for {label, [first | _] = children} <- Graph.navigation_children(graph, vertex),
-        label != :content do
+    for {label, children} <- Graph.navigation_children(graph, vertex), label != :content do
       id = group_id(vertex, label)
-      %{icon: icon, tone: tone} = Tooltip.hint(first)
 
       %{
         id: id,
         label: label,
         children: children,
         open?: not MapSet.member?(collapsed, id),
-        icon: icon,
-        tone: tone,
         any_has_children?: Enum.any?(children, &has_children?(graph, &1))
       }
     end

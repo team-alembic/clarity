@@ -119,20 +119,26 @@ defmodule Clarity.Tooltip do
   """
   @spec hint(Vertex.t()) :: hint()
   def hint(vertex) do
-    icon = vertex |> HintProvider.icon() |> known_icon()
-
-    %{
-      title: Vertex.name(vertex),
-      type: Vertex.type_label(vertex),
-      icon: Atom.to_string(icon),
-      tone: Map.fetch!(@tones, icon)
-    }
+    vertex
+    |> type_icon()
+    |> Map.merge(%{title: Vertex.name(vertex), type: Vertex.type_label(vertex)})
     |> put_present(:badges, HintProvider.badges(vertex))
     |> put_present(:text, vertex |> TooltipProvider.tooltip() |> summarise())
     |> put_present(
       :facts,
       vertex |> HintProvider.facts() |> Enum.take(@max_facts) |> Enum.map(&fact/1)
     )
+  end
+
+  @doc """
+  Returns the icon and colour tone of a vertex's type, as shown on its type
+  pill, without building the rest of the hint.
+  """
+  @spec type_icon(Vertex.t()) :: %{icon: String.t(), tone: String.t()}
+  def type_icon(vertex) do
+    icon = vertex |> HintProvider.icon() |> known_icon()
+
+    %{icon: Atom.to_string(icon), tone: Map.fetch!(@tones, icon)}
   end
 
   @doc """
