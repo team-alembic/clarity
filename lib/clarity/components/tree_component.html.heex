@@ -1,8 +1,9 @@
 <%!-- Rows are passed over on the way to others, so hints wait longer here. --%>
-<div class="text-sm" data-tooltip-delay="1500">
+<div class="clarity-tree text-sm" data-tooltip-delay="1500">
   <.render_vertex
     graph={@graph}
     vertex={%Clarity.Vertex.Root{}}
+    root?
     visible_ids={@visible_ids}
     collapsed={@collapsed}
     active_vertex={@active_vertex}

@@ -374,9 +374,22 @@
 }
 
 /* Indent guide under the parent's chevron. */
-/* The guide sits under the parent's chevron (16px wide, so 8px in). */
+/*
+ * Indent guides, as in VS Code: hidden at rest, muted while the pointer is
+ * over the tree, and the one beside the current vertex and its siblings
+ * always shown. Each runs down its list of items, so it ends at the last.
+ * The guide sits under the parent's chevron (16px wide, so 8px in).
+ */
 .tree-children {
-  @apply ml-2 border-l border-base-light-300 pl-0.5 dark:border-base-dark-700;
+  @apply ml-2 border-l border-transparent pl-0.5 transition-colors duration-150 motion-reduce:transition-none;
+}
+
+.clarity-tree:hover .tree-children {
+  @apply border-base-light-300 dark:border-base-dark-700;
+}
+
+.clarity-tree .tree-children.tree-guide-active {
+  @apply border-base-light-400 dark:border-base-dark-500;
 }
 
 /* Clarity Splash Screen Animation */

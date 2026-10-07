@@ -51,8 +51,8 @@ defmodule Clarity.TreeComponentTest do
 
   describe "group rows" do
     # An application with modules and, optionally, a domain, rendered open.
-    @spec render_app_tree([{Vertex.t(), atom()}]) :: LazyHTML.t()
-    defp render_app_tree(edges) do
+    @spec render_app_tree([{Vertex.t(), atom()}], Vertex.t() | nil) :: LazyHTML.t()
+    defp render_app_tree(edges, active \\ nil) do
       app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
 
       graph = Graph.new()
@@ -72,8 +72,8 @@ defmodule Clarity.TreeComponentTest do
         graph: graph,
         lens: lens,
         prefix: "/",
-        active_vertex: app,
-        breadcrumbs: [%Vertex.Root{}, app],
+        active_vertex: active || app,
+        breadcrumbs: [%Vertex.Root{}, app | List.wrap(active)],
         opened: MapSet.new(),
         collapsed: MapSet.new(),
         name_style: :short
@@ -97,6 +97,29 @@ defmodule Clarity.TreeComponentTest do
       tree = render_app_tree([{%Vertex.Module{module: Demo.Accounts}, :module}])
 
       assert tree |> LazyHTML.query("[data-tooltip-delay='1500'] a[data-tooltip-title]") |> Enum.count() > 0
+    end
+
+    test "only the guide beside the current vertex and its siblings is marked active" do
+      module = %Vertex.Module{module: Demo.Accounts}
+      tree = render_app_tree([{module, :module}, {%Vertex.Module{module: Demo.Billing}, :module}], module)
+
+      active = LazyHTML.query(tree, ".tree-guide-active")
+      assert Enum.count(active) == 1
+
+      rows =
+        active
+        |> LazyHTML.query("li a[data-tooltip-type='Module']")
+        |> Enum.map(&String.trim(LazyHTML.text(&1)))
+
+      assert rows == ["Accounts", "Billing"]
+    end
+
+    test "every list of a node's items draws a guide, but the top level does not" do
+      tree = render_app_tree([{%Vertex.Module{module: Demo.Accounts}, :module}])
+
+      # The application sits at the top level, its module one level in.
+      refute tree |> LazyHTML.query(".tree-children a[data-tooltip-type='Application']") |> Enum.any?()
+      assert tree |> LazyHTML.query("ul.tree-children > li a[data-tooltip-type='Module']") |> Enum.any?()
     end
 
     test "a node with several groups keeps a row for each" do

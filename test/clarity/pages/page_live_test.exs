@@ -291,6 +291,8 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "navigation panel has correct theme classes", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
+      # The panel renders once the graph has loaded.
+      render_async(view)
 
       # Navigation should have theme-appropriate styling
       nav_html = view |> element(".navigation") |> render()

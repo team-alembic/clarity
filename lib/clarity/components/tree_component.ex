@@ -118,6 +118,10 @@ defmodule Clarity.TreeComponent do
   attr :name_style, :atom, required: true
   attr :status_index, :any, required: true
 
+  attr :root?, :boolean,
+    default: false,
+    doc: "Whether these are the top-level rows, which draw no guide"
+
   @spec render_vertex(map()) :: Rendered.t()
   def render_vertex(assigns)
 
@@ -138,7 +142,7 @@ defmodule Clarity.TreeComponent do
   def render_node(assigns)
 
   attr :group, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :graph, :any, required: true
   attr :visible_ids, :any, required: true
   attr :collapsed, :any, required: true
@@ -274,8 +278,10 @@ defmodule Clarity.TreeComponent do
   end
 
   # Children are named together, so siblings whose names clash are told apart.
-  @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t(), Name.style()) :: [map()]
-  defp navigation_groups(graph, vertex, collapsed, name_style) do
+  @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t(), Name.style(), Vertex.t()) :: [map()]
+  defp navigation_groups(graph, vertex, collapsed, name_style, active_vertex) do
+    active_id = Vertex.id(active_vertex)
+
     for {label, children} <- Graph.navigation_children(graph, vertex), label != :content do
       id = group_id(vertex, label)
 
@@ -284,10 +290,15 @@ defmodule Clarity.TreeComponent do
         label: label,
         children: Enum.zip(children, Name.display_all(children, name_style)),
         open?: not MapSet.member?(collapsed, id),
+        active?: Enum.any?(children, &(Vertex.id(&1) == active_id)),
         any_has_children?: Enum.any?(children, &has_children?(graph, &1))
       }
     end
   end
+
+  # The guide beside the current vertex and its siblings stays visible.
+  @spec guide_class(map()) :: [String.t() | false]
+  defp guide_class(group), do: ["tree-children", group.active? && "tree-guide-active"]
 
   @spec has_children?(Graph.t(), Vertex.t()) :: boolean()
   defp has_children?(graph, vertex) do
