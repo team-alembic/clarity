@@ -27,24 +27,25 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
     @spec label(Policy.t()) :: String.t()
     def label(policy) do
-      if described?(policy) do
-        policy.description
-      else
-        {scopes, others} =
-          policy.condition |> List.wrap() |> Enum.reject(&always?/1) |> Enum.split_with(&scope?/1)
+      if described?(policy), do: policy.description, else: summarise(policy)
+    end
 
-        checks = Enum.reject(policy.policies, &always_authorizes?/1)
-        {whens, rule} = rule(policy.bypass?, others, checks)
+    @spec summarise(Policy.t()) :: String.t()
+    defp summarise(policy) do
+      {scopes, others} =
+        policy.condition |> List.wrap() |> Enum.reject(&always?/1) |> Enum.split_with(&scope?/1)
 
-        head =
-          case if(policy.bypass?, do: ["bypass"], else: []) ++
-                 Enum.map(scopes, &describe_scope/1) ++ whens do
-            [] -> ["all actions"]
-            head -> head
-          end
+      checks = Enum.reject(policy.policies, &always_authorizes?/1)
+      {whens, rule} = rule(policy.bypass?, others, checks)
+      bypass = if policy.bypass?, do: ["bypass"], else: []
 
-        Enum.join(head, " ") <> ": " <> rule
-      end
+      head =
+        case bypass ++ Enum.map(scopes, &describe_scope/1) ++ whens do
+          [] -> "all actions"
+          parts -> Enum.join(parts, " ")
+        end
+
+      head <> ": " <> rule
     end
 
     @doc """

@@ -343,6 +343,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     # Opens the lens at the clarity application, following the lens's
     # redirect to its own starting tab.
+    @spec live_lens(Plug.Conn.t(), String.t()) :: {:ok, %View{}, String.t()}
     defp live_lens(conn, lens) do
       {:ok, view, html} =
         case live(conn, "/#{lens}/application:clarity") do

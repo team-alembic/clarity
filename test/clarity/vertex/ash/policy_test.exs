@@ -10,6 +10,7 @@ defmodule Clarity.Vertex.Ash.PolicyTest do
   alias Demo.Projects.Ticket
 
   # The resource's policies, as vertices, in declaration order.
+  @spec policies(Ash.Resource.t()) :: [Policy.t()]
   defp policies(resource), do: for(policy <- Info.policies(resource), do: %Policy{policy: policy, resource: resource})
 
   describe inspect(&Vertex.name/1) do

@@ -51,6 +51,7 @@ defmodule Clarity.TreeComponentTest do
 
   describe "group rows" do
     # An application with modules and, optionally, a domain, rendered open.
+    @spec render_app_tree([{Vertex.t(), atom()}]) :: LazyHTML.t()
     defp render_app_tree(edges) do
       app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
 
@@ -80,6 +81,7 @@ defmodule Clarity.TreeComponentTest do
       |> LazyHTML.from_fragment()
     end
 
+    @spec group_labels(LazyHTML.t()) :: [String.t()]
     defp group_labels(tree),
       do: tree |> LazyHTML.query("[id^='tree-group-'] > summary") |> Enum.map(&String.trim(LazyHTML.text(&1)))
 
