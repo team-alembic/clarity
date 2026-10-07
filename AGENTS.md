@@ -9,7 +9,9 @@ Clarity is an interactive introspection and visualisation tool for Elixir projec
 ## Development Commands
 
 ```bash
-# Start the demo app at :4000 (runs `mix phx.server` in demo/, with esbuild/tailwind watchers)
+# Start the demo app at :4000 (runs `mix phx.server` in demo/, with esbuild/tailwind watchers).
+# The watchers build Clarity's assets into the gitignored tmp/dev_assets, which Clarity
+# embeds from in dev, so the shipped assets in priv/static stay untouched.
 mix dev
 
 # Run full check suite (formatter, credo, dialyzer, tests, etc.)
@@ -23,8 +25,8 @@ mix test path/to/test.exs:42        # Single test at line
 # Format code (uses Styler plugin)
 mix format
 
-# Build assets
-mix assets.build
+# Rebuild the shipped, minified assets in priv/static (commit these with asset changes)
+mix assets.deploy
 
 # Update usage rules documentation
 mix usage_rules.update

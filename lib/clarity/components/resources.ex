@@ -5,6 +5,7 @@ defmodule Clarity.Resources do
 
   import Phoenix.HTML
 
+  alias Clarity.Resources.AssetPath
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
@@ -17,6 +18,16 @@ defmodule Clarity.Resources do
     end
 
   static_path = Application.app_dir(:clarity, ["priv", "static"])
+
+  # While developing Clarity, the demo app rebuilds its assets here rather than
+  # over the shipped ones in priv (see Clarity.Resources.AssetPath).
+  dev_assets_path = Application.compile_env(:clarity, :assets_path)
+
+  if dev_assets_path do
+    for file <- ~w(app.js app.css) do
+      Module.put_attribute(__MODULE__, :external_resource, Path.join(dev_assets_path, file))
+    end
+  end
 
   @external_resource cache_static_manifest_path =
                        Application.app_dir(:clarity, "priv/static/cache_manifest.json")
@@ -32,15 +43,23 @@ defmodule Clarity.Resources do
     end
 
   @external_resource js_path =
-                       Path.join([
-                         static_path,
-                         Map.get(manifest, "assets/app.js", "assets/app.js")
-                       ])
+                       AssetPath.pick(
+                         dev_assets_path,
+                         "app.js",
+                         Path.join(
+                           static_path,
+                           Map.get(manifest, "assets/app.js", "assets/app.js")
+                         )
+                       )
   @external_resource css_path =
-                       Path.join([
-                         static_path,
-                         Map.get(manifest, "assets/app.css", "assets/app.css")
-                       ])
+                       AssetPath.pick(
+                         dev_assets_path,
+                         "app.css",
+                         Path.join(
+                           static_path,
+                           Map.get(manifest, "assets/app.css", "assets/app.css")
+                         )
+                       )
   @external_resource logo_path =
                        Path.join([
                          static_path,
