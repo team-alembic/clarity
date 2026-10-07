@@ -218,10 +218,11 @@ defmodule Clarity.PageLive do
     end
   end
 
-  # The tree opens the path to the current vertex. When the path changes, the
-  # user's collapses of nodes and groups along it are dropped, so navigating
-  # always reveals the new vertex; collapses elsewhere, and re-rendering the
-  # same path (a tab switch, a graph refresh), keep them.
+  # The tree opens the path to the current vertex and keeps it open after
+  # navigating elsewhere, like any node the user expanded. When the path
+  # changes, the user's collapses of nodes and groups along it are dropped, so
+  # navigating always reveals the new vertex; collapses elsewhere, and
+  # re-rendering the same path (a tab switch, a graph refresh), keep them.
   @spec reveal_tree_path(Socket.t(), [Vertex.t()]) :: Socket.t()
   defp reveal_tree_path(socket, breadcrumbs) do
     path = Enum.map(breadcrumbs, &Vertex.id/1)
@@ -231,7 +232,10 @@ defmodule Clarity.PageLive do
       socket
     else
       path_ids = TreeComponent.path_ids(socket.assigns.clarity.graph, breadcrumbs)
-      update(socket, :tree_collapsed, &MapSet.difference(&1, path_ids))
+
+      socket
+      |> update(:tree_opened, &MapSet.union(&1, path_ids))
+      |> update(:tree_collapsed, &MapSet.difference(&1, path_ids))
     end
   end
 

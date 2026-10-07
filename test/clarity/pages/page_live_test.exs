@@ -400,14 +400,14 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "#{@clarity_node}[open]")
     end
 
-    test "a node opened only by navigation closes when navigating elsewhere", %{conn: conn} do
+    test "a node opened by navigation stays open when navigating elsewhere", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       render_patch(view, "/debug/root/graph")
       render_async(view)
 
-      refute has_element?(view, "#{@clarity_node}[open]")
+      assert has_element?(view, "#{@clarity_node}[open]")
     end
 
     test "a node the user expanded stays open when navigating elsewhere", %{conn: conn} do
