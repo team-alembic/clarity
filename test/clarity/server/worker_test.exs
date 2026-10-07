@@ -58,8 +58,7 @@ defmodule Clarity.Server.WorkerTest do
       MockClarityServer.enqueue_pull_task(mock_server, {:ok, task})
       start_supervised!({Worker, clarity_server: mock_server})
 
-      assert_receive {:nack_task, ^task_id, {%RuntimeError{message: "Intentional test error"}, _stacktrace}},
-                     500
+      assert_receive {:nack_task, ^task_id, {%RuntimeError{message: "Intentional test error"}, _stacktrace}}
     end
   end
 end

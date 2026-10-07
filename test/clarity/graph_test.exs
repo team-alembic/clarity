@@ -1154,7 +1154,7 @@ defmodule Clarity.GraphTest do
 
       send(task.pid, {:graph, new_graph})
 
-      assert_receive {:ets_owner, owner}, 1000
+      assert_receive {:ets_owner, owner}
       assert owner == task.pid
 
       send(task.pid, :continue)
@@ -1203,7 +1203,7 @@ defmodule Clarity.GraphTest do
       assert {:ok, new_graph} = Graph.handover(graph, task.pid)
       send(task.pid, {:graph, new_graph})
 
-      assert_receive {:owned_count, count}, 1000
+      assert_receive {:owned_count, count}
       assert count >= 12
 
       send(task.pid, :continue)
@@ -1238,7 +1238,7 @@ defmodule Clarity.GraphTest do
       assert {:ok, new_graph} = Graph.handover(graph, task.pid)
       send(task.pid, {:graph, new_graph})
 
-      assert_receive :success, 1000
+      assert_receive :success
 
       send(task.pid, :continue)
       Task.await(task)

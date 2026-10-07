@@ -538,7 +538,7 @@ defmodule Clarity.ServerTest do
       pull_all_tasks(server)
 
       # Should eventually receive work_completed
-      assert_receive {:clarity, :work_completed}, 1000
+      assert_receive {:clarity, :work_completed}
 
       unsubscribe.()
     end

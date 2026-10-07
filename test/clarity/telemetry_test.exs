@@ -221,14 +221,12 @@ defmodule Clarity.TelemetryTest do
       MockClarityServer.enqueue_pull_task(mock_server, {:ok, task})
       start_supervised!({Worker, clarity_server: mock_server})
 
-      assert_receive {:telemetry, [:clarity, :worker, :start], _, %{clarity_server: ^mock_server} = start_metadata},
-                     500
+      assert_receive {:telemetry, [:clarity, :worker, :start], _, %{clarity_server: ^mock_server} = start_metadata}
 
       ref = start_metadata.telemetry_span_context
 
       assert_receive {:telemetry, [:clarity, :worker, :exception], measurements,
-                      %{clarity_server: ^mock_server} = metadata},
-                     500
+                      %{clarity_server: ^mock_server} = metadata}
 
       assert %{duration: _, monotonic_time: _, system_time: _} = measurements
 
