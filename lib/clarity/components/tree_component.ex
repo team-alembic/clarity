@@ -298,17 +298,14 @@ defmodule Clarity.TreeComponent do
     for {label, children} <- Graph.navigation_children(graph, vertex), label != :content do
       id = group_id(vertex, label)
 
-      then(
-        %{
-          id: id,
-          label: label,
-          children: Enum.zip(children, Name.display_all(children, name_style)),
-          open?: not MapSet.member?(collapsed, id),
-          active?: not active_is_open? and Enum.any?(children, &(Vertex.id(&1) == active_id)),
-          any_has_children?: Enum.any?(children, &has_children?(graph, &1))
-        },
-        &Map.put(&1, :row?, not &1.any_has_children? and length(children) > 1)
-      )
+      %{
+        id: id,
+        label: label,
+        children: Enum.zip(children, Name.display_all(children, name_style)),
+        open?: not MapSet.member?(collapsed, id),
+        active?: not active_is_open? and Enum.any?(children, &(Vertex.id(&1) == active_id)),
+        any_has_children?: Enum.any?(children, &has_children?(graph, &1))
+      }
     end
   end
 
