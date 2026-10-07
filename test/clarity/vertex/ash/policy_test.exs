@@ -13,46 +13,50 @@ defmodule Clarity.Vertex.Ash.PolicyTest do
   @spec policies(Ash.Resource.t()) :: [Policy.t()]
   defp policies(resource), do: for(policy <- Info.policies(resource), do: %Policy{policy: policy, resource: resource})
 
-  describe inspect(&Vertex.name/1) do
-    test "names a policy by the actions it covers and what it requires" do
+  # The tree shows a policy's name, then its detail in muted text.
+  @spec label(Policy.t()) :: {String.t(), String.t() | nil}
+  defp label(vertex), do: {Vertex.name(vertex), Vertex.DetailProvider.detail(vertex)}
+
+  describe "name and detail" do
+    test "name a policy by the actions it covers, with what it requires as the detail" do
       [_bypass, read, _by_name] = policies(User)
 
-      assert Vertex.name(read) == "read actions: authorize if id == actor.id"
+      assert label(read) == {"read", "id == actor.id"}
     end
 
-    test "names a policy on one action after that action" do
+    test "name a policy on one action after that action, counting further checks" do
       [_bypass, _read, close, _reassign] = policies(Ticket)
 
-      assert Vertex.name(close) == "close action: authorize if reporter_id == actor.id (+2)"
+      assert label(close) == {"close", "reporter_id == actor.id +2"}
     end
 
-    test "lists every action type a policy covers" do
+    test "list every action type a policy covers" do
       [_read, write] = policies(ApiToken)
 
-      assert Vertex.name(write) == "create, destroy actions: authorize if actor.role in [:owner, :admin]"
+      assert label(write) == {"create, destroy", "actor.role in [:owner, :admin]"}
     end
 
-    test "leaves out checks that always authorize" do
+    test "spell out checks that forbid, and leave out checks that always authorize" do
       [_bypass, _read, by_name] = policies(User)
 
-      assert Vertex.name(by_name) == "by_name action: forbid if actor is using an API key"
+      assert label(by_name) == {"by_name", "forbid if actor is using an API key"}
     end
 
-    test "names a bypass by what grants it, whether that is its condition or its check" do
+    test "describe a bypass by what grants it, whether that is its condition or its check" do
       [user_bypass | _rest] = policies(User)
       membership_bypass = Enum.find(policies(Membership), & &1.policy.bypass?)
 
       # bypass always() do authorize_if actor_attribute_equals(:admin, true)
-      assert Vertex.name(user_bypass) == "bypass: actor.admin == true"
+      assert label(user_bypass) == {"bypass", "actor.admin == true"}
       # bypass actor_attribute_equals(:admin, true) do authorize_if always()
-      assert Vertex.name(membership_bypass) == "bypass: actor.admin == true"
+      assert label(membership_bypass) == {"bypass", "actor.admin == true"}
     end
 
-    test "prefers the policy's own description" do
+    test "prefer the policy's own description, with no detail" do
       [_bypass, read, _by_name] = policies(User)
       described = %{read | policy: %{read.policy | description: "Users can read themselves"}}
 
-      assert Vertex.name(described) == "Users can read themselves"
+      assert label(described) == {"Users can read themselves", nil}
     end
   end
 

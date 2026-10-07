@@ -18,19 +18,22 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defstruct [:policy, :resource]
 
     @doc """
-    A one-line label for `policy`: what it covers, then what it requires.
+    Labels `policy` for the tree: a name saying what it covers, and a detail
+    saying what it requires, shown muted after the name.
 
-    Reads `"read actions: authorize if id == actor.id"` or, for a bypass,
-    `"bypass: actor.admin == true"`. Checks that always authorize are left out,
-    and further checks are counted (`"(+2)"`). A policy's own description, when
-    it has one, is used as is.
+    `{"read", "id == actor.id"}`, `{"close", "reporter_id == actor.id +2"}` or,
+    for a bypass, `{"bypass", "actor.admin == true"}`. Authorizing is the usual
+    case, so "authorize if" goes unsaid; other checks are spelt out (`"forbid if
+    …"`). Checks that always authorize are left out, and further checks are
+    counted. A policy's own description, when it has one, is the name, with no
+    detail.
     """
-    @spec label(Policy.t()) :: String.t()
+    @spec label(Policy.t()) :: {String.t(), String.t() | nil}
     def label(policy) do
-      if described?(policy), do: policy.description, else: summarise(policy)
+      if described?(policy), do: {policy.description, nil}, else: summarise(policy)
     end
 
-    @spec summarise(Policy.t()) :: String.t()
+    @spec summarise(Policy.t()) :: {String.t(), String.t()}
     defp summarise(policy) do
       {scopes, others} =
         policy.condition |> List.wrap() |> Enum.reject(&always?/1) |> Enum.split_with(&scope?/1)
@@ -39,13 +42,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       {whens, rule} = rule(policy.bypass?, others, checks)
       bypass = if policy.bypass?, do: ["bypass"], else: []
 
-      head =
+      name =
         case bypass ++ Enum.map(scopes, &describe_scope/1) ++ whens do
           [] -> "all actions"
           parts -> Enum.join(parts, " ")
         end
 
-      head <> ": " <> rule
+      {name, rule}
     end
 
     @doc """
@@ -71,41 +74,35 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defp rule(true, [_ | _] = others, []),
       do: {[], Enum.map_join(others, " and ", &describe_condition/1)}
 
-    defp rule(bypass?, others, checks) do
+    defp rule(_bypass?, others, checks) do
       whens = Enum.map(others, &("when " <> describe_condition(&1)))
-      describe = if bypass?, do: &describe_bypass_check/1, else: &describe_check/1
 
       rule =
         case checks do
-          [] -> "always authorize"
-          [check] -> describe.(check)
-          [check | rest] -> "#{describe.(check)} (+#{length(rest)})"
+          [] -> "always"
+          [check] -> describe_rule(check)
+          [check | rest] -> "#{describe_rule(check)} +#{length(rest)}"
         end
 
       {whens, rule}
     end
 
-    # Authorizing is what a bypass does, so "authorize if" goes without saying.
-    @spec describe_bypass_check(Check.t()) :: String.t()
-    defp describe_bypass_check(%{type: :authorize_if, check_module: module, check_opts: opts}),
+    # Authorizing is the usual case, so "authorize if" goes without saying.
+    @spec describe_rule(Check.t()) :: String.t()
+    defp describe_rule(%{type: :authorize_if, check_module: module, check_opts: opts}),
       do: tidy(module.describe(opts))
 
-    defp describe_bypass_check(check), do: describe_check(check)
+    defp describe_rule(check), do: describe_check(check)
 
     @spec scope?(Check.ref()) :: boolean()
     defp scope?({module, _opts}), do: module in [Check.ActionType, Check.Action]
     defp scope?(_other), do: false
 
     @spec describe_scope(Check.ref()) :: String.t()
-    defp describe_scope({Check.ActionType, opts}), do: actions(opts[:type], "actions")
-    defp describe_scope({Check.Action, opts}), do: actions(opts[:action], "action")
+    defp describe_scope({Check.ActionType, opts}),
+      do: opts[:type] |> List.wrap() |> Enum.join(", ")
 
-    @spec actions(atom() | [atom()], String.t()) :: String.t()
-    defp actions(names, noun) do
-      names = List.wrap(names)
-      noun = if length(names) > 1, do: String.trim_trailing(noun, "s") <> "s", else: noun
-      Enum.join(names, ", ") <> " " <> noun
-    end
+    defp describe_scope({Check.Action, opts}), do: opts[:action] |> List.wrap() |> Enum.join(", ")
 
     @spec always?(Check.ref()) :: boolean()
     defp always?({Check.Static, opts}), do: opts[:result] == true
@@ -135,7 +132,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       def type_label(_vertex), do: "Policy"
 
       @impl Clarity.Vertex
-      def name(%@for{policy: policy}), do: @for.label(policy)
+      def name(%@for{policy: policy}), do: policy |> @for.label() |> elem(0)
+    end
+
+    defimpl Clarity.Vertex.DetailProvider do
+      @impl Clarity.Vertex.DetailProvider
+      def detail(%@for{policy: policy}), do: policy |> @for.label() |> elem(1)
     end
 
     defimpl Clarity.Vertex.GraphGroupProvider do

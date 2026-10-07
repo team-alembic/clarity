@@ -3,10 +3,12 @@ defmodule Clarity.TreeComponentTest do
 
   import Phoenix.LiveViewTest
 
+  alias Ash.Policy.Info, as: PolicyInfo
   alias Clarity.Graph
   alias Clarity.Perspective.Lensmaker
   alias Clarity.TreeComponent
   alias Clarity.Vertex
+  alias Demo.Accounts.User
 
   describe "short names" do
     test "siblings whose short names clash are told apart by the module before" do
@@ -130,7 +132,7 @@ defmodule Clarity.TreeComponentTest do
       app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
       domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
       other_domain = %Vertex.Ash.Domain{domain: Demo.Billing}
-      resource = %Vertex.Ash.Resource{resource: Demo.Accounts.User}
+      resource = %Vertex.Ash.Resource{resource: User}
 
       graph = Graph.new()
       Graph.add_vertex(graph, app, %Vertex.Root{})
@@ -198,6 +200,30 @@ defmodule Clarity.TreeComponentTest do
         ])
 
       assert tree |> group_labels() |> Enum.sort() == ["domain", "module"]
+    end
+  end
+
+  describe "row details" do
+    test "a row shows its vertex's detail, muted, after its name" do
+      [_bypass, read, _by_name] = PolicyInfo.policies(User)
+      policy = %Vertex.Ash.Policy{policy: read, resource: User}
+
+      row =
+        [{policy, :policy}]
+        |> render_app_tree()
+        |> LazyHTML.query("a[data-tooltip-type='Policy']")
+
+      assert row |> LazyHTML.query(".tree-name") |> LazyHTML.text() |> String.trim() == "read"
+      assert row |> LazyHTML.query(".tree-detail") |> LazyHTML.text() |> String.trim() == "id == actor.id"
+    end
+
+    test "a row without a detail shows just its name" do
+      row =
+        [{%Vertex.Module{module: Demo.Accounts}, :module}]
+        |> render_app_tree()
+        |> LazyHTML.query("a[data-tooltip-type='Module']")
+
+      assert row |> LazyHTML.query(".tree-detail") |> Enum.empty?()
     end
   end
 

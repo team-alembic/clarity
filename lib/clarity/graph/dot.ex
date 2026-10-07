@@ -178,7 +178,11 @@ defmodule Clarity.Graph.DOT do
           raw("<I><FONT POINT-SIZE=\"8\">"),
           Vertex.type_label(vertex),
           raw("</FONT></I><BR />"),
-          Vertex.name(vertex)
+          Vertex.name(vertex),
+          case Vertex.DetailProvider.detail(vertex) do
+            nil -> []
+            detail -> [raw("<BR /><FONT POINT-SIZE=\"8\">"), detail, raw("</FONT>")]
+          end
         ]),
         ", shape = ",
         Vertex.GraphShapeProvider.shape(vertex),

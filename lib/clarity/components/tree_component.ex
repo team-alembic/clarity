@@ -191,11 +191,16 @@ defmodule Clarity.TreeComponent do
   attr :lens, Lens, required: true
   attr :name, :string, required: true
 
-  # A vertex's label: its type icon, in its colour, then its name, cut short
-  # with an ellipsis rather than wrapped; the hover hint has it in full.
+  # A vertex's label: its type icon, in its colour, then its name and any
+  # detail (Clarity.Vertex.DetailProvider), muted. Cut short with an ellipsis
+  # rather than wrapped, the detail first; the hover hint has it all.
   @spec node_link(map()) :: Rendered.t()
   defp node_link(assigns) do
-    assigns = assign(assigns, :type_icon, Tooltip.type_icon(assigns.vertex))
+    assigns =
+      assign(assigns,
+        type_icon: Tooltip.type_icon(assigns.vertex),
+        detail: Vertex.DetailProvider.detail(assigns.vertex)
+      )
 
     ~H"""
     <.link
@@ -211,7 +216,12 @@ defmodule Clarity.TreeComponent do
       <svg class="tree-icon" data-tone={@type_icon.tone} aria-hidden="true">
         <use href={"#clarity-icon-#{@type_icon.icon}"} />
       </svg>
-      <.vertex_name vertex={@vertex} name={@name} class="truncate" />
+      <.vertex_name
+        vertex={@vertex}
+        name={@name}
+        class={["tree-name truncate", @detail && "shrink-0"]}
+      />
+      <span :if={@detail} class="tree-detail truncate">{@detail}</span>
     </.link>
     """
   end

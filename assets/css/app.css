@@ -386,6 +386,15 @@
   transform: rotate(90deg);
 }
 
+/* A row's detail, after its name; see Clarity.Vertex.DetailProvider. */
+.tree-detail {
+  @apply ml-1 font-normal text-base-light-500 dark:text-base-dark-400;
+}
+
+[aria-current="page"] > .tree-detail {
+  @apply text-current opacity-80;
+}
+
 /* Type icons take their tone's colour; see Clarity.Tooltip. */
 .tree-icon {
   @apply size-4 shrink-0 text-base-light-500 dark:text-base-dark-400;
