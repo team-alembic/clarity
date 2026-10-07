@@ -1,16 +1,16 @@
 <header
-  class={"flex items-center px-6 py-4 bg-base-light-100 dark:bg-base-dark-800 shadow-md #{@class}"}
+  class={"flex items-center h-12 px-4 bg-base-light-100 dark:bg-base-dark-800 border-b border-base-light-300 dark:border-base-dark-700 #{@class}"}
   {@rest}
 >
-  <.link patch={@prefix} class="mr-4">
+  <.link patch={@prefix} class="mr-2.5">
     <img
       src={Clarity.Resources.logo_uri()}
-      alt="Ash Logo"
-      class="h-8 w-8"
+      alt="Clarity logo"
+      class="size-6"
     />
   </.link>
-  <h1 class="text-2xl font-bold tracking-tight flex-1 truncate text-base-light-900 dark:text-base-dark-50">
-    <.link patch={@prefix} class="mr-4">
+  <h1 class="text-base font-semibold tracking-tight flex-1 truncate text-base-light-900 dark:text-base-dark-50">
+    <.link patch={@prefix}>
       Clarity
     </.link>
   </h1>
@@ -22,7 +22,7 @@
     )}
   </div>
 
-  <div class="flex items-center space-x-2">
+  <div class="flex items-center gap-1">
     <.live_component
       module={Clarity.LensSwitcherComponent}
       id="lens-switcher"

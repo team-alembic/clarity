@@ -8,7 +8,7 @@ defmodule Clarity.LensSwitcherComponentTest do
   alias Clarity.Perspective.Lens
 
   describe "LensSwitcherComponent" do
-    test "renders aperture icon and current lens icon" do
+    test "shows the current lens's icon and name" do
       lens = %Lens{
         id: "debug",
         name: "Debug",
@@ -27,11 +27,9 @@ defmodule Clarity.LensSwitcherComponentTest do
           lens: lens
         )
 
-      # Should show aperture icon
-      assert html =~ ~s(<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 8 8")
+      button = html |> LazyHTML.from_fragment() |> LazyHTML.query("button[aria-label='Switch lens perspective']")
 
-      # Should show current lens icon
-      assert html =~ "🐛"
+      assert button |> LazyHTML.text() |> String.split() == ["🐛", "Debug"]
 
       # Should have toggle button
       assert html =~ ~s(phx-click="toggle_dropdown")
@@ -112,9 +110,9 @@ defmodule Clarity.LensSwitcherComponentTest do
           lens: lens
         )
 
-      # Should render without errors and show current lens icon
+      # Should render without errors and show the current lens
       assert html =~ "🛡️"
-      assert html =~ ~s(<svg class="w-5 h-5")
+      assert html =~ "Security"
     end
   end
 end
