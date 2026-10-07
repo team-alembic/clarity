@@ -462,6 +462,14 @@ defmodule Clarity.Pages.PageLiveTest do
       assert label == "Accounts"
     end
 
+    test "has a resizable, collapsible panel", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, "#nav-resize[role='separator'][phx-hook='NavPanel']")
+      assert has_element?(view, "#toggle-sidebar[aria-label='Toggle sidebar']")
+    end
+
     @clarity_group "details[id='tree-group-application:clarity/child']"
 
     test "a vertex row shows its type's icon in its colour", %{conn: conn} do

@@ -134,8 +134,9 @@
 }
 
 @media (min-width: 48rem) {
+  /* The NavPanel hook sets the width, and the collapsed class, on <html>. */
   .layout-container {
-    grid-template-columns: minmax(20rem, 25vw) 1fr;
+    grid-template-columns: var(--clarity-nav-width, minmax(20rem, 25vw)) 1fr;
     grid-template-rows: min-content min-content min-content 1fr;
     grid-template-areas:
       "header header"
@@ -146,6 +147,23 @@
 
     height: 100vh;
   }
+
+  .clarity-nav-collapsed .layout-container {
+    grid-template-columns: 0 1fr;
+  }
+
+  .clarity-nav-collapsed .layout-container > :is(.navigation, .nav-resize) {
+    display: none;
+  }
+}
+
+/* Drag handle on the navigation's right edge, over its border. */
+.layout-container > .nav-resize {
+  @apply hidden md:block z-10 w-1.5 -mr-0.75 cursor-col-resize transition-colors;
+  @apply hover:bg-primary-light/40 focus-visible:bg-primary-light/60 focus-visible:outline-none;
+  @apply dark:hover:bg-primary-dark/40 dark:focus-visible:bg-primary-dark/60;
+  grid-area: navigation;
+  justify-self: end;
 }
 
 .layout-container > .header {

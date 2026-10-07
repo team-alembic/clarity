@@ -22,6 +22,9 @@ import Flash from "./flash.hook";
 import Details from "./details.hook";
 import ResizableDrawer from "./resizable-drawer.hook";
 import LocalTime from "./local_time.hook";
+import NavPanel, { applyNavState } from "./nav-panel.hook";
+
+applyNavState();
 
 let socketPath =
   document.querySelector("html").getAttribute("phx-socket") || "/live";
@@ -35,6 +38,7 @@ const Hooks = {
   Details: Details,
   ResizableDrawer: ResizableDrawer,
   LocalTime: LocalTime,
+  NavPanel: NavPanel,
 };
 
 let csrfToken = document
