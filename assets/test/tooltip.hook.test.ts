@@ -69,7 +69,11 @@ describe("tooltip controller", () => {
       <a id="vertex" href="#"
          data-tooltip-title="Docket.Accounts.User"
          data-tooltip-type="Ash Resource"
-         data-tooltip-text="A staff login."><span id="vertex-child">Docket.Accounts.User</span></a>
+         data-tooltip-icon="resource"
+         data-tooltip-tone="structure"
+         data-tooltip-badges='["multitenant"]'
+         data-tooltip-text="A staff login."
+         data-tooltip-facts='[["Domain","Docket.Accounts"],["Actions",["read","create"]]]'><span id="vertex-child">Docket.Accounts.User</span></a>
       <button id="label" data-tooltip-text="Copy to clipboard">⧉</button>
       <div id="plain">no hint here</div>
     `;
@@ -98,6 +102,13 @@ describe("tooltip controller", () => {
       expect(tip.textContent).toContain("Docket.Accounts.User");
       expect(tip.textContent).toContain("Ash Resource");
       expect(tip.textContent).toContain("A staff login.");
+    });
+
+    it("waits long enough that moving through the navigation doesn't pop hints", () => {
+      hover(vertex);
+      vi.advanceTimersByTime(500);
+
+      expect(shown()).toBe(false);
     });
 
     it("shows just the text for a label hint", () => {
@@ -183,6 +194,79 @@ describe("tooltip controller", () => {
       document.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, relatedTarget: null }));
 
       expect(shown()).toBe(false);
+    });
+  });
+
+  describe("vertex hint content", () => {
+    const showVertex = () => {
+      hover(vertex);
+      vi.advanceTimersByTime(SHOW_DELAY);
+    };
+
+    it("shows the type in a pill with the vertex type's icon and tone", () => {
+      showVertex();
+
+      const pill = tip.querySelector(".clarity-tooltip-pill")!;
+      expect(pill.textContent).toBe("Ash Resource");
+      expect(pill.getAttribute("data-tone")).toBe("structure");
+      expect(pill.querySelector("svg use")!.getAttribute("href")).toBe("#clarity-icon-resource");
+    });
+
+    it("puts the pill in the heading row, after the title", () => {
+      showVertex();
+
+      const heading = tip.querySelector(".clarity-tooltip-heading")!;
+      expect([...heading.children].map((el) => el.className)).toEqual([
+        "clarity-tooltip-title",
+        "clarity-tooltip-pill",
+      ]);
+    });
+
+    it("shows the badges in their own row under the heading", () => {
+      showVertex();
+
+      const row = tip.querySelector(".clarity-tooltip-heading + .clarity-tooltip-badges")!;
+      expect([...row.children].map((b) => b.textContent)).toEqual(["multitenant"]);
+    });
+
+    it("lists facts as terms and values, with list values as chips", () => {
+      showVertex();
+
+      const terms = [...tip.querySelectorAll(".clarity-tooltip-facts dt")].map((t) => t.textContent);
+      expect(terms).toEqual(["Domain", "Actions"]);
+
+      const [domain, actions] = tip.querySelectorAll(".clarity-tooltip-facts dd");
+      expect(domain.textContent).toBe("Docket.Accounts");
+      const chips = [...actions.querySelectorAll(".clarity-tooltip-chip")].map((c) => c.textContent);
+      expect(chips).toEqual(["read", "create"]);
+    });
+
+    it("renders facts and badges as text, never as HTML", () => {
+      vertex.dataset.tooltipBadges = JSON.stringify(["<b>x</b>"]);
+      vertex.dataset.tooltipFacts = JSON.stringify([["<i>L</i>", "<img src=x onerror=alert(1)>"]]);
+      showVertex();
+
+      expect(tip.querySelector("img, b, i")).toBeNull();
+      expect(tip.querySelector(".clarity-tooltip-facts dd")!.textContent).toBe("<img src=x onerror=alert(1)>");
+    });
+
+    it("still shows the rest of the hint when facts or badges are malformed", () => {
+      vertex.dataset.tooltipBadges = "not json";
+      vertex.dataset.tooltipFacts = '{"not": "a list"}';
+      showVertex();
+
+      expect(shown()).toBe(true);
+      expect(tip.textContent).toContain("A staff login.");
+      expect(tip.querySelector(".clarity-tooltip-facts")).toBeNull();
+      expect(tip.querySelector(".clarity-tooltip-badge")).toBeNull();
+    });
+
+    it("leaves the icon out when the hint has none", () => {
+      delete vertex.dataset.tooltipIcon;
+      showVertex();
+
+      expect(tip.querySelector(".clarity-tooltip-pill")!.textContent).toBe("Ash Resource");
+      expect(tip.querySelector(".clarity-tooltip-pill svg")).toBeNull();
     });
   });
 
@@ -317,13 +401,25 @@ describe("applyHints", () => {
     `;
 
     applyHints(document.querySelector("svg")!, {
-      "application:demo": { title: "demo", type: "Application", text: "Demo app." },
+      "application:demo": {
+        title: "demo",
+        type: "Application",
+        icon: "application",
+        tone: "structure",
+        badges: ["beta"],
+        text: "Demo app.",
+        facts: [["Version", "1.0.0"]],
+      },
     });
 
     const withHint = document.getElementById("with-hint")!;
     expect(withHint.getAttribute("data-tooltip-title")).toBe("demo");
     expect(withHint.getAttribute("data-tooltip-type")).toBe("Application");
+    expect(withHint.getAttribute("data-tooltip-icon")).toBe("application");
+    expect(withHint.getAttribute("data-tooltip-tone")).toBe("structure");
+    expect(JSON.parse(withHint.getAttribute("data-tooltip-badges")!)).toEqual(["beta"]);
     expect(withHint.getAttribute("data-tooltip-text")).toBe("Demo app.");
+    expect(JSON.parse(withHint.getAttribute("data-tooltip-facts")!)).toEqual([["Version", "1.0.0"]]);
     expect(document.getElementById("without-hint")!.hasAttribute("data-tooltip-title")).toBe(false);
   });
 });

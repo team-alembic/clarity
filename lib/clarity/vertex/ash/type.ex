@@ -5,6 +5,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
 
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             type: Ash.Type.t()
@@ -68,6 +69,17 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         |> then(fn lines -> if length(lines) == length, do: lines ++ ["..."], else: lines end)
         |> Enum.join("\n")
       end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :type
+
+      @impl HintProvider
+      def badges(_vertex), do: []
+
+      @impl HintProvider
+      def facts(_vertex), do: []
     end
   end
 end

@@ -61,4 +61,10 @@ defmodule Clarity.Vertex.Spark.DslTest do
       assert overview_string =~ "`Ash`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "has its own icon", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :dsl
+    end
+  end
 end

@@ -5,6 +5,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
     alias Ash.Resource.Calculation
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             calculation: Calculation.t(),
@@ -60,6 +61,27 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           inspect(vertex.calculation.public?),
           "`\n"
         ]
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :calculation
+
+      @impl HintProvider
+      def badges(%@for{calculation: calculation}),
+        do: if(calculation.public?, do: ["public"], else: [])
+
+      @impl HintProvider
+      def facts(%@for{calculation: calculation, resource: resource}) do
+        [
+          {"Resource", inspect(resource)},
+          {"Type", inspect(calculation.type)}
+          | case calculation.arguments do
+              [] -> []
+              arguments -> [{"Arguments", Enum.map(arguments, &Atom.to_string(&1.name))}]
+            end
+        ]
+      end
     end
   end
 end

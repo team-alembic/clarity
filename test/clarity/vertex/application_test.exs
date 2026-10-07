@@ -76,4 +76,11 @@ defmodule Clarity.Vertex.ApplicationTest do
       assert vertex.version == "invalid-version"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the version", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :application
+      assert Vertex.HintProvider.facts(vertex) == [{"Version", "1.2.3"}]
+    end
+  end
 end

@@ -116,6 +116,18 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "#clarity-tooltip[role='tooltip'][phx-hook='Tooltip']")
     end
 
+    test "renders the icon sprite the hints' type pills refer to", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, "symbol#clarity-icon-application")
+
+      assert has_element?(
+               view,
+               ".navigation a[data-tooltip-title='clarity'][data-tooltip-icon='application'][data-tooltip-tone='structure']"
+             )
+    end
+
     test "tree links carry the vertex hint inline", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       render_async(view)
@@ -136,7 +148,7 @@ defmodule Clarity.Pages.PageLiveTest do
              )
     end
 
-    test "graph visualisations ship hints for vertices that have a summary", %{conn: conn} do
+    test "graph visualisations ship each vertex's full hint", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
       render_async(view)
 
@@ -152,7 +164,10 @@ defmodule Clarity.Pages.PageLiveTest do
       assert hints["application:clarity"] == %{
                "title" => "clarity",
                "type" => "Application",
-               "text" => "Clarity App"
+               "icon" => "application",
+               "tone" => "structure",
+               "text" => "Clarity App",
+               "facts" => [["Version", "0.1.0"]]
              }
     end
   end

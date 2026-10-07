@@ -3,6 +3,8 @@ defmodule Clarity.Vertex.Advisory do
   Vertex implementation for a security advisory affecting a dependency.
   """
 
+  alias Clarity.Vertex.HintProvider
+
   @type t() :: %__MODULE__{advisory: Clarity.Advisory.t()}
   @enforce_keys [:advisory]
   defstruct [:advisory]
@@ -37,6 +39,25 @@ defmodule Clarity.Vertex.Advisory do
           severity -> ["**Severity:** ", severity, "\n\n"]
         end,
         advisory.summary || ""
+      ]
+    end
+  end
+
+  defimpl Clarity.Vertex.HintProvider do
+    @impl HintProvider
+    def icon(_vertex), do: :advisory
+
+    @impl HintProvider
+    def badges(%@for{advisory: advisory}), do: List.wrap(advisory.severity)
+
+    @impl HintProvider
+    def facts(%@for{advisory: advisory}) do
+      [
+        {"Package", advisory.package}
+        | case advisory.aliases do
+            empty when empty in [nil, []] -> []
+            aliases -> [{"Aliases", aliases}]
+          end
       ]
     end
   end

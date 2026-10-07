@@ -13,6 +13,15 @@ defmodule Clarity.IconComponents do
   embed_templates "icon_components/*"
 
   @doc """
+  Renders the hidden SVG sprite of vertex type icons used by hover hints.
+
+  Render it once per page; the `Tooltip` hook references its symbols by id
+  (`clarity-icon-<icon>`, one per `Clarity.Tooltip.icons/0`).
+  """
+  @spec vertex_icon_sprite(assigns :: Socket.assigns()) :: Rendered.t()
+  def vertex_icon_sprite(assigns)
+
+  @doc """
   Renders an info icon (circle with i).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"

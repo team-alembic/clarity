@@ -52,4 +52,11 @@ defmodule Clarity.Vertex.Phoenix.RouterTest do
       if file_path, do: assert(String.ends_with?(file_path, "dev/demo_web/router.ex"))
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows how many routes the router has", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :router
+      assert Vertex.HintProvider.facts(vertex) == [{"Routes", "#{length(DemoWeb.Router.__routes__())}"}]
+    end
+  end
 end

@@ -58,4 +58,11 @@ defmodule Clarity.Vertex.Spark.SectionTest do
       assert overview_string =~ "**Section Path:** `[:attributes]`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the module the section belongs to", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :section
+      assert Vertex.HintProvider.facts(vertex) == [{"Module", "Demo.Accounts.User"}]
+    end
+  end
 end

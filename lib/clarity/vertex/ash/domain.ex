@@ -4,7 +4,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     Vertex implementation for Ash domains.
     """
 
+    alias Ash.Domain.Info
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             domain: Ash.Domain.t()
@@ -59,6 +61,18 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           end
         ]
       end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :domain
+
+      @impl HintProvider
+      def badges(_vertex), do: []
+
+      @impl HintProvider
+      def facts(%@for{domain: domain}),
+        do: [{"Resources", domain |> Info.resources() |> length() |> Integer.to_string()}]
     end
   end
 end

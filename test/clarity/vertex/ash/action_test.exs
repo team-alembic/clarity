@@ -114,4 +114,26 @@ defmodule Clarity.Vertex.Ash.ActionTest do
       refute overview_string =~ "## Arguments"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the resource, action type and arguments" do
+      vertex = %Action{action: Info.action(User, :by_name), resource: User}
+
+      assert Vertex.HintProvider.icon(vertex) == :action
+      assert Vertex.HintProvider.badges(vertex) == []
+
+      assert Vertex.HintProvider.facts(vertex) == [
+               {"Resource", "Demo.Accounts.User"},
+               {"Type", "read"},
+               {"Arguments", ["first_name", "last_name"]}
+             ]
+    end
+
+    test "flags a primary action and omits empty arguments" do
+      vertex = %Action{action: Info.action(User, :read), resource: User}
+
+      assert Vertex.HintProvider.badges(vertex) == ["primary"]
+      assert Vertex.HintProvider.facts(vertex) == [{"Resource", "Demo.Accounts.User"}, {"Type", "read"}]
+    end
+  end
 end

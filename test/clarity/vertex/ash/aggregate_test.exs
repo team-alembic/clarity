@@ -61,4 +61,34 @@ defmodule Clarity.Vertex.Ash.AggregateTest do
       assert Vertex.TooltipProvider.tooltip(vertex) == nil
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the resource and kind, omitting an empty path and field", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :aggregate
+      assert Vertex.HintProvider.badges(vertex) == []
+      assert Vertex.HintProvider.facts(vertex) == [{"Resource", "Demo.Accounts.User"}, {"Kind", "count"}]
+    end
+
+    test "shows the relationship path and field when set" do
+      vertex = %Aggregate{
+        aggregate: %Ash.Resource.Aggregate{
+          name: :total,
+          kind: :sum,
+          relationship_path: [:invoices, :line_items],
+          field: :amount,
+          public?: true
+        },
+        resource: User
+      }
+
+      assert Vertex.HintProvider.badges(vertex) == ["public"]
+
+      assert Vertex.HintProvider.facts(vertex) == [
+               {"Resource", "Demo.Accounts.User"},
+               {"Kind", "sum"},
+               {"Path", "invoices.line_items"},
+               {"Field", "amount"}
+             ]
+    end
+  end
 end

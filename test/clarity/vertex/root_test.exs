@@ -44,4 +44,12 @@ defmodule Clarity.Vertex.RootTest do
       assert Vertex.TooltipProvider.tooltip(vertex) == nil
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "falls back to a generic icon with no badges or facts", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :generic
+      assert Vertex.HintProvider.badges(vertex) == []
+      assert Vertex.HintProvider.facts(vertex) == []
+    end
+  end
 end

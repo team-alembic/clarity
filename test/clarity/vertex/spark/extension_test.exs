@@ -62,4 +62,10 @@ defmodule Clarity.Vertex.Spark.ExtensionTest do
       assert overview_string =~ "`Ash.Resource.Dsl`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "has its own icon", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :extension
+    end
+  end
 end

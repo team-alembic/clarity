@@ -86,7 +86,14 @@ defmodule Clarity.CoreComponentsTest do
         |> JSON.decode!()
 
       assert hints == %{
-               "application:demo" => %{"title" => "demo", "type" => "Application", "text" => "Demo app."}
+               "application:demo" => %{
+                 "title" => "demo",
+                 "type" => "Application",
+                 "icon" => "application",
+                 "tone" => "structure",
+                 "text" => "Demo app.",
+                 "facts" => [["Version", "1.0.0"]]
+               }
              }
     end
   end

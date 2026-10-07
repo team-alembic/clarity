@@ -6,6 +6,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     alias Ash.Resource.Info
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             resource: Ash.Resource.t()
@@ -66,6 +67,32 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             _ ->
               []
           end
+        ]
+      end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :resource
+
+      @impl HintProvider
+      def badges(%@for{resource: resource}),
+        do: if(Info.multitenancy_strategy(resource), do: ["multitenant"], else: [])
+
+      @impl HintProvider
+      def facts(%@for{resource: resource}) do
+        [
+          {"Domain", inspect(Info.domain(resource))},
+          {"Data layer", inspect(Info.data_layer(resource))},
+          {"Contains",
+           Enum.join(
+             [
+               "#{length(Info.attributes(resource))} attributes",
+               "#{length(Info.actions(resource))} actions",
+               "#{length(Info.relationships(resource))} relationships"
+             ],
+             " · "
+           )}
         ]
       end
     end

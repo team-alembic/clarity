@@ -1,8 +1,11 @@
 defmodule Clarity.TooltipTest do
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Info
+  alias Clarity.Test.HintVertex
   alias Clarity.Tooltip
   alias Clarity.Vertex
+  alias Demo.Accounts.User
 
   doctest Tooltip
 
@@ -92,7 +95,7 @@ defmodule Clarity.TooltipTest do
   end
 
   describe inspect(&Tooltip.attrs/1) do
-    test "a vertex yields its name, type label and summary" do
+    test "a vertex yields its name, type pill, summary and facts" do
       vertex = %Vertex.Application{
         app: :demo,
         description: "Demo application for Clarity.",
@@ -102,16 +105,37 @@ defmodule Clarity.TooltipTest do
       assert Tooltip.attrs(vertex) == [
                "data-tooltip-title": "demo",
                "data-tooltip-type": "Application",
-               "data-tooltip-text": "Demo application for Clarity."
+               "data-tooltip-icon": "application",
+               "data-tooltip-tone": "structure",
+               "data-tooltip-text": "Demo application for Clarity.",
+               "data-tooltip-facts": ~s([["Version","1.0.0"]])
              ]
     end
 
-    test "a vertex without a summary still gets a title and type" do
+    test "badges are encoded as a JSON list" do
+      vertex = %Vertex.Module{module: Clarity.Server, behaviour?: true}
+
+      assert Keyword.fetch!(Tooltip.attrs(vertex), :"data-tooltip-badges") == ~s(["behaviour"])
+    end
+
+    test "list facts are encoded as JSON lists" do
+      vertex = %Vertex.Ash.Action{action: Info.action(User, :by_name), resource: User}
+
+      assert vertex |> Tooltip.attrs() |> Keyword.fetch!(:"data-tooltip-facts") |> JSON.decode!() == [
+               ["Resource", "Demo.Accounts.User"],
+               ["Type", "read"],
+               ["Arguments", ["first_name", "last_name"]]
+             ]
+    end
+
+    test "a vertex with nothing more to say gets a title, type and a generic icon" do
       vertex = %Vertex.Root{}
 
       assert Tooltip.attrs(vertex) == [
                "data-tooltip-title": "Root",
-               "data-tooltip-type": "Root"
+               "data-tooltip-type": "Root",
+               "data-tooltip-icon": "generic",
+               "data-tooltip-tone": "neutral"
              ]
     end
 
@@ -124,13 +148,45 @@ defmodule Clarity.TooltipTest do
     end
   end
 
+  describe inspect(&Tooltip.hint/1) do
+    test "caps facts at five, long values at 60 characters and lists at six chips" do
+      long = String.duplicate("x", 80)
+      many = Enum.map(1..9, &"arg#{&1}")
+      facts = [{"Long", long}, {"Many", many}] ++ Enum.map(1..6, &{"F#{&1}", "v"})
+
+      hint = Tooltip.hint(%HintVertex{facts: facts})
+
+      assert length(hint.facts) == 5
+      assert [["Long", value], ["Many", chips] | _rest] = hint.facts
+      assert value == String.duplicate("x", 59) <> "…"
+      assert chips == ["arg1", "arg2", "arg3", "arg4", "arg5", "arg6", "+3 more"]
+    end
+
+    test "an icon outside Clarity's set falls back to the generic icon" do
+      assert %{icon: "generic", tone: "neutral"} = Tooltip.hint(%HintVertex{icon: :unheard_of})
+    end
+  end
+
+  describe inspect(&Tooltip.icons/0) do
+    test "lists every icon a HintProvider can choose" do
+      assert :resource in Tooltip.icons()
+      assert :generic in Tooltip.icons()
+    end
+  end
+
   describe inspect(&Tooltip.hints/1) do
-    test "maps vertex ids to hints, only for vertices that have a summary" do
-      app = %Vertex.Application{app: :demo, description: "Demo app.", version: "1.0.0"}
+    test "maps vertex ids to hints, for vertices with a summary, badges or facts" do
+      app = %Vertex.Application{app: :demo, description: "", version: "1.0.0"}
       root = %Vertex.Root{}
 
       assert Tooltip.hints([app, root]) == %{
-               Vertex.id(app) => %{title: "demo", type: "Application", text: "Demo app."}
+               Vertex.id(app) => %{
+                 title: "demo",
+                 type: "Application",
+                 icon: "application",
+                 tone: "structure",
+                 facts: [["Version", "1.0.0"]]
+               }
              }
     end
   end

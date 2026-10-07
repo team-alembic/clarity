@@ -75,4 +75,11 @@ defmodule Clarity.Vertex.Phoenix.EndpointTest do
       # The actual URL would depend on DemoWeb.Endpoint.url() implementation
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the endpoint URL", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :endpoint
+      assert Vertex.HintProvider.facts(vertex) == [{"URL", DemoWeb.Endpoint.url()}]
+    end
+  end
 end

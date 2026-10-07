@@ -4,6 +4,7 @@ defmodule Clarity.Vertex.Module do
   """
 
   alias Clarity.SourceLocation
+  alias Clarity.Vertex.HintProvider
 
   @type t() :: %__MODULE__{
           module: module(),
@@ -62,5 +63,16 @@ defmodule Clarity.Vertex.Module do
         end
       ]
     end
+  end
+
+  defimpl Clarity.Vertex.HintProvider do
+    @impl HintProvider
+    def icon(_vertex), do: :module
+
+    @impl HintProvider
+    def badges(%@for{behaviour?: behaviour?}), do: if(behaviour?, do: ["behaviour"], else: [])
+
+    @impl HintProvider
+    def facts(_vertex), do: []
   end
 end

@@ -3,6 +3,8 @@ defmodule Clarity.Vertex.Application do
   Vertex implementation for OTP applications.
   """
 
+  alias Clarity.Vertex.HintProvider
+
   @type t() :: %__MODULE__{
           app: Application.app(),
           description: String.t(),
@@ -62,5 +64,16 @@ defmodule Clarity.Vertex.Application do
         to_string(vertex.version),
         "`"
       ]
+  end
+
+  defimpl Clarity.Vertex.HintProvider do
+    @impl HintProvider
+    def icon(_vertex), do: :application
+
+    @impl HintProvider
+    def badges(_vertex), do: []
+
+    @impl HintProvider
+    def facts(%@for{version: version}), do: [{"Version", to_string(version)}]
   end
 end

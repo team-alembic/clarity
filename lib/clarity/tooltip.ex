@@ -5,8 +5,10 @@ defmodule Clarity.Tooltip do
   Hints are rendered inline as `data-tooltip-*` attributes, so showing one
   needs no round-trip to the server. There are two flavours:
 
-    * **Vertex hints** carry the vertex name, its type label and a one-line
-      summary derived from `Clarity.Vertex.TooltipProvider`.
+    * **Vertex hints** carry the vertex name, a type pill (its type label with
+      an icon and colour tone), a one-line summary derived from
+      `Clarity.Vertex.TooltipProvider`, and the badges and facts from
+      `Clarity.Vertex.HintProvider`.
     * **Label hints** carry a single line of text, for icon buttons, badges
       and other chrome.
 
@@ -16,15 +18,47 @@ defmodule Clarity.Tooltip do
   """
 
   alias Clarity.Vertex
+  alias Clarity.Vertex.HintProvider
   alias Clarity.Vertex.TooltipProvider
 
   @max_length 160
+  @max_facts 5
+  @max_value_length 60
+  @max_chips 6
+
+  # Each icon's colour tone groups vertex types by the role they play.
+  @tones %{
+    action: "behaviour",
+    advisory: "warning",
+    aggregate: "behaviour",
+    application: "structure",
+    attribute: "data",
+    calculation: "behaviour",
+    data_layer: "structure",
+    domain: "structure",
+    dsl: "dsl",
+    endpoint: "web",
+    entity: "dsl",
+    extension: "dsl",
+    generic: "neutral",
+    module: "structure",
+    policy: "rule",
+    relationship: "data",
+    resource: "structure",
+    router: "web",
+    section: "dsl",
+    type: "data"
+  }
 
   @typedoc "A hint for one vertex, as consumed by the `Tooltip` hook."
   @type hint() :: %{
           required(:title) => String.t(),
           required(:type) => String.t(),
-          optional(:text) => String.t()
+          required(:icon) => String.t(),
+          required(:tone) => String.t(),
+          optional(:badges) => [String.t()],
+          optional(:text) => String.t(),
+          optional(:facts) => [[String.t() | [String.t()]]]
         }
 
   @doc """
@@ -47,31 +81,90 @@ defmodule Clarity.Tooltip do
 
     [
       "data-tooltip-title": hint.title,
-      "data-tooltip-type": hint.type
-    ] ++ if(text = hint[:text], do: ["data-tooltip-text": text], else: [])
+      "data-tooltip-type": hint.type,
+      "data-tooltip-icon": hint.icon,
+      "data-tooltip-tone": hint.tone
+    ] ++
+      for {key, attr, encode} <- [
+            {:badges, :"data-tooltip-badges", &JSON.encode!/1},
+            {:text, :"data-tooltip-text", & &1},
+            {:facts, :"data-tooltip-facts", &JSON.encode!/1}
+          ],
+          Map.has_key?(hint, key),
+          do: {attr, encode.(hint[key])}
   end
 
   @doc """
-  Maps vertex ids to hints, for vertices that have a summary.
+  Maps vertex ids to hints, for vertices with a summary, badges or facts.
 
   Used for graph visualisations, where the node labels already show the name
-  and type, so a hint without a summary would add nothing.
+  and type, so a hint with nothing more would add nothing.
   """
   @spec hints(Enumerable.t(Vertex.t())) :: %{String.t() => hint()}
   def hints(vertices) do
-    for vertex <- vertices, hint = hint(vertex), Map.has_key?(hint, :text), into: %{} do
+    for vertex <- vertices,
+        hint = hint(vertex),
+        Enum.any?([:badges, :text, :facts], &Map.has_key?(hint, &1)),
+        into: %{} do
       {Vertex.id(vertex), hint}
     end
   end
 
-  @spec hint(Vertex.t()) :: hint()
-  defp hint(vertex) do
-    hint = %{title: Vertex.name(vertex), type: Vertex.type_label(vertex)}
+  @doc """
+  Returns the hint for one vertex.
 
-    case vertex |> TooltipProvider.tooltip() |> summarise() do
-      nil -> hint
-      text -> Map.put(hint, :text, text)
-    end
+  Shows at most #{@max_facts} facts; values longer than #{@max_value_length} characters are
+  truncated, and lists beyond #{@max_chips} items end in a "+N more" chip. Empty
+  badges, summary and facts are left out.
+  """
+  @spec hint(Vertex.t()) :: hint()
+  def hint(vertex) do
+    icon = vertex |> HintProvider.icon() |> known_icon()
+
+    %{
+      title: Vertex.name(vertex),
+      type: Vertex.type_label(vertex),
+      icon: Atom.to_string(icon),
+      tone: Map.fetch!(@tones, icon)
+    }
+    |> put_present(:badges, HintProvider.badges(vertex))
+    |> put_present(:text, vertex |> TooltipProvider.tooltip() |> summarise())
+    |> put_present(
+      :facts,
+      vertex |> HintProvider.facts() |> Enum.take(@max_facts) |> Enum.map(&fact/1)
+    )
+  end
+
+  @doc """
+  Lists the icons a `Clarity.Vertex.HintProvider` can choose from.
+
+  Any other icon falls back to `:generic`.
+  """
+  @spec icons() :: [HintProvider.icon()]
+  def icons, do: Map.keys(@tones)
+
+  @spec known_icon(atom()) :: HintProvider.icon()
+  defp known_icon(icon) when is_map_key(@tones, icon), do: icon
+  defp known_icon(_icon), do: :generic
+
+  @spec put_present(map(), atom(), term()) :: map()
+  defp put_present(map, _key, empty) when empty in [nil, []], do: map
+  defp put_present(map, key, value), do: Map.put(map, key, value)
+
+  @spec fact(HintProvider.fact()) :: [String.t() | [String.t()]]
+  defp fact({label, values}) when is_list(values) do
+    {shown, hidden} = Enum.split(values, @max_chips)
+    more = if hidden == [], do: [], else: ["+#{length(hidden)} more"]
+    [label, Enum.map(shown, &cap/1) ++ more]
+  end
+
+  defp fact({label, value}), do: [label, cap(value)]
+
+  @spec cap(String.t()) :: String.t()
+  defp cap(value) do
+    if String.length(value) <= @max_value_length,
+      do: value,
+      else: String.slice(value, 0, @max_value_length - 1) <> "…"
   end
 
   @doc """

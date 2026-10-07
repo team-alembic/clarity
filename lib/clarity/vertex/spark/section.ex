@@ -8,6 +8,7 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
     """
 
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             module: module(),
@@ -60,6 +61,17 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
           "`"
         ]
       end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :section
+
+      @impl HintProvider
+      def badges(_vertex), do: []
+
+      @impl HintProvider
+      def facts(%@for{module: module}), do: [{"Module", inspect(module)}]
     end
   end
 end

@@ -44,4 +44,12 @@ defmodule Clarity.Vertex.ModuleTest do
       assert vertex |> Vertex.TooltipProvider.tooltip() |> IO.iodata_to_binary() == "`Clarity.Server`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "flags behaviours", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :module
+      assert Vertex.HintProvider.badges(vertex) == []
+      assert Vertex.HintProvider.badges(%{vertex | behaviour?: true}) == ["behaviour"]
+    end
+  end
 end

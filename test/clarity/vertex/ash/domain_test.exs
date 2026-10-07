@@ -62,4 +62,11 @@ defmodule Clarity.Vertex.Ash.DomainTest do
       assert overview_string =~ "`Demo.Accounts.Domain`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows how many resources the domain has", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :domain
+      assert Vertex.HintProvider.facts(vertex) == [{"Resources", "6"}]
+    end
+  end
 end

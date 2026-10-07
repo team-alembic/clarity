@@ -1,6 +1,7 @@
 defmodule Clarity.Vertex.Ash.ResourceTest do
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Info
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Resource
   alias Demo.Accounts.User
@@ -61,6 +62,22 @@ defmodule Clarity.Vertex.Ash.ResourceTest do
 
       assert overview_string =~ "`Demo.Accounts.User`"
       assert overview_string =~ "Domain: `Demo.Accounts.Domain`"
+    end
+  end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the domain, data layer and what the resource contains", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :resource
+      assert Vertex.HintProvider.badges(vertex) == ["multitenant"]
+
+      assert Vertex.HintProvider.facts(vertex) == [
+               {"Domain", "Demo.Accounts.Domain"},
+               {"Data layer", "Ash.DataLayer.Ets"},
+               {"Contains",
+                "#{length(Info.attributes(User))} attributes · " <>
+                  "#{length(Info.actions(User))} actions · " <>
+                  "#{length(Info.relationships(User))} relationships"}
+             ]
     end
   end
 end

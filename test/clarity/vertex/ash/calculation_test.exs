@@ -102,4 +102,19 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
       assert overview_string =~ "Public: `false`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the resource, type and arguments" do
+      vertex = %Calculation{calculation: Info.calculation(User, :multi_arguments), resource: User}
+
+      assert Vertex.HintProvider.icon(vertex) == :calculation
+      assert Vertex.HintProvider.badges(vertex) == []
+
+      assert Vertex.HintProvider.facts(vertex) == [
+               {"Resource", "Demo.Accounts.User"},
+               {"Type", "Ash.Type.String"},
+               {"Arguments", ["arg1", "arg2", "arg3"]}
+             ]
+    end
+  end
 end

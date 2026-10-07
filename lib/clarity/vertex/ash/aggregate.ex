@@ -5,6 +5,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
     alias Ash.Resource.Aggregate
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             aggregate: Aggregate.t(),
@@ -41,6 +42,24 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       @impl Clarity.Vertex.SourceLocationProvider
       def source_location(%@for{aggregate: aggregate, resource: resource}) do
         SourceLocation.from_spark_entity(resource, aggregate)
+      end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :aggregate
+
+      @impl HintProvider
+      def badges(%@for{aggregate: aggregate}), do: if(aggregate.public?, do: ["public"], else: [])
+
+      @impl HintProvider
+      def facts(%@for{aggregate: aggregate, resource: resource}) do
+        [{"Resource", inspect(resource)}, {"Kind", Atom.to_string(aggregate.kind)}] ++
+          case aggregate.relationship_path do
+            [] -> []
+            path -> [{"Path", Enum.join(path, ".")}]
+          end ++
+          if(aggregate.field, do: [{"Field", to_string(aggregate.field)}], else: [])
       end
     end
   end

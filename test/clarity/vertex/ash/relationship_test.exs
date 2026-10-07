@@ -5,6 +5,7 @@ defmodule Clarity.Vertex.Ash.RelationshipTest do
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Relationship
   alias Demo.Accounts.User
+  alias Demo.Projects.Ticket
   alias Spark.Dsl.Entity
 
   setup do
@@ -61,6 +62,26 @@ defmodule Clarity.Vertex.Ash.RelationshipTest do
   describe inspect(&Clarity.Vertex.TooltipProvider.tooltip/1) do
     test "returns nil", %{vertex: vertex} do
       assert Vertex.TooltipProvider.tooltip(vertex) == nil
+    end
+  end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the resource and destination", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :relationship
+
+      assert Vertex.HintProvider.facts(vertex) == [
+               {"Resource", "Demo.Accounts.User"},
+               {"Destination", "Demo.Accounts.User"}
+             ]
+    end
+
+    test "shows the join resource of a many to many" do
+      vertex = %Relationship{
+        relationship: Info.relationship(Ticket, :labels),
+        resource: Ticket
+      }
+
+      assert {"Through", "Demo.Projects.TicketLabel"} in Vertex.HintProvider.facts(vertex)
     end
   end
 end

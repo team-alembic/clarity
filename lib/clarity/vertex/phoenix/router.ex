@@ -4,6 +4,7 @@ defmodule Clarity.Vertex.Phoenix.Router do
   """
 
   alias Clarity.SourceLocation
+  alias Clarity.Vertex.HintProvider
 
   @type t() :: %__MODULE__{router: module()}
   @enforce_keys [:router]
@@ -37,5 +38,17 @@ defmodule Clarity.Vertex.Phoenix.Router do
     def source_location(%@for{router: module}) do
       SourceLocation.from_module(module)
     end
+  end
+
+  defimpl Clarity.Vertex.HintProvider do
+    @impl HintProvider
+    def icon(_vertex), do: :router
+
+    @impl HintProvider
+    def badges(_vertex), do: []
+
+    @impl HintProvider
+    def facts(%@for{router: module}),
+      do: [{"Routes", module.__routes__() |> length() |> Integer.to_string()}]
   end
 end

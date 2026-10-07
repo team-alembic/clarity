@@ -7,6 +7,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
     alias Ash.Policy.Check
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             policy: Ash.Policy.Policy.t(),
@@ -141,6 +142,31 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end
 
       defp format_opts(_), do: ""
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :policy
+
+      @impl HintProvider
+      def badges(_vertex), do: []
+
+      @impl HintProvider
+      def facts(%@for{policy: policy, resource: resource}) do
+        [
+          {"Resource", inspect(resource)},
+          {"Condition", policy.condition |> List.wrap() |> Enum.map_join(", ", &describe/1)}
+          | case policy.policies do
+              [] -> []
+              checks -> [{"Checks", Enum.map(checks, &"#{&1.type} #{describe(&1)}")}]
+            end
+        ]
+      end
+
+      @spec describe(Check.t() | Check.ref()) :: String.t()
+      defp describe(%{check_module: module, check_opts: opts}), do: module.describe(opts)
+      defp describe({module, opts}), do: module.describe(opts)
+      defp describe(other), do: inspect(other)
     end
   end
 end

@@ -102,4 +102,28 @@ defmodule Clarity.Vertex.Ash.AttributeTest do
       assert overview_string =~ "Public: `false`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the resource, type and default, flagging visibility and nils" do
+      vertex = %Attribute{attribute: Info.attribute(User, :representative), resource: User}
+
+      assert Vertex.HintProvider.icon(vertex) == :attribute
+      assert Vertex.HintProvider.badges(vertex) == ["public", "required"]
+
+      assert Vertex.HintProvider.facts(vertex) == [
+               {"Resource", "Demo.Accounts.User"},
+               {"Type", "Ash.Type.Boolean"},
+               {"Default", "false"}
+             ]
+    end
+
+    test "flags sensitive and primary key attributes, omitting a nil default" do
+      email = %Attribute{attribute: Info.attribute(User, :email), resource: User}
+      id = %Attribute{attribute: Info.attribute(User, :id), resource: User}
+
+      assert Vertex.HintProvider.badges(email) == ["public", "sensitive"]
+      refute List.keymember?(Vertex.HintProvider.facts(email), "Default", 0)
+      assert "primary key" in Vertex.HintProvider.badges(id)
+    end
+  end
 end

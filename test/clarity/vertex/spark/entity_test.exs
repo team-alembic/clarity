@@ -69,4 +69,15 @@ defmodule Clarity.Vertex.Spark.EntityTest do
       assert overview_string =~ "**Entity:** `#{attribute.name}`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "shows the module and section the entity belongs to", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :entity
+
+      assert Vertex.HintProvider.facts(vertex) == [
+               {"Module", "Demo.Accounts.User"},
+               {"Section", "attributes"}
+             ]
+    end
+  end
 end

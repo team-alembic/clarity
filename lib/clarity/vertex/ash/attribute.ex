@@ -5,6 +5,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
     alias Ash.Resource.Attribute
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             attribute: Attribute.t(),
@@ -65,6 +66,31 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           inspect(vertex.attribute.public?),
           "`\n"
         ]
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :attribute
+
+      @impl HintProvider
+      def badges(%@for{attribute: attribute}) do
+        for {badge, true} <- [
+              {"primary key", attribute.primary_key?},
+              {"public", attribute.public?},
+              {"required", not attribute.allow_nil?},
+              {"sensitive", attribute.sensitive?}
+            ],
+            do: badge
+      end
+
+      @impl HintProvider
+      def facts(%@for{attribute: attribute, resource: resource}) do
+        [
+          {"Resource", inspect(resource)},
+          {"Type", inspect(attribute.type)}
+          | if(is_nil(attribute.default), do: [], else: [{"Default", inspect(attribute.default)}])
+        ]
+      end
     end
   end
 end

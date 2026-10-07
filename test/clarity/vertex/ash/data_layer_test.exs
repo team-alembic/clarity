@@ -78,4 +78,11 @@ defmodule Clarity.Vertex.Ash.DataLayerTest do
       assert overview_string =~ "`Ash.DataLayer.Ets`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "has its own icon", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :data_layer
+      assert Vertex.HintProvider.facts(vertex) == []
+    end
+  end
 end

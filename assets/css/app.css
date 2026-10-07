@@ -182,7 +182,7 @@
   @apply dark:border-base-dark-600 dark:bg-base-dark-800 dark:text-base-dark-100;
   /* undo the UA popover default of inset: 0 */
   inset: auto;
-  max-inline-size: min(20rem, calc(100vw - 1rem));
+  max-inline-size: min(24rem, calc(100vw - 1rem));
   font-size: 0.8125rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -204,20 +204,94 @@
   }
 }
 
-.clarity-tooltip-title {
-  @apply font-semibold;
+.clarity-tooltip-heading {
+  @apply flex items-start justify-between gap-3;
 }
 
-.clarity-tooltip-type {
-  @apply text-xs text-base-light-600 dark:text-base-dark-400;
+.clarity-tooltip-title {
+  @apply font-semibold min-w-0 break-words;
+}
+
+.clarity-tooltip-heading .clarity-tooltip-pill {
+  @apply shrink-0;
+}
+
+.clarity-tooltip-badges {
+  @apply mt-1 flex flex-wrap items-center gap-1;
+}
+
+.clarity-tooltip-pill,
+.clarity-tooltip-badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-px text-xs leading-4 whitespace-nowrap;
+}
+
+/* Tones group vertex types by role; see Clarity.Tooltip. */
+.clarity-tooltip-pill {
+  @apply font-medium bg-base-light-100 text-base-light-700 dark:bg-base-dark-700 dark:text-base-dark-100;
+}
+
+.clarity-tooltip-pill[data-tone="structure"] {
+  @apply bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200;
+}
+
+.clarity-tooltip-pill[data-tone="behaviour"] {
+  @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200;
+}
+
+.clarity-tooltip-pill[data-tone="data"] {
+  @apply bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200;
+}
+
+.clarity-tooltip-pill[data-tone="rule"] {
+  @apply bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200;
+}
+
+.clarity-tooltip-pill[data-tone="web"] {
+  @apply bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200;
+}
+
+.clarity-tooltip-pill[data-tone="dsl"] {
+  @apply bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200;
+}
+
+.clarity-tooltip-pill[data-tone="warning"] {
+  @apply bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200;
+}
+
+.clarity-tooltip-icon {
+  @apply size-3.5 shrink-0;
+}
+
+.clarity-tooltip-badge {
+  @apply border border-base-light-300 text-base-light-600 dark:border-base-dark-600 dark:text-base-dark-300;
 }
 
 .clarity-tooltip-text {
   @apply m-0;
 }
 
-.clarity-tooltip-type + .clarity-tooltip-text {
-  @apply mt-1;
+/* Space sections apart, but never above the first, so a label-only hint
+   keeps even padding. */
+.clarity-tooltip > * + .clarity-tooltip-text,
+.clarity-tooltip > * + .clarity-tooltip-facts {
+  @apply mt-1.5;
+}
+
+.clarity-tooltip-facts {
+  @apply m-0 pt-1.5 border-t border-base-light-200 dark:border-base-dark-700;
+  @apply grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs;
+}
+
+.clarity-tooltip-facts dt {
+  @apply text-base-light-500 dark:text-base-dark-400;
+}
+
+.clarity-tooltip-facts dd {
+  @apply m-0 min-w-0 font-mono break-words;
+}
+
+.clarity-tooltip-chip {
+  @apply inline-block mr-1 mb-0.5 rounded px-1 bg-base-light-100 dark:bg-base-dark-700;
 }
 
 /* Clarity Splash Screen Animation */

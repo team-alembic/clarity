@@ -4,6 +4,7 @@ defmodule Clarity.Vertex.Phoenix.Endpoint do
   """
 
   alias Clarity.SourceLocation
+  alias Clarity.Vertex.HintProvider
 
   @type t() :: %__MODULE__{endpoint: module()}
   @enforce_keys [:endpoint]
@@ -43,5 +44,16 @@ defmodule Clarity.Vertex.Phoenix.Endpoint do
     @impl Clarity.Vertex.TooltipProvider
     def tooltip(%@for{endpoint: module}),
       do: ["`", inspect(module), "`\n\n", "URL: ", module.url()]
+  end
+
+  defimpl Clarity.Vertex.HintProvider do
+    @impl HintProvider
+    def icon(_vertex), do: :endpoint
+
+    @impl HintProvider
+    def badges(_vertex), do: []
+
+    @impl HintProvider
+    def facts(%@for{endpoint: module}), do: [{"URL", module.url()}]
   end
 end

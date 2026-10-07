@@ -5,6 +5,7 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
     """
 
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             extension: module()
@@ -59,6 +60,17 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
           end
         ]
       end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :extension
+
+      @impl HintProvider
+      def badges(_vertex), do: []
+
+      @impl HintProvider
+      def facts(_vertex), do: []
     end
   end
 end

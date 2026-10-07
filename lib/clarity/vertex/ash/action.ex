@@ -5,6 +5,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
     alias Ash.Resource.Actions
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             action: Actions.action(),
@@ -86,6 +87,26 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                 "\n\n"
               ]
           end
+        ]
+      end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :action
+
+      @impl HintProvider
+      def badges(%@for{action: action}), do: if(action.primary?, do: ["primary"], else: [])
+
+      @impl HintProvider
+      def facts(%@for{action: action, resource: resource}) do
+        [
+          {"Resource", inspect(resource)},
+          {"Type", Atom.to_string(action.type)}
+          | case action.arguments do
+              [] -> []
+              arguments -> [{"Arguments", Enum.map(arguments, &Atom.to_string(&1.name))}]
+            end
         ]
       end
     end

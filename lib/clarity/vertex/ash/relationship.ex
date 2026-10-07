@@ -5,6 +5,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     """
     alias Ash.Resource.Relationships
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{
             relationship: Relationships.relationship(),
@@ -41,6 +42,27 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       @impl Clarity.Vertex.SourceLocationProvider
       def source_location(%@for{relationship: relationship, resource: resource}) do
         SourceLocation.from_spark_entity(resource, relationship)
+      end
+    end
+
+    defimpl Clarity.Vertex.HintProvider do
+      @impl HintProvider
+      def icon(_vertex), do: :relationship
+
+      @impl HintProvider
+      def badges(%@for{relationship: relationship}),
+        do: if(relationship.public?, do: ["public"], else: [])
+
+      @impl HintProvider
+      def facts(%@for{relationship: relationship, resource: resource}) do
+        [
+          {"Resource", inspect(resource)},
+          {"Destination", inspect(relationship.destination)}
+          | case relationship do
+              %{through: through} when not is_nil(through) -> [{"Through", inspect(through)}]
+              _other -> []
+            end
+        ]
       end
     end
   end

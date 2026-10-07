@@ -93,4 +93,11 @@ defmodule Clarity.Vertex.Ash.TypeTest do
       assert overview_string =~ "`Ash.Type.String`"
     end
   end
+
+  describe "Clarity.Vertex.HintProvider" do
+    test "has its own icon", %{vertex: vertex} do
+      assert Vertex.HintProvider.icon(vertex) == :type
+      assert Vertex.HintProvider.facts(vertex) == []
+    end
+  end
 end
