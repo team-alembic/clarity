@@ -969,6 +969,25 @@ defmodule Clarity.GraphTest do
   end
 
   describe "degree tracking" do
+    test "a subgraph counts only its own edges, labelled or not" do
+      graph = Graph.new()
+      app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}
+      app2 = %Application{app: :app2, description: "App 2", version: "1.0.0"}
+      app3 = %Application{app: :app3, description: "App 3", version: "1.0.0"}
+
+      for app <- [app1, app2, app3], do: Graph.add_vertex(graph, app, %Root{})
+      Graph.add_edge(graph, app1, app2, :label_a)
+      Graph.add_edge(graph, app3, app2, :label_a)
+
+      subgraph = Graph.filter(graph, {:in, :vertex_id, [Vertex.id(app1), Vertex.id(app2)]})
+
+      assert Graph.out_degree(subgraph, app3, :label_a) == 0
+      assert Graph.in_degree(subgraph, app2, :label_a) == 1
+      assert Graph.out_degree(subgraph, app1, :label_a) == 1
+
+      assert Graph.in_degree(graph, app2, :label_a) == 2
+    end
+
     test "tracks in_degree and out_degree for vertices" do
       graph = Graph.new()
       app1 = %Application{app: :app1, description: "App 1", version: "1.0.0"}

@@ -497,6 +497,14 @@ defmodule Clarity.Graph do
   Gets the in-degree for a vertex for a specific edge type.
   """
   @spec in_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
+  def in_degree(%__MODULE__{subgraph: true} = graph, vertex, label) do
+    count_labelled(
+      graph.main_graph,
+      :digraph.in_edges(graph.main_graph, Vertex.id(vertex)),
+      label
+    )
+  end
+
   def in_degree(%__MODULE__{} = graph, vertex, label) do
     vertex_id = Vertex.id(vertex)
     key = {vertex_id, label, :in_degree}
@@ -519,10 +527,26 @@ defmodule Clarity.Graph do
   Gets the out-degree for a vertex for a specific edge type.
   """
   @spec out_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
+  def out_degree(%__MODULE__{subgraph: true} = graph, vertex, label) do
+    count_labelled(
+      graph.main_graph,
+      :digraph.out_edges(graph.main_graph, Vertex.id(vertex)),
+      label
+    )
+  end
+
   def out_degree(%__MODULE__{} = graph, vertex, label) do
     vertex_id = Vertex.id(vertex)
     key = {vertex_id, label, :out_degree}
     :ets.lookup_element(graph.indexes, key, 2, 0)
+  end
+
+  # Subgraphs share the full graph's degree indexes, so they count their own
+  # edges instead.
+  @spec count_labelled(:digraph.graph(), [:digraph.edge()], :digraph.label()) ::
+          non_neg_integer()
+  defp count_labelled(digraph, edges, label) do
+    Enum.count(edges, &match?({_edge, _from, _to, ^label}, :digraph.edge(digraph, &1)))
   end
 
   @doc """
