@@ -1,17 +1,19 @@
 <nav
-  class="tabs border-b border-base-light-300 dark:border-base-dark-700 bg-base-light-100 dark:bg-base-dark-900 px-4 flex justify-between items-center"
+  class="tabs border-b border-base-light-300 dark:border-base-dark-700 bg-base-light-100 dark:bg-base-dark-900 pl-2 pr-3 flex items-stretch gap-3"
   {@rest}
 >
-  <ul class="flex space-x-2">
-    <li :for={content <- @contents}>
+  <%!-- Tabs keep to one line; when there are more than fit, the row scrolls,
+       keeping the current tab in view. --%>
+  <ul
+    id="content-tabs"
+    phx-hook="Tabs"
+    class="content-tabs relative flex min-w-0 flex-1 overflow-x-auto"
+  >
+    <li :for={content <- @contents} class="flex shrink-0">
       <.link
         patch={Path.join([@prefix, @lens.id, Clarity.Vertex.id(@vertex), content.id])}
-        class={
-        "inline-block px-4 py-2 rounded-t-md font-medium transition-colors " <>
-        if @content && content.id == @content.id,
-          do: "bg-base-light-200 dark:bg-base-dark-800 text-primary-light dark:text-primary-dark border-b-2 border-primary-light dark:border-primary-dark",
-          else: "text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark hover:bg-base-light-200 dark:hover:bg-base-dark-800"
-        }
+        class="content-tab"
+        aria-current={@content && content.id == @content.id && "page"}
         {Tooltip.attrs(content.description)}
       >
         {content.name}
@@ -30,12 +32,12 @@
     </li>
   </ul>
 
-  <div class="flex items-center gap-2">
+  <div class="flex shrink-0 items-center gap-1">
     <%= if @content && match?({type, _} when type in [:mermaid, :viz, :markdown], @content.render_static) do %>
       <button
         type="button"
         phx-click="toggle_raw_drawer"
-        class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 transition-colors"
+        class="flex items-center gap-1.5 px-2 py-1 text-sm rounded-md hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 transition-colors"
         {Tooltip.attrs("Show raw source")}
       >
         <.icon_code class="w-4 h-4" />

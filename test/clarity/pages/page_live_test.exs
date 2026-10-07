@@ -195,7 +195,7 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "nav.tabs a", "Graph Navigation")
 
       # Graph Navigation should be the active tab
-      assert has_element?(view, "nav.tabs a.bg-base-light-200", "Graph Navigation")
+      assert has_element?(view, "nav.tabs a[aria-current='page']", "Graph Navigation")
     end
 
     test "renders content for different vertex types", %{conn: conn} do
@@ -300,13 +300,16 @@ defmodule Clarity.Pages.PageLiveTest do
       assert nav_html =~ "border-base-light-" or nav_html =~ "dark:border-base-dark-"
     end
 
-    test "tabs have correct theme and state styling", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+    test "marks the tab being shown as the current one", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
 
-      # Active tab should have proper styling
-      tabs_html = view |> element("nav.tabs") |> render()
-      assert tabs_html =~ "bg-base-light-200" or tabs_html =~ "dark:bg-base-dark-800"
-      assert tabs_html =~ "text-primary-light" or tabs_html =~ "dark:text-primary-dark"
+      assert has_element?(view, "nav.tabs a[aria-current='page']", "Graph Navigation")
+
+      current =
+        view |> element("nav.tabs") |> render() |> LazyHTML.from_fragment() |> LazyHTML.query("a[aria-current]")
+
+      assert Enum.count(current) == 1
     end
   end
 

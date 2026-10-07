@@ -23,6 +23,7 @@ import Details from "./details.hook";
 import ResizableDrawer from "./resizable-drawer.hook";
 import LocalTime from "./local_time.hook";
 import NavPanel, { applyNavState } from "./nav-panel.hook";
+import Tabs from "./tabs.hook";
 
 applyNavState();
 
@@ -39,6 +40,7 @@ const Hooks = {
   ResizableDrawer: ResizableDrawer,
   LocalTime: LocalTime,
   NavPanel: NavPanel,
+  Tabs: Tabs,
 };
 
 let csrfToken = document
