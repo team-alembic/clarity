@@ -157,6 +157,36 @@
   }
 }
 
+/* The sidebar's own heading row, which holds the button that hides it. */
+.nav-heading {
+  @apply sticky top-0 z-10 -mx-2 mb-1 flex h-8 items-center justify-between px-3;
+  @apply bg-base-light-100 dark:bg-base-dark-800;
+  @apply text-[0.6875rem] font-semibold uppercase tracking-wider text-base-light-500 dark:text-base-dark-400;
+}
+
+.nav-toggle {
+  @apply inline-flex items-center justify-center rounded p-1;
+  @apply text-base-light-500 hover:bg-base-light-200 hover:text-base-light-900;
+  @apply dark:text-base-dark-400 dark:hover:bg-base-dark-700 dark:hover:text-base-dark-100;
+}
+
+/* Hiding the sidebar only applies on wide screens; narrow ones use the
+   header's menu button. The show button stands in for the hidden sidebar. */
+.nav-heading > .nav-toggle,
+.nav-show {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .nav-heading > .nav-toggle {
+    display: inline-flex;
+  }
+
+  .clarity-nav-collapsed .nav-show {
+    display: inline-flex;
+  }
+}
+
 /* Drag handle on the navigation's right edge, over its border. */
 .layout-container > .nav-resize {
   @apply hidden md:block z-10 w-1.5 -mr-0.75 cursor-col-resize transition-colors;

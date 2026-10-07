@@ -467,7 +467,15 @@ defmodule Clarity.Pages.PageLiveTest do
       render_async(view)
 
       assert has_element?(view, "#nav-resize[role='separator'][phx-hook='NavPanel']")
-      assert has_element?(view, "#toggle-sidebar[aria-label='Toggle sidebar']")
+    end
+
+    test "is hidden from its own top edge and shown again from where it was", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, ".navigation #hide-nav[aria-label='Hide sidebar']")
+      assert has_element?(view, ".title #show-nav[aria-label='Show sidebar']")
+      refute has_element?(view, "header #toggle-sidebar")
     end
 
     @clarity_group "details[id='tree-group-application:clarity/child']"

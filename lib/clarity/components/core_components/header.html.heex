@@ -23,16 +23,6 @@
   </div>
 
   <div class="flex items-center space-x-2">
-    <button
-      id="toggle-sidebar"
-      type="button"
-      class="hidden md:inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700"
-      phx-click={JS.dispatch("clarity:toggle-nav")}
-      aria-label="Toggle sidebar"
-      {Tooltip.attrs("Toggle sidebar (⌘B)")}
-    >
-      <.icon_sidebar class="size-5" />
-    </button>
     <.live_component
       module={Clarity.LensSwitcherComponent}
       id="lens-switcher"
