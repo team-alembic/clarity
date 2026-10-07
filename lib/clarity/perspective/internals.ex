@@ -3,11 +3,10 @@ defmodule Clarity.Perspective.Internals do
   Vertices a framework creates for its own use, which say little about the
   application being explored.
 
-  So far these are the shadow domains Ash defines for itself
-  (`Ash.EmbeddableType.ShadowDomain` and `Ash.Filter.ShadowDomain`), which
-  hold no resources.
+  So far these are the two `ShadowDomain` modules Ash defines for itself, for
+  embedded types and filters, which hold no resources.
 
-  `Clarity.PageLive` hides internals unless asked to show them, and does so
+  The Clarity page hides internals unless asked to show them, and does so
   before a lens filters the graph, so lenses treat them as absent: an
   application shown only for its internals, such as `ash` in the Architect
   lens, goes with them.
