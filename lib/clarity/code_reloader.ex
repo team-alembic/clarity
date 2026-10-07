@@ -32,8 +32,7 @@ defmodule Clarity.CodeReloader do
   def init(_opts), do: {:ok, nil}
 
   @impl GenServer
-  def handle_info({event, listener_update}, state)
-      when event in [:modules_compiled, :dep_compiled] do
+  def handle_info({:modules_compiled, listener_update}, state) do
     case GenServer.whereis(Clarity.Server) do
       nil ->
         :clarity_not_running
@@ -49,6 +48,8 @@ defmodule Clarity.CodeReloader do
     {:noreply, state}
   end
 
+  # Includes `:dep_compiled`, which carries no modules diff; a Mix dependency's
+  # modules have already arrived as `:modules_compiled` by then.
   def handle_info(_msg, state), do: {:noreply, state}
 
   # Event Format: https://hexdocs.pm/mix/Mix.Task.Compiler.html#module-listening-to-compilation
