@@ -8,6 +8,7 @@ defmodule Clarity.TreeComponentTest do
   alias Clarity.Perspective.Lensmaker
   alias Clarity.TreeComponent
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Resource
   alias Demo.Accounts.User
 
   describe "short names" do
@@ -120,7 +121,9 @@ defmodule Clarity.TreeComponentTest do
       tree =
         render_app_tree([
           {%Vertex.Module{module: Demo.Accounts}, :module},
-          {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain}
+          {%Vertex.Module{module: Demo.Billing}, :module},
+          {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain},
+          {%Vertex.Ash.Domain{domain: Demo.Billing}, :domain}
         ])
 
       active = LazyHTML.query(tree, ".tree-guide-active")
@@ -132,7 +135,7 @@ defmodule Clarity.TreeComponentTest do
       app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
       domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
       other_domain = %Vertex.Ash.Domain{domain: Demo.Billing}
-      resource = %Vertex.Ash.Resource{resource: User}
+      resource = %Resource{resource: User}
 
       graph = Graph.new()
       Graph.add_vertex(graph, app, %Vertex.Root{})
@@ -192,14 +195,69 @@ defmodule Clarity.TreeComponentTest do
       assert tree |> LazyHTML.query("ul.tree-children > li a[data-tooltip-type='Module']") |> Enum.any?()
     end
 
-    test "a node with several groups keeps a row for each" do
+    test "a group of items that expand gets no row; a group of leaves keeps one" do
+      app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
+      domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
+      resource = %Resource{resource: User}
+
+      graph = Graph.new()
+      Graph.add_vertex(graph, app, %Vertex.Root{})
+      Graph.add_edge(graph, %Vertex.Root{}, app, :child)
+      Graph.add_vertex(graph, domain, app)
+      Graph.add_edge(graph, app, domain, :domain)
+      Graph.add_vertex(graph, resource, domain)
+      Graph.add_edge(graph, domain, resource, :resource)
+
+      for module <- [Demo.Accounts, Demo.Billing] do
+        vertex = %Vertex.Module{module: module}
+        Graph.add_vertex(graph, vertex, app)
+        Graph.add_edge(graph, app, vertex, :module)
+      end
+
+      {:ok, lens} = Lensmaker.get_lens_by_id("debug")
+
+      tree =
+        TreeComponent
+        |> render_component(
+          id: "tree",
+          graph: graph,
+          lens: lens,
+          prefix: "/",
+          active_vertex: app,
+          breadcrumbs: [%Vertex.Root{}, app],
+          opened: MapSet.new(),
+          collapsed: MapSet.new(),
+          name_style: :short
+        )
+        |> LazyHTML.from_fragment()
+
+      # The domain expands to its resources, so its icon and chevron set it apart.
+      assert group_labels(tree) == ["module"]
+      assert tree |> LazyHTML.query("a[data-tooltip-type='Ash.Domain']") |> Enum.count() == 1
+    end
+
+    test "a node with several groups of several leaves keeps a row for each" do
       tree =
         render_app_tree([
           {%Vertex.Module{module: Demo.Accounts}, :module},
-          {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain}
+          {%Vertex.Module{module: Demo.Billing}, :module},
+          {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain},
+          {%Vertex.Ash.Domain{domain: Demo.Billing}, :domain}
         ])
 
       assert tree |> group_labels() |> Enum.sort() == ["domain", "module"]
+    end
+
+    test "a group of one leaf gets no row" do
+      tree =
+        render_app_tree([
+          {%Vertex.Module{module: Demo.Accounts}, :module},
+          {%Vertex.Module{module: Demo.Billing}, :module},
+          {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain}
+        ])
+
+      assert group_labels(tree) == ["module"]
+      assert tree |> LazyHTML.query("a[data-tooltip-type='Ash.Domain']") |> Enum.count() == 1
     end
   end
 

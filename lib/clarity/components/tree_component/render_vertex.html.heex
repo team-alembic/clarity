@@ -3,37 +3,52 @@
   under the root, has none. As in VS Code, the active guide is the one beside
   the current vertex's own items when it is open, or else the one beside it
   and its siblings.
+
+  A group gets a row of its own only beside other groups, and only when it
+  lists several leaves (`row?`): a lone group, a group of one, or a group of
+  items that expand (domains, resources) says nothing their icons and
+  chevrons don't.
 --%>
 <%= case navigation_groups(@graph, @vertex, @collapsed, @name_style, @active_vertex, @visible_ids) do %>
   <% [group] -> %>
-    <%!-- A lone group says nothing the items' icons don't, so it gets no row. --%>
     <.group_items
       group={group}
       class={!@root? && guide_class(group.active? or current?(@vertex, @active_vertex))}
       {tree_assigns(assigns)}
     />
   <% groups -> %>
-    <div class={!@root? && guide_class(current?(@vertex, @active_vertex))}>
-      <details
-        :for={group <- groups}
-        id={"tree-group-#{group.id}"}
-        open={group.open?}
-        phx-hook="Details"
-        phx-toggle="toggle_group"
-        phx-value-group_id={group.id}
-        phx-target={@myself}
-        class="tree-node select-none"
-      >
-        <summary class="flex items-center cursor-pointer text-base-light-600 dark:text-base-dark-400">
-          <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
-          <span class="min-w-0 truncate px-1 py-px">{group.label}</span>
-        </summary>
-        <.group_items
-          :if={group.open?}
-          group={group}
-          class={guide_class(group.active?)}
-          {tree_assigns(assigns)}
-        />
-      </details>
+    <div class={
+      !@root? &&
+        guide_class(
+          current?(@vertex, @active_vertex) or
+            Enum.any?(groups, &(not &1.row? and &1.active?))
+        )
+    }>
+      <%= for group <- groups do %>
+        <%= if not group.row? do %>
+          <.group_items group={group} {tree_assigns(assigns)} />
+        <% else %>
+          <details
+            id={"tree-group-#{group.id}"}
+            open={group.open?}
+            phx-hook="Details"
+            phx-toggle="toggle_group"
+            phx-value-group_id={group.id}
+            phx-target={@myself}
+            class="tree-node select-none"
+          >
+            <summary class="flex items-center cursor-pointer text-base-light-600 dark:text-base-dark-400">
+              <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
+              <span class="min-w-0 truncate px-1 py-px">{group.label}</span>
+            </summary>
+            <.group_items
+              :if={group.open?}
+              group={group}
+              class={guide_class(group.active?)}
+              {tree_assigns(assigns)}
+            />
+          </details>
+        <% end %>
+      <% end %>
     </div>
 <% end %>
