@@ -179,7 +179,7 @@
   grid-area: tabs;
 }
 
-.layout-container > .content {
+.layout-container > .title {
   grid-area: title;
 }
 
