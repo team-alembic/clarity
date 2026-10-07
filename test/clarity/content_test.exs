@@ -35,6 +35,9 @@ defmodule Clarity.ContentTest do
     def name, do: "Status Class Content"
 
     @impl Content
+    def description, do: "Test status class content provider"
+
+    @impl Content
     def applies?(%Root{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 

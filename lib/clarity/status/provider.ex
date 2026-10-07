@@ -2,9 +2,8 @@ defmodule Clarity.Status.Provider do
   @moduledoc """
   Behaviour for modules that flag vertices with `Clarity.Status` indicators.
 
-  Providers are registered per-application under `:clarity_status_providers`
-  (the same mechanism as content providers) and discovered via
-  `Clarity.Config.list_status_providers/0`:
+  Providers are registered per-application under `:clarity_status_providers`,
+  the same mechanism as content providers:
 
       config :my_app, :clarity_status_providers, [MyApp.LicenceStatus]
 
