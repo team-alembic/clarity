@@ -6,8 +6,8 @@ defmodule Clarity.Perspective.Internals do
   So far these are the two `ShadowDomain` modules Ash defines for itself, for
   embedded types and filters, which hold no resources.
 
-  The Clarity page hides internals unless asked to show them, and does so
-  before a lens filters the graph, so lenses treat them as absent: an
+  Unless a lens sets `show_internals?` (only the Debug lens does), they are
+  removed before it filters the graph, so it treats them as absent: an
   application shown only for its internals, such as `ash` in the Architect
   lens, goes with them.
   """

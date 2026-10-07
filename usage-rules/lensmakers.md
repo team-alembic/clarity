@@ -116,6 +116,11 @@ config :my_app, :clarity_perspective_lensmakers, [
   - Signature: `([module()] -> [module()])`
   - Default: show all types
 
+- **`show_internals?`** (Boolean) - Show framework internals
+  - Framework internals (`Clarity.Perspective.Internals`), such as Ash's shadow
+    domains, are removed before the lens filters the graph unless this is `true`
+  - Default: `false`; only the built-in Debug lens sets it
+
 ## Filter Patterns
 
 ### Static Filters

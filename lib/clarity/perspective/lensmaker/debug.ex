@@ -28,6 +28,7 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
         ~H"🐛"
       end,
       filter: &filter/1,
+      show_internals?: true,
       content_sorter: fn
         %Content{provider: Content.Graph}, _b -> true
         _a, %Content{provider: Content.Graph} -> false

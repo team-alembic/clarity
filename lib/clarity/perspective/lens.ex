@@ -5,6 +5,10 @@ defmodule Clarity.Perspective.Lens do
   A lens filters the graph to a subset relevant for a certain audience and defines
   how that filtered view should be presented, including the starting vertex and
   default content ordering.
+
+  Framework internals (see `Clarity.Perspective.Internals`), such as Ash's shadow
+  domains, are removed before the lens filters the graph unless the lens sets
+  `show_internals?: true`.
   """
 
   alias Clarity.Content
@@ -24,7 +28,8 @@ defmodule Clarity.Perspective.Lens do
           filter: Graph.Filter.filter(),
           content_sorter: content_sorter_fn(),
           show_vertex_types: show_vertex_types_fn(),
-          status_filter: status_filter_fn()
+          status_filter: status_filter_fn(),
+          show_internals?: boolean()
         }
 
   @enforce_keys [:id, :name, :icon, :filter]
@@ -36,7 +41,8 @@ defmodule Clarity.Perspective.Lens do
     :filter,
     content_sorter: &__MODULE__.sort_alphabetically/2,
     show_vertex_types: &__MODULE__.default_show_vertex_types/1,
-    status_filter: &__MODULE__.reject_all_statuses/1
+    status_filter: &__MODULE__.reject_all_statuses/1,
+    show_internals?: false
   ]
 
   @doc """

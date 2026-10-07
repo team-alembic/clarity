@@ -311,43 +311,27 @@ defmodule Clarity.Pages.PageLiveTest do
   describe "PageLive framework internals" do
     @describetag test_graph: [internals: true]
 
-    test "are hidden, along with an application that only holds them", %{conn: conn} do
+    test "are shown in the Debug lens, with no toggle", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
-      render_async(view)
-
-      refute has_element?(view, ".navigation a[data-tooltip-title='ash']")
-      assert has_element?(view, "#toggle-internals", "Show 1 framework internal")
-    end
-
-    test "are hidden before the lens looks, so the Architect lens drops ash too", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: path}}} =
-               live(conn, "/architect/application:clarity")
-
-      {:ok, view, _html} = live(conn, path)
-      render_async(view)
-
-      refute has_element?(view, ".navigation a[data-tooltip-title='ash']")
-    end
-
-    test "can be shown, and hidden again", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
-      render_async(view)
-
-      view |> element("#toggle-internals") |> render_click()
       render_async(view)
 
       assert has_element?(view, ".navigation a[data-tooltip-title='ash']")
-      assert has_element?(view, "#toggle-internals", "Hide framework internals")
-
-      view |> element("#toggle-internals") |> render_click()
-      render_async(view)
-
-      refute has_element?(view, ".navigation a[data-tooltip-title='ash']")
+      refute has_element?(view, "#toggle-internals")
     end
 
-    test "stay reachable: navigating to one shows it", %{conn: conn} do
+    for lens <- ["architect", "security"] do
+      test "are never shown in the #{lens} lens, nor an application that only holds them", %{conn: conn} do
+        {:ok, view, _html} = live_lens(conn, unquote(lens))
+
+        refute has_element?(view, ".navigation a[data-tooltip-title='ash']")
+        refute has_element?(view, ".navigation a[data-tooltip-title='Ash.EmbeddableType.ShadowDomain']")
+        refute has_element?(view, "#toggle-internals")
+      end
+    end
+
+    test "stay reachable: navigating to one shows it, even where they are hidden", %{conn: conn} do
       {:ok, view, _html} =
-        live(conn, "/debug/ash-domain:ash-embeddable-type-shadow-domain/graph")
+        live(conn, "/architect/ash-domain:ash-embeddable-type-shadow-domain/graph")
 
       render_async(view)
 
@@ -355,6 +339,19 @@ defmodule Clarity.Pages.PageLiveTest do
                view,
                ".navigation a[data-tooltip-title='Ash.EmbeddableType.ShadowDomain']"
              )
+    end
+
+    # Opens the lens at the clarity application, following the lens's
+    # redirect to its own starting tab.
+    defp live_lens(conn, lens) do
+      {:ok, view, html} =
+        case live(conn, "/#{lens}/application:clarity") do
+          {:error, {:live_redirect, %{to: path}}} -> live(conn, path)
+          result -> result
+        end
+
+      render_async(view)
+      {:ok, view, html}
     end
   end
 

@@ -36,9 +36,6 @@ defmodule Clarity.PageLive do
         tree_collapsed: MapSet.new(),
         # Short module names in the tree only; a candidate user preference.
         tree_name_style: :short,
-        # Framework internals (see Clarity.Perspective.Internals) are hidden
-        # unless the user asks for them.
-        show_internals: false,
         data: AsyncResult.loading(),
         page_title: "Loading...",
         shown_vertex_types: [],
@@ -260,8 +257,7 @@ defmodule Clarity.PageLive do
       lens: lens,
       vertex: vertex,
       zoom_level: zoom_level,
-      shown_vertex_types: shown_vertex_types,
-      show_internals: show_internals
+      shown_vertex_types: shown_vertex_types
     } = socket.assigns
 
     liveview_pid = self()
@@ -270,8 +266,8 @@ defmodule Clarity.PageLive do
       socket,
       :data,
       fn ->
-        internal_ids = Internals.ids(clarity.graph)
-        hidden_ids = if show_internals, do: [], else: internal_ids
+        # Framework internals are hidden unless the lens shows them.
+        hidden_ids = if lens.show_internals?, do: [], else: Internals.ids(clarity.graph)
 
         graph = compute_subgraph(clarity.graph, lens, vertex, shown_vertex_types, hidden_ids)
 
@@ -286,7 +282,7 @@ defmodule Clarity.PageLive do
         {:ok, graph} = Graph.handover(graph, liveview_pid)
         {:ok, zoom_graph} = Graph.handover(zoom_graph, liveview_pid)
 
-        {:ok, %{data: %{graph: graph, zoom_graph: zoom_graph, internals: length(internal_ids)}}}
+        {:ok, %{data: %{graph: graph, zoom_graph: zoom_graph}}}
       end
     )
   end
@@ -346,13 +342,6 @@ defmodule Clarity.PageLive do
 
   def handle_event("toggle_navigation", _params, socket) do
     {:noreply, assign(socket, show_navigation: not socket.assigns.show_navigation)}
-  end
-
-  def handle_event("toggle_internals", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(show_internals: not socket.assigns.show_internals)
-     |> load_data_async()}
   end
 
   def handle_event("toggle_raw_drawer", _params, socket) do
