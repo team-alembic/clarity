@@ -76,9 +76,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             <Charts.stat label="Bypass" value={@dashboard.bypass} tone={:info} />
             <Charts.stat label="Exposed fields" value={@dashboard.exposed} tone={:error} />
           </div>
-          <div class="flex flex-wrap gap-8">
-            <Charts.pie title="Policy coverage" segments={@dashboard.coverage} />
-            <Charts.pie title="Anonymous reach" segments={@dashboard.reach} />
+          <div class="grid gap-6 sm:grid-cols-2">
+            <Charts.stacked_bar title="Policy coverage" segments={@dashboard.coverage} />
+            <Charts.stacked_bar title="Anonymous reach" segments={@dashboard.reach} />
           </div>
         </div>
 

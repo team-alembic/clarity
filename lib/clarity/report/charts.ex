@@ -1,18 +1,14 @@
 defmodule Clarity.Report.Charts do
   @moduledoc """
-  Small presentational chart components for reports — KPI stat cards and a pie
-  chart — giving a report an at-a-glance executive summary above its prose.
+  Small presentational chart components for reports — KPI stat cards and a
+  stacked bar — giving a report an at-a-glance executive summary above its prose.
 
-  The pie is a server-rendered SVG from [`contex`](https://hex.pm/packages/contex)
-  (no JavaScript). Segment/card colour is chosen by `tone`: `:ok`, `:info`,
-  `:warning`, `:error`, or `:neutral`.
+  Both are plain HTML styled with Tailwind (no JavaScript). Segment/card colour
+  is chosen by `tone`: `:ok`, `:info`, `:warning`, `:error`, or `:neutral`.
   """
 
   use Clarity.Web, :html
 
-  alias Contex.Dataset
-  alias Contex.PieChart
-  alias Contex.Plot
   alias Phoenix.LiveView.Rendered
 
   @type segment() :: %{label: String.t(), value: number(), tone: atom()}
@@ -35,33 +31,46 @@ defmodule Clarity.Report.Charts do
   attr :segments, :list, required: true, doc: "list of %{label, value, tone}"
   attr :title, :string, default: nil
 
-  @doc "A pie chart of `segments`, server-rendered as SVG via contex."
-  @spec pie(map()) :: Rendered.t()
-  def pie(assigns) do
-    assigns = assign(assigns, :svg, pie_svg(Enum.reject(assigns.segments, &(&1.value == 0))))
+  @doc """
+  A bar split into one segment per non-zero entry of `segments`, each as wide as
+  its share of the total, with a legend. Renders nothing when the total is zero.
+  """
+  @spec stacked_bar(map()) :: Rendered.t()
+  def stacked_bar(assigns) do
+    segments = Enum.reject(assigns.segments, &(&1.value == 0))
+
+    assigns =
+      assign(assigns,
+        segments: segments,
+        total: segments |> Enum.map(& &1.value) |> Enum.sum()
+      )
 
     ~H"""
-    <figure :if={@svg} class="contex-chart text-base-light-900 dark:text-base-dark-100">
-      <figcaption :if={@title} class="text-sm font-medium mb-1">{@title}</figcaption>
-      {@svg}
+    <figure :if={@total > 0} class="space-y-2 max-w-xl">
+      <figcaption :if={@title} class="text-sm font-medium">{@title}</figcaption>
+      <div
+        role="img"
+        aria-label={Enum.map_join(@segments, ", ", &"#{&1.label} #{&1.value}")}
+        class="flex h-3 overflow-hidden rounded-full bg-base-light-200 dark:bg-base-dark-700"
+      >
+        <div
+          :for={segment <- @segments}
+          data-segment
+          class={segment_classes(segment.tone)}
+          style={"width: #{Float.round(segment.value / @total * 100, 2)}%"}
+        />
+      </div>
+      <ul class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <li :for={segment <- @segments} class="flex items-center gap-1.5">
+          <span class={["size-2.5 rounded-sm", segment_classes(segment.tone)]} />
+          {segment.label}
+          <span class="tabular-nums text-base-light-600 dark:text-base-dark-400">
+            {segment.value}
+          </span>
+        </li>
+      </ul>
     </figure>
     """
-  end
-
-  @spec pie_svg([segment()]) :: {:safe, iodata()} | nil
-  defp pie_svg([]), do: nil
-
-  defp pie_svg(segments) do
-    segments
-    |> Enum.map(&[&1.label, &1.value])
-    |> Dataset.new(["label", "value"])
-    |> Plot.new(PieChart, 360, 220,
-      mapping: %{category_col: "label", value_col: "value"},
-      colour_palette: Enum.map(segments, &palette(&1.tone)),
-      data_labels: true,
-      legend_setting: :legend_right
-    )
-    |> Plot.to_svg()
   end
 
   @spec card_classes(atom()) :: String.t()
@@ -82,11 +91,10 @@ defmodule Clarity.Report.Charts do
     do:
       "bg-base-light-100 dark:bg-base-dark-800 text-base-light-900 dark:text-base-dark-100 ring-base-light-300 dark:ring-base-dark-600"
 
-  # contex colour palettes are hex strings without the leading `#`.
-  @spec palette(atom()) :: String.t()
-  defp palette(:ok), do: "10b981"
-  defp palette(:info), do: "3b82f6"
-  defp palette(:warning), do: "f59e0b"
-  defp palette(:error), do: "ef4444"
-  defp palette(_neutral), do: "94a3b8"
+  @spec segment_classes(atom()) :: String.t()
+  defp segment_classes(:ok), do: "bg-green-500"
+  defp segment_classes(:info), do: "bg-blue-500"
+  defp segment_classes(:warning), do: "bg-yellow-500"
+  defp segment_classes(:error), do: "bg-red-500"
+  defp segment_classes(_neutral), do: "bg-base-light-400 dark:bg-base-dark-500"
 end

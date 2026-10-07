@@ -70,7 +70,7 @@ defmodule Clarity.Report.SupplyChain do
           <Charts.stat label="Outdated" value={@dashboard.outdated} tone={:info} />
           <Charts.stat label="Retired" value={@dashboard.retired} tone={:warning} />
         </div>
-        <Charts.pie title="Dependency health" segments={@dashboard.segments} />
+        <Charts.stacked_bar title="Dependency health" segments={@dashboard.segments} />
       </div>
 
       <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />

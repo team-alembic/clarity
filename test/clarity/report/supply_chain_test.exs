@@ -52,9 +52,9 @@ defmodule Clarity.Report.SupplyChainTest do
       assert html =~ "Via"
       assert html =~ "Outdated"
       refute html =~ ~s(phx-click)
-      # executive dashboard: KPI cards + a contex SVG chart
+      # executive dashboard: KPI cards + a stacked bar
       assert html =~ "Dependencies"
-      assert html =~ "<svg"
+      assert html =~ "data-segment"
     end
 
     test "renders security advisories as a table", %{graph: graph, lens: lens} do
