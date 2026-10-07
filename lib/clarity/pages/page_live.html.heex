@@ -12,6 +12,18 @@
         class="header z-10"
       />
 
+      <%!-- One shared element for every hover hint; the Tooltip hook owns its content. --%>
+      <div
+        id="clarity-tooltip"
+        role="tooltip"
+        popover="manual"
+        phx-hook="Tooltip"
+        phx-update="ignore"
+        class="clarity-tooltip"
+        hidden
+      >
+      </div>
+
       <.async_result :let={data} assign={@data}>
         <:loading>
           <.splash_screen />
@@ -47,6 +59,7 @@
                     </span>
                     <.link
                       patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
+                      {Tooltip.attrs(breadcrumb)}
                       class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
                     >
                       {Vertex.name(breadcrumb)}
@@ -90,14 +103,6 @@
               available_vertex_types={@available_vertex_types}
             />
           <% end %>
-          <.live_component
-            module={Clarity.TooltipComponent}
-            id="tooltips"
-            graph={data.graph}
-            breadcrumbs={@breadcrumbs}
-            prefix={@prefix}
-            lens={@lens}
-          />
           <% {content_type, raw_content} =
             case @content && @content.render_static do
               {:mermaid, content_fn} ->

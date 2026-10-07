@@ -178,7 +178,12 @@ end
 
 #### TooltipProvider - Hover Tooltips
 
-Provides markdown content for hover tooltips:
+Provides markdown describing the vertex. Clarity shows a compact hover hint
+built from it: the vertex `name/1` and `type_label/1`, plus a one-line summary
+taken from the **first prose paragraph** of this markdown, as plain text,
+truncated to 160 characters (see `Clarity.Tooltip.summarise/1`). Identity lines
+made only of inline code, `Key: value` lines, headings and lists are skipped
+when looking for that paragraph, so lead with a sentence:
 
 ```elixir
 defimpl Clarity.Vertex.TooltipProvider,
@@ -187,16 +192,20 @@ defimpl Clarity.Vertex.TooltipProvider,
   @impl Clarity.Vertex.TooltipProvider
   def tooltip(vertex) do
     """
-    # #{vertex.name}
+    `#{inspect(vertex.module)}`
 
-    **Type**: Custom Entity
+    #{vertex.description}
+
     **Category**: #{vertex.category}
     """
   end
 end
 ```
 
-**Returns:** Markdown string or `nil` for no tooltip.
+Here the hint reads the vertex name, its type label and `vertex.description`.
+
+**Returns:** Markdown string or `nil`. Without a prose paragraph the hint shows
+just the name and type label.
 
 ## Complete Example
 
@@ -265,10 +274,9 @@ defimpl Clarity.Vertex.TooltipProvider,
   @impl Clarity.Vertex.TooltipProvider
   def tooltip(vertex) do
     """
-    # #{vertex.name}
+    `#{inspect(vertex.module)}`
 
-    **Type**: Custom Entity
-    **Module**: `#{inspect(vertex.module)}`
+    #{vertex.description}
     """
   end
 end

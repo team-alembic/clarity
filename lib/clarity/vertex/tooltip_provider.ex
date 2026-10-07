@@ -2,10 +2,12 @@ defprotocol Clarity.Vertex.TooltipProvider do
   @moduledoc """
   Protocol for providing tooltip content for vertices.
 
-  This protocol allows vertices to specify their tooltip content,
-  which is displayed when hovering over the vertex in graph visualizations.
+  `Clarity.Tooltip` turns this markdown into the hover hint shown for the
+  vertex in the navigation tree, breadcrumbs and graph visualisations: the
+  first prose paragraph becomes a one-line plain-text summary (see
+  `Clarity.Tooltip.summarise/1`), so lead with a sentence describing the vertex.
 
-  Note: This component is rendered for every vertex in the graph, so it
+  Note: This is called for every vertex rendered in the tree and graph, so it
   should be efficient.
   """
 

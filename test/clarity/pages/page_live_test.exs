@@ -96,14 +96,6 @@ defmodule Clarity.Pages.PageLiveTest do
       assert_patched(view, "/debug/ash-domain:demo-accounts-domain/graph")
     end
 
-    test "displays tooltips for vertices", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/debug/root/graph")
-
-      # Should have tooltip elements for vertices
-      assert html =~ "tooltip-"
-      assert has_element?(view, "[id^='tooltip-']")
-    end
-
     test "graph visualization renders correctly", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
@@ -113,6 +105,55 @@ defmodule Clarity.Pages.PageLiveTest do
       # The graph content should be present
       viz_content = view |> element("#content-view-viz") |> render()
       assert viz_content =~ "digraph" or viz_content =~ "svg"
+    end
+  end
+
+  describe "PageLive Tooltips" do
+    test "renders a single shared tooltip element for the hook", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+
+      assert has_element?(view, "#clarity-tooltip[role='tooltip'][phx-hook='Tooltip']")
+    end
+
+    test "tree links carry the vertex hint inline", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(
+               view,
+               ".navigation a[data-tooltip-title='clarity'][data-tooltip-type='Application'][data-tooltip-text='Clarity App']"
+             )
+    end
+
+    test "breadcrumb links carry the vertex hint inline", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      assert has_element?(
+               view,
+               ".breadcrumbs a[data-tooltip-title='clarity'][data-tooltip-type='Application']"
+             )
+    end
+
+    test "graph visualisations ship hints for vertices that have a summary", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+
+      hints =
+        view
+        |> element("#content-view-viz")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.attribute("data-tooltips")
+        |> List.first()
+        |> JSON.decode!()
+
+      assert hints["application:clarity"] == %{
+               "title" => "clarity",
+               "type" => "Application",
+               "text" => "Clarity App"
+             }
     end
   end
 

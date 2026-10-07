@@ -71,6 +71,24 @@ defmodule Clarity.Components.StatusLiveTest do
     end
   end
 
+  describe "StatusLive queue hint" do
+    test "explains the queue in a hover hint on the progress indicator", %{conn: conn, mock_pid: mock_pid} do
+      {:ok, view, _html} = live_isolated(conn, StatusLive, session: %{"clarity_pid" => mock_pid})
+
+      send(view.pid, {:clarity, :work_started})
+
+      send(
+        view.pid,
+        {:clarity, {:work_progress, %{total_vertices: 10, future_queue: 5, in_progress: 2, requeue_queue: 1}}}
+      )
+
+      assert has_element?(
+               view,
+               "[data-tooltip-text='Vertices: 10 | In Progress: 2 | Queued: 5 | Requeued: 1'] progress"
+             )
+    end
+  end
+
   describe "StatusLive Throttle Mechanism" do
     test "throttle tick processes pending progress", %{conn: conn, mock_pid: mock_pid} do
       {:ok, view, _html} = live_isolated(conn, StatusLive, session: %{"clarity_pid" => mock_pid})

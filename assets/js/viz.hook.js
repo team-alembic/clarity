@@ -1,5 +1,6 @@
 import * as Viz from "@viz-js/viz";
 import svgPanZoom from "svg-pan-zoom";
+import { applyHints } from "./tooltip.hook";
 
 export default {
   async mounted() {
@@ -28,8 +29,9 @@ export default {
         event.stopPropagation();
         this.pushEvent("viz:click", { id });
       });
-      link.setAttribute("data-tooltip", `tooltip-${id}`);
     });
+
+    applyHints(svg, JSON.parse(this.el.dataset.tooltips || "{}"));
 
     if(this.oldSvg) {
       this.oldSvg.remove();

@@ -5,7 +5,9 @@ defmodule Clarity.CoreComponentsTest do
 
   alias Clarity.Content
   alias Clarity.CoreComponents
+  alias Clarity.Graph
   alias Clarity.Perspective.Lens
+  alias Clarity.Vertex
   alias Clarity.Vertex.Root
 
   @spec content(String.t(), String.t(), [atom()]) :: Content.t()
@@ -45,6 +47,102 @@ defmodule Clarity.CoreComponentsTest do
       refute html =~ "bg-blue-500"
       refute html =~ "bg-red-500"
       refute html =~ "bg-yellow-500"
+    end
+  end
+
+  describe "render_content/1 static graphviz content" do
+    test "ships hover hints for the vertices in the zoomed graph" do
+      graph = Graph.new()
+      app = %Vertex.Application{app: :demo, description: "Demo app.", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+
+      html =
+        render_component(&CoreComponents.render_content/1,
+          content: %Content{
+            id: "static-graph",
+            name: "Static Graph",
+            provider: __MODULE__,
+            live_view?: false,
+            live_component?: false,
+            render_static: {:viz, fn _props -> "digraph {}" end}
+          },
+          vertex: %Root{},
+          lens: %Lens{id: "debug", name: "Debug", icon: fn -> nil end, filter: true},
+          socket: %Phoenix.LiveView.Socket{},
+          theme: :light,
+          zoom_graph: graph,
+          zoom_level: {1, 1},
+          shown_vertex_types: [],
+          available_vertex_types: [],
+          prefix: "/c"
+        )
+
+      hints =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("#content-view-viz")
+        |> LazyHTML.attribute("data-tooltips")
+        |> List.first()
+        |> JSON.decode!()
+
+      assert hints == %{
+               "application:demo" => %{"title" => "demo", "type" => "Application", "text" => "Demo app."}
+             }
+    end
+  end
+
+  describe "tabs/1 hints" do
+    test "a tab's description becomes its hover hint" do
+      html =
+        render_component(&CoreComponents.tabs/1,
+          contents: [%{content("overview", "Overview", []) | description: "What this vertex is"}],
+          content: nil,
+          prefix: "/c",
+          lens: %Lens{id: "debug", name: "Debug", icon: fn -> nil end, filter: true},
+          vertex: %Root{},
+          vertex_status_classes: %{}
+        )
+
+      assert html
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("a[data-tooltip-text='What this vertex is']")
+             |> Enum.count() == 1
+    end
+
+    test "the raw source button has a hover hint" do
+      static = %{content("graph", "Graph", []) | render_static: {:markdown, fn _ -> "" end}}
+
+      html =
+        render_component(&CoreComponents.tabs/1,
+          contents: [static],
+          content: static,
+          prefix: "/c",
+          lens: %Lens{id: "debug", name: "Debug", icon: fn -> nil end, filter: true},
+          vertex: %Root{},
+          vertex_status_classes: %{}
+        )
+
+      assert html
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("button[phx-click='toggle_raw_drawer'][data-tooltip-text='Show raw source']")
+             |> Enum.count() == 1
+    end
+  end
+
+  describe "raw_content_drawer/1 icon buttons" do
+    test "keep an accessible name and gain a hover hint" do
+      doc =
+        (&CoreComponents.raw_content_drawer/1)
+        |> render_component(
+          show: true,
+          content_type: "markdown",
+          raw_content: "# hi"
+        )
+        |> LazyHTML.from_fragment()
+
+      for label <- ["Copy to clipboard", "Close"] do
+        assert doc |> LazyHTML.query("button[aria-label='#{label}'][data-tooltip-text='#{label}']") |> Enum.count() == 1
+      end
     end
   end
 end

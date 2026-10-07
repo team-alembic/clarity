@@ -32,7 +32,8 @@
         type="button"
         phx-click={JS.dispatch("clarity:copy-to-clipboard", detail: %{content: @raw_content})}
         class="p-2 rounded-md hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 transition-colors"
-        title="Copy to clipboard"
+        aria-label="Copy to clipboard"
+        {Tooltip.attrs("Copy to clipboard")}
       >
         <.icon_clipboard class="w-5 h-5" />
       </button>
@@ -40,7 +41,8 @@
         type="button"
         phx-click="close_raw_drawer"
         class="p-2 rounded-md hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 transition-colors"
-        title="Close"
+        aria-label="Close"
+        {Tooltip.attrs("Close")}
       >
         <.icon_close class="w-5 h-5" />
       </button>

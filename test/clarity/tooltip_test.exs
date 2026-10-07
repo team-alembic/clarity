@@ -1,0 +1,137 @@
+defmodule Clarity.TooltipTest do
+  use ExUnit.Case, async: true
+
+  alias Clarity.Tooltip
+  alias Clarity.Vertex
+
+  doctest Tooltip
+
+  describe inspect(&Tooltip.summarise/1) do
+    test "returns nil for nil and blank content" do
+      assert Tooltip.summarise(nil) == nil
+      assert Tooltip.summarise("") == nil
+      assert Tooltip.summarise("  \n\n  ") == nil
+    end
+
+    test "skips a leading identity line made only of inline code" do
+      markdown = "`Demo.Accounts.User`\n\nA user of the system."
+
+      assert Tooltip.summarise(markdown) == "A user of the system."
+    end
+
+    test "skips `Key: value` meta lines, bold or not" do
+      markdown = """
+      `Demo.Accounts.User`
+
+      Domain: `Demo.Accounts.Domain`
+
+      **Severity:** high
+
+      Attribute: `name` on Resource: `Demo.Accounts.User`
+
+      The first real sentence.
+      """
+
+      assert Tooltip.summarise(markdown) == "The first real sentence."
+    end
+
+    test "skips headings and lists" do
+      markdown = """
+      ## Arguments
+
+      - `id` (`:uuid`)
+      * Type: `:string`
+      1. step one
+
+      Prose after the structure.
+      """
+
+      assert Tooltip.summarise(markdown) == "Prose after the structure."
+    end
+
+    test "returns nil when there is no prose paragraph" do
+      markdown = "`DemoWeb.Endpoint`\n\nURL: http://localhost:4000"
+
+      assert Tooltip.summarise(markdown) == nil
+    end
+
+    test "strips inline markdown to plain text" do
+      markdown =
+        "Uses **bold**, __strong__, *emphasis*, `code` and [a link](https://example.com) " <>
+          "plus ![an image](img.png) and snake_case_names."
+
+      assert Tooltip.summarise(markdown) ==
+               "Uses bold, strong, emphasis, code and a link plus an image and snake_case_names."
+    end
+
+    test "collapses line breaks inside the paragraph" do
+      markdown = "A summary that\nwraps across\n  several lines."
+
+      assert Tooltip.summarise(markdown) == "A summary that wraps across several lines."
+    end
+
+    test "truncates long text on a word boundary with an ellipsis" do
+      words = String.duplicate("word ", 50)
+
+      summary = Tooltip.summarise(words)
+
+      # 160 chars at most, cut after a whole word, with the ellipsis appended
+      assert summary == "word " |> String.duplicate(32) |> String.trim_trailing() |> Kernel.<>("…")
+      assert String.length(summary) <= 161
+    end
+
+    test "leaves text at the limit untouched" do
+      text = String.duplicate("a", 160)
+
+      assert Tooltip.summarise(text) == text
+    end
+
+    test "accepts iodata" do
+      assert Tooltip.summarise(["`X`", "\n\n", ["Some ", "prose."]]) == "Some prose."
+    end
+  end
+
+  describe inspect(&Tooltip.attrs/1) do
+    test "a vertex yields its name, type label and summary" do
+      vertex = %Vertex.Application{
+        app: :demo,
+        description: "Demo application for Clarity.",
+        version: "1.0.0"
+      }
+
+      assert Tooltip.attrs(vertex) == [
+               "data-tooltip-title": "demo",
+               "data-tooltip-type": "Application",
+               "data-tooltip-text": "Demo application for Clarity."
+             ]
+    end
+
+    test "a vertex without a summary still gets a title and type" do
+      vertex = %Vertex.Root{}
+
+      assert Tooltip.attrs(vertex) == [
+               "data-tooltip-title": "Root",
+               "data-tooltip-type": "Root"
+             ]
+    end
+
+    test "nil yields no attributes, so optional labels can be passed straight through" do
+      assert Tooltip.attrs(nil) == []
+    end
+
+    test "a string yields a plain label hint" do
+      assert Tooltip.attrs("Copy to clipboard") == ["data-tooltip-text": "Copy to clipboard"]
+    end
+  end
+
+  describe inspect(&Tooltip.hints/1) do
+    test "maps vertex ids to hints, only for vertices that have a summary" do
+      app = %Vertex.Application{app: :demo, description: "Demo app.", version: "1.0.0"}
+      root = %Vertex.Root{}
+
+      assert Tooltip.hints([app, root]) == %{
+               Vertex.id(app) => %{title: "demo", type: "Application", text: "Demo app."}
+             }
+    end
+  end
+end

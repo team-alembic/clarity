@@ -11,6 +11,7 @@
     <summary>
       <.link
         patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
+        {Tooltip.attrs(@vertex)}
         class={
           "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium" <>
           if @vertex == @active_vertex, do: " bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900", else: ""
@@ -38,6 +39,7 @@
 <% else %>
   <.link
     patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
+    {Tooltip.attrs(@vertex)}
     class={[
       "inline px-2 py-1 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium select-none",
       @any_sibling_has_children && "pl-[25px]",

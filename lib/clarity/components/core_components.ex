@@ -8,6 +8,7 @@ defmodule Clarity.CoreComponents do
 
   alias Clarity.Content
   alias Clarity.Perspective.Lens
+  alias Clarity.Tooltip
   alias Clarity.Vertex
   alias Phoenix.LiveView.JS
   alias Phoenix.LiveView.Rendered
@@ -32,6 +33,11 @@ defmodule Clarity.CoreComponents do
 
   attr :id, :string, required: true, doc: "The unique ID for the visualization element"
   attr :graph, :string, required: true, doc: "The graph data in DOT language format"
+
+  attr :tooltips, :map,
+    default: %{},
+    doc: "Hover hints keyed by vertex id, see `Clarity.Tooltip.hints/1`"
+
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the graph container"
 
   @spec viz(assigns :: Socket.assigns()) :: Rendered.t()
@@ -160,7 +166,7 @@ defmodule Clarity.CoreComponents do
   def render_content(assigns)
 
   @doc """
-  Renders a vertex name with tooltip data attribute.
+  Renders a vertex name.
   """
   attr :vertex, :any, required: true, doc: "The vertex to display"
 

@@ -8,6 +8,7 @@ defmodule Clarity.PageLive do
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Status
+  alias Clarity.Tooltip
   alias Clarity.Vertex
   alias Clarity.Vertex.Root
   alias Phoenix.LiveView.AsyncResult
@@ -308,11 +309,6 @@ defmodule Clarity.PageLive do
 
   def handle_event("close_raw_drawer", _params, socket) do
     {:noreply, assign(socket, show_raw_drawer: false)}
-  end
-
-  # Catch tooltip events that escape from TooltipComponent during navigation/re-renders
-  def handle_event("load_tooltip", _params, socket) do
-    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView

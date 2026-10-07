@@ -80,6 +80,12 @@ defmodule Clarity.Components.StatusLive do
     {:noreply, socket}
   end
 
+  @spec queue_summary(map()) :: String.t()
+  defp queue_summary(queue_info) do
+    "Vertices: #{queue_info.total_vertices} | In Progress: #{queue_info.in_progress} | " <>
+      "Queued: #{queue_info.future_queue} | Requeued: #{queue_info.requeue_queue}"
+  end
+
   @spec cancel_throttle_timer(Socket.t()) :: Socket.t()
   defp cancel_throttle_timer(socket) do
     if socket.assigns.throttle_timer do

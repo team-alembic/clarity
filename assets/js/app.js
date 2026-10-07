@@ -63,13 +63,13 @@ window.addEventListener("clarity:copy-to-clipboard", (event) => {
   const content = event.detail.content;
   if (content) {
     navigator.clipboard.writeText(content).then(() => {
-      // Show brief feedback by changing button temporarily
+      // Show brief feedback through the button's hover hint
       const button = event.target;
-      const originalTitle = button.title;
-      button.title = "Copied!";
+      const originalHint = button.dataset.tooltipText;
+      button.dataset.tooltipText = "Copied!";
       button.classList.add("text-green-500");
       setTimeout(() => {
-        button.title = originalTitle;
+        button.dataset.tooltipText = originalHint;
         button.classList.remove("text-green-500");
       }, 1500);
     });

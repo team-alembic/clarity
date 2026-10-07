@@ -11,6 +11,7 @@ defmodule Clarity.TreeComponent do
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Status.Index
+  alias Clarity.Tooltip
   alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
 
@@ -86,7 +87,9 @@ defmodule Clarity.TreeComponent do
           "text-xs font-medium leading-none ring-1 ring-inset",
           badge_classes(@entry.severity)
         ]}
-        title={badge_title(@entry)}
+        role="img"
+        aria-label={badge_title(@entry)}
+        {Tooltip.attrs(badge_title(@entry))}
       >
         <%= case @entry.severity do %>
           <% :error -> %>

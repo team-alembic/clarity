@@ -12,7 +12,7 @@
           do: "bg-base-light-200 dark:bg-base-dark-800 text-primary-light dark:text-primary-dark border-b-2 border-primary-light dark:border-primary-dark",
           else: "text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark hover:bg-base-light-200 dark:hover:bg-base-dark-800"
         }
-        title={content.description}
+        {Tooltip.attrs(content.description)}
       >
         {content.name}
         <%= case tab_status_severity(content, @vertex_status_classes) do %>
@@ -23,7 +23,7 @@
                 "inline-block w-2 h-2 rounded-full ml-1 align-middle",
                 tab_status_dot(severity)
               ]}
-              title={"#{severity} — see this tab"}
+              {Tooltip.attrs("#{severity} — see this tab")}
             ></span>
         <% end %>
       </.link>
@@ -36,7 +36,7 @@
         type="button"
         phx-click="toggle_raw_drawer"
         class="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 transition-colors"
-        title="Show raw source"
+        {Tooltip.attrs("Show raw source")}
       >
         <.icon_code class="w-4 h-4" />
         <span>Raw</span>

@@ -40,4 +40,14 @@ defmodule Clarity.TreeComponentTest do
       assert info =~ "bg-blue-100"
     end
   end
+
+  describe "status_badge/1 hint" do
+    test "describes nested issues in a hover hint and an accessible name" do
+      html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 3})
+
+      badge = html |> LazyHTML.from_fragment() |> LazyHTML.query("[data-tooltip-text='3 nested issues']")
+
+      assert LazyHTML.attribute(badge, "aria-label") == ["3 nested issues"]
+    end
+  end
 end

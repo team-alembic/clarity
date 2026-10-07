@@ -174,30 +174,50 @@
   grid-area: splash;
 }
 
-.tooltip {
-  position: fixed;
-  position-anchor: --tooltip-anchor;
-  position-area: block-end inline-start;
-  position-try-fallbacks: 
-    flip-inline,
-    flip-block,
-    flip-block flip-inline;
-  position-try-order: most-width;
-  max-inline-size: 70vi;
-  max-block-size: 70vb;
-  overflow: auto;
-  z-index: 10000;
-  pointer-events: none;
+/* Shared hover hint, positioned by the Tooltip hook (assets/js/tooltip.hook.js).
+   Content is capped server-side, so it never scrolls and needs no pointer events. */
+.clarity-tooltip {
+  @apply fixed z-[10000] m-0 px-2.5 py-1.5 rounded-md border shadow-lg pointer-events-none;
+  @apply border-base-light-300 bg-white text-base-light-900;
+  @apply dark:border-base-dark-600 dark:bg-base-dark-800 dark:text-base-dark-100;
+  /* undo the UA popover default of inset: 0 */
+  inset: auto;
+  max-inline-size: min(20rem, calc(100vw - 1rem));
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
-#tooltip-cursor {
-  anchor-name: --tooltip-anchor;
-  position: fixed;
-  z-index: -10000;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-  pointer-events: none;
+.clarity-tooltip:not([hidden]) {
+  animation: clarity-tooltip-in 80ms ease-out;
+}
+
+@keyframes clarity-tooltip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clarity-tooltip:not([hidden]) {
+    animation: none;
+  }
+}
+
+.clarity-tooltip-title {
+  @apply font-semibold;
+}
+
+.clarity-tooltip-type {
+  @apply text-xs text-base-light-600 dark:text-base-dark-400;
+}
+
+.clarity-tooltip-text {
+  @apply m-0;
+}
+
+.clarity-tooltip-type + .clarity-tooltip-text {
+  @apply mt-1;
 }
 
 /* Clarity Splash Screen Animation */

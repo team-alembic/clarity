@@ -2,9 +2,10 @@
   <div
     :if={@work_status == :working}
     class="flex items-center space-x-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md"
-    title={"Vertices: #{@queue_info.total_vertices} | In Progress: #{@queue_info.in_progress} | Queued: #{@queue_info.future_queue} | Requeued: #{@queue_info.requeue_queue}"}
+    {Clarity.Tooltip.attrs(queue_summary(@queue_info))}
   >
     <progress
+      aria-label={queue_summary(@queue_info)}
       value={@queue_info.total_vertices}
       max={
         @queue_info.total_vertices + @queue_info.future_queue + @queue_info.in_progress +

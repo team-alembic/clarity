@@ -7,6 +7,7 @@ defmodule Clarity.EditorButtonComponent do
 
   alias Clarity.OpenEditor
   alias Clarity.SourceLocation
+  alias Clarity.Tooltip
 
   @impl Phoenix.LiveComponent
   def update(%{source_location: source_location}, socket) do
