@@ -8,6 +8,7 @@ defmodule Clarity.CoreComponentsTest do
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Root
 
   @spec content(String.t(), String.t(), [atom()]) :: Content.t()
@@ -157,13 +158,23 @@ defmodule Clarity.CoreComponentsTest do
     test "lets a dotted name wrap between its segments, not mid-word" do
       html =
         render_component(&CoreComponents.vertex_name/1,
-          vertex: %Vertex.Ash.Domain{domain: Demo.Accounts.Domain}
+          vertex: %Domain{domain: Demo.Accounts.Domain}
         )
 
       doc = LazyHTML.from_fragment(html)
 
       assert LazyHTML.text(doc) == "Demo.Accounts.Domain"
       assert doc |> LazyHTML.query("span > wbr") |> Enum.count() == 2
+    end
+
+    test "shows just the last segment of a module name in the short style" do
+      html =
+        render_component(&CoreComponents.vertex_name/1,
+          vertex: %Domain{domain: Demo.Accounts.Domain},
+          name_style: :short
+        )
+
+      assert html |> LazyHTML.from_fragment() |> LazyHTML.text() == "Domain"
     end
   end
 end

@@ -33,6 +33,8 @@ defmodule Clarity.PageLive do
         show_raw_drawer: false,
         tree_opened: MapSet.new(),
         tree_collapsed: MapSet.new(),
+        # Short module names in the tree only; a candidate user preference.
+        tree_name_style: :short,
         data: AsyncResult.loading(),
         page_title: "Loading...",
         shown_vertex_types: [],

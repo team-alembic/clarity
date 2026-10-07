@@ -170,6 +170,10 @@ defmodule Clarity.CoreComponents do
   """
   attr :vertex, :any, required: true, doc: "The vertex to display"
 
+  attr :name_style, :atom,
+    default: :qualified,
+    doc: "Display style for module-named vertices (:qualified or :short)"
+
   @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
   def vertex_name(assigns)
 

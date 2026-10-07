@@ -1,2 +1,2 @@
 <%!-- Unformatted: whitespace between segments would render as spaces --%>
-<span phx-no-format><%= for {segment, index} <- Enum.with_index(name_segments(Vertex.name(@vertex))) do %><wbr :if={index > 0} />{segment}<% end %></span>
+<span phx-no-format><%= for {segment, index} <- Enum.with_index(name_segments(Clarity.Vertex.Name.display(@vertex, @name_style))) do %><wbr :if={index > 0} />{segment}<% end %></span>

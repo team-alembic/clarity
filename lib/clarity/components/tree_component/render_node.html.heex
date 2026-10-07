@@ -20,7 +20,7 @@
             "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
         ]}
       >
-        <.vertex_name vertex={@vertex} />
+        <.vertex_name vertex={@vertex} name_style={@name_style} />
       </.link>
       <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
     </summary>
@@ -34,6 +34,7 @@
         prefix={@prefix}
         lens={@lens}
         myself={@myself}
+        name_style={@name_style}
         status_index={@status_index}
       />
     </div>
@@ -51,7 +52,7 @@
           "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
       ]}
     >
-      <.vertex_name vertex={@vertex} />
+      <.vertex_name vertex={@vertex} name_style={@name_style} />
     </.link>
     <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
   </div>

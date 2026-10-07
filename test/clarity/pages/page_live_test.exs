@@ -393,6 +393,21 @@ defmodule Clarity.Pages.PageLiveTest do
       refute has_element?(view, ".navigation a[aria-current][data-tooltip-title='Demo.Accounts.Domain']")
     end
 
+    test "shows short module names, with the full name in the hint", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      label =
+        view
+        |> element(".navigation a[data-tooltip-title='Demo.Accounts.Domain']")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.text()
+        |> String.trim()
+
+      assert label == "Domain"
+    end
+
     @clarity_group "details[id='tree-group-application:clarity/child']"
 
     test "a group shows its type's icon and colour", %{conn: conn} do

@@ -2,6 +2,9 @@ defmodule Clarity.TreeComponent do
   @moduledoc """
   A lazy-loading navigation tree component that only renders visible nodes.
 
+  Module-named vertices are labelled in the `:name_style` the parent passes
+  (see `Clarity.Vertex.Name`); their hints keep the qualified name.
+
   Each node's children are grouped by edge label (actions, attributes, …) under
   collapsible group rows showing the children's type icon and colour.
 
@@ -110,6 +113,7 @@ defmodule Clarity.TreeComponent do
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
+  attr :name_style, :atom, required: true
   attr :status_index, :any, required: true
 
   @spec render_vertex(map()) :: Rendered.t()
@@ -123,6 +127,7 @@ defmodule Clarity.TreeComponent do
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
   attr :myself, :any, required: true
+  attr :name_style, :atom, required: true
   attr :any_sibling_has_children, :boolean, required: true
   attr :status_index, :any, required: true
 
