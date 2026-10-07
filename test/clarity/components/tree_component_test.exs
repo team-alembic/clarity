@@ -93,6 +93,12 @@ defmodule Clarity.TreeComponentTest do
       assert tree |> LazyHTML.query("a[data-tooltip-type='Module']") |> Enum.count() == 1
     end
 
+    test "the tree asks for a longer hint delay, so passing over rows doesn't pop hints" do
+      tree = render_app_tree([{%Vertex.Module{module: Demo.Accounts}, :module}])
+
+      assert tree |> LazyHTML.query("[data-tooltip-delay='1500'] a[data-tooltip-title]") |> Enum.count() > 0
+    end
+
     test "a node with several groups keeps a row for each" do
       tree =
         render_app_tree([

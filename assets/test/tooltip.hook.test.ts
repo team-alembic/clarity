@@ -270,6 +270,49 @@ describe("tooltip controller", () => {
     });
   });
 
+  describe("containers with their own delay", () => {
+    let treeRow: HTMLAnchorElement;
+    let otherTreeRow: HTMLAnchorElement;
+
+    beforeEach(() => {
+      const tree = document.createElement("nav");
+      tree.dataset.tooltipDelay = "1500";
+      tree.innerHTML = `
+        <a id="tree-row" data-tooltip-title="Ticket" data-tooltip-type="Ash.Resource">Ticket</a>
+        <a id="other-tree-row" data-tooltip-title="Sprint" data-tooltip-type="Ash.Resource">Sprint</a>
+      `;
+      document.body.append(tree);
+      treeRow = document.getElementById("tree-row") as HTMLAnchorElement;
+      otherTreeRow = document.getElementById("other-tree-row") as HTMLAnchorElement;
+    });
+
+    it("waits the container's delay before showing a hint", () => {
+      hover(treeRow);
+      vi.advanceTimersByTime(1499);
+      expect(shown()).toBe(false);
+
+      vi.advanceTimersByTime(1);
+      expect(shown()).toBe(true);
+    });
+
+    it("waits again when moving on from a shown hint, rather than swapping", () => {
+      hover(treeRow);
+      vi.advanceTimersByTime(1500);
+      hover(otherTreeRow);
+
+      expect(shown()).toBe(false);
+      vi.advanceTimersByTime(1500);
+      expect(tip.textContent).toContain("Sprint");
+    });
+
+    it("leaves hints outside the container on the usual delay", () => {
+      hover(vertex);
+      vi.advanceTimersByTime(SHOW_DELAY);
+
+      expect(shown()).toBe(true);
+    });
+  });
+
   describe("keyboard", () => {
     it("shows immediately on focus and hides on blur", () => {
       vertex.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));

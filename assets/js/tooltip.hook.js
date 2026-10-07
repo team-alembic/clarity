@@ -221,13 +221,20 @@ export function createTooltipController(tip) {
     if (trigger === pending) return;
     cancelPending();
 
-    if (current || Date.now() - hiddenAt < SKIP_DELAY_WINDOW) {
+    // A container such as the navigation tree, where the pointer passes over
+    // many triggers on its way somewhere, can ask for a longer delay. Its
+    // hints then always wait, rather than swapping as the pointer moves on.
+    const ownDelay = Number(trigger.closest("[data-tooltip-delay]")?.dataset.tooltipDelay);
+
+    if (ownDelay) {
+      if (source === "pointer") hide();
+    } else if (current || Date.now() - hiddenAt < SKIP_DELAY_WINDOW) {
       show(trigger, "pointer");
       return;
     }
 
     pending = trigger;
-    timer = win.setTimeout(() => show(trigger, "pointer"), SHOW_DELAY);
+    timer = win.setTimeout(() => show(trigger, "pointer"), ownDelay || SHOW_DELAY);
   }
 
   function onPointerOver(event) {
