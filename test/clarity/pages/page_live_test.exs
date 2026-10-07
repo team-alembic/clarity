@@ -80,6 +80,7 @@ defmodule Clarity.Pages.PageLiveTest do
   describe "PageLive Graph Interactions" do
     test "navigates to application vertex via graph click", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
 
       # Test viz:click event with a known vertex ID from our test helper
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "application:clarity"})
@@ -90,6 +91,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "navigates to domain vertex via graph click", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
 
       # Test viz:click event with domain vertex
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts"})
@@ -100,6 +102,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "graph visualization renders correctly", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
 
       # Should render the graph visualization element
       assert has_element?(view, "#content-view-viz")
@@ -210,6 +213,7 @@ defmodule Clarity.Pages.PageLiveTest do
     test "handles vertex navigation with different content types", %{conn: conn} do
       # Navigate to different vertices and ensure content updates
       {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
 
       # Navigate to application vertex
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "application:clarity"})
