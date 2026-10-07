@@ -50,6 +50,22 @@
               collapsed={@tree_collapsed}
               name_style={@tree_name_style}
             />
+            <button
+              :if={data.internals > 0}
+              id="toggle-internals"
+              type="button"
+              phx-click="toggle_internals"
+              {Tooltip.attrs("Vertices a framework creates for its own use, such as Ash's shadow domains")}
+              class="mt-3 ml-1 text-xs text-base-light-500 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark transition-colors"
+            >
+              <%= if @show_internals do %>
+                Hide framework internals
+              <% else %>
+                Show {data.internals} framework {if data.internals == 1,
+                  do: "internal",
+                  else: "internals"}
+              <% end %>
+            </button>
           </nav>
 
           <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">

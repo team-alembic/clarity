@@ -5,6 +5,7 @@ defmodule Clarity.PageLive do
 
   alias Clarity.Content
   alias Clarity.Graph
+  alias Clarity.Perspective.Internals
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Status
@@ -35,6 +36,9 @@ defmodule Clarity.PageLive do
         tree_collapsed: MapSet.new(),
         # Short module names in the tree only; a candidate user preference.
         tree_name_style: :short,
+        # Framework internals (see Clarity.Perspective.Internals) are hidden
+        # unless the user asks for them.
+        show_internals: false,
         data: AsyncResult.loading(),
         page_title: "Loading...",
         shown_vertex_types: [],
@@ -252,7 +256,8 @@ defmodule Clarity.PageLive do
       lens: lens,
       vertex: vertex,
       zoom_level: zoom_level,
-      shown_vertex_types: shown_vertex_types
+      shown_vertex_types: shown_vertex_types,
+      show_internals: show_internals
     } = socket.assigns
 
     liveview_pid = self()
@@ -261,7 +266,10 @@ defmodule Clarity.PageLive do
       socket,
       :data,
       fn ->
-        graph = compute_subgraph(clarity.graph, lens, vertex, shown_vertex_types)
+        internal_ids = Internals.ids(clarity.graph)
+        hidden_ids = if show_internals, do: [], else: internal_ids
+
+        graph = compute_subgraph(clarity.graph, lens, vertex, shown_vertex_types, hidden_ids)
 
         {outgoing_steps, incoming_steps} = zoom_level
 
@@ -274,13 +282,16 @@ defmodule Clarity.PageLive do
         {:ok, graph} = Graph.handover(graph, liveview_pid)
         {:ok, zoom_graph} = Graph.handover(zoom_graph, liveview_pid)
 
-        {:ok, %{data: %{graph: graph, zoom_graph: zoom_graph}}}
+        {:ok, %{data: %{graph: graph, zoom_graph: zoom_graph, internals: length(internal_ids)}}}
       end
     )
   end
 
-  @spec compute_subgraph(Graph.t(), Lens.t(), Vertex.t(), [module()]) :: Graph.t()
-  defp compute_subgraph(graph, lens, vertex, shown_vertex_types) do
+  # Vertices in `hidden_ids` are removed before the lens filters the graph, so
+  # the lens treats them as absent; those on the path to `vertex` are kept.
+  @spec compute_subgraph(Graph.t(), Lens.t(), Vertex.t(), [module()], [String.t()]) ::
+          Graph.t()
+  defp compute_subgraph(graph, lens, vertex, shown_vertex_types, hidden_ids) do
     lens_filter =
       if shown_vertex_types == [] do
         lens.filter
@@ -291,25 +302,32 @@ defmodule Clarity.PageLive do
         ])
       end
 
-    breadcrumbs_filter = fn graph ->
-      breadcrumbs =
-        graph
-        |> Graph.breadcrumbs(vertex)
-        |> Kernel.||([vertex])
-
-      breadcrumb_ids = Enum.map(breadcrumbs, &Vertex.id/1)
-
-      {:in, :vertex_id, breadcrumb_ids}
-    end
+    breadcrumb_ids =
+      graph
+      |> Graph.breadcrumbs(vertex)
+      |> Kernel.||([vertex])
+      |> Enum.map(&Vertex.id/1)
 
     context_filter =
       Graph.Filter.any([
         lens_filter,
         Graph.Filter.vertex_type([Root]),
-        breadcrumbs_filter
+        {:in, :vertex_id, breadcrumb_ids}
       ])
 
-    Graph.filter(graph, context_filter)
+    case hidden_ids -- breadcrumb_ids do
+      [] ->
+        Graph.filter(graph, context_filter)
+
+      hidden_ids ->
+        visible = Graph.filter(graph, {:not, {:in, :vertex_id, hidden_ids}})
+
+        try do
+          Graph.filter(visible, context_filter)
+        after
+          Graph.delete(visible)
+        end
+    end
   end
 
   @impl Phoenix.LiveView
@@ -324,6 +342,13 @@ defmodule Clarity.PageLive do
 
   def handle_event("toggle_navigation", _params, socket) do
     {:noreply, assign(socket, show_navigation: not socket.assigns.show_navigation)}
+  end
+
+  def handle_event("toggle_internals", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(show_internals: not socket.assigns.show_internals)
+     |> load_data_async()}
   end
 
   def handle_event("toggle_raw_drawer", _params, socket) do

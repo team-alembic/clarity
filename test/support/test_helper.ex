@@ -4,12 +4,18 @@ defmodule Clarity.Test.Helper do
   import ExUnit.Callbacks
 
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Domain
 
   @doc """
   Creates a simple test Clarity struct with predictable vertices and edges.
+
+  ## Options
+
+    * `:internals` - also add an `ash` dependency owning one of Ash's shadow
+      domains, a framework internal (see `Clarity.Perspective.Internals`)
   """
-  @spec build_test_clarity() :: Clarity.t()
-  def build_test_clarity do
+  @spec build_test_clarity(keyword()) :: Clarity.t()
+  def build_test_clarity(opts \\ []) do
     # Create a Clarity.Graph instance
     clarity_graph = Clarity.Graph.new()
 
@@ -19,13 +25,29 @@ defmodule Clarity.Test.Helper do
       version: Version.parse!("0.1.0")
     }
 
-    domain_vertex = %Vertex.Ash.Domain{domain: Demo.Accounts}
+    domain_vertex = %Domain{domain: Demo.Accounts}
 
     Clarity.Graph.add_vertex(clarity_graph, app_vertex, %Vertex.Root{})
     Clarity.Graph.add_vertex(clarity_graph, domain_vertex, app_vertex)
 
     Clarity.Graph.add_edge(clarity_graph, %Vertex.Root{}, app_vertex, :child)
     Clarity.Graph.add_edge(clarity_graph, app_vertex, domain_vertex, :child)
+
+    if opts[:internals] do
+      ash_vertex = %Vertex.Application{
+        app: :ash,
+        description: "A declarative, extensible framework for building Elixir applications.",
+        version: Version.parse!("3.0.0")
+      }
+
+      shadow_vertex = %Domain{domain: Ash.EmbeddableType.ShadowDomain}
+
+      Clarity.Graph.add_vertex(clarity_graph, ash_vertex, app_vertex)
+      Clarity.Graph.add_vertex(clarity_graph, shadow_vertex, ash_vertex)
+
+      Clarity.Graph.add_edge(clarity_graph, app_vertex, ash_vertex, :dependency)
+      Clarity.Graph.add_edge(clarity_graph, ash_vertex, shadow_vertex, :domain)
+    end
 
     %Clarity{
       graph: clarity_graph,

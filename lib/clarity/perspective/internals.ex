@@ -1,0 +1,36 @@
+defmodule Clarity.Perspective.Internals do
+  @moduledoc """
+  Vertices a framework creates for its own use, which say little about the
+  application being explored.
+
+  So far these are the shadow domains Ash defines for itself
+  (`Ash.EmbeddableType.ShadowDomain` and `Ash.Filter.ShadowDomain`), which
+  hold no resources.
+
+  `Clarity.PageLive` hides internals unless asked to show them, and does so
+  before a lens filters the graph, so lenses treat them as absent: an
+  application shown only for its internals, such as `ash` in the Architect
+  lens, goes with them.
+  """
+
+  alias Clarity.Graph
+  alias Clarity.Vertex
+
+  @doc """
+  Returns whether `vertex` is a framework internal.
+  """
+  @spec internal?(Vertex.t()) :: boolean()
+  # Matched by name: the vertex module only exists when Ash is loaded.
+  def internal?(%{__struct__: Vertex.Ash.Domain, domain: domain}),
+    do: Application.get_application(domain) == :ash
+
+  def internal?(_vertex), do: false
+
+  @doc """
+  Returns the ids of the framework internals in `graph`.
+  """
+  @spec ids(Graph.t()) :: [String.t()]
+  def ids(graph) do
+    for vertex <- Graph.vertices(graph), internal?(vertex), do: Vertex.id(vertex)
+  end
+end

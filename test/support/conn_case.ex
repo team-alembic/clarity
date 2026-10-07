@@ -14,7 +14,12 @@ defmodule Clarity.Test.ConnCase do
       @endpoint DemoWeb.Endpoint
 
       setup tags do
-        clarity_pid = Helper.setup_test_clarity()
+        # `@tag test_graph: opts` passes options to Helper.build_test_clarity/1.
+        clarity_pid =
+          tags
+          |> Map.get(:test_graph, [])
+          |> Helper.build_test_clarity()
+          |> Helper.setup_test_clarity()
 
         # Set up the conn with clarity_pid in the session
         conn =
