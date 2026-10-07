@@ -37,3 +37,6 @@ clarity-*.tar
 
 .claude
 .env*
+
+# Playwright MCP session logs and snapshots
+/.playwright-mcp/
