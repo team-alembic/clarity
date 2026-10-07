@@ -1,6 +1,8 @@
 defmodule Clarity.Pages.PageLiveTest do
   use Clarity.Test.ConnCase, async: true
 
+  alias Phoenix.LiveViewTest.View
+
   describe "PageLive Navigation and Basic Functionality" do
     test "redirects to root graph when no params", %{conn: conn} do
       default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
@@ -391,7 +393,65 @@ defmodule Clarity.Pages.PageLiveTest do
       refute has_element?(view, ".navigation a[aria-current][data-tooltip-title='Demo.Accounts.Domain']")
     end
 
-    @spec toggle_clarity(%Phoenix.LiveViewTest.View{}, boolean()) :: String.t()
+    @clarity_group "details[id='tree-group-application:clarity/child']"
+
+    test "a group shows its type's icon and colour", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(
+               view,
+               "#{@clarity_group} > summary [data-tone='structure'] use[href='#clarity-icon-domain']"
+             )
+    end
+
+    test "a group can be collapsed and expanded", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_group}[open]")
+
+      toggle_clarity_group(view, false)
+
+      refute has_element?(view, "#{@clarity_group}[open]")
+
+      toggle_clarity_group(view, true)
+
+      assert has_element?(view, "#{@clarity_group}[open]")
+    end
+
+    test "navigating into a collapsed group reveals it", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+      toggle_clarity_group(view, false)
+
+      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_group}[open]")
+    end
+
+    test "a collapsed group stays collapsed when navigating past it", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+      toggle_clarity(view, true)
+      toggle_clarity_group(view, false)
+
+      render_patch(view, "/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_node}[open]")
+      refute has_element?(view, "#{@clarity_group}[open]")
+    end
+
+    @spec toggle_clarity_group(%View{}, boolean()) :: String.t()
+    defp toggle_clarity_group(view, open) do
+      view
+      |> element(@clarity_group)
+      |> render_hook("toggle_group", %{"group_id" => "application:clarity/child", "open" => open})
+    end
+
+    @spec toggle_clarity(%View{}, boolean()) :: String.t()
     defp toggle_clarity(view, open) do
       view
       |> element(@clarity_node)

@@ -8,17 +8,14 @@
     phx-target={@myself}
     class="tree-node select-none"
   >
-    <summary class="group/summary flex items-center cursor-pointer">
-      <.icon_chevron_right
-        class="tree-chevron w-4 h-4 shrink-0 p-0.5 text-base-light-400 dark:text-base-dark-500 group-hover/summary:text-base-light-700 dark:group-hover/summary:text-base-dark-200 transition-transform duration-150 motion-reduce:transition-none"
-        aria-hidden="true"
-      />
+    <summary class="flex items-center cursor-pointer">
+      <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
       <.link
         patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
         aria-current={@vertex == @active_vertex && "page"}
         {Tooltip.attrs(@vertex)}
         class={[
-          "min-w-0 break-words px-2 py-0.5 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
+          "min-w-0 break-words px-1.5 py-0.5 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
           @vertex == @active_vertex &&
             "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
         ]}
@@ -27,20 +24,19 @@
       </.link>
       <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
     </summary>
-    <%= if open?(@vertex, @visible_ids) do %>
-      <div class="ml-4 group">
-        <.render_vertex
-          graph={@graph}
-          vertex={@vertex}
-          visible_ids={@visible_ids}
-          active_vertex={@active_vertex}
-          prefix={@prefix}
-          lens={@lens}
-          myself={@myself}
-          status_index={@status_index}
-        />
-      </div>
-    <% end %>
+    <div :if={open?(@vertex, @visible_ids)} class="tree-children">
+      <.render_vertex
+        graph={@graph}
+        vertex={@vertex}
+        visible_ids={@visible_ids}
+        collapsed={@collapsed}
+        active_vertex={@active_vertex}
+        prefix={@prefix}
+        lens={@lens}
+        myself={@myself}
+        status_index={@status_index}
+      />
+    </div>
   </details>
 <% else %>
   <div class="flex items-center">
@@ -50,7 +46,7 @@
       aria-current={@vertex == @active_vertex && "page"}
       {Tooltip.attrs(@vertex)}
       class={[
-        "min-w-0 break-words px-2 py-0.5 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium select-none",
+        "min-w-0 break-words px-1.5 py-0.5 rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium select-none",
         @vertex == @active_vertex &&
           "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
       ]}

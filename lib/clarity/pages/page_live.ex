@@ -9,6 +9,7 @@ defmodule Clarity.PageLive do
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Status
   alias Clarity.Tooltip
+  alias Clarity.TreeComponent
   alias Clarity.Vertex
   alias Clarity.Vertex.Root
   alias Phoenix.LiveView.AsyncResult
@@ -211,10 +212,10 @@ defmodule Clarity.PageLive do
     end
   end
 
-  # The tree opens the path to the current vertex. Collapses the user made along
-  # the old path are dropped when the path changes, so navigating always reveals
-  # the new vertex; re-rendering the same path (a tab switch, a graph refresh)
-  # keeps them.
+  # The tree opens the path to the current vertex. When the path changes, the
+  # user's collapses of nodes and groups along it are dropped, so navigating
+  # always reveals the new vertex; collapses elsewhere, and re-rendering the
+  # same path (a tab switch, a graph refresh), keep them.
   @spec reveal_tree_path(Socket.t(), [Vertex.t()]) :: Socket.t()
   defp reveal_tree_path(socket, breadcrumbs) do
     path = Enum.map(breadcrumbs, &Vertex.id/1)
@@ -223,7 +224,8 @@ defmodule Clarity.PageLive do
     if path == previous_path do
       socket
     else
-      assign(socket, tree_collapsed: MapSet.new())
+      path_ids = TreeComponent.path_ids(socket.assigns.clarity.graph, breadcrumbs)
+      update(socket, :tree_collapsed, &MapSet.difference(&1, path_ids))
     end
   end
 

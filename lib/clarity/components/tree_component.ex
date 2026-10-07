@@ -2,10 +2,14 @@ defmodule Clarity.TreeComponent do
   @moduledoc """
   A lazy-loading navigation tree component that only renders visible nodes.
 
+  Each node's children are grouped by edge label (actions, attributes, …) under
+  collapsible group rows showing the children's type icon and colour.
+
   A node is open when it is on the breadcrumb path or the user expanded it,
-  unless the user has collapsed it since the last navigation. The parent owns
-  both sets so they survive graph updates, and clears the collapsed set when
-  the path changes, revealing the newly current vertex.
+  unless the user has collapsed it; a group is open unless the user has
+  collapsed it. The parent owns both sets so they survive graph updates, and
+  when the path changes it drops the collapses along it (see `path_ids/2`),
+  revealing the newly current vertex.
   """
 
   use Clarity.Web, :live_component
@@ -48,6 +52,46 @@ defmodule Clarity.TreeComponent do
     set_tree_state(socket, MapSet.delete(opened, vertex_id), MapSet.put(collapsed, vertex_id))
   end
 
+  def handle_event("toggle_group", %{"group_id" => group_id, "open" => open}, socket)
+      when is_boolean(open) do
+    %{opened: opened, collapsed: collapsed} = socket.assigns
+
+    collapsed =
+      if open,
+        do: MapSet.delete(collapsed, group_id),
+        else: MapSet.put(collapsed, group_id)
+
+    set_tree_state(socket, opened, collapsed)
+  end
+
+  @doc """
+  Returns the id of the group of `vertex`'s children joined by `label` edges.
+  """
+  @spec group_id(Vertex.t(), term()) :: String.t()
+  def group_id(vertex, label), do: "#{Vertex.id(vertex)}/#{label}"
+
+  @doc """
+  Returns the ids of the nodes and groups that must be open to show the last
+  of `breadcrumbs`.
+  """
+  @spec path_ids(Graph.t(), [Vertex.t()]) :: MapSet.t(String.t())
+  def path_ids(graph, breadcrumbs) do
+    group_ids =
+      breadcrumbs
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.flat_map(fn [parent, child] ->
+        child_id = Vertex.id(child)
+
+        for {label, children} <- Graph.navigation_children(graph, parent),
+            Enum.any?(children, &(Vertex.id(&1) == child_id)),
+            do: group_id(parent, label)
+      end)
+
+    breadcrumbs
+    |> MapSet.new(&Vertex.id/1)
+    |> MapSet.union(MapSet.new(group_ids))
+  end
+
   @spec set_tree_state(Socket.t(), MapSet.t(), MapSet.t()) :: {:noreply, Socket.t()}
   defp set_tree_state(socket, opened, collapsed) do
     # Notify parent to persist the tree state
@@ -61,6 +105,7 @@ defmodule Clarity.TreeComponent do
   attr :graph, :any, required: true
   attr :vertex, :any, required: true
   attr :visible_ids, :any, required: true
+  attr :collapsed, :any, required: true
   attr :active_vertex, :any, required: true
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
@@ -73,6 +118,7 @@ defmodule Clarity.TreeComponent do
   attr :graph, :any, required: true
   attr :vertex, :any, required: true
   attr :visible_ids, :any, required: true
+  attr :collapsed, :any, required: true
   attr :active_vertex, :any, required: true
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
@@ -142,6 +188,27 @@ defmodule Clarity.TreeComponent do
     breadcrumb_ids
     |> MapSet.union(assigns.opened)
     |> MapSet.difference(assigns.collapsed)
+  end
+
+  # A group takes its icon and colour from its first child; the children of
+  # one edge label share a vertex type.
+  @spec navigation_groups(Graph.t(), Vertex.t(), MapSet.t()) :: [map()]
+  defp navigation_groups(graph, vertex, collapsed) do
+    for {label, [first | _] = children} <- Graph.navigation_children(graph, vertex),
+        label != :content do
+      id = group_id(vertex, label)
+      %{icon: icon, tone: tone} = Tooltip.hint(first)
+
+      %{
+        id: id,
+        label: label,
+        children: children,
+        open?: not MapSet.member?(collapsed, id),
+        icon: icon,
+        tone: tone,
+        any_has_children?: Enum.any?(children, &has_children?(graph, &1))
+      }
+    end
   end
 
   @spec has_children?(Graph.t(), Vertex.t()) :: boolean()
