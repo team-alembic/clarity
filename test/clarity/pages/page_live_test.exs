@@ -10,6 +10,15 @@ defmodule Clarity.Pages.PageLiveTest do
       assert {:error, {:live_redirect, %{to: ^expected_path}}} = live(conn, "/")
     end
 
+    test "a live navigation to a bare lens URL redirects to the lens's start page", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+
+      assert {:error, {:live_redirect, %{to: "/architect/application:clarity"}}} =
+               live_redirect(view, to: "/architect")
+    end
+
     test "loads root vertex with graph content", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
       html = render_async(view)

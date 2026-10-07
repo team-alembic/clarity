@@ -23,7 +23,6 @@ defmodule Clarity.PageLive do
       :timer.send_interval(100, :refresh)
     end
 
-    navigation_fun = if connected?(socket), do: &push_patch/2, else: &push_navigate/2
     initial_vertex = Map.get(session, "initial_vertex", "root")
 
     socket =
@@ -43,7 +42,9 @@ defmodule Clarity.PageLive do
         initial_vertex: initial_vertex
       )
       |> fetch_clarity()
-      |> handle_routing(params, navigation_fun)
+      # LiveView forbids live patches during mount, which a live navigation to a
+      # bare lens URL (e.g. from the lens switcher) would otherwise trigger.
+      |> handle_routing(params, &push_navigate/2)
 
     {:ok, socket}
   end
