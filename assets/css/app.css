@@ -196,6 +196,12 @@
   justify-self: end;
 }
 
+/* Let areas shrink below their content's width, so wide content (a row of
+   tabs, a long title) scrolls within its area instead of widening the page. */
+.layout-container > * {
+  min-width: 0;
+}
+
 .layout-container > .header {
   grid-area: header;
 }
