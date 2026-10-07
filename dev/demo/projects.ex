@@ -1,4 +1,4 @@
-defmodule Demo.Projects.Domain do
+defmodule Demo.Projects do
   @moduledoc """
   The body of work: Projects, Sprints, Tickets, and the conversational
   artefacts (Comments, Attachments, TimeEntries) attached to them.

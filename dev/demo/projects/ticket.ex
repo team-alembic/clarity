@@ -8,7 +8,7 @@ defmodule Demo.Projects.Ticket do
   """
 
   use Ash.Resource,
-    domain: Demo.Projects.Domain,
+    domain: Demo.Projects,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets
 

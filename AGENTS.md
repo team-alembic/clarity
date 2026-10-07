@@ -92,7 +92,7 @@ Always use `Code.ensure_loaded/1` before `function_exported?/3`.
 Key config options in `config/config.exs`:
 
 ```elixir
-config :clarity, :ash_domains, [Demo.Accounts.Domain]
+config :clarity, :ash_domains, [Demo.Accounts]
 config :clarity, :auto_start?, false
 config :clarity, :introspector_applications, [:my_app]
 config :clarity, :default_perspective_lens, "architect"

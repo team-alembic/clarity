@@ -6,7 +6,7 @@ defmodule Demo.Accounts.AuditEvent do
   """
 
   use Ash.Resource,
-    domain: Demo.Accounts.Domain,
+    domain: Demo.Accounts,
     data_layer: Ash.DataLayer.Ets
 
   resource do

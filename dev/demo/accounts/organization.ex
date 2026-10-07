@@ -5,7 +5,7 @@ defmodule Demo.Accounts.Organization do
   """
 
   use Ash.Resource,
-    domain: Demo.Accounts.Domain,
+    domain: Demo.Accounts,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets
 
@@ -114,6 +114,6 @@ defmodule Demo.Accounts.Organization do
   end
 
   identities do
-    identity :unique_slug, [:slug], pre_check_with: Demo.Accounts.Domain
+    identity :unique_slug, [:slug], pre_check_with: Demo.Accounts
   end
 end

@@ -6,7 +6,7 @@ defmodule Demo.Helpdesk.Ticket do
   """
 
   use Ash.Resource,
-    domain: Demo.Helpdesk.Domain,
+    domain: Demo.Helpdesk,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets
 

@@ -8,7 +8,7 @@ defmodule Demo.Accounts.User do
   here. The richest example of policies and calculations in the demo.
   """
   use Ash.Resource,
-    domain: Demo.Accounts.Domain,
+    domain: Demo.Accounts,
     authorizers: [
       Ash.Policy.Authorizer
     ],

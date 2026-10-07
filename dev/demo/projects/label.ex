@@ -5,7 +5,7 @@ defmodule Demo.Projects.Label do
   """
 
   use Ash.Resource,
-    domain: Demo.Projects.Domain,
+    domain: Demo.Projects,
     data_layer: Ash.DataLayer.Ets
 
   resource do
@@ -56,6 +56,6 @@ defmodule Demo.Projects.Label do
   end
 
   identities do
-    identity :unique_per_project, [:project_id, :name], pre_check_with: Demo.Projects.Domain
+    identity :unique_per_project, [:project_id, :name], pre_check_with: Demo.Projects
   end
 end

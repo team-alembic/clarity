@@ -1,4 +1,4 @@
-defmodule Demo.Billing.Domain do
+defmodule Demo.Billing do
   @moduledoc """
   Plans, Subscriptions, Invoices, LineItems, PaymentMethods. Heavy on
   calculations and aggregates: outstanding balances, days overdue, line

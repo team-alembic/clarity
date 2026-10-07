@@ -19,7 +19,7 @@ defmodule Clarity.Test.Helper do
       version: Version.parse!("0.1.0")
     }
 
-    domain_vertex = %Vertex.Ash.Domain{domain: Demo.Accounts.Domain}
+    domain_vertex = %Vertex.Ash.Domain{domain: Demo.Accounts}
 
     Clarity.Graph.add_vertex(clarity_graph, app_vertex, %Vertex.Root{})
     Clarity.Graph.add_vertex(clarity_graph, domain_vertex, app_vertex)

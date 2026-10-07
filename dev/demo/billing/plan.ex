@@ -6,7 +6,7 @@ defmodule Demo.Billing.Plan do
   """
 
   use Ash.Resource,
-    domain: Demo.Billing.Domain,
+    domain: Demo.Billing,
     data_layer: Ash.DataLayer.Ets
 
   resource do
@@ -96,6 +96,6 @@ defmodule Demo.Billing.Plan do
   end
 
   identities do
-    identity :unique_code, [:code], pre_check_with: Demo.Billing.Domain
+    identity :unique_code, [:code], pre_check_with: Demo.Billing
   end
 end

@@ -5,7 +5,7 @@ defmodule Demo.Helpdesk.SlaPolicy do
   """
 
   use Ash.Resource,
-    domain: Demo.Helpdesk.Domain,
+    domain: Demo.Helpdesk,
     data_layer: Ash.DataLayer.Ets
 
   resource do

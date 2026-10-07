@@ -5,7 +5,7 @@ defmodule Demo.Accounts.Membership do
   """
 
   use Ash.Resource,
-    domain: Demo.Accounts.Domain,
+    domain: Demo.Accounts,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets
 
@@ -83,6 +83,6 @@ defmodule Demo.Accounts.Membership do
   end
 
   identities do
-    identity :one_per_org_user, [:organization_id, :user_id], pre_check_with: Demo.Accounts.Domain
+    identity :one_per_org_user, [:organization_id, :user_id], pre_check_with: Demo.Accounts
   end
 end

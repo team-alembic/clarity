@@ -6,7 +6,7 @@ defmodule Demo.Billing.LineItem do
   """
 
   use Ash.Resource,
-    domain: Demo.Billing.Domain,
+    domain: Demo.Billing,
     data_layer: Ash.DataLayer.Ets
 
   resource do

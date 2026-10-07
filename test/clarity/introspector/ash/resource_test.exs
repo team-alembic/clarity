@@ -10,7 +10,7 @@ defmodule Clarity.Introspector.Ash.ResourceTest do
   describe inspect(&ResourceIntrospector.introspect_vertex/2) do
     test "creates resource vertices for module vertices" do
       graph = Clarity.Graph.new()
-      domain_vertex = %Domain{domain: Demo.Accounts.Domain}
+      domain_vertex = %Domain{domain: Demo.Accounts}
       module_vertex = %Vertex.Module{module: User, version: :unknown}
 
       Clarity.Graph.add_vertex(graph, domain_vertex, %Vertex.Root{})

@@ -1,4 +1,4 @@
-defmodule Demo.Helpdesk.Domain do
+defmodule Demo.Helpdesk do
   @moduledoc """
   Customer support surface. Reuses Organization and User from Accounts so
   the Application Diagram has cross-domain edges. Helpdesk Tickets can be

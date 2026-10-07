@@ -38,9 +38,9 @@ defmodule Clarity.Introspector.Spark.DslTest do
     test "returns empty list for implementations (not DSL bases)" do
       graph = Clarity.Graph.new()
 
-      # Demo.Accounts.Domain is an implementation, not a DSL base
+      # Demo.Accounts is an implementation, not a DSL base
       module_vertex = %Vertex.Module{
-        module: Demo.Accounts.Domain,
+        module: Demo.Accounts,
         version: :unknown,
         behaviour?: false
       }

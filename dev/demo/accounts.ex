@@ -1,4 +1,4 @@
-defmodule Demo.Accounts.Domain do
+defmodule Demo.Accounts do
   @moduledoc """
   The Accounts domain.
   This handles user management and authentication.

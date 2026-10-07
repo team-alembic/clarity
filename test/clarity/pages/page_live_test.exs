@@ -68,12 +68,12 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "displays breadcrumbs for domain vertices", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       html = render_async(view)
 
-      # Should show breadcrumb path (root not shown): clarity > Demo.Accounts.Domain
+      # Should show breadcrumb path (root not shown): clarity > Demo.Accounts
       assert html =~ "clarity"
-      assert html =~ "Demo.Accounts.Domain"
+      assert html =~ "Demo.Accounts"
     end
   end
 
@@ -92,10 +92,10 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
       # Test viz:click event with domain vertex
-      view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts-domain"})
+      view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts"})
 
       # Should navigate to the domain vertex
-      assert_patched(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      assert_patched(view, "/debug/ash-domain:demo-accounts/graph")
     end
 
     test "graph visualization renders correctly", %{conn: conn} do
@@ -141,7 +141,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "breadcrumb links carry the vertex hint inline", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(
@@ -202,7 +202,7 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "nav.tabs")
 
       # Test domain vertex content
-      {:ok, view2, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view2, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       assert has_element?(view2, ".content")
       assert has_element?(view2, "nav.tabs")
     end
@@ -313,14 +313,14 @@ defmodule Clarity.Pages.PageLiveTest do
 
       refute has_element?(view, "#{@clarity_node}[open]")
 
-      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_node}[open]")
     end
 
     test "a node on the path to the current vertex can be collapsed", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       toggle_clarity(view, false)
@@ -329,25 +329,25 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "a collapsed node stays collapsed until the user navigates elsewhere", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
       toggle_clarity(view, false)
 
-      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       refute has_element?(view, "#{@clarity_node}[open]")
 
       render_patch(view, "/debug/root/graph")
       render_async(view)
-      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_node}[open]")
     end
 
     test "a node opened only by navigation closes when navigating elsewhere", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       render_patch(view, "/debug/root/graph")
@@ -361,7 +361,7 @@ defmodule Clarity.Pages.PageLiveTest do
       render_async(view)
       toggle_clarity(view, true)
 
-      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
       render_patch(view, "/debug/root/graph")
       render_async(view)
@@ -389,23 +389,23 @@ defmodule Clarity.Pages.PageLiveTest do
       render_async(view)
 
       assert has_element?(view, ".navigation a[aria-current='page'][data-tooltip-title='clarity']")
-      assert has_element?(view, ".navigation a[data-tooltip-title='Demo.Accounts.Domain']")
-      refute has_element?(view, ".navigation a[aria-current][data-tooltip-title='Demo.Accounts.Domain']")
+      assert has_element?(view, ".navigation a[data-tooltip-title='Demo.Accounts']")
+      refute has_element?(view, ".navigation a[aria-current][data-tooltip-title='Demo.Accounts']")
     end
 
     test "shows short module names, with the full name in the hint", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts-domain/graph")
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       label =
         view
-        |> element(".navigation a[data-tooltip-title='Demo.Accounts.Domain']")
+        |> element(".navigation a[data-tooltip-title='Demo.Accounts']")
         |> render()
         |> LazyHTML.from_fragment()
         |> LazyHTML.text()
         |> String.trim()
 
-      assert label == "Domain"
+      assert label == "Accounts"
     end
 
     @clarity_group "details[id='tree-group-application:clarity/child']"
@@ -440,7 +440,7 @@ defmodule Clarity.Pages.PageLiveTest do
       render_async(view)
       toggle_clarity_group(view, false)
 
-      render_patch(view, "/debug/ash-domain:demo-accounts-domain/graph")
+      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_group}[open]")

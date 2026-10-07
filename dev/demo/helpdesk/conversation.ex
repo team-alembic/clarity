@@ -5,7 +5,7 @@ defmodule Demo.Helpdesk.Conversation do
   """
 
   use Ash.Resource,
-    domain: Demo.Helpdesk.Domain,
+    domain: Demo.Helpdesk,
     data_layer: Ash.DataLayer.Ets
 
   resource do

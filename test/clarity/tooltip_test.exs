@@ -26,7 +26,7 @@ defmodule Clarity.TooltipTest do
       markdown = """
       `Demo.Accounts.User`
 
-      Domain: `Demo.Accounts.Domain`
+      Domain: `Demo.Accounts`
 
       **Severity:** high
 

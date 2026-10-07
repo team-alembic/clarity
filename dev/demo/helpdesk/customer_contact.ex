@@ -5,7 +5,7 @@ defmodule Demo.Helpdesk.CustomerContact do
   """
 
   use Ash.Resource,
-    domain: Demo.Helpdesk.Domain,
+    domain: Demo.Helpdesk,
     data_layer: Ash.DataLayer.Ets
 
   resource do
@@ -67,7 +67,6 @@ defmodule Demo.Helpdesk.CustomerContact do
   end
 
   identities do
-    identity :unique_email_per_org, [:organization_id, :email],
-      pre_check_with: Demo.Helpdesk.Domain
+    identity :unique_email_per_org, [:organization_id, :email], pre_check_with: Demo.Helpdesk
   end
 end

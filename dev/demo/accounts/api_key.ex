@@ -1,7 +1,7 @@
 defmodule Demo.Accounts.ApiKey do
   @moduledoc false
   use Ash.Resource,
-    domain: Demo.Accounts.Domain,
+    domain: Demo.Accounts,
     data_layer: Ash.DataLayer.Ets
 
   actions do

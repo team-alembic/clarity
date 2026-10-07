@@ -61,7 +61,7 @@ defmodule Clarity.Vertex.Ash.ResourceTest do
       overview_string = IO.iodata_to_binary(overview)
 
       assert overview_string =~ "`Demo.Accounts.User`"
-      assert overview_string =~ "Domain: `Demo.Accounts.Domain`"
+      assert overview_string =~ "Domain: `Demo.Accounts`"
     end
   end
 
@@ -71,7 +71,7 @@ defmodule Clarity.Vertex.Ash.ResourceTest do
       assert Vertex.HintProvider.badges(vertex) == ["multitenant"]
 
       assert Vertex.HintProvider.facts(vertex) == [
-               {"Domain", "Demo.Accounts.Domain"},
+               {"Domain", "Demo.Accounts"},
                {"Data layer", "Ash.DataLayer.Ets"},
                {"Contains",
                 "#{length(Info.attributes(User))} attributes · " <>

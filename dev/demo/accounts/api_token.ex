@@ -6,7 +6,7 @@ defmodule Demo.Accounts.ApiToken do
   """
 
   use Ash.Resource,
-    domain: Demo.Accounts.Domain,
+    domain: Demo.Accounts,
     authorizers: [Ash.Policy.Authorizer],
     data_layer: Ash.DataLayer.Ets
 

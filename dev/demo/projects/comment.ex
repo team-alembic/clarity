@@ -4,7 +4,7 @@ defmodule Demo.Projects.Comment do
   """
 
   use Ash.Resource,
-    domain: Demo.Projects.Domain,
+    domain: Demo.Projects,
     data_layer: Ash.DataLayer.Ets
 
   resource do
