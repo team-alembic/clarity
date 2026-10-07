@@ -178,13 +178,10 @@ defmodule Clarity.CoreComponents do
     default: nil,
     doc: "The name to show instead, e.g. one told apart from its siblings' names"
 
+  attr :class, :any, default: nil, doc: "CSS classes to apply to the name"
+
   @spec vertex_name(assigns :: Socket.assigns()) :: Rendered.t()
   def vertex_name(assigns)
-
-  # Splits after each dot so a long module name wraps between its segments
-  # rather than mid-word.
-  @spec name_segments(String.t()) :: [String.t()]
-  defp name_segments(name), do: String.split(name, ~r/(?<=\.)/, trim: true)
 
   @doc """
   Renders a drawer for displaying raw content (mermaid, viz, markdown).

@@ -11,6 +11,7 @@ defmodule Clarity.CoreComponentsTest do
   alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
+  alias Demo.Accounts.User
 
   @spec content(String.t(), String.t(), [atom()]) :: Content.t()
   defp content(id, name, status_classes) do
@@ -156,16 +157,23 @@ defmodule Clarity.CoreComponentsTest do
   end
 
   describe "vertex_name/1" do
-    test "lets a dotted name wrap between its segments, not mid-word" do
+    test "shows the qualified name by default" do
       html =
         render_component(&CoreComponents.vertex_name/1,
-          vertex: %Resource{resource: Demo.Accounts.User}
+          vertex: %Resource{resource: User}
         )
 
-      doc = LazyHTML.from_fragment(html)
+      assert html |> LazyHTML.from_fragment() |> LazyHTML.text() == "Demo.Accounts.User"
+    end
 
-      assert LazyHTML.text(doc) == "Demo.Accounts.User"
-      assert doc |> LazyHTML.query("span > wbr") |> Enum.count() == 2
+    test "shows a given name in place of its own" do
+      html =
+        render_component(&CoreComponents.vertex_name/1,
+          vertex: %Resource{resource: User},
+          name: "Accounts.User"
+        )
+
+      assert html |> LazyHTML.from_fragment() |> LazyHTML.text() == "Accounts.User"
     end
 
     test "shows just the last segment of a module name in the short style" do
