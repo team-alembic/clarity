@@ -84,6 +84,7 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.SecurityOverview,
           Clarity.Content.Ash.RelationshipOverview,
           Clarity.Content.Ash.StateMachineDiagram,
+          Clarity.Content.Ash.StateMachinesOverview,
           Clarity.Content.Reactor.FlowDiagram,
           Clarity.Content.Phoenix.RouterRoutes,
           Clarity.Content.Advisory,

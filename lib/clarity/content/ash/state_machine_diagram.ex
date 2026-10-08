@@ -24,9 +24,7 @@ with {:module, AshStateMachine} <- Code.ensure_loaded(AshStateMachine) do
     def sort_priority, do: -50
 
     @impl Clarity.Content
-    def applies?(%Resource{resource: resource}, _lens),
-      do: AshStateMachine in Ash.Resource.Info.extensions(resource)
-
+    def applies?(%Resource{resource: resource}, _lens), do: state_machine?(resource)
     def applies?(_vertex, _lens), do: false
 
     @impl Clarity.Content
@@ -34,8 +32,17 @@ with {:module, AshStateMachine} <- Code.ensure_loaded(AshStateMachine) do
       {:mermaid, fn _props -> diagram(resource) end}
     end
 
+    @doc """
+    Returns whether `resource` uses `AshStateMachine`.
+    """
+    @spec state_machine?(Ash.Resource.t()) :: boolean()
+    def state_machine?(resource), do: AshStateMachine in Ash.Resource.Info.extensions(resource)
+
+    @doc """
+    Returns the Mermaid state diagram of a resource that uses `AshStateMachine`.
+    """
     @spec diagram(Ash.Resource.t()) :: iodata()
-    defp diagram(resource) do
+    def diagram(resource) do
       states = Info.state_machine_all_states(resource)
       edges = edges(resource)
       left = MapSet.new(edges, fn {from, _to, _action} -> from end)

@@ -46,6 +46,7 @@ defmodule Clarity.Perspective.Lensmaker.Security do
            Content.Graph,
            Content.Moduledoc,
            Content.Ash.StateMachineDiagram,
+           Content.Ash.StateMachinesOverview,
            Content.Reactor.FlowDiagram,
            ClarityContent.ArchitectureDiagram,
            ClarityContent.ClassDiagram,
