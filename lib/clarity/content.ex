@@ -172,8 +172,21 @@ defmodule Clarity.Content do
   def get_contents_for_vertex(vertex, lens) do
     Clarity.Config.list_content_providers()
     |> Enum.filter(&applies?(&1, vertex, lens))
+    |> shown_by(lens)
     |> Enum.map(&build_content_struct(&1, vertex, lens))
     |> Enum.sort(lens.content_sorter)
+  end
+
+  # A lens may name the providers whose tabs it shows. If none of them applies to
+  # the vertex, its graph stands in, so every vertex the lens reaches has a tab.
+  @spec shown_by([module()], Lens.t()) :: [module()]
+  defp shown_by(providers, %Lens{contents: :all}), do: providers
+
+  defp shown_by(providers, %Lens{contents: shown}) do
+    case Enum.filter(providers, &(&1 in shown)) do
+      [] -> Enum.filter(providers, &(&1 == __MODULE__.Graph))
+      kept -> kept
+    end
   end
 
   @spec applies?(module(), Vertex.t(), Lens.t()) :: boolean()

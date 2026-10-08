@@ -169,6 +169,27 @@ defmodule Clarity.ContentTest do
       assert [] = contents
     end
 
+    test "a lens that names its contents shows only those", %{vertex: vertex, lens: lens} do
+      providers = [TestContentProvider, StatusClassProvider]
+      Application.put_env(:clarity, :clarity_content_providers, providers)
+
+      contents = Content.get_contents_for_vertex(vertex, %{lens | contents: [StatusClassProvider]})
+
+      assert [%Content{provider: StatusClassProvider}] = contents
+    end
+
+    test "falls back to the graph when a lens's contents leave a vertex none", %{
+      vertex: vertex,
+      lens: lens
+    } do
+      providers = [Content.Graph, StatusClassProvider]
+      Application.put_env(:clarity, :clarity_content_providers, providers)
+
+      contents = Content.get_contents_for_vertex(vertex, %{lens | contents: [TestContentProvider]})
+
+      assert [%Content{provider: Content.Graph}] = contents
+    end
+
     test "builds content struct with correct fields", %{vertex: vertex, lens: lens} do
       providers = [TestContentProvider]
       Application.put_env(:clarity, :clarity_content_providers, providers)

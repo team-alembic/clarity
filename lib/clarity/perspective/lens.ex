@@ -9,6 +9,11 @@ defmodule Clarity.Perspective.Lens do
   Framework internals (see `Clarity.Perspective.Internals`), such as Ash's shadow
   domains, are removed before the lens filters the graph unless the lens sets
   `show_internals?: true`.
+
+  A lens also decides which tabs a vertex shows: `contents` is `:all` (every
+  content provider that applies), or a list of the content providers whose tabs
+  it shows. A vertex left with none of them shows its graph
+  (`Clarity.Content.Graph`) instead, so every vertex has a tab.
   """
 
   alias Clarity.Content
@@ -29,7 +34,8 @@ defmodule Clarity.Perspective.Lens do
           content_sorter: content_sorter_fn(),
           show_vertex_types: show_vertex_types_fn(),
           status_filter: status_filter_fn(),
-          show_internals?: boolean()
+          show_internals?: boolean(),
+          contents: :all | [module()]
         }
 
   @enforce_keys [:id, :name, :icon, :filter]
@@ -42,7 +48,8 @@ defmodule Clarity.Perspective.Lens do
     content_sorter: &__MODULE__.sort_alphabetically/2,
     show_vertex_types: &__MODULE__.default_show_vertex_types/1,
     status_filter: &__MODULE__.reject_all_statuses/1,
-    show_internals?: false
+    show_internals?: false,
+    contents: :all
   ]
 
   @doc """
