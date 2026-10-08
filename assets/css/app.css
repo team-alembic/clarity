@@ -253,14 +253,15 @@
 
 /* While the page loads, the splash (or, once introspection is done, a
    spinner) fills the space below the header, and on wider screens beside the
-   activity bar, which keeps its full height; the page doesn't scroll. */
-.layout-container > :is(#splash, #page-loading) {
+   activity bar, which keeps its full height; the page doesn't scroll. So does
+   a page that failed to load (.page-state), which has no tree beside it. */
+.layout-container > :is(#splash, #page-loading, .page-state) {
   grid-area: main;
   min-height: 0;
 }
 
 @media (min-width: 48rem) {
-  .layout-container > :is(#splash, #page-loading) {
+  .layout-container > :is(#splash, #page-loading, .page-state) {
     grid-row: 2 / -1;
     grid-column: 2 / -1;
   }

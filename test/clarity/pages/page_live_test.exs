@@ -456,8 +456,10 @@ defmodule Clarity.Pages.PageLiveTest do
       assert html =~ "Vertex not found"
       assert html =~ "Go to root"
 
-      # Should not show tabs
+      # Should not show tabs, and fills the page beside the activity bar,
+      # as there is no tree beside it
       refute has_element?(view, "nav.tabs")
+      assert has_element?(view, ".layout-container > .page-state")
 
       # Should have link to root
       assert has_element?(view, "a[href='/debug/root']")
