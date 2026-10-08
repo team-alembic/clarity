@@ -105,23 +105,31 @@
             lens={lens}
             vertex_status_classes={@vertex_status_classes}
           />
-          <%= if not @data.ok? do %>
-            <div class="content">
-              <.splash_screen />
-            </div>
-          <% else %>
-            <.render_content
-              content={@content}
-              vertex={@vertex}
-              socket={@socket}
-              theme={@theme}
-              prefix={@prefix}
-              lens={lens}
-              zoom_graph={data.zoom_graph}
-              zoom_level={@zoom_level}
-              shown_vertex_types={@shown_vertex_types}
-              available_vertex_types={@available_vertex_types}
-            />
+          <%= cond do %>
+            <% not @data.ok? -> %>
+              <div class="content">
+                <.splash_screen />
+              </div>
+            <% @contents == [] -> %>
+              <div
+                id="no-lens-content"
+                class="content p-6 text-sm text-base-light-600 dark:text-base-dark-400"
+              >
+                The {lens.name} lens has nothing to show for {Vertex.name(@vertex)}.
+              </div>
+            <% true -> %>
+              <.render_content
+                content={@content}
+                vertex={@vertex}
+                socket={@socket}
+                theme={@theme}
+                prefix={@prefix}
+                lens={lens}
+                zoom_graph={data.zoom_graph}
+                zoom_level={@zoom_level}
+                shown_vertex_types={@shown_vertex_types}
+                available_vertex_types={@available_vertex_types}
+              />
           <% end %>
           <% {content_type, raw_content} =
             case @content && @content.render_static do

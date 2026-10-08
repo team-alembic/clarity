@@ -178,16 +178,14 @@ defmodule Clarity.ContentTest do
       assert [%Content{provider: StatusClassProvider}] = contents
     end
 
-    test "falls back to the graph when a lens's contents leave a vertex none", %{
+    test "leaves a vertex no tabs when none of a lens's contents applies", %{
       vertex: vertex,
       lens: lens
     } do
       providers = [Content.Graph, StatusClassProvider]
       Application.put_env(:clarity, :clarity_content_providers, providers)
 
-      contents = Content.get_contents_for_vertex(vertex, %{lens | contents: [TestContentProvider]})
-
-      assert [%Content{provider: Content.Graph}] = contents
+      assert [] = Content.get_contents_for_vertex(vertex, %{lens | contents: [TestContentProvider]})
     end
 
     test "builds content struct with correct fields", %{vertex: vertex, lens: lens} do

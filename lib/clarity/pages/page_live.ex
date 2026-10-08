@@ -114,19 +114,29 @@ defmodule Clarity.PageLive do
 
     with {:ok, lens} <- Lensmaker.get_lens_by_id(lens_id),
          vertex when not is_nil(vertex) <- Graph.get_vertex(clarity.graph, vertex_id) do
-      contents = Content.get_contents_for_vertex(vertex, lens)
-      first_content_id = get_first_content_id(contents)
+      case Content.get_contents_for_vertex(vertex, lens) do
+        # The lens shows no tab for this vertex: show the vertex, saying so.
+        [] ->
+          handle_page_route(lens_id, vertex_id, nil, socket)
 
-      navigate_fn.(socket,
-        to: Path.join([socket.assigns.prefix, lens.id, vertex_id, first_content_id])
-      )
+        contents ->
+          navigate_fn.(socket,
+            to:
+              Path.join([
+                socket.assigns.prefix,
+                lens.id,
+                vertex_id,
+                get_first_content_id(contents)
+              ])
+          )
+      end
     else
       _ ->
         navigate_fn.(socket, to: Path.join([socket.assigns.prefix, lens_id, "root"]))
     end
   end
 
-  @spec handle_page_route(String.t(), String.t(), String.t(), Socket.t()) :: Socket.t()
+  @spec handle_page_route(String.t(), String.t(), String.t() | nil, Socket.t()) :: Socket.t()
   defp handle_page_route(lens_id, vertex_id, content_id, socket) do
     socket = fetch_clarity(socket)
 
@@ -184,7 +194,7 @@ defmodule Clarity.PageLive do
     end
   end
 
-  @spec fetch_vertex(Socket.t(), String.t(), String.t()) ::
+  @spec fetch_vertex(Socket.t(), String.t(), String.t() | nil) ::
           {:ok, Socket.t()} | {:error, Socket.t(), :vertex_not_found}
   defp fetch_vertex(socket, vertex_id, content_id) do
     case Graph.get_vertex(socket.assigns.clarity.graph, vertex_id) do
@@ -334,7 +344,23 @@ defmodule Clarity.PageLive do
     end
   end
 
+  # Switching lens keeps the selected vertex, so its other lenses can be seen,
+  # or moves up to its nearest ancestor that the new lens's tree shows. The tab
+  # stays too, if the new lens has it.
   @impl Phoenix.LiveView
+  def handle_event("switch_lens", %{"lens" => lens_id}, socket) do
+    case {Lensmaker.get_lens_by_id(lens_id), socket.assigns.vertex} do
+      {{:error, :lens_not_found}, _vertex} ->
+        {:noreply, socket}
+
+      {{:ok, lens}, nil} ->
+        {:noreply, push_patch(socket, to: Path.join([socket.assigns.prefix, lens.id]))}
+
+      {{:ok, lens}, vertex} ->
+        {:noreply, push_patch(socket, to: lens_switch_path(socket, lens, vertex))}
+    end
+  end
+
   def handle_event("viz:click", %{"id" => id}, socket) do
     graph_content_id = Content.content_id(Content.Graph)
 
@@ -431,5 +457,46 @@ defmodule Clarity.PageLive do
   defp get_first_content_id(contents) do
     [%{id: id} | _] = contents
     id
+  end
+
+  @spec lens_switch_path(Socket.t(), Lens.t(), Vertex.t()) :: String.t()
+  defp lens_switch_path(socket, lens, vertex) do
+    %{prefix: prefix, content: content, clarity: clarity} = socket.assigns
+    target = nearest_shown(clarity.graph, lens, vertex)
+    path = Path.join([prefix, lens.id, Vertex.id(target)])
+
+    if content && Enum.any?(Content.get_contents_for_vertex(target, lens), &(&1.id == content.id)),
+      do: Path.join(path, content.id),
+      else: path
+  end
+
+  # The vertex itself if the lens's tree shows it, or else its nearest ancestor
+  # that the tree does; the root always shows.
+  @spec nearest_shown(Graph.t(), Lens.t(), Vertex.t()) :: Vertex.t()
+  defp nearest_shown(graph, lens, vertex) do
+    path = Graph.breadcrumbs(graph, vertex) || [vertex]
+    shown = shown_ids(graph, lens, Enum.map(path, &Vertex.id/1))
+
+    path
+    |> Enum.reverse()
+    |> Enum.find(hd(path), &(match?(%Root{}, &1) or Vertex.id(&1) in shown))
+  end
+
+  # Which of `ids` the lens's tree shows, by the same rules as compute_subgraph/5:
+  # its filter, its vertex types, and whether it shows framework internals.
+  @spec shown_ids(Graph.t(), Lens.t(), [String.t()]) :: MapSet.t(String.t())
+  defp shown_ids(graph, lens, ids) do
+    available_types = graph |> Graph.available_vertex_types() |> Enum.reject(&(&1 == Root))
+    hidden_ids = if lens.show_internals?, do: [], else: Internals.ids(graph)
+
+    type_filter =
+      case lens.show_vertex_types.(available_types) do
+        [] -> []
+        types -> [Graph.Filter.vertex_type(types)]
+      end
+
+    query = Graph.Filter.all([lens.filter, {:in, :vertex_id, ids -- hidden_ids} | type_filter])
+
+    graph |> Graph.vertices(query.(graph)) |> MapSet.new(&Vertex.id/1)
   end
 end

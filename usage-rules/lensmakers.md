@@ -124,8 +124,8 @@ config :my_app, :clarity_perspective_lensmakers, [
 - **`contents`** (`:all` | list of content provider modules) - Which tabs a
   vertex shows under the lens
   - A list keeps only those providers' tabs (each provider's own `applies?/2`
-    still applies); a vertex left with none of them shows its graph
-    (`Clarity.Content.Graph`) instead
+    still applies); a vertex left with none of them has no tabs, and its page
+    says the lens has nothing to show for it
   - Default: `:all`, every provider that applies. The built-in
     Documentation lens, for one, shows only Domain Overview and Module Documentation
 

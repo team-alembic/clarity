@@ -31,7 +31,9 @@ defmodule Clarity.CoreComponents do
   one per lens, each a role's filtered view of the graph, then Reports, which
   is always there too, so no report is hidden behind a lens choice. The current
   icon shows or hides the sidebar; another lens's icon explores through that
-  lens, and Reports goes to the reports.
+  lens, and Reports goes to the reports. While exploring, a lens's icon sends
+  the page a `switch_lens` event (with `lens`, its id), so the page can keep the
+  selected vertex.
   """
   attr :prefix, :string, required: true, doc: "The URL prefix for links"
   attr :lenses, :list, required: true, doc: "Every lens, in the order shown"
@@ -47,7 +49,7 @@ defmodule Clarity.CoreComponents do
         id={"activity-lens-#{lens.id}"}
         label={lens.name}
         current={@section == :explore and @lens != nil and lens.id == @lens.id}
-        patch={@section == :explore}
+        switch_lens={@section == :explore && lens.id}
         to={Path.join([@prefix, lens.id])}
       >
         <span class="flex size-6 items-center justify-center text-xl leading-none">
@@ -59,7 +61,6 @@ defmodule Clarity.CoreComponents do
         id="activity-reports"
         label="Reports"
         current={@section == :reports}
-        patch={@section == :reports}
         to={Path.join([@prefix, "reports"])}
       >
         <.icon_report class="size-6" />
@@ -71,14 +72,14 @@ defmodule Clarity.CoreComponents do
   attr :id, :string, required: true
   attr :label, :string, required: true
   attr :current, :boolean, required: true
-  attr :patch, :boolean, required: true, doc: "Whether `to` is in the same LiveView"
+  attr :switch_lens, :any, default: false, doc: "A lens id to send `switch_lens` with, or false"
   attr :to, :string, required: true
   slot :inner_block, required: true
 
   # The current item toggles the sidebar (the NavPanel hook listens for
-  # clarity:toggle-nav, as for ⌘B). Another item patches when it stays in the
-  # same LiveView (switching lens while exploring keeps the page's state), and
-  # navigates when it crosses between exploring and the reports.
+  # clarity:toggle-nav, as for ⌘B). While exploring, a lens's item asks the page
+  # to switch lens, keeping the selected vertex; otherwise an item navigates,
+  # crossing between exploring and the reports.
   @spec activity_item(map()) :: Rendered.t()
   defp activity_item(%{current: true} = assigns) do
     ~H"""
@@ -96,11 +97,19 @@ defmodule Clarity.CoreComponents do
     """
   end
 
-  defp activity_item(%{patch: true} = assigns) do
+  defp activity_item(%{switch_lens: lens_id} = assigns) when is_binary(lens_id) do
     ~H"""
-    <.link id={@id} patch={@to} class="activity-item" aria-label={@label} {Tooltip.attrs(@label)}>
+    <button
+      id={@id}
+      type="button"
+      class="activity-item"
+      aria-label={@label}
+      phx-click="switch_lens"
+      phx-value-lens={@switch_lens}
+      {Tooltip.attrs(@label)}
+    >
       {render_slot(@inner_block)}
-    </.link>
+    </button>
     """
   end
 

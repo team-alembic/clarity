@@ -19,7 +19,7 @@ defmodule Clarity.Pages.PageLiveTest do
                live_redirect(view, to: "/architect")
     end
 
-    test "the activity bar's current lens toggles the sidebar; other lenses patch to theirs",
+    test "the activity bar's current lens toggles the sidebar; other lenses switch to theirs",
          %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
@@ -28,7 +28,11 @@ defmodule Clarity.Pages.PageLiveTest do
                "button#activity-lens-debug[aria-current=page][phx-click*='clarity:toggle-nav']"
              )
 
-      assert has_element?(view, "a#activity-lens-architect[href='/architect'][data-phx-link=patch]")
+      assert has_element?(
+               view,
+               "button#activity-lens-architect[phx-click='switch_lens'][phx-value-lens='architect']"
+             )
+
       refute has_element?(view, "#lens-switcher")
     end
 
@@ -245,6 +249,47 @@ defmodule Clarity.Pages.PageLiveTest do
 
       assert has_element?(view, ".content-tab", "Domain Overview")
       refute has_element?(view, ".content-tab", "Graph Navigation")
+    end
+
+    test "a vertex with none of the lens's tabs says so, rather than showing others",
+         %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/documentation/application:clarity")
+      render_async(view)
+
+      refute has_element?(view, ".content-tab")
+      assert has_element?(view, "#no-lens-content", "Documentation")
+    end
+  end
+
+  describe "PageLive switching lens" do
+    test "keeps the selected vertex", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      render_async(view)
+
+      view |> element("#activity-lens-documentation") |> render_click()
+
+      # The Documentation lens has no graph tab, so the vertex opens on its first.
+      assert_patch(view, "/documentation/ash-domain:demo-accounts/ash-domain-overview")
+    end
+
+    test "keeps the tab when the new lens has it", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      render_async(view)
+
+      view |> element("#activity-lens-graph") |> render_click()
+
+      assert_patch(view, "/graph/ash-domain:demo-accounts/graph")
+    end
+
+    @tag test_graph: [internals: true]
+    test "moves up to the nearest vertex the new lens shows", %{conn: conn} do
+      # The shadow domain is a framework internal: Debug shows it, Graph doesn't.
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:ash-embeddable-type-shadow-domain/graph")
+      render_async(view)
+
+      view |> element("#activity-lens-graph") |> render_click()
+
+      assert_patch(view, "/graph/application:ash/graph")
     end
   end
 

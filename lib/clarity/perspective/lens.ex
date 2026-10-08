@@ -12,8 +12,8 @@ defmodule Clarity.Perspective.Lens do
 
   A lens also decides which tabs a vertex shows: `contents` is `:all` (every
   content provider that applies), or a list of the content providers whose tabs
-  it shows. A vertex left with none of them shows its graph
-  (`Clarity.Content.Graph`) instead, so every vertex has a tab.
+  it shows. A vertex left with none of them has no tabs, and its page says the
+  lens has nothing to show for it.
   """
 
   alias Clarity.Content
