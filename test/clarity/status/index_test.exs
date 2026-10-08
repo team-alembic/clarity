@@ -24,6 +24,9 @@ defmodule Clarity.Status.IndexTest do
     def statuses(%Vertex.Application{app: :other}, _graph),
       do: [%Status{severity: :error, class: :other, message: "o", source: __MODULE__}]
 
+    def statuses(%Vertex.Application{app: app, description: "Many"}, _graph),
+      do: [%Status{severity: :warning, class: :hygiene, message: "#{app}", source: __MODULE__}]
+
     def statuses(_vertex, _graph), do: []
   end
 
@@ -59,16 +62,50 @@ defmodule Clarity.Status.IndexTest do
     %Lens{id: "t", name: "T", icon: fn -> nil end, filter: true, status_filter: status_filter}
   end
 
+  @err_issue %{name: "err", severity: :error, message: "e"}
+  @info_issue %{name: "info", severity: :info, message: "i"}
+
   describe "build/2" do
     test "rolls up worst severity and a count of flagged descendants", %{graph: graph, vertices: v} do
       index = Index.build(graph, lens(&(&1.class in [:security, :hygiene])))
 
       # flagged leaves: no descendants, so count 0 (the node itself isn't counted)
-      assert index[Vertex.id(v.err)] == %{severity: :error, count: 0}
-      assert index[Vertex.id(v.info)] == %{severity: :info, count: 0}
+      assert %{severity: :error, count: 0} = index[Vertex.id(v.err)]
+      assert %{severity: :info, count: 0} = index[Vertex.id(v.info)]
       # parent isn't flagged; rolls up err (:error) + info (:info) = error, 2 below
-      assert index[Vertex.id(v.parent)] == %{severity: :error, count: 2}
-      assert index[Vertex.id(v.root)] == %{severity: :error, count: 2}
+      assert %{severity: :error, count: 2} = index[Vertex.id(v.parent)]
+      assert %{severity: :error, count: 2} = index[Vertex.id(v.root)]
+    end
+
+    test "carries the issues themselves, worst first, here and beneath",
+         %{graph: graph, vertices: v} do
+      index = Index.build(graph, lens(&(&1.class in [:security, :hygiene])))
+
+      assert %{issues: [@err_issue], severities: %{error: 1}} = index[Vertex.id(v.err)]
+
+      assert %{issues: [@err_issue, @info_issue], severities: %{error: 1, info: 1}} =
+               index[Vertex.id(v.root)]
+    end
+
+    test "keeps only the worst few issues, but counts them all", %{graph: graph, vertices: v} do
+      many = %Vertex.Application{app: :many, description: "Holder", version: "1.0.0"}
+      Graph.add_vertex(graph, many, v.root)
+      Graph.add_edge(graph, v.root, many, :application)
+
+      for name <- ~w(a b c d e f g h i j)a do
+        app = %Vertex.Application{app: name, description: "Many", version: "1.0.0"}
+        Graph.add_vertex(graph, app, many)
+        Graph.add_edge(graph, many, app, :dependency)
+      end
+
+      index = Index.build(graph, lens(&(&1.class in [:security, :hygiene])))
+      %{issues: issues, severities: severities} = index[Vertex.id(v.root)]
+
+      assert length(issues) == 8
+      assert severities == %{error: 1, warning: 10, info: 1}
+      # the error comes first, and the info, least severe, misses the cut
+      assert hd(issues) == @err_issue
+      refute @info_issue in issues
     end
 
     test "does not count the vertex itself", %{graph: graph, vertices: v} do
@@ -81,13 +118,13 @@ defmodule Clarity.Status.IndexTest do
     test "only rolls up statuses the lens surfaces", %{graph: graph, vertices: v} do
       index = Index.build(graph, lens(&(&1.class == :security)))
 
-      assert index[Vertex.id(v.err)] == %{severity: :error, count: 0}
+      assert %{severity: :error, count: 0} = index[Vertex.id(v.err)]
       # :info is :hygiene, filtered out
       refute Map.has_key?(index, Vertex.id(v.info))
       # :other is :other class, filtered out
       refute Map.has_key?(index, Vertex.id(v.other))
       # parent now rolls up only err (1 flagged descendant)
-      assert index[Vertex.id(v.parent)] == %{severity: :error, count: 1}
+      assert %{severity: :error, count: 1, issues: [@err_issue]} = index[Vertex.id(v.parent)]
     end
 
     test "is empty when the lens surfaces nothing", %{graph: graph} do

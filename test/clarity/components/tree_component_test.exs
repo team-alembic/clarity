@@ -290,6 +290,17 @@ defmodule Clarity.TreeComponentTest do
     end
   end
 
+  # A badge entry with `issues` of each severity beneath, named after the vertex.
+  @spec badge_entry(Clarity.Status.severity(), non_neg_integer(), keyword(pos_integer())) :: map()
+  defp badge_entry(severity, count, severities \\ [error: 1]) do
+    issues =
+      for {severity, n} <- severities, i <- 1..n do
+        %{name: "dep_#{i}", severity: severity, message: "#{severity} #{i}"}
+      end
+
+    %{severity: severity, count: count, issues: Enum.take(issues, 8), severities: Map.new(severities)}
+  end
+
   describe "status_badge/1" do
     test "renders nothing without an entry" do
       html = render_component(&TreeComponent.status_badge/1, entry: nil)
@@ -298,7 +309,7 @@ defmodule Clarity.TreeComponentTest do
     end
 
     test "renders a pill with no count for a flagged leaf (no nested issues)" do
-      html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 0})
+      html = render_component(&TreeComponent.status_badge/1, entry: badge_entry(:error, 0))
 
       assert html =~ "rounded-full"
       assert html =~ "bg-red-100"
@@ -307,7 +318,7 @@ defmodule Clarity.TreeComponentTest do
     end
 
     test "shows the count of nested issues" do
-      html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 3})
+      html = render_component(&TreeComponent.status_badge/1, entry: badge_entry(:error, 3))
 
       assert html =~ "bg-red-100"
       assert html =~ "tabular-nums"
@@ -316,23 +327,54 @@ defmodule Clarity.TreeComponentTest do
 
     test "renders warning and info severities" do
       warning =
-        render_component(&TreeComponent.status_badge/1, entry: %{severity: :warning, count: 1})
+        render_component(&TreeComponent.status_badge/1, entry: badge_entry(:warning, 1, warning: 1))
 
       assert warning =~ "bg-yellow-100"
 
-      info = render_component(&TreeComponent.status_badge/1, entry: %{severity: :info, count: 1})
+      info = render_component(&TreeComponent.status_badge/1, entry: badge_entry(:info, 1, info: 1))
 
       assert info =~ "bg-blue-100"
     end
   end
 
   describe "status_badge/1 hint" do
-    test "describes nested issues in a hover hint and an accessible name" do
-      html = render_component(&TreeComponent.status_badge/1, entry: %{severity: :error, count: 3})
+    @spec badge(map()) :: LazyHTML.t()
+    defp badge(entry) do
+      html = render_component(&TreeComponent.status_badge/1, entry: entry)
+      html |> LazyHTML.from_fragment() |> LazyHTML.query("[role=img]")
+    end
 
-      badge = html |> LazyHTML.from_fragment() |> LazyHTML.query("[data-tooltip-text='3 nested issues']")
+    test "says how many issues of each severity, and lists each one" do
+      badge = badge(badge_entry(:error, 2, error: 1, info: 2))
 
-      assert LazyHTML.attribute(badge, "aria-label") == ["3 nested issues"]
+      assert LazyHTML.attribute(badge, "data-tooltip-title") == ["3 issues"]
+      assert LazyHTML.attribute(badge, "data-tooltip-badges") == [~s(["1 error","2 info"])]
+
+      assert [facts] = LazyHTML.attribute(badge, "data-tooltip-facts")
+
+      assert JSON.decode!(facts) == [
+               ["dep_1", "Error: error 1"],
+               ["dep_1", "Info: info 1"],
+               ["dep_2", "Info: info 2"]
+             ]
+
+      assert LazyHTML.attribute(badge, "data-tooltip-text") == []
+    end
+
+    test "says when it lists only the worst issues" do
+      badge = badge(badge_entry(:warning, 12, warning: 12))
+
+      assert LazyHTML.attribute(badge, "data-tooltip-text") == ["The worst 8 of 12:"]
+      assert [facts] = LazyHTML.attribute(badge, "data-tooltip-facts")
+      assert length(JSON.decode!(facts)) == 8
+    end
+
+    test "names every listed issue for assistive technology" do
+      badge = badge(badge_entry(:error, 1, error: 1, warning: 1))
+
+      assert LazyHTML.attribute(badge, "aria-label") == [
+               "2 issues (1 error, 1 warning). dep_1: Error: error 1; dep_1: Warning: warning 1"
+             ]
     end
   end
 end

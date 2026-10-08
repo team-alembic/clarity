@@ -1,4 +1,6 @@
 defmodule Clarity.Status.Index do
+  @max_issues 8
+
   @moduledoc """
   Rolls up per-vertex `Clarity.Status` indicators over the navigation tree.
 
@@ -11,6 +13,11 @@ defmodule Clarity.Status.Index do
 
   The walk covers the whole tree, not just the rendered (expanded) nodes, so a
   collapsed parent's badge still reflects what's buried beneath it.
+
+  Each entry also carries the issues themselves — which vertex, how severe, and
+  the message — for the vertex and its subtree, worst first, so a badge's hint
+  can say what is wrong without drilling down. It keeps at most
+  #{@max_issues} of them, with `severities` counting every issue by severity.
   """
 
   alias Clarity.Config
@@ -21,14 +28,27 @@ defmodule Clarity.Status.Index do
 
   require Logger
 
-  @type entry() :: %{severity: Status.severity(), count: non_neg_integer()}
+  @typedoc "One status of one vertex, named for a hint."
+  @type issue() :: %{name: String.t(), severity: Status.severity(), message: String.t()}
+
+  @type entry() :: %{
+          severity: Status.severity(),
+          count: non_neg_integer(),
+          issues: [issue()],
+          severities: %{Status.severity() => pos_integer()}
+        }
   @type t() :: %{String.t() => entry()}
+
+  # A subtree's roll-up: how many of its vertices are flagged (itself
+  # included), its worst issues, and how many issues of each severity.
+  @typep summary() ::
+           {pos_integer(), [issue()], %{Status.severity() => pos_integer()}}
 
   @doc """
   Builds the status index for `graph` under `lens`.
 
-  Returns a map of vertex id to `%{severity, count}` for every vertex with a
-  flagged status somewhere in its subtree.
+  Returns a map of vertex id to `%{severity, count, issues, severities}` for
+  every vertex with a flagged status somewhere in its subtree.
   """
   @spec build(Graph.t(), Lens.t()) :: t()
   def build(graph, lens) do
@@ -55,11 +75,10 @@ defmodule Clarity.Status.Index do
     end)
   end
 
-  # Returns the subtree summary `{severity, total_including_self}` for the
-  # recursion, while the stored entry's `count` is descendants only (excludes the
-  # vertex itself), since a node's badge counts what's flagged *beneath* it.
-  @spec rollup(Graph.t(), Vertex.t(), [module()], Lens.t(), t()) ::
-          {t(), {Status.severity(), non_neg_integer()} | nil}
+  # Returns the subtree's summary for the recursion, while the stored entry's
+  # `count` is descendants only (excludes the vertex itself), since a node's
+  # badge counts what's flagged *beneath* it.
+  @spec rollup(Graph.t(), Vertex.t(), [module()], Lens.t(), t()) :: {t(), summary() | nil}
   defp rollup(graph, vertex, providers, lens, index) do
     children = graph |> Graph.navigation_children(vertex) |> Map.values() |> List.flatten()
 
@@ -69,39 +88,55 @@ defmodule Clarity.Status.Index do
         {idx, [summary | summaries]}
       end)
 
-    child_summaries = Enum.reject(child_summaries, &is_nil/1)
-    {own_severity, own_count} = own_status(graph, vertex, providers, lens)
+    own = own_issues(graph, vertex, providers, lens)
 
-    severity =
-      [own_severity | Enum.map(child_summaries, fn {severity, _total} -> severity end)]
-      |> Enum.reject(&is_nil/1)
-      |> max_severity()
-
-    case severity do
-      nil ->
+    case {own, Enum.reject(child_summaries, &is_nil/1)} do
+      {[], []} ->
         {index, nil}
 
-      severity ->
-        descendants =
-          child_summaries |> Enum.map(fn {_severity, total} -> total end) |> Enum.sum()
+      {own, child_summaries} ->
+        descendants = Enum.sum_by(child_summaries, &elem(&1, 0))
+        issues = worst_issues([own | Enum.map(child_summaries, &elem(&1, 1))])
 
-        entry = %{severity: severity, count: descendants}
-        {Map.put(index, Vertex.id(vertex), entry), {severity, own_count + descendants}}
+        severities = count_severities(own, Enum.map(child_summaries, &elem(&1, 2)))
+
+        entry = %{
+          severity: issues |> hd() |> Map.fetch!(:severity),
+          count: descendants,
+          issues: issues,
+          severities: severities
+        }
+
+        flagged = if(own == [], do: 0, else: 1) + descendants
+        {Map.put(index, Vertex.id(vertex), entry), {flagged, issues, severities}}
     end
   end
 
-  @spec own_status(Graph.t(), Vertex.t(), [module()], Lens.t()) ::
-          {Status.severity() | nil, 0 | 1}
-  defp own_status(graph, vertex, providers, lens) do
-    statuses =
-      providers
-      |> Enum.flat_map(&safe_statuses(&1, vertex, graph))
-      |> Enum.filter(lens.status_filter)
-
-    case statuses do
-      [] -> {nil, 0}
-      list -> {list |> Enum.map(& &1.severity) |> max_severity(), 1}
+  @spec own_issues(Graph.t(), Vertex.t(), [module()], Lens.t()) :: [issue()]
+  defp own_issues(graph, vertex, providers, lens) do
+    for provider <- providers,
+        status <- safe_statuses(provider, vertex, graph),
+        lens.status_filter.(status) do
+      %{name: Vertex.name(vertex), severity: status.severity, message: status.message}
     end
+  end
+
+  # How many issues of each severity: the vertex's own, plus its children's.
+  @spec count_severities([issue()], [%{Status.severity() => pos_integer()}]) ::
+          %{Status.severity() => pos_integer()}
+  defp count_severities(own, child_counts) do
+    Enum.reduce(child_counts, Enum.frequencies_by(own, & &1.severity), fn counts, acc ->
+      Map.merge(acc, counts, fn _severity, a, b -> a + b end)
+    end)
+  end
+
+  # The most severe issues of several lists, then by name, at most @max_issues.
+  @spec worst_issues([[issue()]]) :: [issue()]
+  defp worst_issues(lists) do
+    lists
+    |> Enum.concat()
+    |> Enum.sort_by(&{-Status.rank(&1.severity), &1.name, &1.message})
+    |> Enum.take(@max_issues)
   end
 
   @spec safe_statuses(module(), Vertex.t(), Graph.t()) :: [Status.t()]
@@ -115,8 +150,4 @@ defmodule Clarity.Status.Index do
 
       []
   end
-
-  @spec max_severity([Status.severity()]) :: Status.severity() | nil
-  defp max_severity([]), do: nil
-  defp max_severity([first | rest]), do: Enum.reduce(rest, first, &Status.max_severity/2)
 end

@@ -25,9 +25,10 @@ A status flows through five stages:
    `status_filter` (see [lensmakers](lensmakers.md)). By default a lens surfaces
    nothing, so indicators are opt-in per lens.
 4. **Roll-up** — `Clarity.Status.Index` aggregates the surviving statuses up the
-   tree: each vertex's entry carries the worst severity in its subtree and a
-   count of flagged vertices (including itself).
-5. **Render** — the navigation tree draws a severity-coloured badge.
+   tree: each vertex's entry carries the worst severity in its subtree, a
+   count of the flagged vertices beneath it, and the issues themselves.
+5. **Render** — the navigation tree draws a severity-coloured badge, whose
+   hover hint lists the issues: each flagged vertex's name and message.
 
 Your job is only stage 1; the rest is handled for you.
 
@@ -110,7 +111,9 @@ config :my_app, :clarity_status_providers, [
 - **`class`** — the semantic domain the status belongs to (`:security`,
   `:hygiene`, `:licence`, …). Lenses filter on `class`, so a lens can surface
   your domain without knowing your module exists.
-- **`message`** — a short human-readable description.
+- **`message`** — a short human-readable description, shown in the badge's
+  hint beside the vertex's name, so say what is wrong (e.g. "Newer version
+  2.2.0 available (installed 2.1.3)").
 - **`source`** — the producing module (set it to `__MODULE__`). Used for
   provenance and de-duplication, **not** for filtering.
 
@@ -148,8 +151,11 @@ See [Creating Lensmakers](lensmakers.md) for the full lens API.
 You produce statuses per vertex; `Clarity.Status.Index` does the aggregation:
 
 - A vertex's badge reflects the **worst severity** anywhere in its subtree.
-- The **count** is the number of flagged vertices in the subtree, **including the
-  vertex itself**.
+- The **count** is the number of flagged vertices beneath the vertex, **not
+  counting the vertex itself**.
+- The badge's hint counts the issues by severity and lists the worst of them
+  (at most 8), each as the vertex's name and the status's message, so nobody
+  has to open the subtree to see what is wrong.
 - The walk covers the whole tree, not just expanded nodes, so a collapsed parent
   still flags what's beneath it.
 - Only statuses the active lens surfaces are counted.

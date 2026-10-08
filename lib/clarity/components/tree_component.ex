@@ -256,8 +256,8 @@ defmodule Clarity.TreeComponent do
           badge_classes(@entry.severity)
         ]}
         role="img"
-        aria-label={badge_title(@entry)}
-        {Tooltip.attrs(badge_title(@entry))}
+        aria-label={badge_label(@entry)}
+        {badge_hint(@entry)}
       >
         <%= case @entry.severity do %>
           <% :error -> %>
@@ -286,13 +286,58 @@ defmodule Clarity.TreeComponent do
     do:
       "bg-blue-100 text-blue-700 ring-blue-600/20 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/30"
 
-  @spec badge_title(Index.entry()) :: String.t()
-  defp badge_title(%{count: 0}), do: "flagged"
-
-  defp badge_title(%{count: count}) do
-    noun = if count == 1, do: "issue", else: "issues"
-    "#{count} nested #{noun}"
+  # The badge's hint says what is wrong, here and beneath, worst first, so there
+  # is no need to open the subtree to find out: how many issues of each
+  # severity, then each issue's vertex and message.
+  @spec badge_hint(Index.entry()) :: keyword(String.t())
+  defp badge_hint(entry) do
+    [
+      "data-tooltip-title": count_noun(issue_total(entry), "issue"),
+      "data-tooltip-badges": JSON.encode!(severity_counts(entry)),
+      "data-tooltip-facts": JSON.encode!(Enum.map(entry.issues, &[&1.name, issue_line(&1)]))
+    ] ++ Enum.map(issues_left_out(entry), &{:"data-tooltip-text", &1})
   end
+
+  @spec badge_label(Index.entry()) :: String.t()
+  defp badge_label(entry) do
+    summary =
+      "#{count_noun(issue_total(entry), "issue")} (#{Enum.join(severity_counts(entry), ", ")})"
+
+    issues = Enum.map_join(entry.issues, "; ", &"#{&1.name}: #{issue_line(&1)}")
+
+    Enum.join([summary | issues_left_out(entry)] ++ [issues], ". ")
+  end
+
+  @spec issue_line(Index.issue()) :: String.t()
+  defp issue_line(issue), do: "#{severity_name(issue.severity)}: #{issue.message}"
+
+  @spec severity_counts(Index.entry()) :: [String.t()]
+  defp severity_counts(entry) do
+    for severity <- [:error, :warning, :info], count = entry.severities[severity] do
+      count_noun(count, String.downcase(severity_name(severity)))
+    end
+  end
+
+  # When the hint lists only the worst issues, it says so.
+  @spec issues_left_out(Index.entry()) :: [String.t()]
+  defp issues_left_out(entry) do
+    case {length(entry.issues), issue_total(entry)} do
+      {shown, total} when shown < total -> ["The worst #{shown} of #{total}:"]
+      _all -> []
+    end
+  end
+
+  @spec issue_total(Index.entry()) :: pos_integer()
+  defp issue_total(entry), do: entry.severities |> Map.values() |> Enum.sum()
+
+  @spec severity_name(Clarity.Status.severity()) :: String.t()
+  defp severity_name(:error), do: "Error"
+  defp severity_name(:warning), do: "Warning"
+  defp severity_name(:info), do: "Info"
+
+  @spec count_noun(pos_integer(), String.t()) :: String.t()
+  defp count_noun(count, noun) when count == 1 or noun == "info", do: "#{count} #{noun}"
+  defp count_noun(count, noun), do: "#{count} #{noun}s"
 
   @spec compute_visible_ids(map()) :: MapSet.t()
   defp compute_visible_ids(assigns) do
