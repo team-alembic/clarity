@@ -133,6 +133,34 @@ defmodule Clarity.Report.Components do
     """
   end
 
+  slot :label, required: true, doc: "What the items belong to, e.g. a resource"
+  slot :inner_block, required: true, doc: "The items, usually chips"
+
+  @doc "A row in a to-do: what the items belong to, then the items."
+  @spec group(map()) :: Rendered.t()
+  def group(assigns) do
+    ~H"""
+    <div class="report-todo-group">
+      <div class="report-todo-group-label">{render_slot(@label)}</div>
+      <div class="report-todo-group-items">{render_slot(@inner_block)}</div>
+    </div>
+    """
+  end
+
+  attr :count, :integer, required: true, doc: "How many more there are"
+  slot :inner_block, required: true
+
+  @doc "The rest of a long list of chips, behind \"+N more\"."
+  @spec more(map()) :: Rendered.t()
+  def more(assigns) do
+    ~H"""
+    <details class="report-more">
+      <summary>+{@count} more</summary>
+      <div class="report-more-items">{render_slot(@inner_block)}</div>
+    </details>
+    """
+  end
+
   attr :id, :string, required: true
   attr :title, :string, required: true
   attr :count, :integer, default: nil

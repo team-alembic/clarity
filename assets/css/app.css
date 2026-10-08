@@ -446,19 +446,61 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   @apply mt-2.5 flex flex-wrap items-center gap-1.5 text-sm;
 }
 
-/* A group within a to-do: a resource, then its fields or actions. */
+/* A row within a to-do: what the items belong to (a resource, a domain) in
+   a column of its own, then the items wrapping beside it. */
+.report-todo-affects:has(> .report-todo-group) {
+  @apply grid items-start gap-x-4 gap-y-2;
+  grid-template-columns: minmax(0, max-content) 1fr;
+}
+
 .report-todo-group {
-  @apply flex basis-full flex-wrap items-center gap-1.5;
+  display: contents;
 }
 
 .report-todo-group-label {
-  @apply mr-1 text-sm font-medium text-base-light-800 dark:text-base-dark-100;
+  @apply flex items-baseline gap-2 pt-0.5 text-sm font-medium text-base-light-800 dark:text-base-dark-100;
+}
+
+.report-todo-group-label .report-todo-count {
+  @apply ml-0;
+}
+
+.report-todo-group-items {
+  @apply flex flex-wrap items-center gap-1.5;
+}
+
+/* A free line within a to-do, e.g. a dependency and its versions. */
+.report-todo-line {
+  @apply flex basis-full flex-wrap items-center gap-1.5;
 }
 
 /* A resource or other vertex named in a report, ahead of its chips. */
 .report-link {
-  @apply mr-1 text-sm font-medium text-base-light-900 transition-colors dark:text-base-dark-50;
+  @apply text-sm font-medium text-base-light-900 transition-colors dark:text-base-dark-50;
   @apply hover:text-primary-light hover:underline dark:hover:text-primary-dark;
+}
+
+/* "+N more" after a long list of chips; open, the rest follow on. */
+.report-more {
+  display: contents;
+}
+
+.report-more > summary {
+  @apply cursor-pointer select-none rounded-md px-1.5 text-[0.8125rem] font-medium leading-6;
+  @apply text-primary-light hover:underline dark:text-primary-dark;
+  list-style: none;
+}
+
+.report-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-more[open] > summary {
+  display: none;
+}
+
+.report-more-items {
+  display: contents;
 }
 
 .report-todo-fix {
@@ -531,6 +573,23 @@ a.report-chip {
 
 .report-section-body {
   @apply overflow-x-auto p-4;
+}
+
+/* A section within a section (e.g. each entity's terms): a divided row. */
+.report-section .report-section {
+  @apply rounded-none border-0 border-b last:border-b-0;
+}
+
+.report-section .report-section > summary {
+  @apply -mx-4 px-4 py-2.5 text-sm;
+}
+
+.report-section .report-section[open] > summary {
+  @apply border-b-0;
+}
+
+.report-section .report-section > .report-section-body {
+  @apply px-0 pt-0;
 }
 
 /* Reference tables: compact, the header kept in view, rows divided. */

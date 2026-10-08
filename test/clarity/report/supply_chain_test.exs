@@ -50,7 +50,7 @@ defmodule Clarity.Report.SupplyChainTest do
 
       assert text(doc, ".report-status") == "1 thing to do"
       assert text(doc, ".report-todo[data-severity='low'] .report-todo-title") =~ "Behind their latest release"
-      assert text(doc, ".report-todo .report-todo-group") =~ "stale 1.0.0 → 2.0.0"
+      assert text(doc, ".report-todo .report-todo-line") =~ "stale 1.0.0 → 2.0.0"
       assert text(doc, ".report-todo .report-command code") == "mix deps.update stale"
       # links the dependency to its page
       assert doc |> LazyHTML.query("a.report-chip[href='/c/architect/#{Vertex.id(stale)}']") |> Enum.count() == 1
@@ -71,7 +71,7 @@ defmodule Clarity.Report.SupplyChainTest do
 
       doc = graph |> render_report(lens) |> doc()
 
-      assert text(doc, ".report-todo .report-todo-group") =~ "pubsub 2.3.0 → 2.4.0 via phoenix"
+      assert text(doc, ".report-todo .report-todo-line") =~ "pubsub 2.3.0 → 2.4.0 via phoenix"
     end
 
     test "lists a known vulnerability as a high to-do, with the advisory and its fix", %{graph: graph, lens: lens} do

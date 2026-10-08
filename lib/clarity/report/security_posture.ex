@@ -158,10 +158,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             count={exposed_count(@anyone_reads)}
             hint="Sensitive and public, with no field policy, on a resource anyone can read without signing in."
           >
-            <div :for={finding <- @anyone_reads} class="report-todo-group">
-              <.resource finding={finding} prefix={@prefix} lens={@lens} />
+            <Components.group :for={finding <- @anyone_reads}>
+              <:label><.resource finding={finding} prefix={@prefix} lens={@lens} /></:label>
               <Components.chip :for={field <- finding.exposed}>{field}</Components.chip>
-            </div>
+            </Components.group>
             <:fix>
               Add a field policy for each, or make it private with <code>public? false</code>.
             </:fix>
@@ -194,15 +194,15 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             count={length(@ungoverned)}
             hint="Without the policy authorizer, any caller can run every action."
           >
-            <div :for={{domain, findings} <- by_domain(@ungoverned)} class="report-todo-group">
-              <span class="report-todo-group-label">{domain}</span>
+            <Components.group :for={{domain, findings} <- by_domain(@ungoverned)}>
+              <:label>{domain}</:label>
               <Components.chip
                 :for={finding <- findings}
                 patch={Components.path(@prefix, @lens, finding.id)}
               >
                 {finding.short_name}
               </Components.chip>
-            </div>
+            </Components.group>
             <:fix>
               Add <code>authorizers: [Ash.Policy.Authorizer]</code>
               to each and write policies for its actions.
@@ -216,8 +216,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             count={Enum.sum_by(@anon_reachable, &(length(&1.anon_open) + length(&1.anon_conditional)))}
             hint="Callers who haven't signed in can run these; faded ones depend on a runtime check."
           >
-            <div :for={finding <- @anon_reachable} class="report-todo-group">
-              <.resource finding={finding} prefix={@prefix} lens={@lens} />
+            <Components.group :for={finding <- @anon_reachable}>
+              <:label><.resource finding={finding} prefix={@prefix} lens={@lens} /></:label>
               <Components.chip :for={action <- finding.anon_open}>{action}</Components.chip>
               <Components.chip
                 :for={action <- finding.anon_conditional}
@@ -226,7 +226,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               >
                 {action}
               </Components.chip>
-            </div>
+            </Components.group>
             <:fix>
               Check each is meant to be public; if not, require an actor, e.g. <code>authorize_if actor_present()</code>.
             </:fix>
@@ -239,10 +239,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             count={exposed_count(@signed_in_reads)}
             hint="Any actor who can read the resource can read these fields."
           >
-            <div :for={finding <- @signed_in_reads} class="report-todo-group">
-              <.resource finding={finding} prefix={@prefix} lens={@lens} />
+            <Components.group :for={finding <- @signed_in_reads}>
+              <:label><.resource finding={finding} prefix={@prefix} lens={@lens} /></:label>
               <Components.chip :for={field <- finding.exposed}>{field}</Components.chip>
-            </div>
+            </Components.group>
             <:fix>Add field policies if not every reader should see them.</:fix>
           </Components.todo>
 

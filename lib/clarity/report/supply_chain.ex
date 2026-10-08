@@ -104,7 +104,7 @@ defmodule Clarity.Report.SupplyChain do
           hint="A published security advisory affects the installed version."
           command={update_command(@advised)}
         >
-          <div :for={finding <- @advised} class="report-todo-group">
+          <div :for={finding <- @advised} class="report-todo-line">
             <.dependency finding={finding} prefix={@prefix} lens={@lens} />
             <span :for={advisory <- finding.advisories} class="basis-full pl-1 text-sm">
               <Components.chip>{advisory.id}</Components.chip>
@@ -125,7 +125,7 @@ defmodule Clarity.Report.SupplyChain do
           hint="Their maintainers have pulled these versions from Hex."
           command={update_command(@retired)}
         >
-          <div :for={finding <- @retired} class="report-todo-group">
+          <div :for={finding <- @retired} class="report-todo-line">
             <.dependency finding={finding} prefix={@prefix} lens={@lens} />
           </div>
           <:fix>Move off them: update to the latest release.</:fix>
@@ -138,7 +138,7 @@ defmodule Clarity.Report.SupplyChain do
           count={length(@outdated)}
           command={update_command(@outdated)}
         >
-          <div :for={finding <- @outdated} class="report-todo-group">
+          <div :for={finding <- @outdated} class="report-todo-line">
             <.dependency finding={finding} prefix={@prefix} lens={@lens} />
           </div>
           <:fix>Update when convenient; a dependency pulled in by another may wait for it.</:fix>
