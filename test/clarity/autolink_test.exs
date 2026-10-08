@@ -4,6 +4,7 @@ defmodule Clarity.AutolinkTest do
   alias Clarity.Autolink
   alias Clarity.Graph
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
   alias Demo.Billing.Invoice
@@ -26,6 +27,7 @@ defmodule Clarity.AutolinkTest do
     graph = Graph.new()
     for resource <- @resources, do: Graph.add_vertex(graph, %Resource{resource: resource}, %Root{})
     Graph.add_vertex(graph, %Vertex.Reactor{reactor: IssueInvoice}, %Root{})
+    Graph.add_vertex(graph, %Domain{domain: Demo.Accounts}, %Root{})
     %{graph: graph}
   end
 
@@ -37,6 +39,7 @@ defmodule Clarity.AutolinkTest do
       assert names["Helpdesk.Conversation"] == %Resource{resource: Conversation}
       assert names["Conversation"] == %Resource{resource: Conversation}
       assert names["IssueInvoice"] == %Vertex.Reactor{reactor: IssueInvoice}
+      assert names["Accounts"] == %Domain{domain: Demo.Accounts}
     end
 
     test "leaves out a short name two vertices share, unless the context settles it", %{graph: graph} do

@@ -5,8 +5,8 @@ defmodule Clarity.Autolink do
   links Conversation and User to their pages.
 
   A vertex is named by its module (`Demo.Helpdesk.Conversation`), by its name
-  within the application (`Helpdesk.Conversation`) and, for resources and
-  Reactors, by its short name (`Conversation`). When a short name fits more
+  within the application (`Helpdesk.Conversation`) and by its short name
+  (`Conversation`, or `Accounts` for a domain). When a short name fits more
   than one vertex, the text's own vertex settles it: a resource it has a
   relationship to first, then one in its domain; if that doesn't, the name
   isn't linked. Only whole words link, each vertex only at its first mention,
@@ -28,8 +28,6 @@ defmodule Clarity.Autolink do
   @typep context() :: %{related: [module()], domain: module() | nil}
 
   @linkable [Resource, Domain, Vertex.Reactor]
-  # Domains' short names ("Billing") are too common a word to link.
-  @short_named [Resource, Vertex.Reactor]
 
   @doc """
   Returns the names to link in text about `vertex` (or about nothing in
@@ -143,9 +141,7 @@ defmodule Clarity.Autolink do
         _parts -> []
       end
 
-    short = if vertex.__struct__ in @short_named, do: [List.last(parts)], else: []
-
-    Enum.uniq([Enum.join(parts, ".") | in_app] ++ short)
+    Enum.uniq([Enum.join(parts, ".") | in_app] ++ [List.last(parts)])
   end
 
   # The vertex a name fits, if it fits only one, or one ranks above the rest.
