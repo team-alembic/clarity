@@ -143,6 +143,25 @@ defmodule Clarity.Tooltip do
   end
 
   @doc """
+  Returns a vertex type's name for people, after its icon: `Resource`,
+  `Data layer`. A vertex with the generic icon is named by its type label.
+
+  ## Examples
+
+      iex> Clarity.Tooltip.type_name(%Clarity.Vertex.Ash.Domain{domain: Demo.Accounts})
+      "Domain"
+
+  """
+  @spec type_name(Vertex.t()) :: String.t()
+  def type_name(vertex) do
+    case type_icon(vertex).icon do
+      "generic" -> Vertex.type_label(vertex)
+      "dsl" -> "DSL"
+      icon -> icon |> String.replace("_", " ") |> String.capitalize()
+    end
+  end
+
+  @doc """
   Lists the icons a `Clarity.Vertex.HintProvider` can choose from.
 
   Any other icon falls back to `:generic`.

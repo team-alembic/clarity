@@ -1,6 +1,8 @@
 defmodule Clarity.Content.Ash.AggregateOverviewTest do
   use ExUnit.Case, async: true
 
+  import Clarity.Test.OverviewHelper
+
   alias Ash.Resource.Info
   alias Clarity.Content.Ash.AggregateOverview
   alias Clarity.Vertex.Ash.Aggregate
@@ -40,109 +42,15 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
     end
   end
 
-  describe inspect(&AggregateOverview.render_static/2) do
-    test "returns markdown tuple with function" do
-      aggregates = Info.aggregates(User)
+  describe "render" do
+    test "leads with what it computes and returns, and the path it reads along" do
+      invoice = Demo.Billing.Invoice
 
-      if aggregates != [] do
-        [aggregate | _] = aggregates
-        vertex = %Aggregate{aggregate: aggregate, resource: User}
-        lens = nil
+      html =
+        render_overview(AggregateOverview, %Aggregate{aggregate: Info.aggregate(invoice, :total_cents), resource: invoice})
 
-        assert {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, lens)
-        assert is_function(markdown_fn, 1)
-      end
-    end
-
-    test "shows the return type Ash infers for a count, which leaves type unset" do
-      aggregate = Enum.find(Info.aggregates(User), &(&1.name == :admin_count))
-      assert %{kind: :count, type: nil} = aggregate
-
-      {:markdown, markdown_fn} =
-        AggregateOverview.render_static(%Aggregate{aggregate: aggregate, resource: User}, nil)
-
-      markdown = IO.iodata_to_binary(markdown_fn.(%{}))
-
-      assert markdown =~ "| **Return Type** | [Integer](vertex://ash-type:ash-type-integer) |"
-    end
-
-    test "generated markdown includes aggregate header" do
-      aggregates = Info.aggregates(User)
-
-      if aggregates != [] do
-        [aggregate | _] = aggregates
-        vertex = %Aggregate{aggregate: aggregate, resource: User}
-        {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "# #{aggregate.name}"
-        assert markdown =~ "**Kind:**"
-      end
-    end
-
-    test "generated markdown includes aggregate information table" do
-      aggregates = Info.aggregates(User)
-
-      if aggregates != [] do
-        [aggregate | _] = aggregates
-        vertex = %Aggregate{aggregate: aggregate, resource: User}
-        {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Aggregate Information"
-        assert markdown =~ "| Property | Value |"
-        assert markdown =~ "Demo.Accounts.User"
-      end
-    end
-
-    test "generated markdown includes configuration section" do
-      aggregates = Info.aggregates(User)
-
-      if aggregates != [] do
-        [aggregate | _] = aggregates
-        vertex = %Aggregate{aggregate: aggregate, resource: User}
-        {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Configuration"
-        assert markdown =~ "Public"
-      end
-    end
-
-    test "generated markdown includes target section" do
-      aggregates = Info.aggregates(User)
-
-      if aggregates != [] do
-        [aggregate | _] = aggregates
-        vertex = %Aggregate{aggregate: aggregate, resource: User}
-        {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Target"
-      end
-    end
-
-    test "generated markdown includes vertex links" do
-      aggregates = Info.aggregates(User)
-
-      if aggregates != [] do
-        [aggregate | _] = aggregates
-        vertex = %Aggregate{aggregate: aggregate, resource: User}
-        {:markdown, markdown_fn} = AggregateOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "vertex://ash-resource:demo-accounts-user"
-      end
+      assert text(html, ".ov-headline") == "sum of line_items.total_cents returning integer"
+      assert texts(html, ".ov-join") == ["Invoice → line_items → LineItem . total_cents"]
     end
   end
 end

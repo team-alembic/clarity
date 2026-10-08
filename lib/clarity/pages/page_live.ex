@@ -461,6 +461,19 @@ defmodule Clarity.PageLive do
   defp breadcrumb_trail(breadcrumbs),
     do: breadcrumbs |> Enum.drop(-1) |> Enum.reject(&match?(%Root{}, &1))
 
+  # The trail's vertices with their names, each leaving out what the crumbs
+  # before it say when names are short.
+  @spec named_trail([Vertex.t()], Vertex.Name.style()) :: [{Vertex.t(), String.t()}]
+  defp named_trail(breadcrumbs, name_style) do
+    trail = breadcrumb_trail(breadcrumbs)
+    Enum.zip(trail, Vertex.Name.display_path(trail, name_style))
+  end
+
+  # The names of the trail and then the vertex itself, as the page's title.
+  @spec named_path([Vertex.t()], Vertex.t(), Vertex.Name.style()) :: [String.t()]
+  defp named_path(breadcrumbs, vertex, name_style),
+    do: Vertex.Name.display_path(breadcrumb_trail(breadcrumbs) ++ [vertex], name_style)
+
   # The tab that explains `status`, a status class from a status badge's link,
   # if the vertex has one. Otherwise the tab open before, if the vertex has it
   # too, or else its first: moving to another vertex, or lens, keeps the tab

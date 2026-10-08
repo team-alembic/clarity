@@ -111,4 +111,21 @@ defmodule Clarity.Vertex.NameTest do
       assert Name.short_module_name(:not_a_module) == ":not_a_module"
     end
   end
+
+  describe inspect(&Name.display_path/2) do
+    @app %Application{app: :demo, description: "Demo", version: Version.parse!("0.1.0")}
+
+    test "leaves out of each name what the path before it says, when short" do
+      path = [@app, %Domain{domain: Demo.Accounts}, %Resource{resource: User}]
+
+      assert Name.display_path(path, :short) == ["demo", "Accounts", "User"]
+      assert Name.display_path(path, :qualified) == ["demo", "Demo.Accounts", "Demo.Accounts.User"]
+    end
+
+    test "keeps the full name of a module outside the path's application" do
+      path = [@app, %ModuleVertex{module: Baz}]
+
+      assert Name.display_path(path, :short) == ["demo", "Foo.Bar.Baz"]
+    end
+  end
 end

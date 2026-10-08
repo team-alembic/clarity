@@ -581,11 +581,11 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, _html} = live(conn, "/architect/ash-domain:demo-accounts/ash-domain-overview")
       render_async(view)
 
-      assert has_element?(view, ".prose td a", ~r/^User$/)
+      assert has_element?(view, ".ov-resource-card a.ov-link", ~r/^\s*User\s*$/)
 
       render_hook(view, "set-name-style", %{"style" => "qualified"})
 
-      assert has_element?(view, ".prose td a", ~r/^Demo\.Accounts\.User$/)
+      assert has_element?(view, ".ov-resource-card a.ov-link", ~r/^\s*Demo\.Accounts\.User\s*$/)
     end
 
     test "a viewer who turned lowercase linking off joins with it off", %{conn: conn} do

@@ -112,6 +112,61 @@ defmodule Clarity.Vertex.Name do
 
   def display_all(vertices, style), do: Enum.map(vertices, &display(&1, style))
 
+  @doc """
+  Render a path of vertices, each inside the one before it as breadcrumbs
+  are, using the requested `style`, in order.
+
+  In the `:short` style, a vertex named after its module leaves out what the
+  path already says: `Demo.Accounts.Organization` after `Demo.Accounts` reads
+  `Organization`, and `Demo.Accounts` after the `demo` application reads
+  `Accounts`. Other modules keep their full names.
+  """
+  @spec display_path([Vertex.t()], style()) :: [String.t()]
+  def display_path(vertices, :short) do
+    {names, _outer} = Enum.map_reduce(vertices, %{modules: [], apps: []}, &path_name/2)
+    names
+  end
+
+  def display_path(vertices, style), do: Enum.map(vertices, &display(&1, style))
+
+  # A vertex's name after the modules and applications the path holds before
+  # it, and what it adds to them.
+  @spec path_name(Vertex.t(), %{modules: [module()], apps: [String.t()]}) ::
+          {String.t(), %{modules: [module()], apps: [String.t()]}}
+  defp path_name(%Vertex.Application{app: app} = vertex, outer) do
+    {Vertex.name(vertex), %{outer | apps: [Macro.camelize(Atom.to_string(app)) | outer.apps]}}
+  end
+
+  defp path_name(vertex, outer) do
+    case module_segments(vertex) do
+      nil ->
+        {Vertex.name(vertex), outer}
+
+      segments ->
+        module = ModuleProvider.module(vertex)
+        {name_within(module, segments, outer), %{outer | modules: [module | outer.modules]}}
+    end
+  end
+
+  # The module's name within the nearest module before it that holds it, or
+  # else within the path's application, or else in full.
+  @spec name_within(module(), [String.t()], %{modules: [module()], apps: [String.t()]}) ::
+          String.t()
+  defp name_within(module, [first | _rest] = segments, outer) do
+    case Enum.find(outer.modules, &nested?(segments, &1)) do
+      nil -> if first in outer.apps, do: in_app(module), else: inspect(module)
+      container -> within(module, container)
+    end
+  end
+
+  @spec nested?([String.t()], module()) :: boolean()
+  defp nested?(segments, container) do
+    container_segments = Module.split(container)
+
+    length(segments) > length(container_segments) and
+      List.starts_with?(segments, container_segments)
+  end
+
   # The segments of the vertex's module, when the vertex is named after it.
   @spec module_segments(Vertex.t()) :: [String.t()] | nil
   defp module_segments(vertex) do

@@ -418,35 +418,43 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
 }
 
 /* Tones group vertex types by role; see Clarity.Tooltip. */
-.clarity-tooltip-pill {
+.clarity-tooltip-pill,
+.ov-pill {
   @apply font-medium bg-base-light-100 text-base-light-700 dark:bg-base-dark-700 dark:text-base-dark-100;
 }
 
-.clarity-tooltip-pill[data-tone="structure"] {
+.clarity-tooltip-pill[data-tone="structure"],
+.ov-pill[data-tone="structure"] {
   @apply bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200;
 }
 
-.clarity-tooltip-pill[data-tone="behaviour"] {
+.clarity-tooltip-pill[data-tone="behaviour"],
+.ov-pill[data-tone="behaviour"] {
   @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200;
 }
 
-.clarity-tooltip-pill[data-tone="data"] {
+.clarity-tooltip-pill[data-tone="data"],
+.ov-pill[data-tone="data"] {
   @apply bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200;
 }
 
-.clarity-tooltip-pill[data-tone="rule"] {
+.clarity-tooltip-pill[data-tone="rule"],
+.ov-pill[data-tone="rule"] {
   @apply bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200;
 }
 
-.clarity-tooltip-pill[data-tone="web"] {
+.clarity-tooltip-pill[data-tone="web"],
+.ov-pill[data-tone="web"] {
   @apply bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200;
 }
 
-.clarity-tooltip-pill[data-tone="dsl"] {
+.clarity-tooltip-pill[data-tone="dsl"],
+.ov-pill[data-tone="dsl"] {
   @apply bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200;
 }
 
-.clarity-tooltip-pill[data-tone="warning"] {
+.clarity-tooltip-pill[data-tone="warning"],
+.ov-pill[data-tone="warning"] {
   @apply bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200;
 }
 
@@ -532,31 +540,45 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   @apply size-4 shrink-0 text-base-light-500 dark:text-base-dark-400;
 }
 
-.tree-icon[data-tone="structure"] {
+.tree-icon[data-tone="structure"],
+.ov-icon[data-tone="structure"],
+.page-subject-icon[data-tone="structure"] {
   @apply text-sky-600 dark:text-sky-400;
 }
 
-.tree-icon[data-tone="behaviour"] {
+.tree-icon[data-tone="behaviour"],
+.ov-icon[data-tone="behaviour"],
+.page-subject-icon[data-tone="behaviour"] {
   @apply text-emerald-600 dark:text-emerald-400;
 }
 
-.tree-icon[data-tone="data"] {
+.tree-icon[data-tone="data"],
+.ov-icon[data-tone="data"],
+.page-subject-icon[data-tone="data"] {
   @apply text-indigo-600 dark:text-indigo-400;
 }
 
-.tree-icon[data-tone="rule"] {
+.tree-icon[data-tone="rule"],
+.ov-icon[data-tone="rule"],
+.page-subject-icon[data-tone="rule"] {
   @apply text-rose-600 dark:text-rose-400;
 }
 
-.tree-icon[data-tone="web"] {
+.tree-icon[data-tone="web"],
+.ov-icon[data-tone="web"],
+.page-subject-icon[data-tone="web"] {
   @apply text-orange-600 dark:text-orange-400;
 }
 
-.tree-icon[data-tone="dsl"] {
+.tree-icon[data-tone="dsl"],
+.ov-icon[data-tone="dsl"],
+.page-subject-icon[data-tone="dsl"] {
   @apply text-violet-600 dark:text-violet-400;
 }
 
-.tree-icon[data-tone="warning"] {
+.tree-icon[data-tone="warning"],
+.ov-icon[data-tone="warning"],
+.page-subject-icon[data-tone="warning"] {
   @apply text-amber-600 dark:text-amber-400;
 }
 
@@ -564,6 +586,330 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
    specific as the dark tone rules, so it wins over them too. */
 [aria-current="page"] > .tree-icon[data-tone] {
   @apply text-current;
+}
+
+/* The page's header: the trail to the vertex, then the vertex itself, large,
+   each in its type's icon and tone, as in the tree. */
+.page-crumbs {
+  @apply flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm text-base-light-600 dark:text-base-dark-400;
+}
+
+.page-crumbs > li {
+  @apply flex items-center gap-1;
+}
+
+.page-crumb {
+  @apply inline-flex items-center gap-1 rounded px-0.5 transition-colors hover:text-base-light-900 dark:hover:text-base-dark-50;
+}
+
+.page-crumb-arrow {
+  @apply text-base-light-400 dark:text-base-dark-600;
+}
+
+.page-subject {
+  @apply mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1;
+}
+
+.page-subject-icon {
+  @apply size-7 shrink-0 text-base-light-500 dark:text-base-dark-400;
+}
+
+.page-subject-name {
+  @apply min-w-0 break-words text-3xl font-bold leading-tight tracking-tight text-base-light-900 dark:text-base-dark-50;
+}
+
+/* Overview tabs (Clarity.Components.OverviewComponents): the tones and icons
+   of hover hints and the tree, on a compact page that leads with what
+   matters. Pills and icons take their tones from the rules above. */
+.ov-page {
+  @apply mx-auto w-full max-w-5xl px-5 py-5 space-y-7 text-sm text-base-light-800 dark:text-base-dark-200;
+}
+
+.ov-icon {
+  @apply inline-flex shrink-0 items-center justify-center text-base-light-500 dark:text-base-dark-400;
+}
+
+.ov-icon > svg {
+  @apply size-4;
+}
+
+.ov-icon-lg {
+  @apply size-10 rounded-lg bg-base-light-100 dark:bg-base-dark-800;
+}
+
+.ov-icon-lg > svg {
+  @apply size-6;
+}
+
+.ov-icon-lg[data-tone="structure"] {
+  @apply bg-sky-100 dark:bg-sky-900/40;
+}
+
+.ov-icon-lg[data-tone="behaviour"] {
+  @apply bg-emerald-100 dark:bg-emerald-900/40;
+}
+
+.ov-icon-lg[data-tone="data"] {
+  @apply bg-indigo-100 dark:bg-indigo-900/40;
+}
+
+.ov-icon-lg[data-tone="rule"] {
+  @apply bg-rose-100 dark:bg-rose-900/40;
+}
+
+.ov-icon-lg[data-tone="web"] {
+  @apply bg-orange-100 dark:bg-orange-900/40;
+}
+
+.ov-icon-lg[data-tone="dsl"] {
+  @apply bg-violet-100 dark:bg-violet-900/40;
+}
+
+.ov-icon-lg[data-tone="warning"] {
+  @apply bg-amber-100 dark:bg-amber-900/40;
+}
+
+.ov-head {
+  @apply space-y-3;
+}
+
+.ov-hero {
+  @apply flex items-start gap-3.5;
+}
+
+/* Words and links on one line, centred on each other. */
+.ov-phrase {
+  @apply inline-flex flex-wrap items-center gap-x-1 gap-y-0.5;
+}
+
+.ov-pill {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-px text-xs leading-5 whitespace-nowrap;
+}
+
+.ov-headline {
+  @apply mt-1.5 text-[15px] leading-6 text-base-light-900 dark:text-base-dark-50;
+}
+
+.ov-headline b {
+  @apply font-semibold;
+}
+
+.ov-hero-body {
+  @apply mt-2.5 space-y-3;
+}
+
+.ov-prose {
+  @apply max-w-none text-sm leading-relaxed text-base-light-700 dark:text-base-dark-300;
+}
+
+.ov-prose p {
+  @apply m-0;
+}
+
+.ov-prose p + p {
+  @apply mt-2;
+}
+
+.ov-prose.ov-small {
+  @apply text-xs leading-snug text-base-light-600 dark:text-base-dark-400;
+}
+
+.ov-lead {
+  @apply text-[15px] text-base-light-800 dark:text-base-dark-200;
+}
+
+/* Cells grow to fill each row, so no row ends in an empty cell. */
+.ov-facts {
+  @apply flex flex-wrap gap-px overflow-hidden rounded-lg border;
+  @apply border-base-light-200 bg-base-light-200 dark:border-base-dark-700 dark:bg-base-dark-700;
+}
+
+.ov-fact {
+  @apply min-w-0 flex-[1_1_10rem] bg-white px-3 py-2 dark:bg-base-dark-900;
+}
+
+.ov-fact dt {
+  @apply text-[11px] font-medium uppercase tracking-wide text-base-light-500 dark:text-base-dark-400;
+}
+
+.ov-fact dd {
+  @apply m-0 mt-0.5 break-words text-sm text-base-light-900 dark:text-base-dark-100;
+}
+
+.ov-stats {
+  @apply flex flex-wrap gap-1.5;
+}
+
+.ov-stat {
+  @apply inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors;
+  @apply border-base-light-200 bg-white text-base-light-600 hover:border-base-light-300 hover:text-base-light-900;
+  @apply dark:border-base-dark-700 dark:bg-base-dark-900 dark:text-base-dark-300 dark:hover:border-base-dark-600 dark:hover:text-base-dark-50;
+}
+
+.ov-stat-count {
+  @apply font-semibold tabular-nums text-base-light-900 dark:text-base-dark-50;
+}
+
+.ov-section {
+  @apply scroll-mt-4;
+}
+
+.ov-section-title {
+  @apply mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-base-light-600 dark:text-base-dark-300;
+}
+
+.ov-section-aside {
+  @apply ml-auto text-xs font-normal normal-case tracking-normal;
+}
+
+.ov-count {
+  @apply rounded-full bg-base-light-200/70 px-1.5 text-[11px] font-medium tabular-nums tracking-normal text-base-light-600 dark:bg-base-dark-700 dark:text-base-dark-300;
+}
+
+.ov-table-wrap {
+  @apply overflow-x-auto rounded-lg border border-base-light-200 bg-white dark:border-base-dark-700 dark:bg-base-dark-900;
+}
+
+.ov-table {
+  @apply w-full border-collapse text-sm;
+}
+
+.ov-table th {
+  @apply whitespace-nowrap bg-base-light-100/60 px-3 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide text-base-light-500;
+  @apply dark:bg-base-dark-800/60 dark:text-base-dark-400;
+}
+
+.ov-table td {
+  @apply border-t border-base-light-200/80 px-3 py-1.5 align-top dark:border-base-dark-700/70;
+}
+
+.ov-table tbody tr {
+  @apply transition-colors hover:bg-base-light-50 dark:hover:bg-base-dark-800/50;
+}
+
+.ov-link {
+  @apply inline-flex items-center gap-1 rounded font-medium text-base-light-900 decoration-base-light-400 underline-offset-2 hover:underline;
+  @apply dark:text-base-dark-50 dark:decoration-base-dark-500;
+}
+
+.ov-code,
+.ov-code-list code {
+  @apply font-mono text-[13px];
+}
+
+.ov-code-list {
+  @apply inline-flex flex-wrap items-center gap-1;
+}
+
+.ov-code-list code {
+  @apply rounded bg-base-light-100 px-1 text-base-light-800 dark:bg-base-dark-800 dark:text-base-dark-100;
+}
+
+.ov-type {
+  @apply font-mono text-xs text-indigo-700 dark:text-indigo-300;
+}
+
+.ov-muted {
+  @apply text-base-light-500 dark:text-base-dark-400;
+}
+
+.ov-flag {
+  @apply inline-flex items-center gap-1 rounded border px-1.5 text-[11px] font-medium leading-[18px] whitespace-nowrap;
+  @apply border-base-light-200 text-base-light-600 dark:border-base-dark-600 dark:text-base-dark-300;
+}
+
+.ov-flag[data-kind="key"] {
+  @apply border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200;
+}
+
+.ov-flag[data-kind="good"] {
+  @apply border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200;
+}
+
+.ov-flag[data-kind="warn"] {
+  @apply border-transparent bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200;
+}
+
+.ov-flag[data-kind="danger"] {
+  @apply border-transparent bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200;
+}
+
+.ov-flag[data-kind="muted"] {
+  @apply border-dashed text-base-light-500 dark:text-base-dark-400;
+}
+
+/* A row's flags and description sit under or beside its name. */
+.ov-flags {
+  @apply flex flex-wrap items-center gap-1;
+}
+
+.ov-cards {
+  @apply grid gap-2;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+
+.ov-card {
+  @apply min-w-0 rounded-lg border border-base-light-200 bg-white px-3 py-2 dark:border-base-dark-700 dark:bg-base-dark-900;
+}
+
+.ov-domain-head {
+  @apply mb-1.5 flex items-center gap-2;
+}
+
+.ov-domain-name {
+  @apply text-lg font-semibold;
+}
+
+.ov-domain-name > .ov-icon > svg {
+  @apply size-5;
+}
+
+.ov-resource-card {
+  @apply flex flex-col;
+}
+
+.ov-card-counts {
+  @apply mt-auto flex items-center gap-3 pt-2 text-xs tabular-nums text-base-light-600 dark:text-base-dark-400;
+}
+
+.ov-card-title {
+  @apply flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-base-light-500 dark:text-base-dark-400;
+}
+
+.ov-list {
+  @apply m-0 mt-1.5 list-none space-y-1 p-0;
+}
+
+.ov-joins {
+  @apply flex flex-wrap gap-2;
+}
+
+.ov-join {
+  @apply inline-flex flex-wrap items-center gap-2 rounded-lg border border-base-light-200 bg-white px-3 py-2 dark:border-base-dark-700 dark:bg-base-dark-900;
+}
+
+.ov-join-arrow {
+  @apply text-base-light-400 dark:text-base-dark-500;
+}
+
+.ov-steps {
+  @apply m-0 list-none space-y-1 rounded-lg border border-base-light-200 bg-white p-0 py-1 dark:border-base-dark-700 dark:bg-base-dark-900;
+  counter-reset: step;
+}
+
+.ov-steps > li {
+  @apply flex items-center gap-2 px-3 py-1;
+  counter-increment: step;
+}
+
+.ov-steps > li::before {
+  @apply w-4 shrink-0 text-right text-xs tabular-nums text-base-light-400 dark:text-base-dark-500;
+  content: counter(step);
+}
+
+.ov-code-block {
+  @apply m-0 overflow-x-auto rounded-lg border border-base-light-200 bg-white px-3 py-2 font-mono text-[13px] leading-relaxed whitespace-pre-wrap;
+  @apply text-base-light-800 dark:border-base-dark-700 dark:bg-base-dark-900 dark:text-base-dark-100;
 }
 
 /* Indent guide under the parent's chevron. */

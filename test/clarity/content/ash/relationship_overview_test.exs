@@ -1,11 +1,14 @@
 defmodule Clarity.Content.Ash.RelationshipOverviewTest do
   use ExUnit.Case, async: true
 
+  import Clarity.Test.OverviewHelper
+
   alias Ash.Resource.Info
   alias Clarity.Content.Ash.RelationshipOverview
   alias Clarity.Vertex.Ash.Relationship
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
+  alias Demo.Projects.Ticket
 
   describe inspect(&RelationshipOverview.name/0) do
     test "returns relationship overview name" do
@@ -40,99 +43,35 @@ defmodule Clarity.Content.Ash.RelationshipOverviewTest do
     end
   end
 
-  describe inspect(&RelationshipOverview.render_static/2) do
-    test "returns markdown tuple with function" do
-      relationships = Info.relationships(User)
+  describe "render" do
+    test "leads with the relationship as a sentence, and how the keys join" do
+      ticket = Ticket
 
-      if relationships != [] do
-        [relationship | _] = relationships
-        vertex = %Relationship{relationship: relationship, resource: User}
-        lens = nil
+      html =
+        render_overview(RelationshipOverview, %Relationship{
+          relationship: Info.relationship(ticket, :project),
+          resource: ticket
+        })
 
-        assert {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, lens)
-        assert is_function(markdown_fn, 1)
-      end
+      assert text(html, ".ov-headline") == "Ticket belongs to one Project"
+      assert texts(html, ".ov-join") == ["Ticket . project_id → Project . id"]
     end
 
-    test "generated markdown includes relationship header" do
-      relationships = Info.relationships(User)
+    test "joins a many-to-many through its join resource" do
+      ticket = Ticket
 
-      if relationships != [] do
-        [relationship | _] = relationships
-        vertex = %Relationship{relationship: relationship, resource: User}
-        {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
+      html =
+        render_overview(RelationshipOverview, %Relationship{
+          relationship: Info.relationship(ticket, :labels),
+          resource: ticket
+        })
 
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
+      assert text(html, ".ov-headline") == "Ticket has many Label through TicketLabel"
 
-        assert markdown =~ "# #{relationship.name}"
-        assert markdown =~ "**Type:**"
-      end
-    end
-
-    test "generated markdown includes relationship information table" do
-      relationships = Info.relationships(User)
-
-      if relationships != [] do
-        [relationship | _] = relationships
-        vertex = %Relationship{relationship: relationship, resource: User}
-        {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Relationship Information"
-        assert markdown =~ "| Property | Value |"
-        assert markdown =~ "Demo.Accounts.User"
-      end
-    end
-
-    test "generated markdown includes characteristics section" do
-      relationships = Info.relationships(User)
-
-      if relationships != [] do
-        [relationship | _] = relationships
-        vertex = %Relationship{relationship: relationship, resource: User}
-        {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Characteristics"
-        assert markdown =~ "Public"
-      end
-    end
-
-    test "generated markdown includes source and destination configuration" do
-      relationships = Info.relationships(User)
-
-      if relationships != [] do
-        [relationship | _] = relationships
-        vertex = %Relationship{relationship: relationship, resource: User}
-        {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Source & Destination Configuration"
-        assert markdown =~ "Source Attribute"
-        assert markdown =~ "Destination Attribute"
-      end
-    end
-
-    test "generated markdown includes vertex links" do
-      relationships = Info.relationships(User)
-
-      if relationships != [] do
-        [relationship | _] = relationships
-        vertex = %Relationship{relationship: relationship, resource: User}
-        {:markdown, markdown_fn} = RelationshipOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "vertex://ash-resource:demo-accounts-user"
-      end
+      assert texts(html, ".ov-join") == [
+               "Ticket . id → TicketLabel . ticket_id",
+               "TicketLabel . label_id → Label . id"
+             ]
     end
   end
 end

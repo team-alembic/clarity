@@ -1,11 +1,14 @@
 defmodule Clarity.Content.Ash.ActionOverviewTest do
   use ExUnit.Case, async: true
 
+  import Clarity.Test.OverviewHelper
+
   alias Ash.Resource.Info
   alias Clarity.Content.Ash.ActionOverview
   alias Clarity.Vertex.Ash.Action
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
+  alias Demo.Projects.Ticket
 
   describe inspect(&ActionOverview.name/0) do
     test "returns action overview name" do
@@ -36,77 +39,40 @@ defmodule Clarity.Content.Ash.ActionOverviewTest do
     end
   end
 
-  describe inspect(&ActionOverview.render_static/2) do
-    test "returns markdown tuple with function" do
-      [action | _] = Info.actions(User)
-      vertex = %Action{action: action, resource: User}
-      lens = nil
+  describe "render" do
+    test "leads with what the action does, to which resource" do
+      ticket = Ticket
+      html = render_overview(ActionOverview, %Action{action: Info.action(ticket, :create), resource: ticket})
 
-      assert {:markdown, markdown_fn} = ActionOverview.render_static(vertex, lens)
-      assert is_function(markdown_fn, 1)
+      assert text(html, ".ov-hero .ov-pill") == "Create action"
+      assert text(html, ".ov-hero .ov-flag") =~ "primary"
+      assert text(html, ".ov-headline") == "Creates a Ticket"
     end
 
-    test "generated markdown includes action header" do
-      [action | _] = Info.actions(User)
-      vertex = %Action{action: action, resource: User}
-      {:markdown, markdown_fn} = ActionOverview.render_static(vertex, nil)
+    test "lists its inputs, with which are required" do
+      ticket = Ticket
+      html = render_overview(ActionOverview, %Action{action: Info.action(ticket, :create), resource: ticket})
+      rows = texts(html, "#action-inputs tbody tr")
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "# #{action.name}"
-      assert markdown =~ "**Type:**"
+      assert Enum.find(rows, &String.starts_with?(&1, "title ")) =~ "required"
+      assert Enum.find(rows, &String.starts_with?(&1, "status ")) =~ "one of open in_progress"
     end
 
-    test "generated markdown includes action information table" do
-      [action | _] = Info.actions(User)
-      vertex = %Action{action: action, resource: User}
-      {:markdown, markdown_fn} = ActionOverview.render_static(vertex, nil)
+    test "lists its steps as calls" do
+      ticket = Ticket
+      html = render_overview(ActionOverview, %Action{action: Info.action(ticket, :close), resource: ticket})
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Action Information"
-      assert markdown =~ "| Property | Value |"
-      assert markdown =~ "Demo.Accounts.User"
+      assert "change set_attribute(value: :closed, attribute: :status)" in texts(html, ".ov-steps li")
     end
 
-    test "generated markdown includes configuration section" do
-      [action | _] = Info.actions(User)
-      vertex = %Action{action: action, resource: User}
-      {:markdown, markdown_fn} = ActionOverview.render_static(vertex, nil)
+    test "says what a generic action runs and returns" do
+      subscription = Demo.Billing.Subscription
+      action = Info.action(subscription, :issue_invoice)
+      html = render_overview(ActionOverview, %Action{action: action, resource: subscription})
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Configuration"
-      assert markdown =~ "Transaction"
-    end
-
-    test "generated markdown includes arguments section when action has arguments" do
-      actions = Info.actions(User)
-      action_with_args = Enum.find(actions, fn a -> a.arguments != [] end)
-
-      if action_with_args do
-        vertex = %Action{action: action_with_args, resource: User}
-        {:markdown, markdown_fn} = ActionOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Arguments"
-      end
-    end
-
-    test "generated markdown includes vertex links" do
-      [action | _] = Info.actions(User)
-      vertex = %Action{action: action, resource: User}
-      {:markdown, markdown_fn} = ActionOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "vertex://ash-resource:demo-accounts-user"
+      assert text(html, ".ov-headline") == "Runs on Subscription returning map"
+      assert text(html, ".ov-fact") =~ "Runs IssueInvoice"
+      assert text(html, "#action-inputs") =~ "subscription_id uuid required argument"
     end
   end
 end

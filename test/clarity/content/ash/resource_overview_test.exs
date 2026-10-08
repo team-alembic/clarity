@@ -1,10 +1,13 @@
 defmodule Clarity.Content.Ash.ResourceOverviewTest do
   use ExUnit.Case, async: true
 
+  import Clarity.Test.OverviewHelper
+
   alias Clarity.Content.Ash.ResourceOverview
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
+  alias Demo.Billing.Invoice
 
   describe inspect(&ResourceOverview.name/0) do
     test "returns resource overview name" do
@@ -34,99 +37,48 @@ defmodule Clarity.Content.Ash.ResourceOverviewTest do
     end
   end
 
-  describe inspect(&ResourceOverview.render_static/2) do
-    test "returns markdown tuple with function" do
-      vertex = %Resource{resource: User}
-      lens = nil
+  describe "render" do
+    test "leads with the resource's description, domain, data layer and primary key" do
+      html = render_overview(ResourceOverview, %Resource{resource: User})
 
-      assert {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, lens)
-      assert is_function(markdown_fn, 1)
+      assert text(html, ".ov-hero .ov-prose") =~ "Identity record"
+      assert text(html, ".ov-hero .ov-flag") =~ "multitenant"
+      assert html |> texts(".ov-fact dt") |> Enum.take(3) == ["Domain", "Data layer", "Primary key"]
+      assert text(html, ".ov-fact dd") =~ "Accounts"
+      assert text(html, ".ov-fact dd") =~ "Ets"
     end
 
-    test "generated markdown includes resource information table" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
+    test "lists actions first, by type, flagging the primary ones" do
+      html = render_overview(ResourceOverview, %Resource{resource: User})
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
+      assert html |> LazyHTML.query(".ov-section") |> Enum.map(&(&1 |> LazyHTML.attribute("id") |> hd())) |> hd() ==
+               "actions"
 
-      assert markdown =~ "## Resource Information"
-      assert markdown =~ "| Property | Value |"
-      assert markdown =~ "Demo.Accounts.User"
-      assert markdown =~ "Demo.Accounts"
+      assert "READ 5" in texts(html, ".ov-card-title") or "read 5" in texts(html, ".ov-card-title")
+      assert text(html, "#actions li") =~ "read primary"
     end
 
-    test "generated markdown includes attributes section" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
+    test "calls out what's notable about each attribute, not columns of true and false" do
+      html = render_overview(ResourceOverview, %Resource{resource: Invoice})
+      rows = texts(html, "#resource-attributes tbody tr")
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Attributes"
-      assert markdown =~ "| Name | Type |"
+      assert Enum.find(rows, &String.starts_with?(&1, "id ")) =~ "primary key"
+      assert Enum.find(rows, &String.starts_with?(&1, "status ")) =~ "required default :draft one of draft sent paid"
     end
 
-    test "generated markdown includes relationships section" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
+    test "writes each relationship as a sentence" do
+      html = render_overview(ResourceOverview, %Resource{resource: Demo.Projects.Ticket})
+      rows = texts(html, "#resource-relationships tbody tr")
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Relationships"
+      assert Enum.find(rows, &String.starts_with?(&1, "project ")) =~ "belongs to one Project"
+      assert Enum.find(rows, &String.starts_with?(&1, "labels ")) =~ "has many Label through TicketLabel"
     end
 
-    test "generated markdown includes actions section" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
+    test "shows how each aggregate and calculation computes its value" do
+      html = render_overview(ResourceOverview, %Resource{resource: Invoice})
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Actions"
-      assert markdown =~ "| Name | Description |"
-    end
-
-    test "generated markdown includes aggregates section" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Aggregates"
-    end
-
-    test "generated markdown includes calculations section" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Calculations"
-    end
-
-    test "generated markdown includes vertex links" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "vertex://ash-resource:demo-accounts-user"
-      assert markdown =~ "vertex://ash-domain:demo-accounts"
-    end
-
-    test "generated markdown handles data layer information" do
-      vertex = %Resource{resource: User}
-      {:markdown, markdown_fn} = ResourceOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "Data Layer"
+      assert text(html, "#resource-aggregates") =~ "sum of line_items.total_cents"
+      assert text(html, "#resource-calculations") =~ "if not is_nil(due_on)"
     end
   end
 end

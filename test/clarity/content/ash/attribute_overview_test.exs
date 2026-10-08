@@ -1,11 +1,14 @@
 defmodule Clarity.Content.Ash.AttributeOverviewTest do
   use ExUnit.Case, async: true
 
+  import Clarity.Test.OverviewHelper
+
   alias Ash.Resource.Info
   alias Clarity.Content.Ash.AttributeOverview
   alias Clarity.Vertex.Ash.Attribute
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
+  alias Demo.Projects.Ticket
 
   describe inspect(&AttributeOverview.name/0) do
     test "returns attribute overview name" do
@@ -36,84 +39,24 @@ defmodule Clarity.Content.Ash.AttributeOverviewTest do
     end
   end
 
-  describe inspect(&AttributeOverview.render_static/2) do
-    test "returns markdown tuple with function" do
-      [attribute | _] = Info.attributes(User)
-      vertex = %Attribute{attribute: attribute, resource: User}
-      lens = nil
+  describe "render" do
+    test "leads with its type, resource, the values it may take and what's notable" do
+      ticket = Ticket
+      html = render_overview(AttributeOverview, %Attribute{attribute: Info.attribute(ticket, :status), resource: ticket})
 
-      assert {:markdown, markdown_fn} = AttributeOverview.render_static(vertex, lens)
-      assert is_function(markdown_fn, 1)
+      assert text(html, ".ov-headline") == "atom on Ticket"
+      assert text(html, ".ov-hero") =~ "One of open in_progress review closed wont_fix"
+      assert text(html, ".ov-hero .ov-flag") =~ "required"
+      assert text(html, ".ov-fact") =~ "Default :open"
     end
 
-    test "generated markdown includes attribute header" do
-      [attribute | _] = Info.attributes(User)
-      vertex = %Attribute{attribute: attribute, resource: User}
-      {:markdown, markdown_fn} = AttributeOverview.render_static(vertex, nil)
+    test "says where its resource uses it" do
+      ticket = Ticket
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
+      html =
+        render_overview(AttributeOverview, %Attribute{attribute: Info.attribute(ticket, :project_id), resource: ticket})
 
-      assert markdown =~ "# #{attribute.name}"
-      assert markdown =~ "**Type:**"
-    end
-
-    test "generated markdown includes attribute information table" do
-      [attribute | _] = Info.attributes(User)
-      vertex = %Attribute{attribute: attribute, resource: User}
-      {:markdown, markdown_fn} = AttributeOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Attribute Information"
-      assert markdown =~ "| Property | Value |"
-      assert markdown =~ "Demo.Accounts.User"
-    end
-
-    test "generated markdown includes characteristics section" do
-      [attribute | _] = Info.attributes(User)
-      vertex = %Attribute{attribute: attribute, resource: User}
-      {:markdown, markdown_fn} = AttributeOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Characteristics"
-      assert markdown =~ "Primary Key"
-      assert markdown =~ "Allow Nil"
-      assert markdown =~ "Public"
-      assert markdown =~ "Writable"
-    end
-
-    test "generated markdown includes constraints section when attribute has constraints" do
-      attributes = Info.attributes(User)
-
-      attribute_with_constraints =
-        Enum.find(attributes, fn a ->
-          not Enum.empty?(a.constraints || [])
-        end)
-
-      if attribute_with_constraints do
-        vertex = %Attribute{attribute: attribute_with_constraints, resource: User}
-        {:markdown, markdown_fn} = AttributeOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Constraints"
-      end
-    end
-
-    test "generated markdown includes vertex links" do
-      [attribute | _] = Info.attributes(User)
-      vertex = %Attribute{attribute: attribute, resource: User}
-      {:markdown, markdown_fn} = AttributeOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "vertex://ash-resource:demo-accounts-user"
+      assert text(html, "#used-by") =~ "Key of project"
     end
   end
 end

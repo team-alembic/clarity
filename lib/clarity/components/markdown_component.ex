@@ -24,6 +24,7 @@ defmodule Clarity.Components.MarkdownComponent do
   @typep naming() :: %{
            graph: Clarity.Graph.t() | nil,
            vertex: Vertex.t() | nil,
+           names: Autolink.names() | nil,
            linking: Autolink.options()
          }
 
@@ -35,6 +36,14 @@ defmodule Clarity.Components.MarkdownComponent do
   attr :lens, Lens, required: true, doc: "Current lens for link generation"
   attr :graph, :any, default: nil, doc: "The graph whose vertices' names to link; nil links none"
   attr :vertex, :any, default: nil, doc: "The vertex the text is about, if any"
+
+  attr :names, :map,
+    default: nil,
+    doc: """
+    Names already settled for text about `vertex` (`Clarity.Autolink.names_in/2`), to
+    link instead of settling them from `graph` again: for many short texts about one
+    vertex, such as a table's descriptions
+    """
 
   attr :linking, :list,
     default: [],
@@ -50,6 +59,7 @@ defmodule Clarity.Components.MarkdownComponent do
       {render_markdown_with_vertex_links(@content, @prefix, @lens, %{
         graph: @graph,
         vertex: @vertex,
+        names: @names,
         linking: @linking
       })}
     </div>
@@ -130,18 +140,28 @@ defmodule Clarity.Components.MarkdownComponent do
   end
 
   @spec link_names(MDEx.Document.t(), naming(), String.t(), Lens.t()) :: MDEx.Document.t()
-  defp link_names(document, %{graph: nil}, _prefix, _lens), do: document
+  defp link_names(document, %{graph: nil, names: nil}, _prefix, _lens), do: document
+
+  defp link_names(document, %{names: names, vertex: vertex, linking: linking}, prefix, lens)
+       when is_map(names) do
+    Autolink.link(document, names, path_fn(prefix, lens), [vertex: vertex] ++ linking)
+  end
 
   defp link_names(document, %{graph: graph, vertex: vertex, linking: linking}, prefix, lens) do
-    default_lens = default_lens()
     index = Autolink.index(graph, linking)
 
     Autolink.link(
       document,
       Autolink.names_in(index, vertex),
-      &build_clarity_path(Vertex.id(&1), prefix, link_lens(&1, lens, default_lens)),
+      path_fn(prefix, lens),
       [vertex: vertex, index: index] ++ linking
     )
+  end
+
+  @spec path_fn(String.t(), Lens.t()) :: (Vertex.t() -> String.t())
+  defp path_fn(prefix, lens) do
+    default_lens = default_lens()
+    &build_clarity_path(Vertex.id(&1), prefix, link_lens(&1, lens, default_lens))
   end
 
   # The lens a named vertex opens in: this one if its tree shows vertices of

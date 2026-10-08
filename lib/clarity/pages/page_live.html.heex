@@ -75,33 +75,42 @@
           >
           </div>
 
-          <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
-            <nav class="breadcrumbs mr-3">
-              <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
-                <%= for {breadcrumb, idx} <- Enum.with_index(breadcrumb_trail(@breadcrumbs)) do %>
-                  <li class="flex items-center">
-                    <span :if={idx > 0} class="mx-1 text-base-light-500 dark:text-base-dark-600">
-                      →
-                    </span>
-                    <.link
-                      patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
-                      {Tooltip.attrs(breadcrumb)}
-                      class="hover:text-primary-light dark:hover:text-primary-dark transition-colors"
-                    >
-                      {Vertex.name(breadcrumb)}
-                    </.link>
-                  </li>
-                <% end %>
-                <%= if breadcrumb_trail(@breadcrumbs) != [] do %>
-                  <li class="flex items-center">
-                    <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
-                  </li>
-                <% end %>
+          <% type = Tooltip.type_icon(@vertex) %>
+          <div class="title page-title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3">
+            <nav
+              :if={breadcrumb_trail(@breadcrumbs) != []}
+              class="breadcrumbs"
+              aria-label="Breadcrumbs"
+            >
+              <ol class="page-crumbs">
+                <li :for={
+                  {{breadcrumb, name}, idx} <-
+                    Enum.with_index(named_trail(@breadcrumbs, @name_style))
+                }>
+                  <span :if={idx > 0} class="page-crumb-arrow" aria-hidden="true">→</span>
+                  <.link
+                    patch={Path.join([@prefix, @lens.id, Vertex.id(breadcrumb)])}
+                    {Tooltip.attrs(breadcrumb)}
+                    class="page-crumb"
+                  >
+                    <% crumb_type = Tooltip.type_icon(breadcrumb) %>
+                    <svg class="tree-icon" data-tone={crumb_type.tone} aria-hidden="true">
+                      <use href={"#clarity-icon-#{crumb_type.icon}"} />
+                    </svg>
+                    {name}
+                  </.link>
+                </li>
               </ol>
             </nav>
-            <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
-              {Vertex.name(@vertex)}
-            </h1>
+            <div class="page-subject">
+              <svg class="page-subject-icon" data-tone={type.tone} aria-hidden="true">
+                <use href={"#clarity-icon-#{type.icon}"} />
+              </svg>
+              <h1 class="page-subject-name">
+                {@breadcrumbs |> named_path(@vertex, @name_style) |> List.last()}
+              </h1>
+              <span class="ov-pill" data-tone={type.tone}>{Tooltip.type_name(@vertex)}</span>
+            </div>
           </div>
           <.tabs
             contents={@contents}

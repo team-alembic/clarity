@@ -1,6 +1,8 @@
 defmodule Clarity.Content.Ash.CalculationOverviewTest do
   use ExUnit.Case, async: true
 
+  import Clarity.Test.OverviewHelper
+
   alias Ash.Resource.Info
   alias Clarity.Content.Ash.CalculationOverview
   alias Clarity.Vertex.Ash.Calculation
@@ -40,97 +42,18 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
     end
   end
 
-  describe inspect(&CalculationOverview.render_static/2) do
-    test "returns markdown tuple with function" do
-      calculations = Info.calculations(User)
+  describe "render" do
+    test "leads with its type and resource, and its expression in full" do
+      invoice = Demo.Billing.Invoice
 
-      if calculations != [] do
-        [calculation | _] = calculations
-        vertex = %Calculation{calculation: calculation, resource: User}
-        lens = nil
+      html =
+        render_overview(CalculationOverview, %Calculation{
+          calculation: Info.calculation(invoice, :days_overdue),
+          resource: invoice
+        })
 
-        assert {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, lens)
-        assert is_function(markdown_fn, 1)
-      end
-    end
-
-    test "generated markdown includes calculation header" do
-      calculations = Info.calculations(User)
-
-      if calculations != [] do
-        [calculation | _] = calculations
-        vertex = %Calculation{calculation: calculation, resource: User}
-        {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "# #{calculation.name}"
-        assert markdown =~ "**Type:**"
-      end
-    end
-
-    test "generated markdown includes calculation information table" do
-      calculations = Info.calculations(User)
-
-      if calculations != [] do
-        [calculation | _] = calculations
-        vertex = %Calculation{calculation: calculation, resource: User}
-        {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Calculation Information"
-        assert markdown =~ "| Property | Value |"
-        assert markdown =~ "Demo.Accounts.User"
-      end
-    end
-
-    test "generated markdown includes configuration section" do
-      calculations = Info.calculations(User)
-
-      if calculations != [] do
-        [calculation | _] = calculations
-        vertex = %Calculation{calculation: calculation, resource: User}
-        {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Configuration"
-        assert markdown =~ "Public"
-      end
-    end
-
-    test "generated markdown includes implementation section" do
-      calculations = Info.calculations(User)
-
-      if calculations != [] do
-        [calculation | _] = calculations
-        vertex = %Calculation{calculation: calculation, resource: User}
-        {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "## Implementation"
-      end
-    end
-
-    test "generated markdown includes vertex links" do
-      calculations = Info.calculations(User)
-
-      if calculations != [] do
-        [calculation | _] = calculations
-        vertex = %Calculation{calculation: calculation, resource: User}
-        {:markdown, markdown_fn} = CalculationOverview.render_static(vertex, nil)
-
-        props = %{theme: :light, zoom_subgraph: nil}
-        markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-        assert markdown =~ "vertex://ash-resource:demo-accounts-user"
-      end
+      assert text(html, ".ov-headline") == "integer on Invoice by expression"
+      assert text(html, "pre.ov-code-block") =~ "fragment("
     end
   end
 end

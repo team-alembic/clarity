@@ -1,18 +1,24 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Content.Ash.RelationshipOverview do
     @moduledoc """
-    Content provider for Ash Relationship overview.
+    Content provider for an Ash relationship's overview.
 
-    Displays comprehensive information about an Ash relationship including its type,
-    source and destination configuration, and relationship-specific options.
+    Leads with the relationship as a sentence ("Ticket belongs to one
+    Project") and how the two resources' keys join, through the join
+    resource for a many-to-many, then what narrows or orders it and what
+    the relationship allows.
     """
 
     @behaviour Clarity.Content
 
-    alias Ash.Resource.Relationships
+    use Clarity.Web, :live_component
+
+    import Clarity.Components.OverviewComponents
+    import Clarity.Content.Ash.Overview
+
     alias Clarity.Vertex.Ash.Relationship
     alias Clarity.Vertex.Ash.Resource
-    alias Clarity.Vertex.Util
+    alias Phoenix.LiveView.Rendered
 
     @impl Clarity.Content
     def name, do: "Relationship Overview"
@@ -27,312 +33,157 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def applies?(%Relationship{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 
-    @impl Clarity.Content
-    def render_static(%Relationship{relationship: relationship, resource: resource}, _lens) do
-      {:markdown, fn _props -> generate_markdown(relationship, resource) end}
+    @impl Phoenix.LiveComponent
+    def update(assigns, socket) do
+      %Relationship{relationship: relationship, resource: resource} = assigns.vertex
+
+      {:ok,
+       socket
+       |> assign(assigns)
+       |> assign(links: links(assigns), relationship: relationship, resource: resource)}
     end
 
-    @spec generate_markdown(Relationships.relationship(), Ash.Resource.t()) ::
-            iodata()
-    defp generate_markdown(relationship, resource) do
-      [
-        relationship_header(relationship),
-        relationship_info_section(relationship, resource),
-        characteristics_section(relationship),
-        source_destination_section(relationship),
-        type_specific_section(relationship)
-      ]
+    @impl Phoenix.LiveComponent
+    def render(assigns) do
+      ~H"""
+      <div class="ov-page" id={@id}>
+        <div class="ov-head">
+          <.hero vertex={@vertex} kind="Relationship">
+            <:badge>
+              <.flag>{@relationship.type}</.flag>
+            </:badge>
+            <:badge :if={@relationship.type == :belongs_to and not @relationship.allow_nil?}>
+              <.flag kind={:warn}>required</.flag>
+            </:badge>
+            <:badge :if={Map.get(@relationship, :primary_key?)}>
+              <.flag kind={:key}>primary key</.flag>
+            </:badge>
+            <:badge>
+              <.flag :if={@relationship.public?} kind={:good}>public</.flag>
+              <.flag :if={not @relationship.public?} kind={:muted}>private</.flag>
+            </:badge>
+            <:headline>
+              <span class="ov-phrase">
+                <.vertex_link links={@links} vertex={%Resource{resource: @resource}} />
+                <span>{cardinality(@relationship)}</span>
+                <.vertex_link links={@links} vertex={%Resource{resource: @relationship.destination}} />
+                <span :if={@relationship.type == :many_to_many} class="ov-muted">through</span>
+                <.vertex_link
+                  :if={@relationship.type == :many_to_many}
+                  links={@links}
+                  vertex={%Resource{resource: @relationship.through}}
+                />
+              </span>
+            </:headline>
+            <.description links={@links} text={description_of(@relationship)} lead />
+          </.hero>
+
+          <div class="ov-joins">
+            <%= if @relationship.type == :many_to_many do %>
+              <.key_join
+                links={@links}
+                from={{@resource, @relationship.source_attribute}}
+                to={{@relationship.through, @relationship.source_attribute_on_join_resource}}
+              />
+              <.key_join
+                links={@links}
+                from={{@relationship.through, @relationship.destination_attribute_on_join_resource}}
+                to={{@relationship.destination, @relationship.destination_attribute}}
+              />
+            <% else %>
+              <.key_join
+                links={@links}
+                from={{@resource, @relationship.source_attribute}}
+                to={{@relationship.destination, @relationship.destination_attribute}}
+              />
+            <% end %>
+          </div>
+
+          <.facts>
+            <:fact :if={Map.get(@relationship, :read_action)} label="Read with">
+              <code class="ov-code">{@relationship.read_action}</code>
+            </:fact>
+            <:fact :if={Map.get(@relationship, :filter)} label="Filter">
+              <code class="ov-code">{inspect(@relationship.filter)}</code>
+            </:fact>
+            <:fact :if={List.wrap(Map.get(@relationship, :sort)) != []} label="Sort">
+              <code class="ov-code">{inspect(@relationship.sort)}</code>
+            </:fact>
+            <:fact :if={Map.get(@relationship, :limit)} label="Limit">{@relationship.limit}</:fact>
+            <:fact :if={Map.get(@relationship, :manual)} label="Manual">
+              <code class="ov-code">{inspect(implementation(@relationship.manual))}</code>
+            </:fact>
+            <:fact :if={@relationship.type == :belongs_to} label="Key type">
+              <.ash_type links={@links} type={@relationship.attribute_type} />
+            </:fact>
+            <:fact :if={Map.get(@relationship, :writable?, true) == false} label="Writable">no</:fact>
+            <:fact
+              :if={
+                Map.get(@relationship, :filterable?, true) == false or
+                  Map.get(@relationship, :sortable?, true) == false
+              }
+              label="Queries"
+            >
+              {[
+                if(Map.get(@relationship, :filterable?, true) == false, do: "not filterable"),
+                if(Map.get(@relationship, :sortable?, true) == false, do: "not sortable")
+              ]
+              |> Enum.reject(&is_nil/1)
+              |> Enum.join(", ")}
+            </:fact>
+          </.facts>
+        </div>
+      </div>
+      """
     end
 
-    @spec relationship_header(Relationships.relationship()) :: iodata()
-    defp relationship_header(relationship) do
-      type_badge = String.upcase(to_string(relationship.type))
+    # One resource's key matching another's: Ticket.project_id → Project.id.
+    attr :links, :map, required: true
+    attr :from, :any, required: true, doc: "The resource and attribute the key is on"
+    attr :to, :any, required: true, doc: "The resource and attribute it matches"
 
-      [
-        "# ",
-        Atom.to_string(relationship.name),
-        "\n\n",
-        "**Type:** `",
-        type_badge,
-        "`\n\n"
-      ]
+    @spec key_join(map()) :: Rendered.t()
+    defp key_join(assigns) do
+      ~H"""
+      <div class="ov-join">
+        <.key links={@links} key={@from} />
+        <span class="ov-join-arrow" aria-label="matches">→</span>
+        <.key links={@links} key={@to} />
+      </div>
+      """
     end
 
-    @dialyzer {:nowarn_function, relationship_info_section: 2}
-    @spec relationship_info_section(Relationships.relationship(), Ash.Resource.t()) ::
-            iodata()
-    defp relationship_info_section(relationship, resource) do
-      [
-        "## Relationship Information\n\n",
-        "| Property | Value |\n",
-        "| --- | --- |\n",
-        "| **Name** | `",
-        Atom.to_string(relationship.name),
-        "` |\n",
-        "| **Type** | `",
-        Atom.to_string(relationship.type),
-        "` |\n",
-        "| **Cardinality** | `",
-        Atom.to_string(relationship.cardinality),
-        "` |\n",
-        "| **Source Resource** | [",
-        inspect(resource),
-        "](vertex://",
-        Util.id(Resource, [resource]),
-        ") |\n",
-        "| **Destination Resource** | [",
-        inspect(relationship.destination),
-        "](vertex://",
-        Util.id(Resource, [relationship.destination]),
-        ") |\n",
-        case relationship.description do
-          nil -> []
-          "" -> []
-          description -> ["| **Description** | ", clean_description(description), " |\n"]
-        end,
-        "\n\n"
-      ]
+    attr :links, :map, required: true
+    attr :key, :any, required: true
+
+    @spec key(map()) :: Rendered.t()
+    defp key(%{key: {resource, name}} = assigns) do
+      assigns =
+        assign(assigns,
+          resource: resource,
+          name: name,
+          attribute: attribute_named(resource, name)
+        )
+
+      ~H"""
+      <span class="ov-phrase">
+        <.vertex_link links={@links} vertex={%Resource{resource: @resource}} />
+        <span class="ov-muted">.</span>
+        <.vertex_link
+          :if={@attribute}
+          links={@links}
+          vertex={@attribute}
+          label={to_string(@name)}
+          icon={false}
+          code
+        />
+        <code :if={!@attribute} class="ov-code">{@name}</code>
+      </span>
+      """
     end
 
-    @spec characteristics_section(Relationships.relationship()) :: iodata()
-    defp characteristics_section(relationship) do
-      [
-        "## Characteristics\n\n",
-        "| Characteristic | Value |\n",
-        "| --- | --- |\n",
-        "| **Public** | ",
-        format_boolean(relationship.public?),
-        " |\n",
-        "| **Writable** | ",
-        format_boolean(Map.get(relationship, :writable?, true)),
-        " |\n",
-        "| **Filterable** | ",
-        format_boolean(Map.get(relationship, :filterable?, true)),
-        " |\n",
-        "| **Sortable** | ",
-        format_boolean(Map.get(relationship, :sortable?, true)),
-        " |\n",
-        "\n\n"
-      ]
-    end
-
-    @spec source_destination_section(Relationships.relationship()) :: iodata()
-    defp source_destination_section(relationship) do
-      [
-        "## Source & Destination Configuration\n\n",
-        "| Property | Value |\n",
-        "| --- | --- |\n",
-        "| **Source Attribute** | `",
-        to_string(relationship.source_attribute),
-        "` |\n",
-        "| **Destination Attribute** | `",
-        to_string(relationship.destination_attribute),
-        "` |\n",
-        case Map.get(relationship, :read_action) do
-          nil -> []
-          action -> ["| **Read Action** | `", to_string(action), "` |\n"]
-        end,
-        case Map.get(relationship, :filter) do
-          nil -> []
-          _filter -> ["| **Has Filter** | Yes |\n"]
-        end,
-        case Map.get(relationship, :sort) do
-          nil -> []
-          sort -> ["| **Sort** | `", inspect(sort), "` |\n"]
-        end,
-        "\n\n"
-      ]
-    end
-
-    @spec type_specific_section(Relationships.relationship()) :: iodata()
-    defp type_specific_section(relationship) do
-      case relationship.type do
-        :belongs_to -> belongs_to_section(relationship)
-        :many_to_many -> many_to_many_section(relationship)
-        :has_many -> has_many_section(relationship)
-        :has_one -> has_one_section(relationship)
-      end
-    end
-
-    @spec belongs_to_section(Relationships.relationship()) :: iodata()
-    defp belongs_to_section(relationship) do
-      items = [
-        allow_nil_config(relationship),
-        primary_key_config(relationship),
-        define_attribute_config(relationship),
-        attribute_type_config(relationship),
-        attribute_writable_config(relationship)
-      ]
-
-      items = Enum.reject(items, &is_nil/1)
-
-      if Enum.empty?(items) do
-        []
-      else
-        [
-          "## BelongsTo-Specific Configuration\n\n",
-          "| Setting | Value |\n",
-          "| --- | --- |\n",
-          Enum.map(items, fn {label, value} ->
-            ["| **", label, "** | ", value, " |\n"]
-          end),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec allow_nil_config(Relationships.relationship()) ::
-            {String.t(), String.t()} | nil
-    defp allow_nil_config(%{allow_nil?: allow_nil?}) when not is_nil(allow_nil?) do
-      {"Allow Nil", format_boolean(allow_nil?)}
-    end
-
-    defp allow_nil_config(_), do: nil
-
-    @spec primary_key_config(Relationships.relationship()) ::
-            {String.t(), String.t()} | nil
-    defp primary_key_config(%{primary_key?: true}), do: {"Primary Key", "Yes"}
-    defp primary_key_config(_), do: nil
-
-    @spec define_attribute_config(Relationships.relationship()) ::
-            {String.t(), String.t()} | nil
-    defp define_attribute_config(%{define_attribute?: define?}) when not is_nil(define?) do
-      {"Define Attribute", format_boolean(define?)}
-    end
-
-    defp define_attribute_config(_), do: nil
-
-    @spec attribute_type_config(Relationships.relationship()) ::
-            {String.t(), iodata()} | nil
-    defp attribute_type_config(%{attribute_type: type}) when not is_nil(type) do
-      {"Attribute Type", ["`", inspect(type), "`"]}
-    end
-
-    defp attribute_type_config(_), do: nil
-
-    @spec attribute_writable_config(Relationships.relationship()) ::
-            {String.t(), String.t()} | nil
-    defp attribute_writable_config(%{attribute_writable?: writable?})
-         when not is_nil(writable?) do
-      {"Attribute Writable", format_boolean(writable?)}
-    end
-
-    defp attribute_writable_config(_), do: nil
-
-    @spec many_to_many_section(Relationships.relationship()) :: iodata()
-    defp many_to_many_section(relationship) do
-      items = [
-        through_config(relationship),
-        source_attribute_on_join_config(relationship),
-        destination_attribute_on_join_config(relationship)
-      ]
-
-      items = Enum.reject(items, &is_nil/1)
-
-      if Enum.empty?(items) do
-        []
-      else
-        [
-          "## ManyToMany-Specific Configuration\n\n",
-          "| Setting | Value |\n",
-          "| --- | --- |\n",
-          Enum.map(items, fn {label, value} ->
-            ["| **", label, "** | ", value, " |\n"]
-          end),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec through_config(Relationships.relationship()) ::
-            {String.t(), iodata()} | nil
-    defp through_config(%{through: through}) when not is_nil(through) do
-      {"Through Resource",
-       ["[", inspect(through), "](vertex://", Util.id(Resource, [through]), ")"]}
-    end
-
-    defp through_config(_), do: nil
-
-    @spec source_attribute_on_join_config(Relationships.relationship()) ::
-            {String.t(), iodata()} | nil
-    defp source_attribute_on_join_config(%{source_attribute_on_join_resource: attr})
-         when not is_nil(attr) do
-      {"Source Attribute on Join", ["`", to_string(attr), "`"]}
-    end
-
-    defp source_attribute_on_join_config(_), do: nil
-
-    @spec destination_attribute_on_join_config(Relationships.relationship()) ::
-            {String.t(), iodata()} | nil
-    defp destination_attribute_on_join_config(%{destination_attribute_on_join_resource: attr})
-         when not is_nil(attr) do
-      {"Destination Attribute on Join", ["`", to_string(attr), "`"]}
-    end
-
-    defp destination_attribute_on_join_config(_), do: nil
-
-    @spec has_many_section(Relationships.relationship()) :: iodata()
-    defp has_many_section(relationship) do
-      items = [
-        limit_config(relationship),
-        could_be_related_config(relationship),
-        no_attributes_config(relationship)
-      ]
-
-      items = Enum.reject(items, &is_nil/1)
-
-      if Enum.empty?(items) do
-        []
-      else
-        [
-          "## HasMany-Specific Configuration\n\n",
-          "| Setting | Value |\n",
-          "| --- | --- |\n",
-          Enum.map(items, fn {label, value} ->
-            ["| **", label, "** | ", value, " |\n"]
-          end),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec limit_config(Relationships.relationship()) :: {String.t(), String.t()} | nil
-    defp limit_config(%{limit: limit}) when not is_nil(limit) do
-      {"Limit", to_string(limit)}
-    end
-
-    defp limit_config(_), do: nil
-
-    @spec could_be_related_config(Relationships.relationship()) ::
-            {String.t(), String.t()} | nil
-    defp could_be_related_config(%{could_be_related_at_creation?: true}) do
-      {"Could Be Related at Creation", "Yes"}
-    end
-
-    defp could_be_related_config(_), do: nil
-
-    @spec no_attributes_config(Relationships.relationship()) ::
-            {String.t(), String.t()} | nil
-    defp no_attributes_config(%{no_attributes?: true}) do
-      {"No Attributes", "Yes (advanced)"}
-    end
-
-    defp no_attributes_config(_), do: nil
-
-    @spec has_one_section(Relationships.relationship()) :: iodata()
-    defp has_one_section(_relationship), do: []
-
-    @spec format_boolean(boolean()) :: String.t()
-    defp format_boolean(true), do: "Yes"
-    defp format_boolean(false), do: "No"
-    defp format_boolean(_), do: "No"
-
-    @spec clean_description(String.t()) :: String.t()
-    defp clean_description(description) when is_binary(description) do
-      description
-      |> String.trim()
-      |> String.replace("\n", " ")
-      |> String.replace(~r/\s+/, " ")
-    end
+    @spec implementation(term()) :: module()
+    defp implementation({module, _opts}), do: module
+    defp implementation(module), do: module
   end
 end

@@ -1,18 +1,25 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Content.Ash.AttributeOverview do
     @moduledoc """
-    Content provider for Ash Attribute overview.
+    Content provider for an Ash attribute's overview.
 
-    Displays comprehensive information about an Ash attribute including its type,
-    characteristics, constraints, and default values.
+    Leads with the attribute's type and resource, the values it may take and
+    what's notable about it (a primary key, required, sensitive, private),
+    then where its resource uses it: the actions that accept it, and the
+    relationships and identities built on it. Its constraints, defaults and
+    column follow as facts.
     """
 
     @behaviour Clarity.Content
 
+    use Clarity.Web, :live_component
+
+    import Clarity.Components.OverviewComponents
+    import Clarity.Content.Ash.Overview
+
+    alias Ash.Resource.Info
     alias Clarity.Vertex.Ash.Attribute
     alias Clarity.Vertex.Ash.Resource
-    alias Clarity.Vertex.Ash.Type
-    alias Clarity.Vertex.Util
 
     @impl Clarity.Content
     def name, do: "Attribute Overview"
@@ -27,241 +34,150 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def applies?(%Attribute{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 
-    @impl Clarity.Content
-    def render_static(%Attribute{attribute: attribute, resource: resource}, _lens) do
-      {:markdown, fn _props -> generate_markdown(attribute, resource) end}
+    @impl Phoenix.LiveComponent
+    def update(assigns, socket) do
+      %Attribute{attribute: attribute, resource: resource} = assigns.vertex
+
+      {:ok,
+       socket
+       |> assign(assigns)
+       |> assign(
+         links: links(assigns),
+         attribute: attribute,
+         resource: resource,
+         one_of: one_of(attribute),
+         constraints: Keyword.delete(List.wrap(attribute.constraints), :one_of),
+         actions:
+           Enum.filter(
+             Info.actions(resource),
+             &(attribute.name in List.wrap(Map.get(&1, :accept)))
+           ),
+         relationships:
+           Enum.filter(
+             Info.relationships(resource),
+             &(&1.type == :belongs_to and &1.source_attribute == attribute.name)
+           ),
+         identities: Enum.filter(Info.identities(resource), &(attribute.name in &1.keys))
+       )}
     end
 
-    @spec generate_markdown(Ash.Resource.Attribute.t(), Ash.Resource.t()) :: iodata()
-    defp generate_markdown(attribute, resource) do
-      [
-        attribute_header(attribute),
-        attribute_info_section(attribute, resource),
-        characteristics_section(attribute),
-        constraints_section(attribute),
-        defaults_section(attribute),
-        data_layer_section(attribute)
-      ]
+    @impl Phoenix.LiveComponent
+    def render(assigns) do
+      ~H"""
+      <div class="ov-page" id={@id}>
+        <div class="ov-head">
+          <.hero vertex={@vertex} kind="Attribute">
+            <:badge :if={@attribute.primary_key?}>
+              <.flag kind={:key}>primary key</.flag>
+            </:badge>
+            <:badge :if={not @attribute.allow_nil? and not @attribute.primary_key?}>
+              <.flag kind={:warn}>required</.flag>
+            </:badge>
+            <:badge :if={@attribute.sensitive?}>
+              <.flag kind={:danger}>sensitive</.flag>
+            </:badge>
+            <:badge>
+              <.flag :if={@attribute.public?} kind={:good}>public</.flag>
+              <.flag :if={not @attribute.public?} kind={:muted}>private</.flag>
+            </:badge>
+            <:badge :if={@attribute.generated?}>
+              <.flag kind={:muted}>generated</.flag>
+            </:badge>
+            <:badge :if={not @attribute.writable?}>
+              <.flag kind={:muted}>read-only</.flag>
+            </:badge>
+            <:headline>
+              <span class="ov-phrase">
+                <.ash_type links={@links} type={@attribute.type} />
+                <span class="ov-muted">on</span>
+                <.vertex_link links={@links} vertex={%Resource{resource: @resource}} />
+              </span>
+            </:headline>
+            <div :if={@one_of} class="ov-phrase">
+              <span class="ov-muted">One of</span>
+              <.code_list names={@one_of} max={20} />
+            </div>
+            <.description links={@links} text={description_of(@attribute)} lead />
+          </.hero>
+
+          <.facts>
+            <:fact :if={Map.get(@attribute, :default) != nil} label="Default">
+              <code class="ov-code">{value(@attribute.default)}</code>
+            </:fact>
+            <:fact :if={Map.get(@attribute, :update_default) != nil} label="On update">
+              <code class="ov-code">{value(@attribute.update_default)}</code>
+            </:fact>
+            <:fact :for={{key, value} <- @constraints} label={humanize(key)}>
+              <code class="ov-code">{inspect(value)}</code>
+            </:fact>
+            <:fact :if={@attribute.source && @attribute.source != @attribute.name} label="Column">
+              <code class="ov-code">{@attribute.source}</code>
+            </:fact>
+            <:fact :if={not @attribute.filterable? or not @attribute.sortable?} label="Queries">
+              {[
+                if(not @attribute.filterable?, do: "not filterable"),
+                if(not @attribute.sortable?, do: "not sortable")
+              ]
+              |> Enum.reject(&is_nil/1)
+              |> Enum.join(", ")}
+            </:fact>
+            <:fact :if={@attribute.always_select? or not @attribute.select_by_default?} label="Selected">
+              {if @attribute.always_select?, do: "always", else: "only when asked for"}
+            </:fact>
+          </.facts>
+        </div>
+
+        <.section
+          :if={@actions != [] or @relationships != [] or @identities != []}
+          id="used-by"
+          title="Used by"
+          icon="resource"
+          tone="structure"
+        >
+          <.facts>
+            <:fact :if={@actions != []} label="Accepted by">
+              <span class="ov-phrase">
+                <.vertex_link
+                  :for={action <- @actions}
+                  links={@links}
+                  vertex={action(@resource, action)}
+                  label={Atom.to_string(action.name)}
+                  code
+                />
+              </span>
+            </:fact>
+            <:fact :if={@relationships != []} label="Key of">
+              <span class="ov-phrase">
+                <.vertex_link
+                  :for={relationship <- @relationships}
+                  links={@links}
+                  vertex={relationship(@resource, relationship)}
+                  label={Atom.to_string(relationship.name)}
+                  code
+                />
+              </span>
+            </:fact>
+            <:fact :for={identity <- @identities} label="Unique, as">
+              <code class="ov-code">{identity.name}</code>
+              <span :if={length(identity.keys) > 1} class="ov-muted">
+                with {identity.keys |> List.delete(@attribute.name) |> Enum.join(", ")}
+              </span>
+            </:fact>
+          </.facts>
+        </.section>
+      </div>
+      """
     end
 
-    @spec attribute_header(Ash.Resource.Attribute.t()) :: iodata()
-    defp attribute_header(attribute) do
-      [
-        "# ",
-        Atom.to_string(attribute.name),
-        "\n\n",
-        "**Type:** ",
-        format_type_with_link(attribute.type),
-        "\n\n"
-      ]
-    end
+    # A default as written: its value, or the function that makes one.
+    @spec value(term()) :: String.t()
+    defp value({module, function, args}) when is_atom(module) and is_atom(function),
+      do: "#{inspect(module)}.#{function}/#{length(args)}"
 
-    @spec attribute_info_section(Ash.Resource.Attribute.t(), Ash.Resource.t()) :: iodata()
-    defp attribute_info_section(attribute, resource) do
-      [
-        "## Attribute Information\n\n",
-        "| Property | Value |\n",
-        "| --- | --- |\n",
-        "| **Name** | `",
-        Atom.to_string(attribute.name),
-        "` |\n",
-        "| **Type** | ",
-        format_type_with_link(attribute.type),
-        " |\n",
-        "| **Resource** | [",
-        inspect(resource),
-        "](vertex://",
-        Util.id(Resource, [resource]),
-        ") |\n",
-        case attribute.description do
-          nil -> []
-          "" -> []
-          description -> ["| **Description** | ", clean_description(description), " |\n"]
-        end,
-        "\n\n"
-      ]
-    end
+    defp value(value), do: inspect(value)
 
-    @spec characteristics_section(Ash.Resource.Attribute.t()) :: iodata()
-    defp characteristics_section(attribute) do
-      [
-        "## Characteristics\n\n",
-        "| Characteristic | Value |\n",
-        "| --- | --- |\n",
-        "| **Primary Key** | ",
-        format_boolean(attribute.primary_key?),
-        " |\n",
-        "| **Allow Nil** | ",
-        format_boolean(attribute.allow_nil?),
-        " |\n",
-        "| **Public** | ",
-        format_boolean(attribute.public?),
-        " |\n",
-        "| **Writable** | ",
-        format_boolean(attribute.writable?),
-        " |\n",
-        "| **Generated** | ",
-        format_boolean(attribute.generated?),
-        " |\n",
-        "| **Sensitive** | ",
-        format_boolean(attribute.sensitive?),
-        " |\n",
-        "| **Filterable** | ",
-        format_boolean(attribute.filterable?),
-        " |\n",
-        "| **Sortable** | ",
-        format_boolean(attribute.sortable?),
-        " |\n",
-        "| **Always Select** | ",
-        format_boolean(attribute.always_select?),
-        " |\n",
-        "| **Select By Default** | ",
-        format_boolean(attribute.select_by_default?),
-        " |\n",
-        "\n\n"
-      ]
-    end
-
-    @spec constraints_section(Ash.Resource.Attribute.t()) :: iodata()
-    defp constraints_section(attribute) do
-      constraints = attribute.constraints
-
-      if Enum.empty?(constraints) do
-        []
-      else
-        [
-          "## Constraints\n\n",
-          "| Constraint | Value |\n",
-          "| --- | --- |\n",
-          Enum.map_intersperse(constraints, "", &constraint_row/1),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec constraint_row({atom(), term()}) :: iodata()
-    defp constraint_row({key, value}) do
-      [
-        "| `",
-        to_string(key),
-        "` | `",
-        inspect(value),
-        "` |\n"
-      ]
-    end
-
-    @spec defaults_section(Ash.Resource.Attribute.t()) :: iodata()
-    defp defaults_section(attribute) do
-      items = [
-        default_config(attribute),
-        update_default_config(attribute),
-        match_other_defaults_config(attribute)
-      ]
-
-      items = Enum.reject(items, &is_nil/1)
-
-      if Enum.empty?(items) do
-        []
-      else
-        [
-          "## Default Values\n\n",
-          "| Setting | Value |\n",
-          "| --- | --- |\n",
-          Enum.map(items, fn {label, value} ->
-            ["| **", label, "** | ", value, " |\n"]
-          end),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec default_config(Ash.Resource.Attribute.t()) :: {String.t(), iodata()} | nil
-    defp default_config(%{default: default}) when not is_nil(default) do
-      {"Default", format_default_value(default)}
-    end
-
-    defp default_config(_), do: nil
-
-    @spec update_default_config(Ash.Resource.Attribute.t()) :: {String.t(), iodata()} | nil
-    defp update_default_config(%{update_default: update_default})
-         when not is_nil(update_default) do
-      {"Update Default", format_default_value(update_default)}
-    end
-
-    defp update_default_config(_), do: nil
-
-    @spec match_other_defaults_config(Ash.Resource.Attribute.t()) ::
-            {String.t(), String.t()} | nil
-    defp match_other_defaults_config(%{match_other_defaults?: true}) do
-      {"Match Other Defaults", "Yes"}
-    end
-
-    defp match_other_defaults_config(_), do: nil
-
-    @spec format_default_value(term()) :: iodata()
-    defp format_default_value(value) when is_function(value) do
-      "Function"
-    end
-
-    defp format_default_value({mod, fun, args}) when is_atom(mod) and is_atom(fun) do
-      arity = length(args)
-      ["MFA: `", inspect(mod), ".", to_string(fun), "/", to_string(arity), "`"]
-    end
-
-    defp format_default_value(value) do
-      ["`", inspect(value), "`"]
-    end
-
-    @spec data_layer_section(Ash.Resource.Attribute.t()) :: iodata()
-    defp data_layer_section(attribute) do
-      source = attribute.source
-
-      if is_nil(source) or source == attribute.name do
-        []
-      else
-        [
-          "## Data Layer\n\n",
-          "| Property | Value |\n",
-          "| --- | --- |\n",
-          "| **Source Field** | `",
-          to_string(source),
-          "` |\n",
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec format_type_with_link(module() | {:array, atom}) :: iodata()
-    defp format_type_with_link({:array, inner_type}) do
-      ["list of ", format_type_with_link(inner_type)]
-    end
-
-    defp format_type_with_link(type) when is_atom(type) do
-      type_name =
-        type
-        |> to_string()
-        |> String.replace_prefix("Elixir.", "")
-        |> String.replace_prefix("Ash.Type.", "")
-
-      ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
-    end
-
-    defp format_type_with_link(type) do
-      type_name = inspect(type)
-      ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
-    end
-
-    @spec format_boolean(boolean()) :: String.t()
-    defp format_boolean(true), do: "Yes"
-    defp format_boolean(false), do: "No"
-    defp format_boolean(_), do: "No"
-
-    @spec clean_description(String.t()) :: String.t()
-    defp clean_description(description) when is_binary(description) do
-      description
-      |> String.trim()
-      |> String.replace("\n", " ")
-      |> String.replace(~r/\s+/, " ")
-    end
+    @spec humanize(atom()) :: String.t()
+    defp humanize(key),
+      do: key |> Atom.to_string() |> String.replace("_", " ") |> String.capitalize()
   end
 end

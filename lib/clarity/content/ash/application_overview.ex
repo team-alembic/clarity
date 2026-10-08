@@ -1,16 +1,26 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Content.Ash.ApplicationOverview do
     @moduledoc """
-    Content provider for Application overview in Ash context.
+    Content provider for an application's Ash overview.
 
-    Displays all Ash domains defined in an application along with their resources.
+    Leads with the application's description, version and how much it holds,
+    then a section for each Ash domain: its description, and a card for each
+    of its resources. Text in a domain's section links names as text about
+    that domain does, and a card's as text about its resource. With short
+    names (the `name_style` prop), domains are named within the application
+    and resources within their domains.
     """
 
     @behaviour Clarity.Content
 
+    use Clarity.Web, :live_component
+
+    import Clarity.Components.OverviewComponents
+    import Clarity.Content.Ash.Overview
+
+    alias Clarity.Vertex
     alias Clarity.Vertex.Application
-    alias Clarity.Vertex.Name
-    alias Clarity.Vertex.Util
+    alias Clarity.Vertex.Ash.Domain
 
     @impl Clarity.Content
     def name, do: "Application Overview"
@@ -28,99 +38,109 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     def applies?(_vertex, _lens), do: false
 
-    @impl Clarity.Content
-    def render_static(%Application{app: app}, _lens) do
-      {:markdown, fn props -> generate_markdown(app, Map.get(props, :name_style, :qualified)) end}
+    @impl Phoenix.LiveComponent
+    def update(assigns, socket) do
+      %Application{app: app} = assigns.vertex
+      domains = app |> Ash.Info.domains_and_resources() |> Enum.sort_by(&inspect(elem(&1, 0)))
+
+      {:ok,
+       socket
+       |> assign(assigns)
+       |> assign(
+         links: links(assigns),
+         domains: domains,
+         resource_count: domains |> Enum.map(&length(elem(&1, 1))) |> Enum.sum(),
+         short?: Map.get(assigns, :name_style, :qualified) == :short
+       )}
     end
 
-    @spec generate_markdown(atom(), Name.style()) :: iodata()
-    defp generate_markdown(app, name_style) do
-      domains_and_resources = Ash.Info.domains_and_resources(app)
+    @impl Phoenix.LiveComponent
+    def render(assigns) do
+      ~H"""
+      <div class="ov-page" id={@id}>
+        <div class="ov-head">
+          <.hero vertex={@vertex} kind="Application">
+            <.description
+              :if={@vertex.description != Atom.to_string(@vertex.app)}
+              links={@links}
+              text={@vertex.description}
+              lead
+            />
+          </.hero>
 
-      if Enum.empty?(domains_and_resources) do
-        ["## Ash Domains\n\n", "This application has no Ash domains defined.\n\n"]
-      else
-        [
-          "## Ash Domains\n\n",
-          Enum.map(domains_and_resources, &domain_section(&1, name_style))
-        ]
-      end
+          <.facts>
+            <:fact :if={@vertex.version} label="Version">{to_string(@vertex.version)}</:fact>
+            <:fact label="Domains">{length(@domains)}</:fact>
+            <:fact label="Resources">{@resource_count}</:fact>
+          </.facts>
+
+          <.stats>
+            <:stat
+              :for={{domain, resources} <- @domains}
+              label={domain_label(domain, @short?)}
+              count={length(resources)}
+              href={"##{section_id(domain)}"}
+              icon="domain"
+              tone="structure"
+            />
+          </.stats>
+        </div>
+
+        <.domain_section
+          :for={{domain, resources} <- @domains}
+          links={links_about(@links, %Domain{domain: domain})}
+          domain={domain}
+          resources={resources}
+          short?={@short?}
+        />
+      </div>
+      """
     end
 
-    # With short names, each domain is named within the application, and its
-    # resources within it.
-    @spec domain_section({Ash.Domain.t(), [Ash.Resource.t()]}, Name.style()) :: iodata()
-    defp domain_section({domain, resources}, name_style) do
-      [
-        "### [",
-        if(name_style == :short, do: Name.in_app(domain), else: inspect(domain)),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Domain, [domain]),
-        ")\n\n",
-        case get_description(domain) do
-          nil -> []
-          description -> [clean_description(description), "\n\n"]
-        end,
-        if Enum.empty?(resources) do
-          ["_No resources defined_\n\n"]
-        else
-          [
-            "| Resource | Description |\n",
-            "| --- | --- |\n",
-            Enum.map(resources, &resource_row(&1, domain, name_style)),
-            "\n"
-          ]
-        end
-      ]
+    attr :links, :map, required: true
+    attr :domain, :atom, required: true
+    attr :resources, :list, required: true
+    attr :short?, :boolean, required: true
+
+    @spec domain_section(map()) :: Phoenix.LiveView.Rendered.t()
+    defp domain_section(assigns) do
+      assigns =
+        assign(assigns,
+          vertex: %Domain{domain: assigns.domain},
+          description:
+            module_description(assigns.domain, Ash.Domain.Info.description(assigns.domain))
+        )
+
+      ~H"""
+      <section id={section_id(@domain)} class="ov-section ov-domain">
+        <div class="ov-domain-head">
+          <.vertex_link
+            links={@links}
+            vertex={@vertex}
+            label={domain_label(@domain, @short?)}
+            class="ov-domain-name"
+          />
+          <span class="ov-count">{length(@resources)}</span>
+        </div>
+        <.description links={@links} text={@description} class="mb-3" />
+        <p :if={@resources == []} class="ov-muted">No resources defined.</p>
+        <div :if={@resources != []} class="ov-cards">
+          <.resource_card
+            :for={resource <- @resources}
+            links={links_about(@links, %Vertex.Ash.Resource{resource: resource})}
+            resource={resource}
+            label={if @short?, do: Vertex.Name.within(resource, @domain), else: inspect(resource)}
+          />
+        </div>
+      </section>
+      """
     end
 
-    @spec resource_row(Ash.Resource.t(), Ash.Domain.t(), Name.style()) :: iodata()
-    defp resource_row(resource, domain, name_style) do
-      description = get_description(resource)
+    @spec domain_label(module(), boolean()) :: String.t()
+    defp domain_label(domain, true), do: Vertex.Name.in_app(domain)
+    defp domain_label(domain, false), do: inspect(domain)
 
-      [
-        "| [",
-        if(name_style == :short, do: Name.within(resource, domain), else: inspect(resource)),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Resource, [resource]),
-        ") | ",
-        clean_description(description),
-        " |\n"
-      ]
-    end
-
-    @spec get_description(module()) :: String.t() | nil
-    defp get_description(module) do
-      case Code.fetch_docs(module) do
-        {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc}, _metadata,
-         _docs} ->
-          extract_first_paragraph(moduledoc)
-
-        _ ->
-          nil
-      end
-    end
-
-    @spec extract_first_paragraph(String.t()) :: String.t() | nil
-    defp extract_first_paragraph(text) when is_binary(text) do
-      text
-      |> String.split("\n")
-      |> Enum.take_while(&(String.trim(&1) != ""))
-      |> Enum.join("\n")
-      |> case do
-        "" -> nil
-        result -> result
-      end
-    end
-
-    @spec clean_description(String.t() | nil) :: String.t()
-    defp clean_description(nil), do: ""
-
-    defp clean_description(description) when is_binary(description) do
-      description
-      |> String.trim()
-      |> String.replace("\n", " ")
-      |> String.replace(~r/\s+/, " ")
-    end
+    @spec section_id(module()) :: String.t()
+    defp section_id(domain), do: "domain-" <> (domain |> inspect() |> String.replace(".", "-"))
   end
 end

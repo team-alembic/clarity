@@ -1,19 +1,29 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Content.Ash.ResourceOverview do
     @moduledoc """
-    Content provider for Ash Resource overview.
+    Content provider for an Ash resource's overview.
 
-    Displays comprehensive information about an Ash resource including attributes,
-    relationships, actions, aggregates, and calculations.
+    Leads with what the resource is: its description, domain, data layer,
+    primary key and identities, and counts that jump to its attributes,
+    relationships, actions, aggregates and calculations. Each row calls out
+    what's notable about its field (a primary key, a required or sensitive
+    attribute) instead of columns of true and false.
     """
 
     @behaviour Clarity.Content
 
-    alias Ash.Resource.Actions
+    use Clarity.Web, :live_component
+
+    import Clarity.Components.OverviewComponents
+    import Clarity.Content.Ash.Overview
+
     alias Ash.Resource.Info
+    alias Clarity.Content.Ash.Overview
+    alias Clarity.Vertex.Ash.DataLayer
+    alias Clarity.Vertex.Ash.Domain
     alias Clarity.Vertex.Ash.Resource
-    alias Clarity.Vertex.Ash.Type
-    alias Clarity.Vertex.Util
+
+    @action_types [:create, :read, :update, :destroy, :action]
 
     @impl Clarity.Content
     def name, do: "Resource Overview"
@@ -28,302 +38,315 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def applies?(%Resource{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 
-    @impl Clarity.Content
-    def render_static(%Resource{resource: resource}, _lens) do
-      {:markdown, fn _props -> generate_markdown(resource) end}
-    end
-
-    @spec generate_markdown(Ash.Resource.t()) :: iodata()
-    defp generate_markdown(resource) do
-      [
-        resource_info_section(resource),
-        attributes_section(resource),
-        relationships_section(resource),
-        actions_section(resource),
-        aggregates_section(resource),
-        calculations_section(resource)
-      ]
-    end
-
-    @spec resource_info_section(Ash.Resource.t()) :: iodata()
-    defp resource_info_section(resource) do
-      domain = Info.domain(resource)
-
-      [
-        "## Resource Information\n\n",
-        "| Property | Value |\n",
-        "| --- | --- |\n",
-        "| **Resource** | [",
-        inspect(resource),
-        "](vertex://",
-        Util.id(Resource, [resource]),
-        ") |\n",
-        "| **Domain** | [",
-        inspect(domain),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Domain, [domain]),
-        ") |\n",
-        case Info.data_layer(resource) do
-          nil ->
-            []
-
-          data_layer ->
-            [
-              "| **Data Layer** | [",
-              inspect(data_layer),
-              "](vertex://",
-              Util.id(Clarity.Vertex.Ash.DataLayer, [data_layer]),
-              ") |\n"
-            ]
-        end,
-        case Info.description(resource) do
-          nil -> []
-          description -> ["| **Description** | ", clean_description(description), " |\n"]
-        end,
-        "\n\n"
-      ]
-    end
-
-    @spec attributes_section(Ash.Resource.t()) :: iodata()
-    defp attributes_section(resource) do
-      attributes = Info.attributes(resource)
-
-      if Enum.empty?(attributes) do
-        []
-      else
-        [
-          "## Attributes\n\n",
-          "| Name | Type | Description | Primary Key | Allow Nil | Public |\n",
-          "| --- | --- | --- | --- | --- | --- |\n",
-          Enum.map_intersperse(attributes, "", &attribute_row(&1, resource)),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec attribute_row(Ash.Resource.Attribute.t(), Ash.Resource.t()) :: iodata()
-    defp attribute_row(attribute, resource) do
-      description = clean_description(attribute.description)
-      type_display = format_type_with_link(attribute.type)
-
-      [
-        "| [",
-        Atom.to_string(attribute.name),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Attribute, [resource, attribute.name]),
-        ")",
-        " | ",
-        type_display,
-        " | ",
-        description,
-        " | ",
-        to_string(attribute.primary_key?),
-        " | ",
-        to_string(attribute.allow_nil?),
-        " | ",
-        to_string(attribute.public?),
-        " |\n"
-      ]
-    end
-
-    @spec relationships_section(Ash.Resource.t()) :: iodata()
-    defp relationships_section(resource) do
-      relationships = Info.relationships(resource)
-
-      if Enum.empty?(relationships) do
-        []
-      else
-        [
-          "## Relationships\n\n",
-          "| Name | Type | Destination | Description |\n",
-          "| --- | --- | --- | --- |\n",
-          Enum.map_intersperse(relationships, "", &relationship_row(&1, resource)),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec relationship_row(Ash.Resource.Relationships.relationship(), Ash.Resource.t()) ::
-            iodata()
-    defp relationship_row(relationship, resource) do
-      description = clean_description(relationship.description)
-      destination = relationship.destination
-
-      [
-        "| [",
-        Atom.to_string(relationship.name),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Relationship, [resource, relationship.name]),
-        ")",
-        " | `",
-        Atom.to_string(relationship.type),
-        "`",
-        " | [",
-        inspect(destination),
-        "](vertex://",
-        Util.id(Resource, [destination]),
-        ")",
-        " | ",
-        description,
-        " |\n"
-      ]
-    end
-
-    @spec actions_section(Ash.Resource.t()) :: iodata()
-    defp actions_section(resource) do
+    @impl Phoenix.LiveComponent
+    def update(assigns, socket) do
+      %Resource{resource: resource} = assigns.vertex
       actions = Info.actions(resource)
 
-      if Enum.empty?(actions) do
-        []
-      else
-        grouped_actions = Enum.group_by(actions, & &1.type)
-
-        [
-          "## Actions\n\n",
-          Enum.map_intersperse(grouped_actions, "\n", &action_group_section(&1, resource)),
-          "\n\n"
-        ]
-      end
+      {:ok,
+       socket
+       |> assign(assigns)
+       |> assign(
+         links: links(assigns),
+         resource: resource,
+         description: Overview.module_description(resource, Info.description(resource)),
+         domain: Info.domain(resource),
+         data_layer: Info.data_layer(resource),
+         primary_key: Info.primary_key(resource),
+         identities: Info.identities(resource),
+         extensions: extensions(resource),
+         embedded?: Info.embedded?(resource),
+         multitenancy: Info.multitenancy_strategy(resource),
+         attributes: Info.attributes(resource),
+         relationships: Info.relationships(resource),
+         attribute_visibility: resource |> Info.attributes() |> Overview.unusual_visibility(),
+         relationship_visibility:
+           resource |> Info.relationships() |> Overview.unusual_visibility(),
+         action_groups:
+           for(
+             type <- @action_types,
+             group = Enum.filter(actions, &(&1.type == type)),
+             group != [],
+             do: {type, group}
+           ),
+         action_count: length(actions),
+         aggregates: Info.aggregates(resource),
+         calculations: Info.calculations(resource)
+       )}
     end
 
-    @spec action_group_section({atom(), [Actions.action()]}, Ash.Resource.t()) :: iodata()
-    defp action_group_section({type, actions}, resource) do
-      [
-        "### ",
-        String.capitalize(to_string(type)),
-        " Actions\n\n",
-        "| Name | Description | Primary |\n",
-        "| --- | --- | --- |\n",
-        Enum.map_intersperse(actions, "", &action_row(&1, resource)),
-        "\n"
-      ]
+    @impl Phoenix.LiveComponent
+    def render(assigns) do
+      ~H"""
+      <div class="ov-page" id={@id}>
+        <div class="ov-head">
+          <.hero vertex={@vertex} kind="Resource">
+            <:badge :if={@embedded?}>
+              <.flag>embedded</.flag>
+            </:badge>
+            <:badge :if={@multitenancy}>
+              <.flag kind={:warn}>multitenant</.flag>
+            </:badge>
+            <:badge :for={extension <- @extensions}>
+              <.flag>{extension}</.flag>
+            </:badge>
+            <.description links={@links} text={@description} lead />
+          </.hero>
+
+          <.facts>
+            <:fact :if={@domain} label="Domain">
+              <.vertex_link links={@links} vertex={%Domain{domain: @domain}} />
+            </:fact>
+            <:fact :if={@data_layer} label="Data layer">
+              <.vertex_link
+                links={@links}
+                vertex={%DataLayer{data_layer: @data_layer}}
+                label={@data_layer |> Module.split() |> List.last()}
+              />
+            </:fact>
+            <:fact :if={@primary_key != []} label="Primary key">
+              <.code_list names={Enum.map(@primary_key, &Atom.to_string/1)} />
+            </:fact>
+            <:fact :for={identity <- @identities} label="Unique">
+              <span {Clarity.Tooltip.attrs("Identity #{identity.name}")}>
+                <.code_list names={Enum.map(identity.keys, &to_string/1)} />
+              </span>
+            </:fact>
+            <:fact :if={@multitenancy} label="Multitenancy">{@multitenancy}</:fact>
+          </.facts>
+
+          <.stats>
+            <:stat
+              :if={@action_count > 0}
+              label="actions"
+              count={@action_count}
+              href="#actions"
+              icon="action"
+              tone="behaviour"
+            />
+            <:stat
+              :if={@attributes != []}
+              label="attributes"
+              count={length(@attributes)}
+              href="#attributes"
+              icon="attribute"
+              tone="data"
+            />
+            <:stat
+              :if={@relationships != []}
+              label="relationships"
+              count={length(@relationships)}
+              href="#relationships"
+              icon="relationship"
+              tone="data"
+            />
+            <:stat
+              :if={@aggregates != []}
+              label="aggregates"
+              count={length(@aggregates)}
+              href="#aggregates"
+              icon="aggregate"
+              tone="behaviour"
+            />
+            <:stat
+              :if={@calculations != []}
+              label="calculations"
+              count={length(@calculations)}
+              href="#calculations"
+              icon="calculation"
+              tone="behaviour"
+            />
+          </.stats>
+        </div>
+
+        <.section
+          :if={@action_count > 0}
+          id="actions"
+          title="Actions"
+          icon="action"
+          tone="behaviour"
+          count={@action_count}
+        >
+          <div class="ov-cards">
+            <div :for={{type, actions} <- @action_groups} class="ov-card">
+              <h3 class="ov-card-title">{type} <span class="ov-count">{length(actions)}</span></h3>
+              <ul class="ov-list">
+                <li :for={action <- actions}>
+                  <div class="flex items-center gap-1.5">
+                    <.vertex_link
+                      links={@links}
+                      vertex={action(@resource, action)}
+                      label={Atom.to_string(action.name)}
+                      code
+                    />
+                    <.flag :if={action.primary?} kind={:key}>primary</.flag>
+                  </div>
+                  <.description links={@links} text={description_of(action)} class="line-clamp-2" small />
+                </li>
+              </ul>
+            </div>
+          </div>
+        </.section>
+
+        <.section
+          :if={@attributes != []}
+          id="attributes"
+          title="Attributes"
+          icon="attribute"
+          tone="data"
+          count={length(@attributes)}
+        >
+          <.overview_table id="resource-attributes" rows={@attributes}>
+            <:col :let={attribute} label="Name" class="w-0 whitespace-nowrap">
+              <.vertex_link
+                links={@links}
+                vertex={attribute(@resource, attribute)}
+                label={Atom.to_string(attribute.name)}
+                code
+              />
+            </:col>
+            <:col :let={attribute} label="Type" class="w-0 whitespace-nowrap">
+              <.ash_type links={@links} type={attribute.type} />
+            </:col>
+            <:col :let={attribute} label="About">
+              <.attribute_flags attribute={attribute} unusual={@attribute_visibility} />
+              <.description links={@links} text={description_of(attribute)} class="mt-0.5" />
+            </:col>
+          </.overview_table>
+        </.section>
+
+        <.section
+          :if={@relationships != []}
+          id="relationships"
+          title="Relationships"
+          icon="relationship"
+          tone="data"
+          count={length(@relationships)}
+        >
+          <.overview_table id="resource-relationships" rows={@relationships}>
+            <:col :let={relationship} label="Name" class="w-0 whitespace-nowrap">
+              <.vertex_link
+                links={@links}
+                vertex={relationship(@resource, relationship)}
+                label={Atom.to_string(relationship.name)}
+                code
+              />
+            </:col>
+            <:col :let={relationship} label="Relates to" class="whitespace-nowrap">
+              <span class="ov-phrase">
+                <span class="ov-muted">{cardinality(relationship)}</span>
+                <.vertex_link
+                  links={@links}
+                  vertex={%Resource{resource: relationship.destination}}
+                />
+                <span :if={relationship.type == :many_to_many} class="ov-muted">through</span>
+                <.vertex_link
+                  :if={relationship.type == :many_to_many}
+                  links={@links}
+                  vertex={%Resource{resource: relationship.through}}
+                />
+              </span>
+            </:col>
+            <:col :let={relationship} label="About">
+              <div class="ov-flags">
+                <.flag :if={relationship.type == :belongs_to}>
+                  <code>{relationship.source_attribute}</code>
+                </.flag>
+                <.visibility_flag field={relationship} unusual={@relationship_visibility} />
+              </div>
+              <.description links={@links} text={description_of(relationship)} class="mt-0.5" />
+            </:col>
+          </.overview_table>
+        </.section>
+
+        <.section
+          :if={@aggregates != []}
+          id="aggregates"
+          title="Aggregates"
+          icon="aggregate"
+          tone="behaviour"
+          count={length(@aggregates)}
+        >
+          <.overview_table id="resource-aggregates" rows={@aggregates}>
+            <:col :let={aggregate} label="Name" class="w-0 whitespace-nowrap">
+              <.vertex_link
+                links={@links}
+                vertex={aggregate(@resource, aggregate)}
+                label={Atom.to_string(aggregate.name)}
+                code
+              />
+            </:col>
+            <:col :let={aggregate} label="Computes" class="whitespace-nowrap">
+              <span class="ov-phrase">
+                <b class="font-medium">{aggregate.kind}</b>
+                <span class="ov-muted">of</span>
+                <code class="ov-code">{aggregate_target(aggregate)}</code>
+              </span>
+            </:col>
+            <:col :let={aggregate} :if={Enum.any?(@aggregates, &description_of/1)} label="About">
+              <.description links={@links} text={description_of(aggregate)} />
+            </:col>
+          </.overview_table>
+        </.section>
+
+        <.section
+          :if={@calculations != []}
+          id="calculations"
+          title="Calculations"
+          icon="calculation"
+          tone="behaviour"
+          count={length(@calculations)}
+        >
+          <.overview_table id="resource-calculations" rows={@calculations}>
+            <:col :let={calculation} label="Name" class="w-0 whitespace-nowrap">
+              <.vertex_link
+                links={@links}
+                vertex={calculation(@resource, calculation)}
+                label={Atom.to_string(calculation.name)}
+                code
+              />
+            </:col>
+            <:col :let={calculation} label="Type" class="w-0 whitespace-nowrap">
+              <.ash_type links={@links} type={calculation.type} />
+            </:col>
+            <:col :let={calculation} label="Computes">
+              <.computation calculation={calculation} />
+              <div :if={calculation.arguments != []} class="ov-flags mt-1">
+                <.flag>
+                  {length(calculation.arguments)} {if length(calculation.arguments) == 1,
+                    do: "argument",
+                    else: "arguments"}
+                </.flag>
+              </div>
+              <.description links={@links} text={description_of(calculation)} class="mt-0.5" />
+            </:col>
+          </.overview_table>
+        </.section>
+      </div>
+      """
     end
 
-    @spec action_row(Actions.action(), Ash.Resource.t()) :: iodata()
-    defp action_row(action, resource) do
-      description = clean_description(action.description)
-
-      [
-        "| [",
-        Atom.to_string(action.name),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Action, [resource, action.name]),
-        ")",
-        " | ",
-        description,
-        " | ",
-        to_string(action.primary?),
-        " |\n"
-      ]
+    # What an aggregate reads: its relationship path, and the field there.
+    @spec aggregate_target(Ash.Resource.Aggregate.t()) :: String.t()
+    defp aggregate_target(aggregate) do
+      Enum.map_join(aggregate.relationship_path ++ List.wrap(aggregate.field), ".", &to_string/1)
     end
 
-    @spec aggregates_section(Ash.Resource.t()) :: iodata()
-    defp aggregates_section(resource) do
-      aggregates = Info.aggregates(resource)
+    # The resource's extensions worth a mention: not Ash's own resource DSL,
+    # nor its data layer, which has a fact of its own.
+    @spec extensions(module()) :: [String.t()]
+    defp extensions(resource) do
+      data_layer = Info.data_layer(resource)
 
-      if Enum.empty?(aggregates) do
-        []
-      else
-        [
-          "## Aggregates\n\n",
-          "| Name | Type | Field | Relationship |\n",
-          "| --- | --- | --- | --- |\n",
-          Enum.map_intersperse(aggregates, "", &aggregate_row(&1, resource)),
-          "\n\n"
-        ]
-      end
+      resource
+      |> Spark.extensions()
+      |> Enum.reject(&(&1 in [Ash.Resource.Dsl, data_layer]))
+      |> Enum.map(&extension_name/1)
     end
 
-    @spec aggregate_row(Ash.Resource.Aggregate.t(), Ash.Resource.t()) :: iodata()
-    defp aggregate_row(aggregate, resource) do
-      field_display =
-        case aggregate.field do
-          nil -> ""
-          field -> ["`", to_string(field), "`"]
-        end
-
-      [
-        "| [",
-        Atom.to_string(aggregate.name),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Aggregate, [resource, aggregate.name]),
-        ")",
-        " | `",
-        Atom.to_string(aggregate.kind),
-        "`",
-        " | ",
-        field_display,
-        " | `",
-        inspect(aggregate.relationship_path),
-        "`",
-        " |\n"
-      ]
-    end
-
-    @spec calculations_section(Ash.Resource.t()) :: iodata()
-    defp calculations_section(resource) do
-      calculations = Info.calculations(resource)
-
-      if Enum.empty?(calculations) do
-        []
-      else
-        [
-          "## Calculations\n\n",
-          "| Name | Type | Description |\n",
-          "| --- | --- | --- |\n",
-          Enum.map_intersperse(calculations, "", &calculation_row(&1, resource)),
-          "\n\n"
-        ]
-      end
-    end
-
-    @spec calculation_row(Ash.Resource.Calculation.t(), Ash.Resource.t()) :: iodata()
-    defp calculation_row(calculation, resource) do
-      description = clean_description(calculation.description)
-      type_display = format_type_with_link(calculation.type)
-
-      [
-        "| [",
-        Atom.to_string(calculation.name),
-        "](vertex://",
-        Util.id(Clarity.Vertex.Ash.Calculation, [resource, calculation.name]),
-        ")",
-        " | ",
-        type_display,
-        " | ",
-        description,
-        " |\n"
-      ]
-    end
-
-    @spec format_type_with_link(module() | {:array, atom}) :: iodata()
-    defp format_type_with_link({:array, inner_type}) do
-      ["list of ", format_type_with_link(inner_type)]
-    end
-
-    defp format_type_with_link(type) when is_atom(type) do
-      type_name =
-        type
-        |> to_string()
-        |> String.replace_prefix("Elixir.", "")
-        |> String.replace_prefix("Ash.Type.", "")
-
-      ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
-    end
-
-    defp format_type_with_link(type) do
-      type_name = inspect(type)
-      ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
-    end
-
-    @spec clean_description(String.t() | nil) :: String.t()
-    defp clean_description(nil), do: ""
-
-    defp clean_description(description) when is_binary(description) do
-      description
-      |> String.trim()
-      |> String.replace("\n", " ")
-      |> String.replace(~r/\s+/, " ")
-    end
+    @spec extension_name(module()) :: String.t()
+    defp extension_name(Ash.Policy.Authorizer), do: "policies"
+    defp extension_name(AshStateMachine), do: "state machine"
+    defp extension_name(extension), do: extension |> Module.split() |> List.last()
   end
 end

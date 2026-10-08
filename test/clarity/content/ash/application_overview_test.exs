@@ -1,6 +1,8 @@
 defmodule Clarity.Content.Ash.ApplicationOverviewTest do
   use ExUnit.Case, async: true
 
+  import Clarity.Test.OverviewHelper
+
   alias Clarity.Content.Ash.ApplicationOverview
   alias Clarity.Vertex.Application
   alias Clarity.Vertex.Root
@@ -41,66 +43,21 @@ defmodule Clarity.Content.Ash.ApplicationOverviewTest do
     end
   end
 
-  describe inspect(&ApplicationOverview.render_static/2) do
-    test "returns markdown tuple with function" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      lens = nil
+  describe "render" do
+    @app %Application{app: :clarity, description: "Clarity", version: Version.parse!("0.2.0")}
 
-      assert {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, lens)
-      assert is_function(markdown_fn, 1)
+    test "leads with the application's version and what it holds" do
+      html = render_overview(ApplicationOverview, @app)
+
+      assert text(html, ".ov-fact") =~ "Version 0.2.0"
+      assert text(html, ".ov-fact") =~ "Domains"
     end
 
-    test "generated markdown includes Ash Domains header" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, nil)
+    test "shows a section for each domain, with a card for each of its resources" do
+      html = render_overview(ApplicationOverview, @app, name_style: :short)
 
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "## Ash Domains"
-    end
-
-    test "generated markdown includes domain sections" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "Demo.Accounts"
-    end
-
-    test "names domains within the application, and resources within them, when short" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, nil)
-
-      markdown = IO.iodata_to_binary(markdown_fn.(%{theme: :light, zoom_subgraph: nil, name_style: :short}))
-
-      assert markdown =~ "### [Accounts](vertex://"
-      assert markdown =~ "| [User](vertex://"
-      refute markdown =~ "Demo.Accounts"
-    end
-
-    test "generated markdown includes resource tables" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "| Resource | Description |"
-      assert markdown =~ "Demo.Accounts.User"
-    end
-
-    test "generated markdown includes vertex links" do
-      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
-      {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, nil)
-
-      props = %{theme: :light, zoom_subgraph: nil}
-      markdown = IO.iodata_to_binary(markdown_fn.(props))
-
-      assert markdown =~ "vertex://ash-domain:demo-accounts"
-      assert markdown =~ "vertex://ash-resource:demo-accounts-user"
+      assert "Accounts" in texts(html, ".ov-domain-name")
+      assert "User" in texts(html, "#domain-Demo-Accounts .ov-resource-card a.ov-link")
     end
   end
 end
