@@ -75,7 +75,9 @@ defmodule Clarity.Components.MarkdownComponent do
     |> MDEx.traverse_and_update(&transform_vertex_links(&1, prefix, lens))
     |> MDEx.to_html!(highlight_opts)
   rescue
-    _exception -> "<p>Error rendering markdown</p>"
+    exception ->
+      Logger.error("Clarity: couldn't render markdown: " <> Exception.message(exception))
+      "<p>Error rendering markdown</p>"
   end
 
   # MDEx (>= 0.13) only highlights when `mdex_native` was compiled with Lumis,

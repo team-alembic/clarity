@@ -1,27 +1,33 @@
 defmodule Clarity.AutolinkTest do
   use ExUnit.Case, async: true
 
+  alias Ash.Resource.Info
   alias Clarity.Autolink
   alias Clarity.Graph
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Aggregate
+  alias Clarity.Vertex.Ash.Attribute
   alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
+  alias Demo.Accounts.User
   alias Demo.Billing.Invoice
   alias Demo.Billing.IssueInvoice
+  alias Demo.Billing.LineItem
   alias Demo.Helpdesk.Conversation
+  alias Demo.Helpdesk.CustomerContact
   alias Demo.Helpdesk.Message
   alias Demo.Helpdesk.Ticket
 
   @resources [
     Message,
     Conversation,
-    Demo.Helpdesk.CustomerContact,
+    CustomerContact,
     Demo.Helpdesk.SlaPolicy,
-    Demo.Billing.LineItem,
+    LineItem,
     Ticket,
     Demo.Projects.Ticket,
-    Demo.Accounts.User,
+    User,
     Invoice
   ]
 
@@ -106,6 +112,16 @@ defmodule Clarity.AutolinkTest do
       assert html =~ ~s(<a href="/to/Ticket" data-phx-link="patch" data-phx-link-state="push">Projects.Ticket</a>)
     end
 
+    test "copes with thousands of names" do
+      names = Map.new(1..5000, &{"Resource#{&1}.some_field_#{&1}", %Resource{resource: Invoice}})
+
+      assert render("See Resource4999.some_field_4999.", names) =~ "<a href="
+    end
+
+    test "links a name before a question mark or exclamation", %{names: names} do
+      assert render("Is it a Conversation?", names) =~ ~s(>Conversation</a>?)
+    end
+
     test "links only whole words", %{names: names} do
       html = render("UserTokens and Conversational and Invoiced.", names)
 
@@ -136,13 +152,99 @@ defmodule Clarity.AutolinkTest do
     end
   end
 
-  @spec render(String.t(), Autolink.names()) :: String.t()
-  defp render(markdown, names) do
+  describe "fields" do
+    setup do
+      graph = Graph.new()
+
+      for resource <- [
+            Conversation,
+            Message,
+            Ticket,
+            Demo.Projects.Ticket,
+            User,
+            CustomerContact,
+            Invoice,
+            LineItem
+          ] do
+        Graph.add_vertex(graph, %Resource{resource: resource}, %Root{})
+
+        for attribute <- Info.attributes(resource),
+            do: Graph.add_vertex(graph, %Attribute{attribute: attribute, resource: resource}, %Root{})
+
+        for aggregate <- Info.aggregates(resource),
+            do: Graph.add_vertex(graph, %Aggregate{aggregate: aggregate, resource: resource}, %Root{})
+      end
+
+      %{graph: graph}
+    end
+
+    test "links a field shared by many resources to the nearest one's", %{graph: graph} do
+      names = Autolink.names(graph, %Resource{resource: Conversation})
+
+      assert field(names["status"]) == {Ticket, :status}
+      assert field(names[":status"]) == {Ticket, :status}
+    end
+
+    test "prefers the text's own resource's field", %{graph: graph} do
+      assert field(Autolink.names(graph, %Resource{resource: Invoice})["total_cents"]) ==
+               {Invoice, :total_cents}
+
+      assert field(Autolink.names(graph, %Resource{resource: LineItem})["total_cents"]) ==
+               {LineItem, :total_cents}
+    end
+
+    test "leaves a field unlinked when the nearest resources tie", %{graph: graph} do
+      refute Map.has_key?(Autolink.names(graph, %Resource{resource: Message}), "email")
+    end
+
+    test "names a field by its resource too", %{graph: graph} do
+      names = Autolink.names(graph, nil)
+
+      assert field(names["Invoice.total_cents"]) == {Invoice, :total_cents}
+      assert field(names["Billing.Invoice.total_cents"]) == {Invoice, :total_cents}
+    end
+
+    test "links a field named after its resource's possessive to that resource's", %{graph: graph} do
+      names = Autolink.names(graph, %Resource{resource: LineItem})
+
+      html =
+        render("Stored so Invoice's `:total_cents` aggregate sums it, unlike Invoice's status.", names, &field_path/1)
+
+      assert html =~ ~s(href="/to/#{Vertex.id(aggregate(Invoice, :total_cents))}")
+      assert html =~ ~s(href="/to/#{Vertex.id(attribute(Invoice, :status))}")
+    end
+
+    test "links field names in text only when they look like code", %{graph: graph} do
+      names = Autolink.names(graph, %Resource{resource: Conversation})
+      html = render("The status and the sla_due_at, or `status`.", names, &field_path/1)
+
+      assert html =~ "The status and"
+      assert html =~ ~s(>sla_due_at</a>)
+      assert html =~ ~s(<code>status</code></a>)
+    end
+  end
+
+  @spec render(String.t(), Autolink.names(), (Vertex.t() -> String.t())) :: String.t()
+  defp render(markdown, names, path \\ &("/to/" <> short(&1))) do
     markdown
     |> MDEx.parse_document!(extension: [table: true])
-    |> Autolink.link(names, &("/to/" <> short(&1)))
+    |> Autolink.link(names, path)
     |> MDEx.to_html!()
   end
+
+  @spec field(Vertex.t() | nil) :: {module(), atom()} | nil
+  defp field(%Attribute{attribute: attribute, resource: resource}), do: {resource, attribute.name}
+  defp field(%Aggregate{aggregate: aggregate, resource: resource}), do: {resource, aggregate.name}
+  defp field(other), do: other
+
+  @spec aggregate(module(), atom()) :: Aggregate.t()
+  defp aggregate(resource, name), do: %Aggregate{aggregate: Info.aggregate(resource, name), resource: resource}
+
+  @spec attribute(module(), atom()) :: Attribute.t()
+  defp attribute(resource, name), do: %Attribute{attribute: Info.attribute(resource, name), resource: resource}
+
+  @spec field_path(Vertex.t()) :: String.t()
+  defp field_path(vertex), do: "/to/" <> Vertex.id(vertex)
 
   @spec links(String.t(), String.t()) :: non_neg_integer()
   defp links(html, to), do: length(String.split(html, ~s(href="/to/#{to}"))) - 1

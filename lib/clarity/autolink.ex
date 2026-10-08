@@ -4,12 +4,20 @@ defmodule Clarity.Autolink do
   description such as "A single utterance inside a Conversation, from a User"
   links Conversation and User to their pages.
 
-  A vertex is named by its module (`Demo.Helpdesk.Conversation`), by its name
-  within the application (`Helpdesk.Conversation`) and by its short name
-  (`Conversation`, or `Accounts` for a domain), and a resource by its plural
-  too (`Conversations`, `Policies`). When a short name fits more than one
-  vertex, the text's own vertex settles it: a resource it has a relationship
-  to first, then one in its domain; if that doesn't, the name isn't linked.
+  A resource, domain or Reactor is named by its module
+  (`Demo.Helpdesk.Conversation`), by its name within the application
+  (`Helpdesk.Conversation`) and by its short name (`Conversation`, or
+  `Accounts` for a domain), and a resource by its plural too
+  (`Conversations`, `Policies`). An attribute, calculation, aggregate,
+  relationship or action is named by its name (`total_cents`, `:status`,
+  `sensitive?`) and by its resource's name and its own (`Invoice.total_cents`).
+  Field names that read as plain words, such as `status`, link only in inline
+  code; ones that look like code, such as `total_cents`, link in running text
+  too.
+
+  When a name fits more than one vertex, the text's own vertex settles it by
+  nearness: its own resource first, then a resource it has a relationship to,
+  then one in its domain; if two are equally near, the name isn't linked.
   Only whole words link, each vertex at its first mention in a paragraph or
   table cell, and never the vertex the text describes, nor text in a heading,
   a link or a code block.
@@ -18,17 +26,37 @@ defmodule Clarity.Autolink do
   alias Ash.Resource.Info
   alias Clarity.Graph
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Action
+  alias Clarity.Vertex.Ash.Aggregate
+  alias Clarity.Vertex.Ash.Attribute
+  alias Clarity.Vertex.Ash.Calculation
   alias Clarity.Vertex.Ash.Domain
+  alias Clarity.Vertex.Ash.Relationship
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.ModuleProvider
 
   @typedoc "Names that link, each to the vertex it names."
   @type names() :: %{String.t() => Vertex.t()}
 
-  # The resources the text's vertex relates to, and its domain.
-  @typep context() :: %{related: [module()], domain: module() | nil}
+  # The text's vertex's own resource, the resources it relates to, and its domain.
+  @typep context() :: %{resource: module() | nil, related: [module()], domain: module() | nil}
 
-  @linkable [Resource, Domain, Vertex.Reactor]
+  @named_by_module [Resource, Domain, Vertex.Reactor]
+  # Vertices for a resource's fields, with the key holding the field.
+  @fields %{
+    Attribute => :attribute,
+    Calculation => :calculation,
+    Aggregate => :aggregate,
+    Relationship => :relationship,
+    Action => :action
+  }
+  @linkable @named_by_module ++ Map.keys(@fields)
+
+  # Anything in running text that could be a name, whole: a word or dotted
+  # name, perhaps after a colon and before a ? or !, not part of a longer one.
+  @token ~r/(?<![\w.:'’]):?[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*[?!]?/u
+  # Text ending in a name's possessive: "Invoice's ".
+  @possessive ~r/(?<![\w.])([A-Z][\w.]*)['’]s\s+$/u
 
   @doc """
   Returns the names to link in text about `vertex` (or about nothing in
@@ -60,16 +88,7 @@ defmodule Clarity.Autolink do
   def link(document, names, _path) when map_size(names) == 0, do: document
 
   def link(document, names, path) do
-    alternatives =
-      names
-      |> Map.keys()
-      |> Enum.sort_by(&String.length/1, :desc)
-      |> Enum.map_join("|", &Regex.escape/1)
-
-    # A whole name: not part of a longer word or module name.
-    regex = Regex.compile!("(?<![\\w.])(?:#{alternatives})(?![\\w]|\\.\\w)", "u")
-
-    {document, _linked} = walk(document, %{names: names, regex: regex, path: path}, MapSet.new())
+    {document, _linked} = walk(document, %{names: names, path: path}, MapSet.new())
     document
   end
 
@@ -97,49 +116,158 @@ defmodule Clarity.Autolink do
   # Each paragraph or table cell links its own first mentions.
   defp walk(%block{nodes: nodes} = node, context, linked)
        when block in [MDEx.Paragraph, MDEx.TableCell] do
-    {nodes, _linked} = Enum.flat_map_reduce(nodes, MapSet.new(), &child(&1, context, &2))
+    {nodes, _linked} = children(nodes, context, MapSet.new())
     {%{node | nodes: nodes}, linked}
   end
 
   defp walk(%{nodes: nodes} = node, context, linked) when is_list(nodes) do
-    {nodes, linked} = Enum.flat_map_reduce(nodes, linked, &child(&1, context, &2))
+    {nodes, linked} = children(nodes, context, linked)
     {%{node | nodes: nodes}, linked}
   end
 
   defp walk(node, _context, linked), do: {node, linked}
 
-  @spec child(MDEx.Document.md_node(), map(), MapSet.t()) ::
+  # Each child, with the name whose possessive the text before it ends in.
+  @spec children([MDEx.Document.md_node()], map(), MapSet.t()) ::
           {[MDEx.Document.md_node()], MapSet.t()}
-  defp child(%MDEx.Text{literal: text}, context, linked) do
-    context.regex
-    |> Regex.split(text, include_captures: true, trim: true)
-    |> Enum.flat_map_reduce(linked, &mention(&1, [%MDEx.Text{literal: &1}], context, &2))
+  defp children(nodes, context, linked) do
+    nodes
+    |> Enum.zip([nil | nodes])
+    |> Enum.flat_map_reduce(linked, fn {node, previous}, linked ->
+      owner =
+        with %MDEx.Text{literal: text} <- previous,
+             [_, name] <- Regex.run(@possessive, text) do
+          name
+        else
+          _no_possessive -> nil
+        end
+
+      child(node, owner, context, linked)
+    end)
   end
 
-  defp child(%MDEx.Code{literal: literal} = code, context, linked),
-    do: mention(literal, [code], context, linked)
+  @spec child(MDEx.Document.md_node(), String.t() | nil, map(), MapSet.t()) ::
+          {[MDEx.Document.md_node()], MapSet.t()}
+  defp child(%MDEx.Text{literal: text}, _owner, context, linked) do
+    # Alternates text between tokens and tokens, starting and ending with text.
+    pieces = Regex.split(@token, text, include_captures: true)
 
-  defp child(node, context, linked) do
+    pieces
+    |> Enum.with_index()
+    |> Enum.flat_map_reduce(linked, fn
+      {"", _index}, linked ->
+        {[], linked}
+
+      {piece, index}, linked when rem(index, 2) == 1 ->
+        token(piece, owner(pieces, index), context, linked)
+
+      {piece, _index}, linked ->
+        {[%MDEx.Text{literal: piece}], linked}
+    end)
+  end
+
+  defp child(%MDEx.Code{literal: literal} = code, owner, context, linked) do
+    case owned(owner, literal, context) do
+      nil -> mention(literal, [code], context, linked)
+      vertex -> link_vertex(vertex, [code], context, linked)
+    end
+  end
+
+  defp child(node, _owner, context, linked) do
     {node, linked} = walk(node, context, linked)
     {[node], linked}
   end
+
+  # The name before the token at `index`, if the token follows its possessive.
+  @spec owner([String.t()], non_neg_integer()) :: String.t() | nil
+  defp owner(pieces, index) when index >= 2 do
+    if String.match?(Enum.at(pieces, index - 1), ~r/^['’]s\s+$/u), do: Enum.at(pieces, index - 2)
+  end
+
+  defp owner(_pieces, _index), do: nil
+
+  # "Invoice's total_cents": a field named after its resource's possessive is
+  # that resource's, however near another resource's is, and links even when
+  # its name is a plain word ("Invoice's status").
+  @spec owned(String.t() | nil, String.t(), map()) :: Vertex.t() | nil
+  defp owned(nil, _field, _context), do: nil
+
+  defp owned(owner, field, context) do
+    case Map.get(context.names, owner) do
+      %{__struct__: Resource} ->
+        Map.get(context.names, owner <> "." <> String.trim_leading(field, ":"))
+
+      _not_a_resource ->
+        nil
+    end
+  end
+
+  # Links a token of running text that names a vertex. A name may end in ? or
+  # ! (sensitive?), so a token ending in one is tried with it, then without.
+  @spec token(String.t(), String.t() | nil, map(), MapSet.t()) ::
+          {[MDEx.Document.md_node()], MapSet.t()}
+  defp token(text, owner, context, linked) do
+    trimmed = text |> String.trim_trailing("?") |> String.trim_trailing("!")
+
+    cond do
+      vertex = owned(owner, text, context) ->
+        link_vertex(vertex, [%MDEx.Text{literal: text}], context, linked)
+
+      prose_name?(text, context) ->
+        mention(text, [%MDEx.Text{literal: text}], context, linked)
+
+      trimmed != text and prose_name?(trimmed, context) ->
+        {nodes, linked} = mention(trimmed, [%MDEx.Text{literal: trimmed}], context, linked)
+        {nodes ++ [%MDEx.Text{literal: String.replace_prefix(text, trimmed, "")}], linked}
+
+      true ->
+        {[%MDEx.Text{literal: text}], linked}
+    end
+  end
+
+  @spec prose_name?(String.t(), map()) :: boolean()
+  defp prose_name?(text, context), do: prose?(text) and Map.has_key?(context.names, text)
 
   # Links `nodes` if `text` names a vertex not yet linked, or leaves them be.
   @spec mention(String.t(), [MDEx.Document.md_node()], map(), MapSet.t()) ::
           {[MDEx.Document.md_node()], MapSet.t()}
   defp mention(text, nodes, context, linked) do
     case Map.fetch(context.names, text) do
-      {:ok, vertex} ->
-        if MapSet.member?(linked, vertex),
-          do: {nodes, linked},
-          else: {patch_link(context.path.(vertex), nodes), MapSet.put(linked, vertex)}
-
-      :error ->
-        {nodes, linked}
+      {:ok, vertex} -> link_vertex(vertex, nodes, context, linked)
+      :error -> {nodes, linked}
     end
   end
 
+  @spec link_vertex(Vertex.t(), [MDEx.Document.md_node()], map(), MapSet.t()) ::
+          {[MDEx.Document.md_node()], MapSet.t()}
+  defp link_vertex(vertex, nodes, context, linked) do
+    if MapSet.member?(linked, vertex),
+      do: {nodes, linked},
+      else: {patch_link(context.path.(vertex), nodes), MapSet.put(linked, vertex)}
+  end
+
+  # Names that read as names in running text: module-like ones, and field
+  # names that look like code. Plain words, such as `status`, link only in
+  # inline code.
+  @spec prose?(String.t()) :: boolean()
+  defp prose?(name), do: String.match?(name, ~r/^[A-Z]|^:|_|[?!]$/)
+
   @spec spellings(Vertex.t()) :: [String.t()]
+  defp spellings(%{__struct__: struct, resource: resource} = vertex)
+       when is_map_key(@fields, struct) do
+    name =
+      vertex |> Map.fetch!(Map.fetch!(@fields, struct)) |> Map.fetch!(:name) |> Atom.to_string()
+
+    owners =
+      Enum.uniq([
+        resource |> Module.split() |> List.last(),
+        Vertex.Name.in_app(resource),
+        inspect(resource)
+      ])
+
+    [name, ":" <> name | Enum.map(owners, &(&1 <> "." <> name))]
+  end
+
   defp spellings(vertex) do
     parts = vertex |> ModuleProvider.module() |> Module.split()
 
@@ -177,24 +305,36 @@ defmodule Clarity.Autolink do
     end
   end
 
-  @spec rank(Vertex.t(), context()) :: 0 | 1 | 2
+  @spec rank(Vertex.t(), context()) :: 0 | 1 | 2 | 3
   defp rank(vertex, context) do
-    module = ModuleProvider.module(vertex)
+    home = home(vertex)
 
     cond do
-      module in context.related -> 0
-      context.domain != nil and domain(module) == context.domain -> 1
-      true -> 2
+      home != nil and home == context.resource -> 0
+      home in context.related -> 1
+      context.domain != nil and domain_of(vertex) == context.domain -> 2
+      true -> 3
     end
   end
 
+  # The resource a vertex is, or is a field of.
+  @spec home(Vertex.t()) :: module() | nil
+  defp home(%{resource: resource}), do: resource
+  defp home(_vertex), do: nil
+
+  @spec domain_of(Vertex.t()) :: module() | nil
+  defp domain_of(%{__struct__: Domain, domain: domain}), do: domain
+  defp domain_of(vertex), do: vertex |> home() |> domain()
+
   if Code.ensure_loaded?(Ash) do
     @spec context(Vertex.t() | nil) :: context()
-    defp context(%{__struct__: Domain, domain: domain}), do: %{related: [], domain: domain}
+    defp context(%{__struct__: Domain, domain: domain}),
+      do: %{resource: nil, related: [], domain: domain}
 
     defp context(%{resource: resource}) when is_atom(resource) and resource != nil do
       if Info.resource?(resource) do
         %{
+          resource: resource,
           related: resource |> Info.relationships() |> Enum.map(& &1.destination),
           domain: Info.domain(resource)
         }
@@ -203,17 +343,19 @@ defmodule Clarity.Autolink do
       end
     end
 
-    defp context(_vertex), do: %{related: [], domain: nil}
+    defp context(_vertex), do: %{resource: nil, related: [], domain: nil}
 
-    @spec domain(module()) :: module() | nil
+    @spec domain(module() | nil) :: module() | nil
+    defp domain(nil), do: nil
+
     defp domain(module) do
       if Info.resource?(module), do: Info.domain(module)
     end
   else
     @spec context(Vertex.t() | nil) :: context()
-    defp context(_vertex), do: %{related: [], domain: nil}
+    defp context(_vertex), do: %{resource: nil, related: [], domain: nil}
 
-    @spec domain(module()) :: module() | nil
+    @spec domain(module() | nil) :: module() | nil
     defp domain(_module), do: nil
   end
 
