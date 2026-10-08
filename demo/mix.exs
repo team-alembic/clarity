@@ -8,7 +8,8 @@ defmodule Demo.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      listeners: [Phoenix.CodeReloader, Clarity.CodeReloader]
+      listeners: [Phoenix.CodeReloader, Clarity.CodeReloader],
+      consolidate_protocols: Mix.env() != :dev
     ]
   end
 
