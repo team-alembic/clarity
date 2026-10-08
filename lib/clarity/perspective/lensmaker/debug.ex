@@ -38,7 +38,8 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
         _a, %Content{provider: Content.Graph} -> false
         a, b -> Lens.sort_alphabetically(a, b)
       end,
-      show_vertex_types: & &1
+      show_vertex_types: & &1,
+      contents: {:except, [Content.Graph]}
     }
   end
 

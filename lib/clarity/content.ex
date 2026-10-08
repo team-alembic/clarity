@@ -177,9 +177,13 @@ defmodule Clarity.Content do
     |> Enum.sort(lens.content_sorter)
   end
 
-  # A lens may name the providers whose tabs it shows.
+  # A lens may name the providers whose tabs it shows, or those it doesn't.
   @spec shown_by([module()], Lens.t()) :: [module()]
   defp shown_by(providers, %Lens{contents: :all}), do: providers
+
+  defp shown_by(providers, %Lens{contents: {:except, hidden}}),
+    do: Enum.reject(providers, &(&1 in hidden))
+
   defp shown_by(providers, %Lens{contents: shown}), do: Enum.filter(providers, &(&1 in shown))
 
   @spec applies?(module(), Vertex.t(), Lens.t()) :: boolean()

@@ -31,7 +31,8 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
         """
       end,
       filter: &filter/1,
-      show_vertex_types: &show_vertex_types/1
+      show_vertex_types: &show_vertex_types/1,
+      contents: {:except, [Clarity.Content.Graph]}
     }
   end
 

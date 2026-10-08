@@ -67,7 +67,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "loads root vertex with graph content", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       html = render_async(view)
 
       # Should show the page with navigation
@@ -107,7 +107,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Breadcrumbs" do
     test "displays breadcrumbs for root vertex", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       html = render_async(view)
 
       # Root vertex is not shown in breadcrumbs since it's always the same
@@ -135,29 +135,29 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Graph Interactions" do
     test "navigates to application vertex via graph click", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       render_async(view)
 
       # Test viz:click event with a known vertex ID from our test helper
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "application:clarity"})
 
       # Should navigate to the clicked vertex
-      assert_patched(view, "/debug/application:clarity/graph")
+      assert_patched(view, "/graph/application:clarity/graph")
     end
 
     test "navigates to domain vertex via graph click", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       render_async(view)
 
       # Test viz:click event with domain vertex
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts"})
 
       # Should navigate to the domain vertex
-      assert_patched(view, "/debug/ash-domain:demo-accounts/graph")
+      assert_patched(view, "/graph/ash-domain:demo-accounts/graph")
     end
 
     test "graph visualization renders correctly", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       render_async(view)
 
       # Should render the graph visualization element
@@ -210,7 +210,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "graph visualisations ship each vertex's full hint", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       render_async(view)
 
       hints =
@@ -241,6 +241,17 @@ defmodule Clarity.Pages.PageLiveTest do
       tabs = view |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(".content-tab")
 
       assert Enum.map(tabs, &(&1 |> LazyHTML.text() |> String.trim())) == ["Graph Navigation"]
+    end
+
+    test "only the Graph lens shows the graph tab", %{conn: conn} do
+      for lens <- ["architect", "security", "documentation", "debug"] do
+        {:ok, view, _html} =
+          conn |> live("/#{lens}/ash-domain:demo-accounts") |> follow_redirect(conn)
+
+        render_async(view)
+
+        refute has_element?(view, ".content-tab", "Graph Navigation"), "#{lens} shows the graph"
+      end
     end
 
     test "the Documentation lens shows a domain's overview, not its graph", %{conn: conn} do
@@ -295,7 +306,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Content Rendering" do
     test "renders graph navigation content by default", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       html = render_async(view)
 
       # Should render viz content by default (Graph Navigation)
@@ -304,7 +315,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "switches between different content tabs", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
 
       # Should have at least the Graph Navigation tab
       assert has_element?(view, "nav.tabs")
@@ -328,12 +339,12 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "handles vertex navigation with different content types", %{conn: conn} do
       # Navigate to different vertices and ensure content updates
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
       render_async(view)
 
       # Navigate to application vertex
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "application:clarity"})
-      assert_patched(view, "/debug/application:clarity/graph")
+      assert_patched(view, "/graph/application:clarity/graph")
 
       # Content should update for the new vertex
       assert has_element?(view, ".content")
@@ -374,7 +385,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "shows content 404 for invalid content", %{conn: conn} do
       # Test with valid vertex but invalid content should show content 404
-      {:ok, view, _html} = live(conn, "/debug/root/invalid_content")
+      {:ok, view, _html} = live(conn, "/graph/root/invalid_content")
       html = render_async(view)
 
       # Should show content not found error inside the content area
@@ -417,7 +428,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "marks the tab being shown as the current one", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/graph/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "nav.tabs a[aria-current='page']", "Graph Navigation")

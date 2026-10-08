@@ -34,7 +34,8 @@ defmodule Clarity.Perspective.Lensmaker.Security do
       end,
       filter: &filter/1,
       show_vertex_types: &show_vertex_types/1,
-      status_filter: &surface_status?/1
+      status_filter: &surface_status?/1,
+      contents: {:except, [Clarity.Content.Graph]}
     }
   end
 
