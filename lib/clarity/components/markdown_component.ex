@@ -23,6 +23,7 @@ defmodule Clarity.Components.MarkdownComponent do
   # What links names in the text, and how: see `Clarity.Autolink`.
   @typep naming() :: %{
            graph: Clarity.Graph.t() | nil,
+           index: Autolink.index() | nil,
            vertex: Vertex.t() | nil,
            names: Autolink.names() | nil,
            linking: Autolink.options()
@@ -35,6 +36,13 @@ defmodule Clarity.Components.MarkdownComponent do
   attr :prefix, :string, required: true, doc: "URL prefix for link generation"
   attr :lens, Lens, required: true, doc: "Current lens for link generation"
   attr :graph, :any, default: nil, doc: "The graph whose vertices' names to link; nil links none"
+
+  attr :index, :any,
+    default: nil,
+    doc:
+      "A prebuilt `Clarity.Autolink.index/2` to link names from instead of `graph`, so many " <>
+        "small texts about one graph (e.g. a table's cells) don't each build it"
+
   attr :vertex, :any, default: nil, doc: "The vertex the text is about, if any"
 
   attr :names, :map,
@@ -58,6 +66,7 @@ defmodule Clarity.Components.MarkdownComponent do
     <div class={"prose dark:prose-invert #{@class}"} {@rest}>
       {render_markdown_with_vertex_links(@content, @prefix, @lens, %{
         graph: @graph,
+        index: @index,
         vertex: @vertex,
         names: @names,
         linking: @linking
@@ -140,15 +149,15 @@ defmodule Clarity.Components.MarkdownComponent do
   end
 
   @spec link_names(MDEx.Document.t(), naming(), String.t(), Lens.t()) :: MDEx.Document.t()
-  defp link_names(document, %{graph: nil, names: nil}, _prefix, _lens), do: document
+  defp link_names(document, %{graph: nil, index: nil, names: nil}, _prefix, _lens), do: document
 
   defp link_names(document, %{names: names, vertex: vertex, linking: linking}, prefix, lens)
        when is_map(names) do
     Autolink.link(document, names, path_fn(prefix, lens), [vertex: vertex] ++ linking)
   end
 
-  defp link_names(document, %{graph: graph, vertex: vertex, linking: linking}, prefix, lens) do
-    index = Autolink.index(graph, linking)
+  defp link_names(document, %{vertex: vertex, linking: linking} = naming, prefix, lens) do
+    index = naming.index || Autolink.index(naming.graph, linking)
 
     Autolink.link(
       document,

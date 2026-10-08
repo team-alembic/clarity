@@ -12,6 +12,7 @@ defmodule Clarity.Components.MarkdownComponentTest do
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
   alias Demo.Billing.Invoice
+  alias Demo.Helpdesk.Conversation
   alias Demo.Helpdesk.Message
 
   @spec test_lens(String.t()) :: Lens.t()
@@ -38,7 +39,7 @@ defmodule Clarity.Components.MarkdownComponentTest do
     test "links the vertices the text names, settling short names by its vertex" do
       graph = Clarity.Graph.new()
 
-      for resource <- [Message, Demo.Helpdesk.Conversation, Demo.Accounts.User] do
+      for resource <- [Message, Conversation, Demo.Accounts.User] do
         Clarity.Graph.add_vertex(graph, %Resource{resource: resource}, %Root{})
       end
 
@@ -78,6 +79,28 @@ defmodule Clarity.Components.MarkdownComponentTest do
         """)
 
       assert html =~ ~s(<a href="/c/architect/#{Clarity.Vertex.id(total_cents)}")
+    end
+
+    test "links names from a prebuilt index, for many small texts about one graph" do
+      graph = Clarity.Graph.new()
+
+      for resource <- [Message, Conversation] do
+        Clarity.Graph.add_vertex(graph, %Resource{resource: resource}, %Root{})
+      end
+
+      assigns = %{
+        content: "A single utterance inside a Conversation.",
+        index: Clarity.Autolink.index(graph),
+        vertex: %Resource{resource: Message},
+        lens: test_lens("architect")
+      }
+
+      html =
+        rendered_to_string(~H"""
+        <.markdown content={@content} prefix="/c" lens={@lens} index={@index} vertex={@vertex} />
+        """)
+
+      assert html =~ ~s(<a href="/c/architect/ash-resource:demo-helpdesk-conversation" data-phx-link="patch")
     end
   end
 
