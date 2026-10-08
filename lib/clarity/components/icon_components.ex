@@ -157,6 +157,24 @@ defmodule Clarity.IconComponents do
   def icon_report(assigns)
 
   @doc """
+  Renders a book icon (an open book), for the Documentation lens.
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_book(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_book(assigns)
+
+  @doc """
+  Renders a share icon (three connected nodes), for the Graph lens.
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_share(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_share(assigns)
+
+  @doc """
   Renders a check icon (checkmark).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"

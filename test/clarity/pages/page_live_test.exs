@@ -219,6 +219,25 @@ defmodule Clarity.Pages.PageLiveTest do
     end
   end
 
+  describe "PageLive lens tabs" do
+    test "the Graph lens shows only the graph tab", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      render_async(view)
+
+      tabs = view |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(".content-tab")
+
+      assert Enum.map(tabs, &(&1 |> LazyHTML.text() |> String.trim())) == ["Graph Navigation"]
+    end
+
+    test "the Documentation lens shows a domain's overview, not its graph", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/ash-domain-overview")
+      render_async(view)
+
+      assert has_element?(view, ".content-tab", "Domain Overview")
+      refute has_element?(view, ".content-tab", "Graph Navigation")
+    end
+  end
+
   describe "PageLive Content Rendering" do
     test "renders graph navigation content by default", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")

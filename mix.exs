@@ -65,6 +65,8 @@ defmodule Clarity.MixProject do
         clarity_perspective_lensmakers: [
           Clarity.Perspective.Lensmaker.Architect,
           Clarity.Perspective.Lensmaker.Security,
+          Clarity.Perspective.Lensmaker.Documentation,
+          Clarity.Perspective.Lensmaker.GraphNavigation,
           Clarity.Perspective.Lensmaker.Debug
         ],
         clarity_content_providers: [

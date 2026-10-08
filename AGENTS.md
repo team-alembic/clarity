@@ -54,7 +54,7 @@ Display information about vertices in the UI. Implement `Clarity.Content` behavi
 
 ### 4. Lensmakers (`lib/clarity/perspective/lensmaker/`)
 
-Create filtered views of the graph for different audiences (architect, security, debug). Implement `Clarity.Perspective.Lensmaker` behaviour with `make_lens/0` and `update_lens/1`.
+Create filtered views of the graph for different audiences (architect, security, documentation, graph, debug); a lens filters the tree and chooses which tabs a vertex shows (`contents`). Implement `Clarity.Perspective.Lensmaker` behaviour with `make_lens/0` and `update_lens/1`.
 
 ### 5. Status Providers (`lib/clarity/status/`)
 

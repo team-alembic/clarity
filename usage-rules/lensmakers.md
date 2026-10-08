@@ -121,6 +121,14 @@ config :my_app, :clarity_perspective_lensmakers, [
     domains, are removed before the lens filters the graph unless this is `true`
   - Default: `false`; only the built-in Debug lens sets it
 
+- **`contents`** (`:all` | list of content provider modules) - Which tabs a
+  vertex shows under the lens
+  - A list keeps only those providers' tabs (each provider's own `applies?/2`
+    still applies); a vertex left with none of them shows its graph
+    (`Clarity.Content.Graph`) instead
+  - Default: `:all`, every provider that applies. The built-in
+    Documentation lens, for one, shows only Domain Overview and Module Documentation
+
 ## Filter Patterns
 
 ### Static Filters
