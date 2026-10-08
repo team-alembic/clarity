@@ -33,16 +33,7 @@ defmodule Clarity.Graph.DOT do
 
     [
       "digraph {\n",
-      "  bgcolor = transparent;\n",
-      "  fontname = \"system-ui\";\n",
-      if options[:theme] == :dark do
-        [
-          "  color = \"#9ca3af\";\n",
-          "  fontcolor = \"#f0f0f0\";\n"
-        ]
-      else
-        []
-      end,
+      themed(options[:theme]),
       "  graph [\n",
       "    splines=curved,\n",
       "    concentrate=false,\n",
@@ -50,10 +41,34 @@ defmodule Clarity.Graph.DOT do
       "    ranksep=0.7,\n",
       "    bgcolor=transparent\n,
       ];\n",
+      "  rankdir = LR;\n",
+      indent(graph_content),
+      clarity_graph |> render_edges(included_vertices) |> indent(),
+      "}\n"
+    ]
+  end
+
+  @doc """
+  Returns the statements that colour a graph, its nodes and edges for the
+  theme, in Clarity's font: the opening of any of its DOT graphs.
+  """
+  @spec themed(theme()) :: iodata()
+  def themed(theme) do
+    [
+      "  bgcolor = transparent;\n",
+      "  fontname = \"system-ui\";\n",
+      if theme == :dark do
+        [
+          "  color = \"#9ca3af\";\n",
+          "  fontcolor = \"#f0f0f0\";\n"
+        ]
+      else
+        []
+      end,
       "  node [\n",
       "    tooltip = \" \";\n",
       "    fontname = \"system-ui\";\n",
-      if options[:theme] == :dark do
+      if theme == :dark do
         [
           "    fontcolor = \"#fff\";\n",
           "    style = filled;\n",
@@ -66,7 +81,7 @@ defmodule Clarity.Graph.DOT do
       "  ];\n",
       "  edge [\n",
       "    fontname = \"system-ui\";\n",
-      if options[:theme] == :dark do
+      if theme == :dark do
         [
           "    fontcolor = \"#e5e7eb\";\n",
           "    color = \"#d1d5db\";\n"
@@ -74,13 +89,17 @@ defmodule Clarity.Graph.DOT do
       else
         []
       end,
-      "  ];\n",
-      "  rankdir = LR;\n",
-      indent(graph_content),
-      clarity_graph |> render_edges(included_vertices) |> indent(),
-      "}\n"
+      "  ];\n"
     ]
   end
+
+  @doc """
+  Returns the attributes that pick out a node, such as the vertex a graph
+  is about, for the theme.
+  """
+  @spec highlighted(theme()) :: String.t()
+  def highlighted(:dark), do: ~s(style = filled, fillcolor = "#ff5757", color = "#ff5757")
+  def highlighted(_theme), do: ~s(style = filled, fillcolor = "#FF914D", color = "#FF914D")
 
   @spec render_graph(graph :: Clarity.Graph.t(), options :: options()) ::
           {iodata(), MapSet.t(Vertex.t())}
@@ -151,10 +170,10 @@ defmodule Clarity.Graph.DOT do
       for {group, vertices} <- nested do
         [
           "subgraph ",
-          encode_id(["cluster_", group]),
+          quote_id(["cluster_", group]),
           " {\n",
           "  label = ",
-          escape_html_label([
+          html_label([
             raw("<FONT POINT-SIZE=\"10\">"),
             group,
             raw("</FONT>")
@@ -174,7 +193,7 @@ defmodule Clarity.Graph.DOT do
       [
         encode_vertex_id(vertex),
         " [label = ",
-        escape_html_label([
+        html_label([
           raw("<I><FONT POINT-SIZE=\"8\">"),
           Vertex.type_label(vertex),
           raw("</FONT></I><BR />"),
@@ -189,11 +208,7 @@ defmodule Clarity.Graph.DOT do
         ", URL = \"#",
         Vertex.id(vertex),
         "\"",
-        case {vertex in options[:highlight], options[:theme]} do
-          {true, :dark} -> ", style = filled, fillcolor = \"#ff5757\", color = \"#ff5757\""
-          {true, :light} -> ", style = filled, fillcolor = \"#FF914D\", color = \"#FF914D\""
-          _ -> ""
-        end,
+        if(vertex in options[:highlight], do: [", ", highlighted(options[:theme])], else: ""),
         "];\n"
       ]
     end
@@ -226,7 +241,7 @@ defmodule Clarity.Graph.DOT do
 
     [
       "<warning_vertex> [label = ",
-      escape_html_label([
+      html_label([
         raw("<FONT POINT-SIZE=\"10\"><B>⚠ Graph Truncated</B></FONT>"),
         raw("<BR />"),
         raw("<FONT POINT-SIZE=\"8\">"),
@@ -259,16 +274,21 @@ defmodule Clarity.Graph.DOT do
   end
 
   @spec encode_vertex_id(vertex :: Vertex.t()) :: iodata()
-  defp encode_vertex_id(vertex), do: vertex |> Vertex.id() |> encode_id()
+  defp encode_vertex_id(vertex), do: vertex |> Vertex.id() |> quote_id()
 
-  @spec encode_id(id :: iodata()) :: iodata()
-  defp encode_id(id) do
+  @doc "Writes an id as a DOT HTML string, escaped."
+  @spec quote_id(id :: iodata()) :: iodata()
+  def quote_id(id) do
     {:safe, content} = id |> to_string() |> html_escape()
     [?<, content, ?>]
   end
 
-  @spec escape_html_label(content :: Safe.t()) :: iodata()
-  defp escape_html_label(text) do
+  @doc """
+  Writes text as a DOT HTML label, escaped, with `Phoenix.HTML.raw/1` for
+  its markup.
+  """
+  @spec html_label(content :: Safe.t()) :: iodata()
+  def html_label(text) do
     [?<, Safe.to_iodata(text), ?>]
   end
 end

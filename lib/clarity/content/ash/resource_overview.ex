@@ -315,7 +315,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                 <.ash_type links={@links} type={calculation.type} />
               </:col>
               <:col :let={calculation} label="Computes">
-                <.computation calculation={calculation} />
+                <.computation links={@links} resource={@resource} calculation={calculation} />
                 <div :if={calculation.arguments != []} class="ov-flags mt-1">
                   <.flag>
                     {length(calculation.arguments)} {if length(calculation.arguments) == 1,

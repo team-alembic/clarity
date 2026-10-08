@@ -3,6 +3,8 @@ import { panZoom } from "./pan-zoom";
 import { applyHints } from "./tooltip.hook";
 import { cacheKey, getSvg, putSvg } from "./svg-cache";
 
+const XLINK = "http://www.w3.org/1999/xlink";
+
 export default {
   async mounted() {
     await this.render();
@@ -28,16 +30,28 @@ export default {
     const svg = await this.svgFor(key, graph);
     this.renderedKey = key;
 
-    svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
+    // A diagram among an overview's sections (data-pan-zoom="false") keeps
+    // its own size, shrinking to fit, so scrolling the page over it scrolls.
+    const fixed = this.el.dataset.panZoom === "false";
+    if (fixed) {
+      svg.style.maxWidth = "100%";
+      svg.style.height = "auto";
+    } else {
+      svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
+      svg.setAttribute("width", "100%");
+      svg.setAttribute("height", "100%");
+    }
 
-    [...svg.querySelectorAll('a[*|href]')].forEach((link) => {
-      const id = link.getAttributeNS('http://www.w3.org/1999/xlink', 'href').replace(/^#/, "");
-      link.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.pushEvent("viz:click", { id });
+    // A click opens the vertex in the graph, or with data-event, sends that.
+    const event = this.el.dataset.event || "viz:click";
+    [...svg.querySelectorAll("a")].forEach((link) => {
+      const href = link.getAttributeNS(XLINK, "href") || link.getAttribute("href");
+      if (!href) return;
+      const id = href.replace(/^#/, "");
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.pushEvent(event, { id });
       });
     });
 
@@ -48,6 +62,8 @@ export default {
     }
     this.el.appendChild(svg);
     this.oldSvg = svg;
+
+    if (fixed) return;
 
     const zoom = panZoom(this.el, svg);
 

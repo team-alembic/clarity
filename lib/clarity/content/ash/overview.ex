@@ -9,10 +9,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     import Clarity.Components.OverviewComponents
 
+    alias Ash.Resource.Calculation.Argument
     alias Ash.Resource.Info
     alias Ash.Resource.Relationships
+    alias Clarity.Ash.Expression
     alias Clarity.Content.Ash.StateMachineDiagram
     alias Clarity.Graph
+    alias Clarity.Tooltip
     alias Clarity.Vertex.Ash.Action
     alias Clarity.Vertex.Ash.Aggregate
     alias Clarity.Vertex.Ash.Attribute
@@ -103,18 +106,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     Returns how a calculation computes its value: its expression, or the
     module that implements it.
     """
-    @spec computation_of(Ash.Resource.Calculation.t()) ::
-            {:expr, String.t()} | {:module, module()}
+    @spec computation_of(Ash.Resource.Calculation.t()) :: {:expr, term()} | {:module, module()}
     def computation_of(%{calculation: {Ash.Resource.Calculation.Expression, opts}}),
-      do: {:expr, inspect(Keyword.get(opts, :expr), pretty: true, width: 80)}
+      do: {:expr, Keyword.get(opts, :expr)}
 
     def computation_of(%{calculation: {module, _opts}}), do: {:module, module}
     def computation_of(%{calculation: module}) when is_atom(module), do: {:module, module}
 
     @doc """
-    Renders how a calculation computes its value: its expression, clamped to
-    a couple of lines unless `full`, or its module.
+    Renders how a calculation on `resource` computes its value: its
+    expression, clamped to a couple of lines unless `full`, or its module.
     """
+    attr :links, :map, required: true
+    attr :resource, :atom, required: true
     attr :calculation, :any, required: true
     attr :full, :boolean, default: false
 
@@ -124,13 +128,103 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       ~H"""
       <%= case @computation do %>
-        <% {:expr, code} -> %>
-          <pre :if={@full} class="ov-code-block">{code}</pre>
-          <code :if={!@full} class="ov-code line-clamp-2 whitespace-pre-wrap">{code}</code>
+        <% {:expr, expression} -> %>
+          <.expression
+            links={@links}
+            resource={@resource}
+            expression={expression}
+            arguments={@calculation.arguments}
+            block={@full}
+            class={!@full && "line-clamp-2"}
+          />
         <% {:module, module} -> %>
           <code class="ov-code">{inspect(module)}</code>
       <% end %>
       """
+    end
+
+    @doc """
+    Renders an expression on `resource` as Ash writes it, with what it names
+    linked: each field and relationship to its page, with its hover hint,
+    and each of the calculation's `arguments`, and each value from the
+    actor, tenant or context, explained on hover.
+    """
+    attr :links, :map, required: true
+    attr :resource, :atom, required: true
+    attr :expression, :any, required: true
+    attr :arguments, :list, default: [], doc: "The calculation's arguments, it may use"
+    attr :block, :boolean, default: false, doc: "Whether it's a block of its own, not inline"
+    attr :class, :any, default: nil
+
+    @spec expression(map()) :: Rendered.t()
+    def expression(assigns) do
+      assigns =
+        assign(
+          assigns,
+          :tokens,
+          assigns.resource
+          |> Expression.parts(assigns.expression)
+          |> Enum.flat_map(&tokens(&1, assigns.links, assigns.arguments))
+        )
+
+      ~H"""
+      <pre :if={@block} class={["ov-code-block", @class]} phx-no-format><.token :for={token <- @tokens} token={token} links={@links} /></pre>
+      <code :if={!@block} class={["ov-code whitespace-pre-wrap", @class]} phx-no-format><.token :for={token <- @tokens} token={token} links={@links} /></code>
+      """
+    end
+
+    attr :token, :any, required: true
+    attr :links, :map, required: true
+
+    @spec token(map()) :: Rendered.t()
+    defp token(%{token: {:text, text}} = assigns) do
+      assigns = assign(assigns, :text, text)
+      ~H"{@text}"
+    end
+
+    defp token(%{token: {:link, field, name}} = assigns) do
+      assigns = assign(assigns, field: field, name: name)
+
+      ~H|<.link patch={path(@links, @field)} class="ov-expr-ref" {Tooltip.attrs(@field)}>{@name}</.link>|
+    end
+
+    defp token(%{token: {:hint, hint, text}} = assigns) do
+      assigns = assign(assigns, hint: hint, text: text)
+      ~H|<span class="ov-expr-value" {Tooltip.attrs(@hint)}>{@text}</span>|
+    end
+
+    # The expression's code as text, links and values explained on hover.
+    @spec tokens(Expression.part(), map(), [Argument.t()]) :: [tuple()]
+    defp tokens(text, _links, _arguments) when is_binary(text), do: [{:text, text}]
+
+    defp tokens({:ref, %{segments: segments}}, links, _arguments) do
+      Enum.map_intersperse(segments, {:text, "."}, fn {name, field} ->
+        if field && linked?(links, field), do: {:link, field, name}, else: {:text, name}
+      end)
+    end
+
+    defp tokens({:argument, name}, _links, arguments),
+      do: [{:hint, argument_hint(name, arguments), "^arg(#{inspect(name)})"}]
+
+    defp tokens({:template, "^actor" <> _rest = text}, _links, _arguments),
+      do: [{:hint, "From the actor: whoever runs the query", text}]
+
+    defp tokens({:template, "^tenant" <> _rest = text}, _links, _arguments),
+      do: [{:hint, "The tenant the query runs for", text}]
+
+    defp tokens({:template, text}, _links, _arguments),
+      do: [{:hint, "From the query's context", text}]
+
+    @spec argument_hint(atom(), [Argument.t()]) :: String.t()
+    defp argument_hint(name, arguments) do
+      case Enum.find(arguments, &(&1.name == name)) do
+        nil ->
+          "An argument, given when the calculation is loaded"
+
+        argument ->
+          "The #{name} argument: #{type_name(argument.type)}" <>
+            if(argument.allow_nil?, do: ", optional", else: ", required")
+      end
     end
 
     @doc """
@@ -264,7 +358,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             :for={{icon, tone, count, label} <- @counts}
             :if={count > 0}
             class="inline-flex items-center gap-1"
-            {Clarity.Tooltip.attrs("#{count} #{label}")}
+            {Tooltip.attrs("#{count} #{label}")}
           >
             <.type_icon icon={icon} tone={tone} />{count}
           </span>

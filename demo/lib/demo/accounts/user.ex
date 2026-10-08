@@ -84,6 +84,10 @@ defmodule Demo.Accounts.User do
   calculations do
     calculate :is_super_admin?, :boolean, expr(admin && representative)
 
+    calculate :display_name, :string, Demo.Accounts.Calculations.DisplayName do
+      description "The User's name as others see it, marked when they're an admin."
+    end
+
     calculate :full_name,
               :string,
               expr(

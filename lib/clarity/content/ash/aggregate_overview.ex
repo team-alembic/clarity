@@ -6,7 +6,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     Leads with what the aggregate computes ("sum of total_cents") and the
     type it returns, then the path it follows from its resource, through
     each relationship, to the field it reads, and what narrows or orders
-    the records it reads.
+    the records it reads. Then where its value comes from, down to the
+    stored fields (see `Clarity.Ash.Provenance`).
     """
 
     @behaviour Clarity.Content
@@ -15,9 +16,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     import Clarity.Components.OverviewComponents
     import Clarity.Content.Ash.Overview
+    import Clarity.Content.Ash.ProvenanceComponents
 
     alias Ash.Resource.Info
+    alias Clarity.Ash.Provenance
     alias Clarity.Vertex.Ash.Aggregate
+    alias Clarity.Vertex.Ash.Attribute
     alias Clarity.Vertex.Ash.Resource
 
     @impl Clarity.Content
@@ -37,6 +41,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def update(assigns, socket) do
       %Aggregate{aggregate: aggregate, resource: resource} = assigns.vertex
       hops = hops(resource, aggregate.relationship_path)
+      {_via, destination} = Provenance.records(resource, aggregate)
 
       {:ok,
        socket
@@ -47,7 +52,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          resource: resource,
          hops: hops,
          field: field(hops, resource, aggregate.field),
-         type: type(resource, aggregate)
+         type: type(resource, aggregate),
+         destination: destination,
+         tree: tree(assigns.vertex),
+         theme: Map.get(assigns, :theme, :light)
        )}
     end
 
@@ -110,8 +118,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </div>
 
             <.facts>
-              <:fact :if={Map.get(@aggregate, :filter)} label="Filter">
-                <code class="ov-code">{inspect(@aggregate.filter)}</code>
+              <:fact :if={Map.get(@aggregate, :filter) not in [nil, true, []]} label="Filter">
+                <.expression
+                  :if={@destination}
+                  links={@links}
+                  resource={@destination}
+                  expression={@aggregate.filter}
+                />
+                <code :if={!@destination} class="ov-code">{inspect(@aggregate.filter)}</code>
               </:fact>
               <:fact :if={List.wrap(Map.get(@aggregate, :sort)) != []} label="Sort">
                 <code class="ov-code">{inspect(@aggregate.sort)}</code>
@@ -139,9 +153,24 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               </:fact>
             </.facts>
           </div>
+
+          <.provenance :if={@tree} links={@links} tree={@tree} theme={@theme} />
         </div>
       </div>
       """
+    end
+
+    # Where its value comes from, unless that's only the stored field at the
+    # end of its path, which the path already shows.
+    @spec tree(Aggregate.t()) :: Provenance.tree() | nil
+    defp tree(vertex) do
+      tree = Provenance.of(vertex)
+
+      if Enum.any?(
+           tree.children,
+           &(&1.children != [] or &1.role != :reads or not match?(%Attribute{}, &1.vertex))
+         ),
+         do: tree
     end
 
     # Each relationship along the path, with the resource it leaves from.

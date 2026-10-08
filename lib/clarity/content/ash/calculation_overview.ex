@@ -4,8 +4,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     Content provider for an Ash calculation's overview.
 
     Leads with the type the calculation returns and how it computes it: its
-    expression in full, or the module that implements it. Then its arguments,
-    with which are required, and what it loads first.
+    expression in full, each field it names linked, or the module that
+    implements it. Then where its value comes from, down to the stored
+    fields (see `Clarity.Ash.Provenance`), and its arguments, with which are
+    required.
     """
 
     @behaviour Clarity.Content
@@ -14,7 +16,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     import Clarity.Components.OverviewComponents
     import Clarity.Content.Ash.Overview
+    import Clarity.Content.Ash.ProvenanceComponents
 
+    alias Clarity.Ash.Provenance
     alias Clarity.Vertex.Ash.Calculation
     alias Clarity.Vertex.Ash.Resource
 
@@ -43,7 +47,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          calculation: calculation,
          resource: resource,
          expression?: match?({:expr, _code}, computation_of(calculation)),
-         loads: loads(calculation)
+         loads: loads(calculation),
+         tree: Provenance.of(assigns.vertex),
+         theme: Map.get(assigns, :theme, :light)
        )}
     end
 
@@ -77,7 +83,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               <.description links={@links} text={description_of(@calculation)} lead />
             </.hero>
 
-            <.computation calculation={@calculation} full />
+            <.computation links={@links} resource={@resource} calculation={@calculation} full />
 
             <.facts>
               <:fact :if={@loads != []} label="Loads first">
@@ -100,6 +106,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               </:fact>
             </.facts>
           </div>
+
+          <.provenance links={@links} tree={@tree} theme={@theme} />
 
           <.section
             :if={@calculation.arguments != []}

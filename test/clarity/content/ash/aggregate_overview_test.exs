@@ -51,6 +51,23 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
 
       assert text(html, ".ov-headline") == "sum of line_items.total_cents returning integer"
       assert texts(html, ".ov-join") == ["Invoice → line_items → LineItem . total_cents"]
+      assert Enum.empty?(LazyHTML.query(html, "#provenance")), "the path already shows where it reads"
+    end
+
+    test "links the fields its filter names on the related records, and what it reads by them" do
+      project = Demo.Projects.Project
+
+      html =
+        render_overview(AggregateOverview, %Aggregate{
+          aggregate: Info.aggregate(project, :open_ticket_count),
+          resource: project
+        })
+
+      assert html
+             |> LazyHTML.query(".ov-fact .ov-expr-ref")
+             |> LazyHTML.attribute("href") == ["/c/architect/ash-attribute:demo-projects-ticket:status"]
+
+      assert texts(html, "#provenance .ov-source") == ["tickets . status atom stored filter"]
     end
   end
 end

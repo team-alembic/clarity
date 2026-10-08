@@ -423,6 +423,12 @@ defmodule Clarity.PageLive do
      )}
   end
 
+  # A diagram among an overview's sections opens the vertex's own page.
+  def handle_event("viz:open", %{"id" => id}, socket) do
+    {:noreply,
+     push_patch(socket, to: Path.join([socket.assigns.prefix, socket.assigns.lens.id, id]))}
+  end
+
   def handle_event("toggle_navigation", _params, socket) do
     {:noreply, assign(socket, show_navigation: not socket.assigns.show_navigation)}
   end

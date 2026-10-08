@@ -116,6 +116,10 @@ defmodule Demo.Projects.Ticket do
               expr(not is_nil(due_at) and due_at < now() and status != :closed)
 
     calculate :code, :string, expr(fragment("? || '-' || ?", project.key, position))
+
+    calculate :assignee_name, :string, expr(assignee.display_name) do
+      description "Who the Ticket is assigned to, by the name others see."
+    end
   end
 
   relationships do
