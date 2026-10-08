@@ -8,6 +8,7 @@ defmodule Demo.Helpdesk.Ticket do
   use Ash.Resource,
     domain: Demo.Helpdesk,
     authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshStateMachine],
     data_layer: Ash.DataLayer.Ets
 
   resource do
@@ -18,6 +19,21 @@ defmodule Demo.Helpdesk.Ticket do
     this is the cross-domain edge that lights up the Application
     Diagram.
     """
+  end
+
+  state_machine do
+    state_attribute(:status)
+    initial_states([:new])
+    default_initial_state(:new)
+
+    transitions do
+      transition(:assign, from: :new, to: :open)
+      transition(:await_customer, from: :open, to: :pending)
+      transition(:reply_received, from: :pending, to: :open)
+      transition(:resolve, from: :open, to: :resolved)
+      transition(:reopen, from: :resolved, to: :open)
+      transition(:auto_close_after_7d, from: :resolved, to: :closed)
+    end
   end
 
   policies do
@@ -43,24 +59,39 @@ defmodule Demo.Helpdesk.Ticket do
         :priority,
         :sla_policy_id
       ]
+    end
 
-      change set_attribute(:status, :new)
+    update :assign do
+      accept [:assignee_id]
+      change transition_state(:open)
+    end
+
+    update :await_customer do
+      accept []
+      change transition_state(:pending)
+    end
+
+    update :reply_received do
+      accept []
+      change transition_state(:open)
     end
 
     update :resolve do
       accept []
-      change set_attribute(:status, :resolved)
+      change transition_state(:resolved)
       change set_attribute(:resolved_at, expr(now()))
     end
 
     update :reopen do
       accept []
-      change set_attribute(:status, :open)
+      change transition_state(:open)
       change set_attribute(:resolved_at, nil)
     end
 
-    update :assign do
-      accept [:assignee_id]
+    update :auto_close_after_7d do
+      description "Closes a ticket left resolved for seven days."
+      accept []
+      change transition_state(:closed)
     end
 
     update :link_to_project_ticket do

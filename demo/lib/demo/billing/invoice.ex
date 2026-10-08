@@ -6,6 +6,7 @@ defmodule Demo.Billing.Invoice do
 
   use Ash.Resource,
     domain: Demo.Billing,
+    extensions: [AshStateMachine],
     data_layer: Ash.DataLayer.Ets
 
   resource do
@@ -17,27 +18,51 @@ defmodule Demo.Billing.Invoice do
     """
   end
 
+  state_machine do
+    state_attribute(:status)
+    initial_states([:draft])
+    default_initial_state(:draft)
+
+    transitions do
+      transition(:finalize, from: :draft, to: :sent)
+      transition(:payment_received, from: [:sent, :overdue], to: :paid)
+      transition(:due_date_passed, from: :sent, to: :overdue)
+      transition(:give_up, from: :overdue, to: :written_off)
+    end
+  end
+
   actions do
     default_accept :*
     defaults [:read, :destroy, create: :*, update: :*]
 
-    update :mark_paid do
+    update :finalize do
       accept []
-      change set_attribute(:status, :paid)
+      change transition_state(:sent)
+    end
+
+    update :payment_received do
+      accept []
+      change transition_state(:paid)
       change set_attribute(:paid_on, expr(today()))
     end
 
-    update :void do
+    update :due_date_passed do
       accept []
-      change set_attribute(:status, :void)
+      change transition_state(:overdue)
+    end
+
+    update :give_up do
+      description "Writes off an overdue invoice as uncollectable."
+      accept []
+      change transition_state(:written_off)
     end
 
     read :outstanding do
-      filter expr(status in [:open, :overdue])
+      filter expr(status in [:sent, :overdue])
     end
 
     read :overdue do
-      filter expr(status == :open and due_on < today())
+      filter expr(status == :overdue or (status == :sent and due_on < today()))
     end
   end
 
@@ -50,7 +75,7 @@ defmodule Demo.Billing.Invoice do
     calculate :days_overdue,
               :integer,
               expr(
-                if not is_nil(due_on) and status in [:open, :overdue] and due_on < today() do
+                if not is_nil(due_on) and status in [:sent, :overdue] and due_on < today() do
                   fragment("date_part('day', ?::timestamp - ?::timestamp)", today(), due_on)
                 else
                   0
@@ -60,7 +85,7 @@ defmodule Demo.Billing.Invoice do
     calculate :outstanding_cents,
               :integer,
               expr(
-                if status in [:paid, :void] do
+                if status in [:paid, :written_off] do
                   0
                 else
                   total_cents
@@ -86,7 +111,7 @@ defmodule Demo.Billing.Invoice do
     attribute :status, :atom do
       allow_nil? false
       public? true
-      constraints one_of: [:draft, :open, :paid, :overdue, :void]
+      constraints one_of: [:draft, :sent, :paid, :overdue, :written_off]
       default :draft
     end
 

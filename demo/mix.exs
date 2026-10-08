@@ -24,6 +24,7 @@ defmodule Demo.MixProject do
     [
       {:clarity, path: "..", override: true},
       {:ash_diagram, "~> 0.2.3"},
+      {:ash_state_machine, "~> 0.2.13"},
       {:ash, "~> 3.6"},
       {:picosat_elixir, "~> 0.2.3"},
       {:phoenix, "~> 1.8"},

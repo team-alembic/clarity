@@ -6,14 +6,30 @@ defmodule Demo.Billing.Subscription do
 
   use Ash.Resource,
     domain: Demo.Billing,
+    extensions: [AshStateMachine],
     data_layer: Ash.DataLayer.Ets
 
   resource do
     description """
     An Organization's active commitment to a Plan. Generates an
-    Invoice on each billing cycle and tracks lifecycle (`active`,
-    `past_due`, `cancelled`, `expired`).
+    Invoice on each billing cycle and tracks lifecycle (`trialing`,
+    `active`, `past_due`, `canceled`).
     """
+  end
+
+  state_machine do
+    state_attribute(:status)
+    initial_states([:trialing])
+    default_initial_state(:trialing)
+
+    transitions do
+      transition(:convert, from: :trialing, to: :active)
+      transition(:abandon, from: :trialing, to: :canceled)
+      transition(:payment_failed, from: :active, to: :past_due)
+      transition(:retry_succeeds, from: :past_due, to: :active)
+      transition(:final_dunning, from: :past_due, to: :canceled)
+      transition(:user_cancels, from: :active, to: :canceled)
+    end
   end
 
   actions do
@@ -22,25 +38,44 @@ defmodule Demo.Billing.Subscription do
 
     create :start_subscription do
       accept [:organization_id, :plan_id, :seats]
-      change set_attribute(:status, :trialing)
       change set_attribute(:started_on, expr(today()))
     end
 
-    update :activate do
+    update :convert do
+      description "Converts a trial into a paid subscription."
       accept []
-      change set_attribute(:status, :active)
+      change transition_state(:active)
     end
 
-    update :cancel do
+    update :abandon do
+      description "Ends a trial that was never converted."
       accept []
-      change set_attribute(:status, :canceled)
+      change transition_state(:canceled)
       change set_attribute(:canceled_on, expr(today()))
     end
 
-    update :resume do
+    update :payment_failed do
       accept []
-      change set_attribute(:status, :active)
-      change set_attribute(:canceled_on, nil)
+      change transition_state(:past_due)
+    end
+
+    update :retry_succeeds do
+      description "A retried payment went through."
+      accept []
+      change transition_state(:active)
+    end
+
+    update :final_dunning do
+      description "Cancels after the last dunning attempt fails."
+      accept []
+      change transition_state(:canceled)
+      change set_attribute(:canceled_on, expr(today()))
+    end
+
+    update :user_cancels do
+      accept []
+      change transition_state(:canceled)
+      change set_attribute(:canceled_on, expr(today()))
     end
 
     read :active do
@@ -52,7 +87,7 @@ defmodule Demo.Billing.Subscription do
     count :invoice_count, :invoices
 
     count :outstanding_invoice_count, :invoices do
-      filter expr(status in [:open, :overdue])
+      filter expr(status in [:sent, :overdue])
     end
 
     sum :lifetime_billed_cents, :invoices, :total_cents
@@ -81,7 +116,7 @@ defmodule Demo.Billing.Subscription do
     attribute :status, :atom do
       allow_nil? false
       public? true
-      constraints one_of: [:trialing, :active, :past_due, :canceled, :paused]
+      constraints one_of: [:trialing, :active, :past_due, :canceled]
       default :trialing
     end
 
