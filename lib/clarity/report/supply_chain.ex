@@ -44,15 +44,23 @@ defmodule Clarity.Report.SupplyChain do
 
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
-    findings = findings(assigns.graph)
-    total = assigns.graph |> Graph.vertices({:==, :vertex_type, Vertex.Application}) |> length()
+    apps = Graph.vertices(assigns.graph, {:==, :vertex_type, Vertex.Application})
+    findings = findings(assigns.graph, apps)
+    flagged = MapSet.new(findings, & &1.app)
+
+    # Only Hex packages can be checked. The project's own applications, path and
+    # git dependencies, and Erlang/OTP applications have no registry entry.
+    unchecked =
+      Enum.count(apps, &(to_string(&1.app) not in flagged and Registry.summary(&1.app) == nil))
+
+    pending? = not (Source.ready?() and Registry.ready?())
 
     {:ok,
      assign(socket,
        prefix: assigns.prefix,
        lens: assigns.lens,
-       markdown: build_markdown(findings),
-       dashboard: dashboard(findings, total)
+       markdown: build_markdown(findings, unchecked, pending?),
+       dashboard: dashboard(findings, length(apps), unchecked)
      )}
   end
 
@@ -76,12 +84,12 @@ defmodule Clarity.Report.SupplyChain do
     """
   end
 
-  @spec dashboard([finding()], non_neg_integer()) :: map()
-  defp dashboard(findings, total) do
+  @spec dashboard([finding()], non_neg_integer(), non_neg_integer()) :: map()
+  defp dashboard(findings, total, unchecked) do
     advisory = Enum.count(findings, & &1.advisory?)
     retired_only = Enum.count(findings, &(&1.retired? and not &1.advisory?))
     outdated_only = Enum.count(findings, &(&1.outdated? and not &1.advisory? and not &1.retired?))
-    healthy = max(total - length(findings), 0)
+    healthy = max(total - length(findings) - unchecked, 0)
 
     %{
       total: total,
@@ -92,20 +100,21 @@ defmodule Clarity.Report.SupplyChain do
         %{label: "Healthy", value: healthy, tone: :ok},
         %{label: "Advisory", value: advisory, tone: :error},
         %{label: "Retired", value: retired_only, tone: :warning},
-        %{label: "Outdated", value: outdated_only, tone: :info}
+        %{label: "Outdated", value: outdated_only, tone: :info},
+        %{label: "Not checked", value: unchecked, tone: :neutral}
       ]
     }
   end
 
-  @spec build_markdown([finding()]) :: iodata()
-  defp build_markdown(findings) do
+  @spec build_markdown([finding()], non_neg_integer(), boolean()) :: iodata()
+  defp build_markdown(findings, unchecked, pending?) do
     [
       "This report reviews the dependencies your project runs for supply-chain risk: ",
       "known security advisories, versions that have fallen behind their latest release, ",
       "and versions their maintainers have retired. Each item is a *finding* — a fact and ",
       "why it might matter — not a verdict that you are exploitable.\n\n",
       freshness(),
-      overview(findings),
+      overview(findings, unchecked, pending?),
       advisories_section(findings),
       hygiene_section(findings)
     ]
@@ -126,13 +135,24 @@ defmodule Clarity.Report.SupplyChain do
     end
   end
 
-  @spec overview([finding()]) :: iodata()
-  defp overview([]) do
-    "**Nothing is flagged.** Every dependency Clarity can see is on a current, " <>
-      "non-retired version with no known security advisory.\n\n"
+  # Until the advisory database and Hex registry have results, an empty report
+  # means "not checked yet", not "all clear".
+  @spec overview([finding()], non_neg_integer(), boolean()) :: iodata()
+  defp overview([], _unchecked, true = _pending?) do
+    "Clarity is still checking dependencies against the advisory database and Hex, so " <>
+      "nothing is flagged yet. This report updates when the checks finish.\n\n"
   end
 
-  defp overview(findings) do
+  defp overview([], unchecked, false = _pending?) do
+    [
+      "**Nothing is flagged.** Every dependency Clarity could check is on a current, ",
+      "non-retired version with no known security advisory.",
+      unchecked_note(unchecked),
+      "\n\n"
+    ]
+  end
+
+  defp overview(findings, unchecked, pending?) do
     total = length(findings)
     advisories = Enum.count(findings, & &1.advisory?)
     outdated = Enum.count(findings, & &1.outdated?)
@@ -154,7 +174,25 @@ defmodule Clarity.Report.SupplyChain do
         ),
         ", "
       ),
-      ".\n\n"
+      ".",
+      unchecked_note(unchecked),
+      if(pending?, do: " Clarity is still checking dependencies, so more may appear.", else: []),
+      "\n\n"
+    ]
+  end
+
+  @spec unchecked_note(non_neg_integer()) :: iodata()
+  defp unchecked_note(0), do: []
+
+  defp unchecked_note(count) do
+    [
+      " ",
+      Integer.to_string(count),
+      pluralize(count, " dependency is", " dependencies are"),
+      " not published on Hex (such as your own applications, path or git dependencies, ",
+      "and Erlang/OTP applications), so ",
+      pluralize(count, "it", "they"),
+      " could not be checked."
     ]
   end
 
@@ -192,9 +230,9 @@ defmodule Clarity.Report.SupplyChain do
         "** | ",
         via_label(finding.via),
         " | ",
-        advisory.id,
+        cell(advisory.id),
         " | ",
-        Advisory.fixed_version(advisory, finding.version) || "—",
+        cell(Advisory.fixed_version(advisory, finding.version)),
         " | ",
         cell(advisory.summary),
         " |\n"
@@ -202,12 +240,17 @@ defmodule Clarity.Report.SupplyChain do
     end)
   end
 
-  # Free text into a single markdown table cell: escape pipes, collapse whitespace.
+  # Text from the advisory database into a single markdown table cell: collapse
+  # whitespace, and escape every character markdown acts on (so a summary can't
+  # add images, links, emphasis or table cells of its own).
   @spec cell(String.t() | nil) :: String.t()
   defp cell(text) when text in [nil, ""], do: "—"
 
   defp cell(text) do
-    text |> String.replace("|", "\\|") |> String.replace(~r/\s+/, " ") |> String.trim()
+    text
+    |> String.replace(~r/\s+/, " ")
+    |> String.trim()
+    |> String.replace(~r/[\\`*_{}\[\]()#+\-.!<>|~]/, "\\\\\\0")
   end
 
   @spec hygiene_section([finding()]) :: iodata()
@@ -218,7 +261,7 @@ defmodule Clarity.Report.SupplyChain do
       "### Dependency hygiene\n\n",
       case hygiene do
         [] ->
-          "Every dependency is on a current, non-retired version.\n\n"
+          "Every dependency Clarity could check is on a current, non-retired version.\n\n"
 
         rows ->
           [
@@ -257,9 +300,8 @@ defmodule Clarity.Report.SupplyChain do
   defp via_label([]), do: "direct"
   defp via_label(via), do: Enum.join(via, ", ")
 
-  @spec findings(Graph.t()) :: [finding()]
-  defp findings(graph) do
-    apps = Graph.vertices(graph, {:==, :vertex_type, Vertex.Application})
+  @spec findings(Graph.t(), [Vertex.Application.t()]) :: [finding()]
+  defp findings(graph, apps) do
     roots = apps |> Enum.filter(&(dependents(graph, &1) == [])) |> MapSet.new(& &1.app)
 
     apps

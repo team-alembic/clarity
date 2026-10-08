@@ -62,6 +62,56 @@ defmodule Clarity.Report.SupplyChainTest do
       assert html =~ "A nasty hole"
     end
 
+    test "escapes markdown in advisory text from the database", %{graph: graph, lens: lens} do
+      :ets.new(Source, [:named_table, :set, :public])
+
+      advisory = %Clarity.Advisory{
+        id: "GHSA-xyz",
+        package: "vuln",
+        summary: "See ![x](https://tracker.example/t.png) and [this](https://evil.example)",
+        versions: ["1.0.0"]
+      }
+
+      :ets.insert(Source, {{:package, "vuln"}, [advisory]})
+      vuln = %Vertex.Application{app: :vuln, description: "Vuln", version: "1.0.0"}
+      Graph.add_vertex(graph, vuln, %Root{})
+      Graph.add_vertex(graph, %Vertex.Advisory{advisory: advisory}, vuln)
+      Graph.add_edge(graph, vuln, %Vertex.Advisory{advisory: advisory}, :advisory)
+
+      html = render_report(graph, lens)
+
+      assert html =~ "GHSA-xyz"
+      refute html =~ "<img"
+      refute html =~ ~s(href="https://evil.example")
+    end
+
+    test "counts dependencies it could not check apart from healthy ones", %{
+      graph: graph,
+      lens: lens
+    } do
+      :ets.insert(Clarity.Dependency.Registry, {{:package, "fresh"}, %{latest: "1.0.0", retired: []}})
+      Graph.add_vertex(graph, %Vertex.Application{app: :fresh, description: "", version: "1.0.0"}, %Root{})
+      Graph.add_vertex(graph, %Vertex.Application{app: :local, description: "", version: "0.1.0"}, %Root{})
+
+      html = render_report(graph, lens)
+
+      assert html =~ "Not checked"
+      assert html =~ "could not be checked"
+    end
+
+    test "says the checks are still running before they have results", %{graph: graph, lens: lens} do
+      advisories = Application.get_env(:clarity, :advisories)
+      Application.put_env(:clarity, :advisories, enabled?: true)
+      on_exit(fn -> Application.put_env(:clarity, :advisories, advisories) end)
+
+      Graph.add_vertex(graph, %Vertex.Application{app: :fresh, description: "", version: "1.0.0"}, %Root{})
+
+      html = render_report(graph, lens)
+
+      assert html =~ "still checking"
+      refute html =~ "Nothing is flagged"
+    end
+
     test "says nothing is flagged when all clear", %{graph: graph, lens: lens} do
       :ets.insert(Clarity.Dependency.Registry, {{:package, "fresh"}, %{latest: "1.0.0", retired: []}})
       fresh = %Vertex.Application{app: :fresh, description: "Fresh", version: "1.0.0"}
