@@ -78,6 +78,17 @@ defmodule Demo.Billing.Subscription do
       change set_attribute(:canceled_on, expr(today()))
     end
 
+    action :issue_invoice, :map do
+      description """
+      Reactor-driven billing run: prices the period, drafts the invoice,
+      charges the payment method and emails a receipt.
+      """
+
+      argument :subscription_id, :uuid, allow_nil?: false
+
+      run Demo.Billing.IssueInvoice
+    end
+
     read :active do
       filter expr(status == :active)
     end
