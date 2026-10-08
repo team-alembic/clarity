@@ -6,4 +6,11 @@
 set -e
 
 cd "$(dirname "$0")/../demo"
+
+# Clarity's own tabs and introspectors are listed in its mix.exs, which Mix
+# copies into Clarity's .app. A running server rewrites that file from the
+# mix.exs it started with, and the next start trusts it as up to date, so a
+# tab added meanwhile goes missing. Removing it makes Mix write it afresh.
+rm -f "_build/${MIX_ENV:-dev}/lib/clarity/ebin/clarity.app"
+
 exec mix phx.server "$@"
