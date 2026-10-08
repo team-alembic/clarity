@@ -5,6 +5,7 @@ defmodule Clarity.Test.Helper do
 
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Domain
+  alias Clarity.Vertex.Ash.Resource
 
   @doc """
   Creates a simple test Clarity struct with predictable vertices and edges.
@@ -15,6 +16,8 @@ defmodule Clarity.Test.Helper do
       domains, a framework internal (see `Clarity.Perspective.Internals`)
     * `:modules` - also give the `clarity` application a module, so its
       children fall into two groups (a lone group gets no row in the tree)
+    * `:resources` - also give the Accounts domain its `Demo.Accounts.User`
+      resource
   """
   @spec build_test_clarity(keyword()) :: Clarity.t()
   def build_test_clarity(opts \\ []) do
@@ -39,6 +42,12 @@ defmodule Clarity.Test.Helper do
       module_vertex = %Vertex.Module{module: Demo.Accounts}
       Clarity.Graph.add_vertex(clarity_graph, module_vertex, app_vertex)
       Clarity.Graph.add_edge(clarity_graph, app_vertex, module_vertex, :module)
+    end
+
+    if opts[:resources] do
+      resource_vertex = %Resource{resource: Demo.Accounts.User}
+      Clarity.Graph.add_vertex(clarity_graph, resource_vertex, domain_vertex)
+      Clarity.Graph.add_edge(clarity_graph, domain_vertex, resource_vertex, :resource)
     end
 
     if opts[:internals] do

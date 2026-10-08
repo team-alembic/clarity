@@ -510,6 +510,41 @@ defmodule Clarity.Pages.PageLiveTest do
     end
   end
 
+  describe "PageLive settings" do
+    @describetag test_graph: [resources: true]
+
+    test "the header's gear opens the settings: the theme, and lowercase linking", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+
+      assert has_element?(view, "#header-settings button[popovertarget=header-settings-menu]")
+
+      for theme <- ~w(light dark system),
+          do: assert(has_element?(view, "#header-settings-menu input[name=theme][value=#{theme}]"))
+
+      assert has_element?(view, "#header-settings-menu input[type=checkbox][name=link_lowercase]")
+    end
+
+    test "text links lowercase names until the viewer turns it off", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
+      render_async(view)
+
+      assert has_element?(view, ".prose a", ~r/^User$/)
+
+      render_hook(view, "set-link-lowercase", %{"enabled" => false})
+
+      refute has_element?(view, ".prose a", ~r/^User$/)
+      assert has_element?(view, ".prose", "handles user management")
+    end
+
+    test "a viewer who turned lowercase linking off joins with it off", %{conn: conn} do
+      conn = put_connect_params(conn, %{"link_lowercase" => false})
+      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
+      render_async(view)
+
+      refute has_element?(view, ".prose a", ~r/^User$/)
+    end
+  end
+
   describe "PageLive framework internals" do
     @describetag test_graph: [internals: true]
 

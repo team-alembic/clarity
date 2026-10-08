@@ -58,7 +58,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       {:ok,
        socket
-       |> assign(prefix: assigns.prefix, lens: assigns.lens, graph: graph)
+       |> assign(
+         prefix: assigns.prefix,
+         lens: assigns.lens,
+         graph: graph,
+         link_lowercase: Map.get(assigns, :link_lowercase, false)
+       )
        |> assign_async(:posture, fn -> {:ok, %{posture: analyse(graph)}} end)}
     end
 
@@ -96,6 +101,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             prefix={@prefix}
             lens={@lens}
             graph={@graph}
+            link_lowercase={@link_lowercase}
             class="max-w-[75ch]"
           />
         </.async_result>

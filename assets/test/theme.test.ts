@@ -1,26 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import ThemeToggle, {
+import {
+  applyTheme,
   getCurrentTheme,
   getInitialTheme,
+  getThemePreference,
+  onSystemThemeChange,
   onThemeChange,
-} from "../js/theme.hook.js";
+  resolveTheme,
+  setThemePreference,
+} from "../js/theme.js";
 
 // Stub window.matchMedia with a controllable `matches` value. happy-dom's
 // built-in implementation does not parse `prefers-color-scheme`, so we drive it
 // explicitly per-test.
 function stubMatchMedia(matches: boolean) {
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn().mockReturnValue({
-      matches,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }),
-  );
+  const scheme = { matches, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+  vi.stubGlobal("matchMedia", vi.fn().mockReturnValue(scheme));
+  return scheme;
 }
 
-describe("theme.hook", () => {
+describe("theme", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
@@ -29,6 +29,38 @@ describe("theme.hook", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  describe("getThemePreference", () => {
+    it("is the stored theme, or the system's when nothing is stored", () => {
+      expect(getThemePreference()).toBe("system");
+
+      localStorage.setItem("clarity-theme", "dark");
+      expect(getThemePreference()).toBe("dark");
+    });
+
+    it("treats an unknown stored value as the system's", () => {
+      localStorage.setItem("clarity-theme", "sepia");
+      expect(getThemePreference()).toBe("system");
+    });
+  });
+
+  describe("setThemePreference", () => {
+    it("stores light and dark, and forgets the theme to follow the system", () => {
+      setThemePreference("light");
+      expect(localStorage.getItem("clarity-theme")).toBe("light");
+
+      setThemePreference("system");
+      expect(localStorage.getItem("clarity-theme")).toBeNull();
+    });
+  });
+
+  describe("resolveTheme", () => {
+    it("resolves the system preference to the system's theme", () => {
+      stubMatchMedia(true);
+      expect(resolveTheme("system")).toBe("dark");
+      expect(resolveTheme("light")).toBe("light");
+    });
   });
 
   describe("getInitialTheme", () => {
@@ -62,10 +94,10 @@ describe("theme.hook", () => {
 
   describe("applyTheme", () => {
     it("toggles the `dark` class on the document element", () => {
-      ThemeToggle.applyTheme("dark");
+      applyTheme("dark");
       expect(document.documentElement.classList.contains("dark")).toBe(true);
 
-      ThemeToggle.applyTheme("light");
+      applyTheme("light");
       expect(document.documentElement.classList.contains("dark")).toBe(false);
     });
   });
@@ -75,7 +107,7 @@ describe("theme.hook", () => {
       const callback = vi.fn();
       onThemeChange(callback);
 
-      ThemeToggle.applyTheme("dark");
+      applyTheme("dark");
 
       expect(callback).toHaveBeenCalledWith("dark");
     });
@@ -85,9 +117,22 @@ describe("theme.hook", () => {
       const unsubscribe = onThemeChange(callback);
 
       unsubscribe();
-      ThemeToggle.applyTheme("dark");
+      applyTheme("dark");
 
       expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("onSystemThemeChange", () => {
+    it("listens for the system's theme changing until cleaned up", () => {
+      const scheme = stubMatchMedia(false);
+      const callback = vi.fn();
+
+      const stop = onSystemThemeChange(callback);
+      expect(scheme.addEventListener).toHaveBeenCalledWith("change", callback);
+
+      stop();
+      expect(scheme.removeEventListener).toHaveBeenCalledWith("change", callback);
     });
   });
 });

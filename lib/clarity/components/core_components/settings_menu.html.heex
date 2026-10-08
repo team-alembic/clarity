@@ -1,0 +1,53 @@
+<%!-- The Settings hook owns these inputs: their state lives in the browser, so
+LiveView leaves them be. The menu is a popover, so clicking outside it or
+pressing Escape closes it. --%>
+<div id={@id} phx-hook="Settings" phx-update="ignore" class={@class} {@rest}>
+  <button
+    type="button"
+    popovertarget={"#{@id}-menu"}
+    class="inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 focus:outline-hidden focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark transition-colors"
+    aria-label="Settings"
+  >
+    <.icon_gear class="w-5 h-5" />
+  </button>
+  <div
+    id={"#{@id}-menu"}
+    popover
+    role="dialog"
+    aria-label="Settings"
+    class="[inset:3.25rem_0.5rem_auto_auto] m-0 w-72 rounded-lg p-4 shadow-lg border border-base-light-300 dark:border-base-dark-700 bg-base-light-100 dark:bg-base-dark-800 text-base-light-900 dark:text-base-dark-50"
+  >
+    <fieldset>
+      <legend class="text-xs font-semibold uppercase tracking-wide text-base-light-600 dark:text-base-dark-400 mb-2">
+        Theme
+      </legend>
+      <div class="grid grid-cols-3 gap-1 rounded-md p-1 bg-base-light-200 dark:bg-base-dark-900">
+        <label
+          :for={{value, label} <- [{"light", "Light"}, {"dark", "Dark"}, {"system", "System"}]}
+          class="flex flex-col items-center gap-1 rounded px-2 py-1.5 text-xs cursor-pointer text-base-light-700 dark:text-base-dark-300 hover:text-base-light-900 dark:hover:text-base-dark-100 has-checked:bg-base-light-50 dark:has-checked:bg-base-dark-700 has-checked:text-base-light-900 dark:has-checked:text-base-dark-50 has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-primary-light dark:has-focus-visible:ring-primary-dark"
+        >
+          <input type="radio" name="theme" value={value} class="sr-only" />
+          <.icon_sun :if={value == "light"} class="w-4 h-4" />
+          <.icon_moon :if={value == "dark"} class="w-4 h-4" />
+          <.icon_monitor :if={value == "system"} class="w-4 h-4" />
+          {label}
+        </label>
+      </div>
+    </fieldset>
+
+    <label class="mt-4 flex items-start gap-2.5 cursor-pointer">
+      <input
+        type="checkbox"
+        name="link_lowercase"
+        class="mt-0.5 size-4 shrink-0 accent-primary-light dark:accent-primary-dark"
+      />
+      <span>
+        <span class="block text-sm font-medium">Link lowercase names</span>
+        <span class="block mt-0.5 text-xs text-base-light-600 dark:text-base-dark-400">
+          Text links “time entries” as TimeEntries, and a resource’s own fields,
+          such as “reporter”, in its own description.
+        </span>
+      </span>
+    </label>
+  </div>
+</div>

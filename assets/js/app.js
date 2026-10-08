@@ -17,7 +17,8 @@
 import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
 import Tooltip from "./tooltip.hook";
-import ThemeToggle, { getInitialTheme } from "./theme.hook";
+import Settings, { getLinkLowercase } from "./settings.hook";
+import { applyTheme, getInitialTheme } from "./theme";
 import Flash from "./flash.hook";
 import Details from "./details.hook";
 import ResizableDrawer from "./resizable-drawer.hook";
@@ -27,6 +28,7 @@ import Tabs from "./tabs.hook";
 import Tree from "./tree.hook";
 
 applyNavState();
+applyTheme(getInitialTheme());
 
 let socketPath =
   document.querySelector("html").getAttribute("phx-socket") || "/live";
@@ -35,7 +37,7 @@ const Hooks = {
   Mermaid: Mermaid,
   Viz: Viz,
   Tooltip: Tooltip,
-  ThemeToggle: ThemeToggle,
+  Settings: Settings,
   Flash: Flash,
   Details: Details,
   ResizableDrawer: ResizableDrawer,
@@ -49,11 +51,13 @@ let csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
 let liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
-  params: { 
-    _csrf_token: csrfToken, 
+  // A function, so each LiveView joins with the viewer's current settings.
+  params: () => ({
+    _csrf_token: csrfToken,
     user_agent: window.navigator.userAgent,
-    theme: getInitialTheme()
-  },
+    theme: getInitialTheme(),
+    link_lowercase: getLinkLowercase(),
+  }),
   hooks: Hooks,
 });
 

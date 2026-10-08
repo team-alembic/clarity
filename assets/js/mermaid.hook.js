@@ -1,6 +1,6 @@
 import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
-import { onThemeChange, getInitialTheme, getCurrentTheme } from "./theme.hook";
+import { onThemeChange, getInitialTheme, getCurrentTheme } from "./theme";
 import { cacheKey, getSvg, putSvg } from "./svg-cache";
 
 const getMermaidTheme = (theme) => {

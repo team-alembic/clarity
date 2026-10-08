@@ -85,7 +85,7 @@ defmodule Clarity.IconComponents do
   def icon_spinner(assigns)
 
   @doc """
-  Renders a sun icon (theme toggle).
+  Renders a sun icon (the light theme).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
   attr :rest, :global, doc: "Additional HTML attributes"
@@ -94,13 +94,31 @@ defmodule Clarity.IconComponents do
   def icon_sun(assigns)
 
   @doc """
-  Renders a moon icon (theme toggle).
+  Renders a moon icon (the dark theme).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
   attr :rest, :global, doc: "Additional HTML attributes"
 
   @spec icon_moon(assigns :: Socket.assigns()) :: Rendered.t()
   def icon_moon(assigns)
+
+  @doc """
+  Renders a monitor icon (the system theme).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_monitor(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_monitor(assigns)
+
+  @doc """
+  Renders a gear icon (settings).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_gear(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_gear(assigns)
 
   @doc """
   Renders an aperture icon (camera aperture).

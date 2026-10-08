@@ -14,8 +14,10 @@ defmodule Clarity.Pages.Setup do
           socket :: Socket.t()
         ) :: {:cont, Socket.t()} | {:halt, Socket.t()}
   def on_mount(_name, _params, %{"prefix" => prefix} = session, socket) do
+    params = get_connect_params(socket) || %{}
+
     theme =
-      case get_connect_params(socket)["theme"] do
+      case params["theme"] do
         "dark" -> :dark
         "light" -> :light
         _ -> :light
@@ -26,22 +28,29 @@ defmodule Clarity.Pages.Setup do
       |> assign(
         prefix: prefix,
         theme: theme,
+        # On unless the viewer turned it off in the settings menu.
+        link_lowercase?: params["link_lowercase"] != false,
         clarity_pid: Map.get(session, "clarity_pid", Clarity.Server)
       )
-      |> attach_hook(:theme_handler, :handle_event, &handle_theme_event/3)
+      |> attach_hook(:settings_handler, :handle_event, &handle_settings_event/3)
 
     {:cont, socket}
   end
 
-  @spec handle_theme_event(event :: String.t(), params :: map(), socket :: Socket.t()) ::
+  @spec handle_settings_event(event :: String.t(), params :: map(), socket :: Socket.t()) ::
           {:cont, Socket.t()} | {:halt, Socket.t()}
-  defp handle_theme_event("set-theme", %{"theme" => theme_string}, socket)
+  defp handle_settings_event("set-theme", %{"theme" => theme_string}, socket)
        when theme_string in ["dark", "light"] do
     theme = String.to_existing_atom(theme_string)
     {:halt, assign(socket, theme: theme)}
   end
 
-  defp handle_theme_event(_event, _params, socket) do
+  defp handle_settings_event("set-link-lowercase", %{"enabled" => enabled}, socket)
+       when is_boolean(enabled) do
+    {:halt, assign(socket, link_lowercase?: enabled)}
+  end
+
+  defp handle_settings_event(_event, _params, socket) do
     {:cont, socket}
   end
 end

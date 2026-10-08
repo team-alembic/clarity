@@ -2,7 +2,6 @@
   <.header
     socket={@socket}
     prefix={@prefix}
-    theme={@theme}
     clarity_pid={@clarity_pid}
     class="header z-10"
   />
@@ -109,6 +108,7 @@
           id="report"
           graph={@graph}
           version={@version}
+          link_lowercase={@link_lowercase?}
           lens={@lens}
           prefix={@prefix}
         />

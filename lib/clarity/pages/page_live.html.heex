@@ -6,7 +6,6 @@
       <.header
         socket={@socket}
         prefix={@prefix}
-        theme={@theme}
         clarity_pid={@clarity_pid}
         class="header z-10"
       />
@@ -130,6 +129,7 @@
                 lens={lens}
                 zoom_graph={data.zoom_graph}
                 graph={@clarity.graph}
+                link_lowercase={@link_lowercase?}
                 zoom_level={@zoom_level}
                 shown_vertex_types={@shown_vertex_types}
                 available_vertex_types={@available_vertex_types}
