@@ -22,60 +22,82 @@ defmodule Clarity.Report.SupplyChainTest do
     render_component(SupplyChain, id: "report", graph: graph, lens: lens, prefix: "/c")
   end
 
+  @spec doc(String.t()) :: LazyHTML.t()
+  defp doc(html), do: LazyHTML.from_fragment(html)
+
+  @spec text(LazyHTML.t(), String.t()) :: String.t()
+  defp text(doc, selector), do: doc |> LazyHTML.query(selector) |> LazyHTML.text() |> String.split() |> Enum.join(" ")
+
+  @spec add_advisory(Graph.t(), Clarity.Advisory.t()) :: Vertex.Application.t()
+  defp add_advisory(graph, advisory) do
+    :ets.new(Source, [:named_table, :set, :public])
+    :ets.insert(Source, {{:package, "vuln"}, [advisory]})
+
+    vuln = %Vertex.Application{app: :vuln, description: "Vuln", version: "1.0.0"}
+    Graph.add_vertex(graph, vuln, %Root{})
+    Graph.add_vertex(graph, %Vertex.Advisory{advisory: advisory}, vuln)
+    Graph.add_edge(graph, vuln, %Vertex.Advisory{advisory: advisory}, :advisory)
+    vuln
+  end
+
   describe "render" do
-    test "reviews a flagged (outdated) dependency in prose", %{graph: graph, lens: lens} do
+    test "lists an outdated dependency as a low to-do, with the update to run", %{graph: graph, lens: lens} do
       :ets.insert(Clarity.Dependency.Registry, {{:package, "stale"}, %{latest: "2.0.0", retired: []}})
       stale = %Vertex.Application{app: :stale, description: "Stale", version: "1.0.0"}
       Graph.add_vertex(graph, stale, %Root{})
 
-      html = render_report(graph, lens)
+      doc = graph |> render_report(lens) |> doc()
 
-      assert html =~ "stale"
-      assert html =~ "2.0.0"
-      # dependency hygiene renders as a table with a "Via" column
-      assert html =~ "Dependency hygiene"
-      assert html =~ "<table"
-      assert html =~ "Via"
-      assert html =~ "Outdated"
-      refute html =~ ~s(phx-click)
-      # executive dashboard: KPI cards + a stacked bar
-      assert html =~ "Dependencies"
-      assert html =~ "data-segment"
+      assert text(doc, ".report-status") == "1 thing to do"
+      assert text(doc, ".report-todo[data-severity='low'] .report-todo-title") =~ "Behind their latest release"
+      assert text(doc, ".report-todo .report-todo-group") =~ "stale 1.0.0 → 2.0.0"
+      assert text(doc, ".report-todo .report-command code") == "mix deps.update stale"
+      # links the dependency to its page
+      assert doc |> LazyHTML.query("a.report-chip[href='/c/architect/#{Vertex.id(stale)}']") |> Enum.count() == 1
+      # compact stats, no explanation up front
+      assert LazyHTML.text(doc) =~ "Dependencies"
+      refute LazyHTML.text(doc) =~ "This report reviews"
     end
 
-    test "renders security advisories as a table", %{graph: graph, lens: lens} do
-      :ets.new(Source, [:named_table, :set, :public])
-      advisory = %Clarity.Advisory{id: "GHSA-xyz", package: "vuln", summary: "A nasty hole", versions: ["1.0.0"]}
-      :ets.insert(Source, {{:package, "vuln"}, [advisory]})
+    test "names the dependency that pulls a transitive one in", %{graph: graph, lens: lens} do
+      :ets.insert(Clarity.Dependency.Registry, {{:package, "pubsub"}, %{latest: "2.4.0", retired: []}})
+      app = %Vertex.Application{app: :app, description: "", version: "0.1.0"}
+      phoenix = %Vertex.Application{app: :phoenix, description: "", version: "1.0.0"}
+      pubsub = %Vertex.Application{app: :pubsub, description: "", version: "2.3.0"}
 
-      vuln = %Vertex.Application{app: :vuln, description: "Vuln", version: "1.0.0"}
-      Graph.add_vertex(graph, vuln, %Root{})
-      Graph.add_vertex(graph, %Vertex.Advisory{advisory: advisory}, vuln)
-      Graph.add_edge(graph, vuln, %Vertex.Advisory{advisory: advisory}, :advisory)
+      for vertex <- [app, phoenix, pubsub], do: Graph.add_vertex(graph, vertex, %Root{})
+      Graph.add_edge(graph, app, phoenix, :dependency)
+      Graph.add_edge(graph, phoenix, pubsub, :dependency)
 
-      html = render_report(graph, lens)
+      doc = graph |> render_report(lens) |> doc()
 
-      assert html =~ "Security advisories"
-      assert html =~ "<table"
-      assert html =~ "GHSA-xyz"
-      assert html =~ "A nasty hole"
+      assert text(doc, ".report-todo .report-todo-group") =~ "pubsub 2.3.0 → 2.4.0 via phoenix"
     end
 
-    test "escapes markdown in advisory text from the database", %{graph: graph, lens: lens} do
-      :ets.new(Source, [:named_table, :set, :public])
-
-      advisory = %Clarity.Advisory{
+    test "lists a known vulnerability as a high to-do, with the advisory and its fix", %{graph: graph, lens: lens} do
+      add_advisory(graph, %Clarity.Advisory{
         id: "GHSA-xyz",
         package: "vuln",
-        summary: "See ![x](https://tracker.example/t.png) and [this](https://evil.example)",
+        summary: "A nasty hole",
         versions: ["1.0.0"]
-      }
+      })
 
-      :ets.insert(Source, {{:package, "vuln"}, [advisory]})
-      vuln = %Vertex.Application{app: :vuln, description: "Vuln", version: "1.0.0"}
-      Graph.add_vertex(graph, vuln, %Root{})
-      Graph.add_vertex(graph, %Vertex.Advisory{advisory: advisory}, vuln)
-      Graph.add_edge(graph, vuln, %Vertex.Advisory{advisory: advisory}, :advisory)
+      doc = graph |> render_report(lens) |> doc()
+
+      todo = ".report-todo[data-severity='high']"
+      assert text(doc, "#{todo} .report-todo-title") =~ "Known vulnerabilities"
+      assert text(doc, todo) =~ "GHSA-xyz"
+      assert text(doc, todo) =~ "A nasty hole"
+      assert text(doc, "#{todo} .report-command code") == "mix deps.update vuln"
+    end
+
+    test "shows advisory text from the database as text", %{graph: graph, lens: lens} do
+      add_advisory(graph, %Clarity.Advisory{
+        id: "GHSA-xyz",
+        package: "vuln",
+        summary: "See ![x](https://tracker.example/t.png) and <a href=\"https://evil.example\">this</a>",
+        versions: ["1.0.0"]
+      })
 
       html = render_report(graph, lens)
 
@@ -84,7 +106,7 @@ defmodule Clarity.Report.SupplyChainTest do
       refute html =~ ~s(href="https://evil.example")
     end
 
-    test "counts dependencies it could not check apart from healthy ones", %{
+    test "lists the dependencies it could not check apart from healthy ones", %{
       graph: graph,
       lens: lens
     } do
@@ -92,10 +114,10 @@ defmodule Clarity.Report.SupplyChainTest do
       Graph.add_vertex(graph, %Vertex.Application{app: :fresh, description: "", version: "1.0.0"}, %Root{})
       Graph.add_vertex(graph, %Vertex.Application{app: :local, description: "", version: "0.1.0"}, %Root{})
 
-      html = render_report(graph, lens)
+      doc = graph |> render_report(lens) |> doc()
 
-      assert html =~ "Not checked"
-      assert html =~ "could not be checked"
+      assert text(doc, ".report-status-meta") =~ "1 not on Hex, so not checked"
+      assert text(doc, "#not-checked .report-chip") == "local"
     end
 
     test "says the checks are still running before they have results", %{graph: graph, lens: lens} do
@@ -105,20 +127,20 @@ defmodule Clarity.Report.SupplyChainTest do
 
       Graph.add_vertex(graph, %Vertex.Application{app: :fresh, description: "", version: "1.0.0"}, %Root{})
 
-      html = render_report(graph, lens)
+      doc = graph |> render_report(lens) |> doc()
 
-      assert html =~ "still checking"
-      refute html =~ "Nothing is flagged"
+      assert text(doc, ".report-status[data-tone='pending']") =~ "Still checking"
     end
 
-    test "says nothing is flagged when all clear", %{graph: graph, lens: lens} do
+    test "says there's nothing to do when all clear", %{graph: graph, lens: lens} do
       :ets.insert(Clarity.Dependency.Registry, {{:package, "fresh"}, %{latest: "1.0.0", retired: []}})
       fresh = %Vertex.Application{app: :fresh, description: "Fresh", version: "1.0.0"}
       Graph.add_vertex(graph, fresh, %Root{})
 
-      html = render_report(graph, lens)
+      doc = graph |> render_report(lens) |> doc()
 
-      assert html =~ "Nothing is flagged"
+      assert text(doc, ".report-status[data-tone='ok']") == "Nothing to do"
+      assert doc |> LazyHTML.query(".report-todo") |> Enum.empty?()
     end
   end
 end

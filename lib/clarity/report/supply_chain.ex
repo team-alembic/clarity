@@ -1,24 +1,21 @@
 defmodule Clarity.Report.SupplyChain do
   @moduledoc """
-  Supply-chain security report: a written review of the dependencies flagged by
-  `Clarity.Status.SupplyChain` — known security advisories, and outdated or
-  retired versions.
-
-  The report is prose: it explains, in sentences, which dependencies carry a
-  concern and why it matters, rather than presenting a table to operate.
+  Supply-chain security report: what to do about the dependencies flagged by
+  `Clarity.Status.SupplyChain`, most urgent first: known security advisories,
+  then retired versions, then versions behind their latest release, each with
+  the `mix deps.update` that fixes it.
   """
 
   @behaviour Clarity.Report
 
   use Clarity.Web, :live_component
 
-  import Clarity.Components.MarkdownComponent
-
   alias Clarity.Advisory
   alias Clarity.Advisory.Source
   alias Clarity.Dependency.Registry
   alias Clarity.Graph
   alias Clarity.Report.Charts
+  alias Clarity.Report.Components
   alias Clarity.Status
   alias Clarity.Vertex
 
@@ -27,6 +24,7 @@ defmodule Clarity.Report.SupplyChain do
 
   @typep finding() :: %{
            app: String.t(),
+           id: String.t(),
            version: String.t(),
            latest: String.t() | nil,
            via: [String.t()],
@@ -54,18 +52,26 @@ defmodule Clarity.Report.SupplyChain do
     # Only Hex packages can be checked. The project's own applications, path and
     # git dependencies, and Erlang/OTP applications have no registry entry.
     unchecked =
-      Enum.count(apps, &(to_string(&1.app) not in flagged and Registry.summary(&1.app) == nil))
+      apps
+      |> Enum.filter(&(to_string(&1.app) not in flagged and Registry.summary(&1.app) == nil))
+      |> Enum.sort_by(& &1.app)
 
-    pending? = not (Source.ready?() and Registry.ready?())
+    advised = Enum.filter(findings, & &1.advisory?)
+    retired = Enum.filter(findings, &(&1.retired? and not &1.advisory?))
+    outdated = Enum.filter(findings, &(&1.outdated? and not &1.retired? and not &1.advisory?))
 
     {:ok,
      assign(socket,
        prefix: assigns.prefix,
        lens: assigns.lens,
-       graph: assigns.graph,
-       linking: Map.get(assigns, :linking, []),
-       markdown: build_markdown(findings, unchecked, pending?),
-       dashboard: dashboard(findings, length(apps), unchecked)
+       advised: advised,
+       retired: retired,
+       outdated: outdated,
+       todos: Enum.count([advised, retired, outdated], &(&1 != [])),
+       unchecked: unchecked,
+       pending?: not (Source.ready?() and Registry.ready?()) and findings == [],
+       refreshed_at: Source.last_refreshed_at(),
+       total: length(apps)
      )}
   end
 
@@ -73,242 +79,139 @@ defmodule Clarity.Report.SupplyChain do
   def render(assigns) do
     ~H"""
     <section class="space-y-6">
-      <div class="space-y-4">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Charts.stat label="Dependencies" value={@dashboard.total} />
-          <Charts.stat label="Advisories" value={@dashboard.advisories} tone={:error} />
-          <Charts.stat label="Outdated" value={@dashboard.outdated} tone={:info} />
-          <Charts.stat label="Retired" value={@dashboard.retired} tone={:warning} />
-        </div>
-        <Charts.stacked_bar title="Dependency health" segments={@dashboard.segments} />
+      <Components.status
+        count={@todos}
+        pending={
+          if(@pending?, do: "Still checking dependencies against the advisory database and Hex…")
+        }
+      >
+        <:meta>{freshness(@refreshed_at)}{unchecked_note(@unchecked)}</:meta>
+      </Components.status>
+
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Charts.stat label="Dependencies" value={@total} />
+        <Charts.stat label="Vulnerable" value={length(@advised)} tone={tone(@advised, :error)} />
+        <Charts.stat label="Retired" value={length(@retired)} tone={tone(@retired, :warning)} />
+        <Charts.stat label="Outdated" value={length(@outdated)} tone={tone(@outdated, :info)} />
       </div>
 
-      <.markdown
-        content={@markdown}
-        prefix={@prefix}
-        lens={@lens}
-        graph={@graph}
-        linking={@linking}
-        class="max-w-[75ch]"
-      />
+      <Components.todo_list :if={@todos > 0}>
+        <Components.todo
+          :if={@advised != []}
+          severity={:high}
+          title="Known vulnerabilities"
+          count={length(@advised)}
+          hint="A published security advisory affects the installed version."
+          command={update_command(@advised)}
+        >
+          <div :for={finding <- @advised} class="report-todo-group">
+            <.dependency finding={finding} prefix={@prefix} lens={@lens} />
+            <span :for={advisory <- finding.advisories} class="basis-full pl-1 text-sm">
+              <Components.chip>{advisory.id}</Components.chip>
+              {advisory.summary}
+              <span class="report-muted">
+                · {fixed_in(advisory, finding.version)}
+              </span>
+            </span>
+          </div>
+          <:fix>Update each to a version with the fix.</:fix>
+        </Components.todo>
+
+        <Components.todo
+          :if={@retired != []}
+          severity={:medium}
+          title="Retired versions"
+          count={length(@retired)}
+          hint="Their maintainers have pulled these versions from Hex."
+          command={update_command(@retired)}
+        >
+          <div :for={finding <- @retired} class="report-todo-group">
+            <.dependency finding={finding} prefix={@prefix} lens={@lens} />
+          </div>
+          <:fix>Move off them: update to the latest release.</:fix>
+        </Components.todo>
+
+        <Components.todo
+          :if={@outdated != []}
+          severity={:low}
+          title="Behind their latest release"
+          count={length(@outdated)}
+          command={update_command(@outdated)}
+        >
+          <div :for={finding <- @outdated} class="report-todo-group">
+            <.dependency finding={finding} prefix={@prefix} lens={@lens} />
+          </div>
+          <:fix>Update when convenient; a dependency pulled in by another may wait for it.</:fix>
+        </Components.todo>
+      </Components.todo_list>
+
+      <Components.section
+        :if={@unchecked != []}
+        id="not-checked"
+        title="Not checked"
+        count={length(@unchecked)}
+      >
+        <p class="report-muted mb-3 text-sm">
+          Not published on Hex: your own applications, path and git dependencies, and Erlang/OTP
+          applications.
+        </p>
+        <div class="flex flex-wrap gap-1.5">
+          <Components.chip
+            :for={app <- @unchecked}
+            patch={Components.path(@prefix, @lens, Vertex.id(app))}
+          >
+            {app.app}
+          </Components.chip>
+        </div>
+      </Components.section>
     </section>
     """
   end
 
-  @spec dashboard([finding()], non_neg_integer(), non_neg_integer()) :: map()
-  defp dashboard(findings, total, unchecked) do
-    advisory = Enum.count(findings, & &1.advisory?)
-    retired_only = Enum.count(findings, &(&1.retired? and not &1.advisory?))
-    outdated_only = Enum.count(findings, &(&1.outdated? and not &1.advisory? and not &1.retired?))
-    healthy = max(total - length(findings) - unchecked, 0)
+  attr :finding, :map, required: true
+  attr :prefix, :string, required: true
+  attr :lens, :any, required: true
 
-    %{
-      total: total,
-      advisories: advisory,
-      outdated: Enum.count(findings, & &1.outdated?),
-      retired: Enum.count(findings, & &1.retired?),
-      segments: [
-        %{label: "Healthy", value: healthy, tone: :ok},
-        %{label: "Advisory", value: advisory, tone: :error},
-        %{label: "Retired", value: retired_only, tone: :warning},
-        %{label: "Outdated", value: outdated_only, tone: :info},
-        %{label: "Not checked", value: unchecked, tone: :neutral}
-      ]
-    }
+  # A dependency, its version, the latest, and what pulls it in.
+  @spec dependency(map()) :: Phoenix.LiveView.Rendered.t()
+  defp dependency(assigns) do
+    ~H"""
+    <Components.chip patch={Components.path(@prefix, @lens, @finding.id)}>
+      {@finding.app}
+    </Components.chip>
+    <span class="font-mono text-[0.8125rem] tabular-nums">
+      {@finding.version}<span :if={@finding.latest && @finding.latest != @finding.version}> → {@finding.latest}</span>
+    </span>
+    <span :if={@finding.via != []} class="report-muted text-sm">via {via_label(@finding.via)}</span>
+    """
   end
 
-  @spec build_markdown([finding()], non_neg_integer(), boolean()) :: iodata()
-  defp build_markdown(findings, unchecked, pending?) do
-    [
-      "This report reviews the dependencies your project runs for supply-chain risk: ",
-      "known security advisories, versions that have fallen behind their latest release, ",
-      "and versions their maintainers have retired. Each item is a *finding* — a fact and ",
-      "why it might matter — not a verdict that you are exploitable.\n\n",
-      freshness(),
-      overview(findings, unchecked, pending?),
-      advisories_section(findings),
-      hygiene_section(findings)
-    ]
-  end
+  @spec tone([finding()], atom()) :: atom()
+  defp tone([], _tone), do: :neutral
+  defp tone(_findings, tone), do: tone
 
-  @spec freshness() :: iodata()
-  defp freshness do
-    case Source.last_refreshed_at() do
-      nil ->
-        "The advisory database has not been downloaded yet, so advisory findings may be incomplete.\n\n"
+  @spec update_command([finding()]) :: String.t()
+  defp update_command(findings), do: "mix deps.update " <> Enum.map_join(findings, " ", & &1.app)
 
-      at ->
-        [
-          "Advisories are matched against a database last refreshed on ",
-          Calendar.strftime(at, "%-d %B %Y at %H:%M UTC"),
-          "; findings are only as current as that refresh.\n\n"
-        ]
+  @spec fixed_in(Advisory.t(), String.t()) :: String.t()
+  defp fixed_in(advisory, version) do
+    case Advisory.fixed_version(advisory, version) do
+      nil -> "no fixed version yet"
+      fixed -> "fixed in " <> fixed
     end
   end
 
-  # Until the advisory database and Hex registry have results, an empty report
-  # means "not checked yet", not "all clear".
-  @spec overview([finding()], non_neg_integer(), boolean()) :: iodata()
-  defp overview([], _unchecked, true = _pending?) do
-    "Clarity is still checking dependencies against the advisory database and Hex, so " <>
-      "nothing is flagged yet. This report updates when the checks finish.\n\n"
-  end
+  @spec freshness(DateTime.t() | nil) :: String.t()
+  defp freshness(nil), do: "Advisory database not downloaded yet, so advisories may be missing."
 
-  defp overview([], unchecked, false = _pending?) do
-    [
-      "**Nothing is flagged.** Every dependency Clarity could check is on a current, ",
-      "non-retired version with no known security advisory.",
-      unchecked_note(unchecked),
-      "\n\n"
-    ]
-  end
+  defp freshness(at),
+    do: "Advisories as of " <> Calendar.strftime(at, "%-d %B %Y, %H:%M UTC") <> "."
 
-  defp overview(findings, unchecked, pending?) do
-    total = length(findings)
-    advisories = Enum.count(findings, & &1.advisory?)
-    outdated = Enum.count(findings, & &1.outdated?)
-    retired = Enum.count(findings, & &1.retired?)
-
-    [
-      "Of the dependencies Clarity can see, **",
-      Integer.to_string(total),
-      pluralize(total, " dependency carries", " dependencies carry"),
-      " a supply-chain concern**: ",
-      Enum.join(
-        Enum.reject(
-          [
-            phrase(advisories, "a security advisory", "security advisories"),
-            phrase(outdated, "an outdated version", "outdated versions"),
-            phrase(retired, "a retired version", "retired versions")
-          ],
-          &(&1 == nil)
-        ),
-        ", "
-      ),
-      ".",
-      unchecked_note(unchecked),
-      if(pending?, do: " Clarity is still checking dependencies, so more may appear.", else: []),
-      "\n\n"
-    ]
-  end
-
-  @spec unchecked_note(non_neg_integer()) :: iodata()
-  defp unchecked_note(0), do: []
-
-  defp unchecked_note(count) do
-    [
-      " ",
-      Integer.to_string(count),
-      pluralize(count, " dependency is", " dependencies are"),
-      " not published on Hex (such as your own applications, path or git dependencies, ",
-      "and Erlang/OTP applications), so ",
-      pluralize(count, "it", "they"),
-      " could not be checked."
-    ]
-  end
-
-  @spec advisories_section([finding()]) :: iodata()
-  defp advisories_section(findings) do
-    advised = Enum.filter(findings, & &1.advisory?)
-
-    [
-      "### Security advisories\n\n",
-      case advised do
-        [] ->
-          "No dependency has a known security advisory.\n\n"
-
-        rows ->
-          [
-            "A published advisory means a known vulnerability affects the installed version; ",
-            "where a maintainer has shipped a fix, updating to it resolves the advisory.\n\n",
-            "| Dependency | Via | Advisory | Fixed in | Summary |\n",
-            "| --- | --- | --- | --- | --- |\n",
-            Enum.flat_map(rows, &advisory_rows/1),
-            "\n"
-          ]
-      end
-    ]
-  end
-
-  @spec advisory_rows(finding()) :: [iodata()]
-  defp advisory_rows(finding) do
-    Enum.map(finding.advisories, fn advisory ->
-      [
-        "| **",
-        finding.app,
-        " ",
-        finding.version,
-        "** | ",
-        via_label(finding.via),
-        " | ",
-        cell(advisory.id),
-        " | ",
-        cell(Advisory.fixed_version(advisory, finding.version)),
-        " | ",
-        cell(advisory.summary),
-        " |\n"
-      ]
-    end)
-  end
-
-  # Text from the advisory database into a single markdown table cell: collapse
-  # whitespace, and escape every character markdown acts on (so a summary can't
-  # add images, links, emphasis or table cells of its own).
-  @spec cell(String.t() | nil) :: String.t()
-  defp cell(text) when text in [nil, ""], do: "—"
-
-  defp cell(text) do
-    text
-    |> String.replace(~r/\s+/, " ")
-    |> String.trim()
-    |> String.replace(~r/[\\`*_{}\[\]()#+\-.!<>|~]/, "\\\\\\0")
-  end
-
-  @spec hygiene_section([finding()]) :: iodata()
-  defp hygiene_section(findings) do
-    hygiene = Enum.filter(findings, &(&1.retired? or &1.outdated?))
-
-    [
-      "### Dependency hygiene\n\n",
-      case hygiene do
-        [] ->
-          "Every dependency Clarity could check is on a current, non-retired version.\n\n"
-
-        rows ->
-          [
-            "Retired versions have been pulled from Hex and should be moved off; ",
-            "outdated ones are simply behind their latest release. *Via* names the ",
-            "direct dependency that pulls a transitive one in.\n\n",
-            "| Dependency | Via | Installed | Latest | Status |\n",
-            "| --- | --- | --- | --- | --- |\n",
-            Enum.map(rows, &hygiene_row/1),
-            "\n"
-          ]
-      end
-    ]
-  end
-
-  @spec hygiene_row(finding()) :: iodata()
-  defp hygiene_row(finding) do
-    status = if finding.retired?, do: "Retired", else: "Outdated"
-
-    [
-      "| **",
-      finding.app,
-      "** | ",
-      via_label(finding.via),
-      " | ",
-      finding.version,
-      " | ",
-      finding.latest || "—",
-      " | ",
-      status,
-      " |\n"
-    ]
-  end
+  @spec unchecked_note([Vertex.Application.t()]) :: String.t()
+  defp unchecked_note([]), do: ""
+  defp unchecked_note(unchecked), do: " #{length(unchecked)} not on Hex, so not checked."
 
   @spec via_label([String.t()]) :: String.t()
-  defp via_label([]), do: "direct"
   defp via_label(via), do: Enum.join(via, ", ")
 
   @spec findings(Graph.t(), [Vertex.Application.t()]) :: [finding()]
@@ -331,6 +234,7 @@ defmodule Clarity.Report.SupplyChain do
 
     %{
       app: to_string(vertex.app),
+      id: Vertex.id(vertex),
       version: version,
       latest: latest(vertex.app),
       via: via,
@@ -369,13 +273,4 @@ defmodule Clarity.Report.SupplyChain do
       nil -> nil
     end
   end
-
-  @spec phrase(non_neg_integer(), String.t(), String.t()) :: String.t() | nil
-  defp phrase(0, _singular, _plural), do: nil
-  defp phrase(1, singular, _plural), do: "1 with #{singular}"
-  defp phrase(count, _singular, plural), do: "#{count} with #{plural}"
-
-  @spec pluralize(non_neg_integer(), String.t(), String.t()) :: String.t()
-  defp pluralize(1, singular, _plural), do: singular
-  defp pluralize(_count, _singular, plural), do: plural
 end
