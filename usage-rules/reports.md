@@ -35,8 +35,8 @@ vertices. If you're adding a view for a *single* vertex, use a
   - `prefix` - the URL prefix Clarity is mounted at
   - `version` - the graph's update count, which changes whenever introspection
     changes the graph; `update/2` then runs again, so the report stays current
-  - `link_lowercase` - whether the viewer has text link lowercase names too, from
-    the settings menu; pass it on to `<.markdown>` along with `graph`
+  - `linking` - the viewer's text linking options from the settings menu (every
+    mention, lowercase names); pass them on to `<.markdown>` along with `graph`
 - In practice a report builds a markdown string and renders it with
   `<.markdown>`, so it reads as prose.
 - The report queries the graph itself, typically with
@@ -78,7 +78,7 @@ def category, do: "Compliance"
 
 ### 3. Implement the LiveComponent
 
-`update/2` receives `graph`, `lens`, `prefix`, `version` and `link_lowercase`. Build the narrative
+`update/2` receives `graph`, `lens`, `prefix`, `version` and `linking`. Build the narrative
 markdown there and render it with `<.markdown>` (wrapped in a single root
 element, as a stateful LiveComponent requires):
 

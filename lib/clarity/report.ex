@@ -20,8 +20,8 @@ defmodule Clarity.Report do
     * `prefix` - the URL prefix Clarity is mounted at
     * `version` - the graph's update count; it changes whenever introspection
       changes the graph, so `update/2` runs again and the report stays current
-    * `link_lowercase` - whether the viewer has text link lowercase names too;
-      pass it on to `Clarity.Components.MarkdownComponent`
+    * `linking` - the viewer's text linking options (`t:Clarity.Autolink.options/0`);
+      pass them on to `Clarity.Components.MarkdownComponent`
 
   Reports are prose: they explain what's going on and why it matters, typically
   as generated markdown rendered with `Clarity.Components.MarkdownComponent`.

@@ -24,7 +24,7 @@ defmodule Clarity.Components.MarkdownComponent do
   @typep naming() :: %{
            graph: Clarity.Graph.t() | nil,
            vertex: Vertex.t() | nil,
-           lowercase: boolean()
+           linking: Autolink.options()
          }
 
   @extension_opts [extension: [table: true, strikethrough: true]]
@@ -36,9 +36,9 @@ defmodule Clarity.Components.MarkdownComponent do
   attr :graph, :any, default: nil, doc: "The graph whose vertices' names to link; nil links none"
   attr :vertex, :any, default: nil, doc: "The vertex the text is about, if any"
 
-  attr :link_lowercase, :boolean,
-    default: false,
-    doc: "Whether to link lowercase mentions too, as `Clarity.Autolink.link/4` does"
+  attr :linking, :list,
+    default: [],
+    doc: "The viewer's text linking options, `t:Clarity.Autolink.options/0`"
 
   attr :class, :string, default: "", doc: "CSS classes to apply to the markdown container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the markdown container"
@@ -50,7 +50,7 @@ defmodule Clarity.Components.MarkdownComponent do
       {render_markdown_with_vertex_links(@content, @prefix, @lens, %{
         graph: @graph,
         vertex: @vertex,
-        lowercase: @link_lowercase
+        linking: @linking
       })}
     </div>
     """
@@ -132,15 +132,14 @@ defmodule Clarity.Components.MarkdownComponent do
   @spec link_names(MDEx.Document.t(), naming(), String.t(), Lens.t()) :: MDEx.Document.t()
   defp link_names(document, %{graph: nil}, _prefix, _lens), do: document
 
-  defp link_names(document, %{graph: graph, vertex: vertex, lowercase: lowercase}, prefix, lens) do
+  defp link_names(document, %{graph: graph, vertex: vertex, linking: linking}, prefix, lens) do
     default_lens = default_lens()
 
     Autolink.link(
       document,
-      Autolink.names(graph, vertex, lowercase: lowercase),
+      Autolink.names(graph, vertex, linking),
       &build_clarity_path(Vertex.id(&1), prefix, link_lens(&1, lens, default_lens)),
-      lowercase: lowercase,
-      vertex: vertex
+      [{:vertex, vertex} | linking]
     )
   end
 

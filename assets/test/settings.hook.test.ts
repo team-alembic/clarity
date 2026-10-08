@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import Settings, { getLinkLowercase } from "../js/settings.hook.js";
+import Settings, { getLinking, MENU_GAP } from "../js/settings.hook.js";
 
 // A system theme whose changes the test can fire.
 function stubSystem(dark: boolean) {
@@ -21,10 +21,14 @@ function stubSystem(dark: boolean) {
 function mount() {
   const el = document.createElement("div");
   el.innerHTML = `
-    <input type="radio" name="theme" value="light" />
-    <input type="radio" name="theme" value="dark" />
-    <input type="radio" name="theme" value="system" />
-    <input type="checkbox" name="link_lowercase" />
+    <button type="button" popovertarget="menu">Settings</button>
+    <div id="menu" popover>
+      <input type="radio" name="theme" value="light" />
+      <input type="radio" name="theme" value="dark" />
+      <input type="radio" name="theme" value="system" />
+      <input type="checkbox" name="lowercase" data-linking />
+      <input type="checkbox" name="every" data-linking />
+    </div>
   `;
   document.body.append(el);
 
@@ -58,20 +62,23 @@ describe("Settings", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the stored settings, defaulting to the system theme and linking lowercase", () => {
+  it("shows the defaults: the system theme, lowercase names linked, each first mention", () => {
     hook = mount();
 
     expect(checked(hook, 'input[value="system"]')).toBe(true);
-    expect(checked(hook, 'input[name="link_lowercase"]')).toBe(true);
+    expect(checked(hook, 'input[name="lowercase"]')).toBe(true);
+    expect(checked(hook, 'input[name="every"]')).toBe(false);
   });
 
-  it("shows a stored theme and lowercase linking turned off", () => {
+  it("shows the stored settings", () => {
     localStorage.setItem("clarity-theme", "dark");
     localStorage.setItem("clarity-link-lowercase", "false");
+    localStorage.setItem("clarity-link-every", "true");
     hook = mount();
 
     expect(checked(hook, 'input[value="dark"]')).toBe(true);
-    expect(checked(hook, 'input[name="link_lowercase"]')).toBe(false);
+    expect(checked(hook, 'input[name="lowercase"]')).toBe(false);
+    expect(checked(hook, 'input[name="every"]')).toBe(true);
   });
 
   it("applies, stores and reports a chosen theme", () => {
@@ -115,11 +122,33 @@ describe("Settings", () => {
     expect(hook.pushEvent).not.toHaveBeenCalled();
   });
 
-  it("stores and reports lowercase linking", () => {
+  it("stores and reports each text linking option", () => {
     hook = mount();
-    choose(hook, 'input[name="link_lowercase"]', false);
+    choose(hook, 'input[name="lowercase"]', false);
+    choose(hook, 'input[name="every"]');
 
-    expect(getLinkLowercase()).toBe(false);
-    expect(hook.pushEvent).toHaveBeenCalledWith("set-link-lowercase", { enabled: false });
+    expect(getLinking()).toEqual({ lowercase: false, every: true });
+    expect(hook.pushEvent).toHaveBeenCalledWith("set-linking", { lowercase: false });
+    expect(hook.pushEvent).toHaveBeenCalledWith("set-linking", { every: true });
+  });
+
+  it("hangs the menu just below the gear as it opens, their right edges lined up", () => {
+    hook = mount();
+    vi.stubGlobal("innerWidth", 1280);
+    hook.button.getBoundingClientRect = () => ({ bottom: 40, right: 1260 }) as DOMRect;
+
+    hook.menu.dispatchEvent(Object.assign(new Event("beforetoggle"), { newState: "open" }));
+
+    expect(hook.menu.style.top).toBe(`${40 + MENU_GAP}px`);
+    expect(hook.menu.style.right).toBe("20px");
+  });
+
+  it("leaves the menu where it is as it closes", () => {
+    hook = mount();
+    hook.button.getBoundingClientRect = () => ({ bottom: 40, right: 1260 }) as DOMRect;
+
+    hook.menu.dispatchEvent(Object.assign(new Event("beforetoggle"), { newState: "closed" }));
+
+    expect(hook.menu.style.top).toBe("");
   });
 });

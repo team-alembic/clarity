@@ -115,6 +115,16 @@ defmodule Clarity.AutolinkTest do
       assert links(html, "Conversation") == 2
     end
 
+    test "links every mention when asked", %{names: names} do
+      html =
+        render("A Conversation, from a User, and the Conversation's `Demo.Accounts.User`.", names, &("/to/" <> short(&1)),
+          every: true
+        )
+
+      assert links(html, "Conversation") == 2
+      assert links(html, "User") == 2
+    end
+
     test "links each name at its first mention in a table cell", %{names: names} do
       html = render("| Name | About |\n|---|---|\n| Conversation | Holds a User's Conversation |", names)
 

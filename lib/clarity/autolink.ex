@@ -28,8 +28,8 @@ defmodule Clarity.Autolink do
   plural); otherwise the name isn't linked. Text about a module is read as
   about the domain or resource the module defines.
   Only whole words link, each vertex at its first mention in a paragraph or
-  table cell, and never the vertex the text describes, nor text in a heading,
-  a link or a code block.
+  table cell (or optionally at every mention), and never the vertex the text
+  describes, nor text in a heading, a link or a code block.
   """
 
   alias Ash.Resource.Info
@@ -46,6 +46,12 @@ defmodule Clarity.Autolink do
 
   @typedoc "Names that link, each to the vertex it names."
   @type names() :: %{String.t() => Vertex.t()}
+
+  @typedoc """
+  How text links names: at `every` mention rather than each paragraph's
+  first, and `lowercase` mentions too. Both are off unless given.
+  """
+  @type options() :: [every: boolean(), lowercase: boolean()]
 
   # The text's vertex's own resource, the resources it relates to, and its domain.
   @typep context() :: %{resource: module() | nil, related: [module()], domain: module() | nil}
@@ -101,6 +107,9 @@ defmodule Clarity.Autolink do
   Links the first mention of each name in an MDEx document, to the path
   `path` gives for its vertex.
 
+  With `every: true`, every mention links, not only each paragraph's or
+  table cell's first.
+
   With `lowercase: true`, and names from `names/3` with the same, running
   text links lowercase mentions too: of a resource or domain, written as the
   name it stands for ("time entries" as TimeEntries), and of a field of the
@@ -117,7 +126,13 @@ defmodule Clarity.Autolink do
     resource =
       if lowercase?, do: opts |> Keyword.get(:vertex) |> context() |> Map.fetch!(:resource)
 
-    context = %{names: names, path: path, lowercase?: lowercase?, resource: resource}
+    context = %{
+      names: names,
+      path: path,
+      every?: Keyword.get(opts, :every, false),
+      lowercase?: lowercase?,
+      resource: resource
+    }
 
     {document, _linked} = walk(document, context, MapSet.new())
     document
@@ -315,7 +330,7 @@ defmodule Clarity.Autolink do
   @spec link_found({Vertex.t(), String.t()}, String.t(), map(), MapSet.t()) ::
           {[MDEx.Document.md_node()], MapSet.t()}
   defp link_found({vertex, written}, text, context, linked) do
-    if MapSet.member?(linked, vertex),
+    if linked?(vertex, context, linked),
       do: {[%MDEx.Text{literal: text}], linked},
       else: link_vertex(vertex, [%MDEx.Text{literal: written}], context, linked)
   end
@@ -333,10 +348,16 @@ defmodule Clarity.Autolink do
   @spec link_vertex(Vertex.t(), [MDEx.Document.md_node()], map(), MapSet.t()) ::
           {[MDEx.Document.md_node()], MapSet.t()}
   defp link_vertex(vertex, nodes, context, linked) do
-    if MapSet.member?(linked, vertex),
+    if linked?(vertex, context, linked),
       do: {nodes, linked},
       else: {patch_link(context.path.(vertex), nodes), MapSet.put(linked, vertex)}
   end
+
+  # Whether `vertex` is already linked, so its mention stays plain text,
+  # unless every mention links.
+  @spec linked?(Vertex.t(), map(), MapSet.t()) :: boolean()
+  defp linked?(_vertex, %{every?: true}, _linked), do: false
+  defp linked?(vertex, _context, linked), do: MapSet.member?(linked, vertex)
 
   # Names that read as names in running text: module-like ones, and field
   # names that look like code. Plain words, such as `status`, link only in

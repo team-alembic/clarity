@@ -28,8 +28,7 @@ defmodule Clarity.Pages.Setup do
       |> assign(
         prefix: prefix,
         theme: theme,
-        # On unless the viewer turned it off in the settings menu.
-        link_lowercase?: params["link_lowercase"] != false,
+        linking: linking(params["linking"]),
         clarity_pid: Map.get(session, "clarity_pid", Clarity.Server)
       )
       |> attach_hook(:settings_handler, :handle_event, &handle_settings_event/3)
@@ -45,12 +44,28 @@ defmodule Clarity.Pages.Setup do
     {:halt, assign(socket, theme: theme)}
   end
 
-  defp handle_settings_event("set-link-lowercase", %{"enabled" => enabled}, socket)
-       when is_boolean(enabled) do
-    {:halt, assign(socket, link_lowercase?: enabled)}
+  defp handle_settings_event("set-linking", %{} = changes, socket) do
+    {:halt, assign(socket, linking: linking(changes, socket.assigns.linking))}
   end
 
   defp handle_settings_event(_event, _params, socket) do
     {:cont, socket}
   end
+
+  # The viewer's text linking options, as the settings menu sends them, over
+  # `linking`: lowercase names link unless turned off, every mention only if
+  # turned on.
+  @spec linking(term(), Clarity.Autolink.options()) :: Clarity.Autolink.options()
+  defp linking(settings, linking \\ [every: false, lowercase: true])
+
+  defp linking(%{} = settings, linking) do
+    Enum.reduce(linking, linking, fn {option, _enabled}, linking ->
+      case Map.get(settings, Atom.to_string(option)) do
+        enabled when is_boolean(enabled) -> Keyword.put(linking, option, enabled)
+        _unset -> linking
+      end
+    end)
+  end
+
+  defp linking(_settings, linking), do: linking
 end

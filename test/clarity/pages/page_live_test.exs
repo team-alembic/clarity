@@ -513,7 +513,7 @@ defmodule Clarity.Pages.PageLiveTest do
   describe "PageLive settings" do
     @describetag test_graph: [resources: true]
 
-    test "the header's gear opens the settings: the theme, and lowercase linking", %{conn: conn} do
+    test "the header's gear opens the settings: the theme, and how text links names", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
       assert has_element?(view, "#header-settings button[popovertarget=header-settings-menu]")
@@ -521,7 +521,8 @@ defmodule Clarity.Pages.PageLiveTest do
       for theme <- ~w(light dark system),
           do: assert(has_element?(view, "#header-settings-menu input[name=theme][value=#{theme}]"))
 
-      assert has_element?(view, "#header-settings-menu input[type=checkbox][name=link_lowercase]")
+      for option <- ~w(lowercase every),
+          do: assert(has_element?(view, "#header-settings-menu input[type=checkbox][name=#{option}][data-linking]"))
     end
 
     test "text links lowercase names until the viewer turns it off", %{conn: conn} do
@@ -530,14 +531,34 @@ defmodule Clarity.Pages.PageLiveTest do
 
       assert has_element?(view, ".prose a", ~r/^User$/)
 
-      render_hook(view, "set-link-lowercase", %{"enabled" => false})
+      render_hook(view, "set-linking", %{"lowercase" => false})
 
       refute has_element?(view, ".prose a", ~r/^User$/)
       assert has_element?(view, ".prose", "handles user management")
     end
 
+    test "text links every mention once the viewer turns it on", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
+      render_async(view)
+
+      # The domain's description names User in prose and again in code.
+      user_links = fn ->
+        view
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query(~s(.prose a[href$="demo-accounts-user"]))
+        |> Enum.count()
+      end
+
+      first_mentions = user_links.()
+
+      render_hook(view, "set-linking", %{"every" => true})
+
+      assert user_links.() > first_mentions
+    end
+
     test "a viewer who turned lowercase linking off joins with it off", %{conn: conn} do
-      conn = put_connect_params(conn, %{"link_lowercase" => false})
+      conn = put_connect_params(conn, %{"linking" => %{"lowercase" => false}})
       {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
       render_async(view)
 

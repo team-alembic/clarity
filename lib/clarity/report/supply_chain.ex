@@ -63,7 +63,7 @@ defmodule Clarity.Report.SupplyChain do
        prefix: assigns.prefix,
        lens: assigns.lens,
        graph: assigns.graph,
-       link_lowercase: Map.get(assigns, :link_lowercase, false),
+       linking: Map.get(assigns, :linking, []),
        markdown: build_markdown(findings, unchecked, pending?),
        dashboard: dashboard(findings, length(apps), unchecked)
      )}
@@ -88,7 +88,7 @@ defmodule Clarity.Report.SupplyChain do
         prefix={@prefix}
         lens={@lens}
         graph={@graph}
-        link_lowercase={@link_lowercase}
+        linking={@linking}
         class="max-w-[75ch]"
       />
     </section>

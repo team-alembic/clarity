@@ -17,7 +17,7 @@
 import Mermaid from "./mermaid.hook";
 import Viz from "./viz.hook";
 import Tooltip from "./tooltip.hook";
-import Settings, { getLinkLowercase } from "./settings.hook";
+import Settings, { getLinking } from "./settings.hook";
 import { applyTheme, getInitialTheme } from "./theme";
 import Flash from "./flash.hook";
 import Details from "./details.hook";
@@ -56,7 +56,7 @@ let liveSocket = new LiveView.LiveSocket(socketPath, Phoenix.Socket, {
     _csrf_token: csrfToken,
     user_agent: window.navigator.userAgent,
     theme: getInitialTheme(),
-    link_lowercase: getLinkLowercase(),
+    linking: getLinking(),
   }),
   hooks: Hooks,
 });

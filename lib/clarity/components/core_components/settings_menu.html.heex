@@ -1,6 +1,6 @@
 <%!-- The Settings hook owns these inputs: their state lives in the browser, so
 LiveView leaves them be. The menu is a popover, so clicking outside it or
-pressing Escape closes it. --%>
+pressing Escape closes it; the hook places it under the gear as it opens. --%>
 <div id={@id} phx-hook="Settings" phx-update="ignore" class={@class} {@rest}>
   <button
     type="button"
@@ -15,7 +15,7 @@ pressing Escape closes it. --%>
     popover
     role="dialog"
     aria-label="Settings"
-    class="[inset:3.25rem_0.5rem_auto_auto] m-0 w-72 rounded-lg p-4 shadow-lg border border-base-light-300 dark:border-base-dark-700 bg-base-light-100 dark:bg-base-dark-800 text-base-light-900 dark:text-base-dark-50"
+    class="[inset:3rem_1rem_auto_auto] m-0 w-64 rounded-lg p-3 shadow-lg border border-base-light-300 dark:border-base-dark-700 bg-base-light-100 dark:bg-base-dark-800 text-base-light-900 dark:text-base-dark-50"
   >
     <fieldset>
       <legend class="text-xs font-semibold uppercase tracking-wide text-base-light-600 dark:text-base-dark-400 mb-2">
@@ -35,19 +35,36 @@ pressing Escape closes it. --%>
       </div>
     </fieldset>
 
-    <label class="mt-4 flex items-start gap-2.5 cursor-pointer">
-      <input
-        type="checkbox"
-        name="link_lowercase"
-        class="mt-0.5 size-4 shrink-0 accent-primary-light dark:accent-primary-dark"
-      />
-      <span>
-        <span class="block text-sm font-medium">Link lowercase names</span>
-        <span class="block mt-0.5 text-xs text-base-light-600 dark:text-base-dark-400">
-          Text links “time entries” as TimeEntries, and a resource’s own fields,
-          such as “reporter”, in its own description.
-        </span>
-      </span>
-    </label>
+    <fieldset class="mt-4">
+      <legend class="text-xs font-semibold uppercase tracking-wide text-base-light-600 dark:text-base-dark-400 mb-2">
+        Text linking
+      </legend>
+      <div class="space-y-3">
+        <label
+          :for={
+            {option, label, hint} <- [
+              {"lowercase", "Lowercase names",
+               "“time entries” links as TimeEntries, and a resource’s own fields, such as “reporter”, in its description."},
+              {"every", "Every mention",
+               "Not only each name’s first mention in a paragraph or table cell."}
+            ]
+          }
+          class="flex items-start gap-2.5 cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            name={option}
+            data-linking
+            class="mt-0.5 size-4 shrink-0 accent-primary-light dark:accent-primary-dark"
+          />
+          <span>
+            <span class="block text-sm font-medium">{label}</span>
+            <span class="block mt-0.5 text-xs text-base-light-600 dark:text-base-dark-400">
+              {hint}
+            </span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
   </div>
 </div>

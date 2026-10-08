@@ -141,8 +141,9 @@ defmodule Clarity.CoreComponents do
 
   @doc """
   Renders the settings menu: a gear that opens the viewer's preferences, the
-  theme (light, dark or the system's) and whether text links lowercase names.
-  They're kept in the browser, which tells the LiveView.
+  theme (light, dark or the system's) and how text links names (lowercase
+  ones too, every mention). They're kept in the browser, which tells the
+  LiveView.
   """
   attr :id, :string, required: true, doc: "The unique ID for the settings menu"
   attr :class, :string, default: "", doc: "CSS classes to apply to the settings menu"
@@ -261,7 +262,7 @@ defmodule Clarity.CoreComponents do
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
   attr :graph, :any, default: nil, doc: "Clarity's graph, whose vertices' names text links"
-  attr :link_lowercase, :boolean, default: false, doc: "Whether text links lowercase names too"
+  attr :linking, :list, default: [], doc: "The viewer's text linking options"
   attr :zoom_level, :any, required: true, doc: "Zoom level tuple {outgoing, incoming}"
   attr :shown_vertex_types, :list, required: true, doc: "List of vertex types currently shown"
   attr :available_vertex_types, :list, required: true, doc: "List of all available vertex types"
