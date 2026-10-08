@@ -1,7 +1,7 @@
 defmodule Clarity.Report.Charts do
   @moduledoc """
   Small presentational chart components for reports — KPI stat cards and a
-  stacked bar — giving a report an at-a-glance executive summary above its prose.
+  stacked bar — giving a report an at-a-glance summary beside its to-dos.
 
   Both are plain HTML styled with Tailwind (no JavaScript). Segment/card colour
   is chosen by `tone`: `:ok`, `:info`, `:warning`, `:error`, or `:neutral`.

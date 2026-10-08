@@ -2,11 +2,13 @@
 
 Reports are **written roll-ups** of the graph: a single document that sums up
 part of the graph in one place, an alternative to navigating it vertex by
-vertex. A report is *prose*: it explains, in sentences, what's going on and why
-it matters, rather than presenting a dashboard to operate. For users who want
-the relevant information in one place (e.g. a "Supply chain security" or
-"Security posture" report), a report gathers the relevant vertices and narrates
-them.
+vertex. A report is **action-first**: it says how many things there are to do,
+lists them most severe first, each with what it affects and the fix, and keeps
+the reference data below in closed sections. It doesn't explain itself up
+front; anything worth explaining goes in a hover hint. For users who want the
+relevant information in one place (e.g. a "Supply chain security" or "Security
+posture" report), a report gathers the relevant vertices and says what to do
+about them.
 
 Reports are a top-level section, not part of any lens: the activity bar down
 the left edge shows an icon per lens and, below them, **Reports**, so no report
@@ -40,12 +42,16 @@ vertices. If you're adding a view for a *single* vertex, use a
   - `name_style` - `:short` to name modules within what holds them where the
     report shows that (a resource beside its domain as `ApiKey`, a domain as
     `Accounts`), or `:qualified` in full
-- In practice a report builds a markdown string and renders it with
-  `<.markdown>`, so it reads as prose.
+- A report renders with `Clarity.Report.Components`: a `status/1` line, a
+  `todo_list/1` of `todo/1`s (with `group/1` rows, `chip/1`s, `more/1` for
+  long lists and a `command/1` to copy), and closed `section/1`s holding
+  `.report-table`s. Descriptions and other free text from the code go through
+  `<.markdown>`; pass one `Clarity.Autolink.index/2` as `index` when there are
+  many.
 - The report queries the graph itself, typically with
   `Clarity.Graph.vertices(graph, {:==, :vertex_type, SomeVertex})`, and reuses
   the per-vertex analysis (status providers, `Clarity.Ash.PolicyAnalysis`, etc.)
-  to compose its narrative.
+  to work out its findings.
 
 Reports are registered per-application under `:clarity_reports` and discovered
 via `Clarity.Config.list_reports/0`.
@@ -81,48 +87,66 @@ def category, do: "Compliance"
 
 ### 3. Implement the LiveComponent
 
-`update/2` receives `graph`, `lens`, `prefix`, `version`, `linking` and `name_style`. Build the narrative
-markdown there and render it with `<.markdown>` (wrapped in a single root
-element, as a stateful LiveComponent requires):
+`update/2` receives `graph`, `lens`, `prefix`, `version`, `linking` and
+`name_style`. Work out the findings there, and render them with
+`Clarity.Report.Components` (wrapped in a single root element, as a stateful
+LiveComponent requires):
 
 ```elixir
-import Clarity.Components.MarkdownComponent
+alias Clarity.Report.Components
 
 @impl Phoenix.LiveComponent
 def update(assigns, socket) do
+  unlicensed = unlicensed_resources(assigns.graph)
+
   {:ok,
    assign(socket,
      prefix: assigns.prefix,
      lens: assigns.lens,
-     markdown: build_markdown(assigns.graph)
+     unlicensed: unlicensed,
+     todos: Enum.count([unlicensed], &(&1 != []))
    )}
 end
 
 @impl Phoenix.LiveComponent
 def render(assigns) do
   ~H"""
-  <section>
-    <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
+  <section class="space-y-6">
+    <Components.status count={@todos} />
+
+    <Components.todo_list :if={@todos > 0}>
+      <Components.todo
+        severity={:medium}
+        title="Resources without a licence"
+        count={length(@unlicensed)}
+        hint="Why it matters, in a sentence, on hover."
+      >
+        <Components.chip
+          :for={resource <- @unlicensed}
+          patch={Components.path(@prefix, @lens, Vertex.id(resource))}
+        >
+          {Vertex.name(resource)}
+        </Components.chip>
+        <:fix>Add a <code>licence</code> to each.</:fix>
+      </Components.todo>
+    </Components.todo_list>
+
+    <Components.section id="resources" title="Every resource">
+      <table class="report-table">...</table>
+    </Components.section>
   </section>
   """
 end
-
-defp build_markdown(graph) do
-  resources = Graph.vertices(graph, {:==, :vertex_type, Vertex.Ash.Resource})
-
-  [
-    "This report reviews compliance across #{length(resources)} resources.\n\n",
-    # ... narrative sections built from the analysis ...
-  ]
-end
 ```
 
-Prefer prose — sentences and short sections that explain what's going on and why
-it matters — over tables of raw data. `Clarity.Report.SupplyChain` and
-`Clarity.Report.SecurityPosture` are worked examples.
+Lead with what to do, not with what the report is: no introduction, a
+one-line fix per to-do, a command to copy where one fixes it, and the full data
+in closed sections. `Clarity.Report.SupplyChain`,
+`Clarity.Report.SecurityPosture` and `Clarity.Report.Ontology` are worked
+examples.
 
-Text from outside the codebase, such as an advisory's summary, goes into the
-markdown as-is, so escape markdown in it before interpolating it.
+HEEx escapes text from outside the codebase, such as an advisory's summary, so
+render it as text rather than through `<.markdown>`.
 
 If the analysis is slow (it grows with the app), run it with `assign_async/3` in
 `update/2` and render it with `<.async_result>`, as `Clarity.Report.SecurityPosture`
@@ -166,7 +190,7 @@ html =
     prefix: "/clarity"
   )
 
-assert html =~ "Compliance"
+assert html =~ "Resources without a licence"
 ```
 
 For the end-to-end routes, drive `Clarity.ReportLive` with
@@ -175,13 +199,17 @@ For the end-to-end routes, drive `Clarity.ReportLive` with
 
 ## Real-World Examples
 
-- `lib/clarity/report/supply_chain.ex` — narrates advisories and dependency
-  hygiene (retired/outdated) from the supply-chain status data.
-- `lib/clarity/report/security_posture.ex` — narrates policy enforcement, bypass
-  policies, and sensitive-field exposure across resources (Ash-guarded).
-- `lib/clarity/report/ontology.ex` — rolls up the domain vocabulary: entities
-  and their terms (attributes, calculations, aggregates, relationships), plus
-  documentation coverage as a worklist of undocumented terms (Ash-guarded).
+- `lib/clarity/report/supply_chain.ex` — the dependencies to update:
+  advisories, then retired and outdated versions, each with the
+  `mix deps.update` to copy.
+- `lib/clarity/report/security_posture.ex` — what to fix in how resources are
+  protected: sensitive fields, policies, anonymous reach and bypasses, with who
+  can reach what below (Ash-guarded; analysed asynchronously, and rendered
+  through a `posture/1` function component that tests can call directly).
+- `lib/clarity/report/ontology.ex` — the documentation to write, then the
+  domain vocabulary: entities and their terms (attributes, calculations,
+  aggregates, relationships), descriptions linked from one autolink index
+  (Ash-guarded).
 
 ## Next Steps
 

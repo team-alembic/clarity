@@ -20,9 +20,9 @@ defmodule Clarity.ReportLiveTest do
     end
 
     test "renders the supply-chain report under its name", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/reports/supply-chain")
+      {:ok, view, _html} = live(conn, "/reports/supply-chain")
 
-      assert html =~ "Dependency health"
+      assert has_element?(view, ".report-status")
       assert has_element?(view, ".title h1", "Supply chain security")
       assert has_element?(view, "#reports-tree a[aria-current=page]", "Supply chain security")
     end
@@ -31,7 +31,7 @@ defmodule Clarity.ReportLiveTest do
       {:ok, view, html} = live(conn, "/reports/ontology")
 
       # The test graph has no Ash resources.
-      assert html =~ "found any Ash resources"
+      assert html =~ "No Ash resources found"
       assert has_element?(view, ".title h1", "Ontology")
       assert has_element?(view, "#report-category-architecture a[aria-current=page]", "Ontology")
     end
@@ -41,7 +41,7 @@ defmodule Clarity.ReportLiveTest do
 
       assert html =~ "Analysing"
       # The test graph has no Ash resources.
-      assert render_async(view) =~ "found any Ash resources"
+      assert render_async(view) =~ "No Ash resources found"
     end
 
     test "choosing another report in the tree patches to it", %{conn: conn} do

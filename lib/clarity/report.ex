@@ -25,8 +25,9 @@ defmodule Clarity.Report do
     * `name_style` - `:short` to name modules within what holds them where the
       report shows that, or `:qualified` in full (`t:Clarity.Vertex.Name.style/0`)
 
-  Reports are prose: they explain what's going on and why it matters, typically
-  as generated markdown rendered with `Clarity.Components.MarkdownComponent`.
+  Reports lead with what needs doing: a status line, then to-dos most severe
+  first, each with what it affects and the fix, and reference data below in
+  closed sections, built from `Clarity.Report.Components`.
 
   Reports are registered per-application under `:clarity_reports`:
 
