@@ -41,8 +41,11 @@ case Code.ensure_loaded(Ash) do
         create_type_edge(type, field_vertex, graph)
       end
 
-      def introspect_vertex(%Aggregate{aggregate: %{type: type}} = field_vertex, graph) do
-        create_type_edge(type, field_vertex, graph)
+      def introspect_vertex(
+            %Aggregate{aggregate: aggregate, resource: resource} = field_vertex,
+            graph
+          ) do
+        create_type_edge(Aggregate.value_type(resource, aggregate), field_vertex, graph)
       end
 
       def introspect_vertex(%Calculation{calculation: %{type: type}} = field_vertex, graph) do

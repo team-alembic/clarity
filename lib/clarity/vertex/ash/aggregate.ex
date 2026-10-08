@@ -4,6 +4,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     Vertex implementation for Ash resource aggregates.
     """
     alias Ash.Resource.Aggregate
+    alias Ash.Resource.Info
     alias Clarity.SourceLocation
     alias Clarity.Vertex.HintProvider
 
@@ -13,6 +14,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           }
     @enforce_keys [:aggregate, :resource]
     defstruct [:aggregate, :resource]
+
+    @doc """
+    The type of an aggregate's value. Ash leaves the aggregate's `type` unset
+    when it follows from the kind and field (a `count` is an integer), so this
+    asks Ash to work it out, falling back to `type`.
+    """
+    @spec value_type(Ash.Resource.t(), Aggregate.t()) :: Ash.Type.t() | nil
+    def value_type(resource, aggregate) do
+      case Info.aggregate_type(resource, aggregate) do
+        {:ok, type} -> type
+        _error -> aggregate.type
+      end
+    end
 
     defimpl Clarity.Vertex do
       alias Clarity.Vertex.Util

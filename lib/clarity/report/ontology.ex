@@ -197,7 +197,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           :aggregate,
           resource,
           aggregate.name,
-          format_type(aggregate.type, linked_ids),
+          format_type(Aggregate.value_type(resource, aggregate), linked_ids),
           aggregate.description,
           [],
           linked_ids

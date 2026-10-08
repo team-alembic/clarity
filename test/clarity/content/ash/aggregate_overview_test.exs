@@ -54,6 +54,18 @@ defmodule Clarity.Content.Ash.AggregateOverviewTest do
       end
     end
 
+    test "shows the return type Ash infers for a count, which leaves type unset" do
+      aggregate = Enum.find(Info.aggregates(User), &(&1.name == :admin_count))
+      assert %{kind: :count, type: nil} = aggregate
+
+      {:markdown, markdown_fn} =
+        AggregateOverview.render_static(%Aggregate{aggregate: aggregate, resource: User}, nil)
+
+      markdown = IO.iodata_to_binary(markdown_fn.(%{}))
+
+      assert markdown =~ "| **Return Type** | [Integer](vertex://ash-type:ash-type-integer) |"
+    end
+
     test "generated markdown includes aggregate header" do
       aggregates = Info.aggregates(User)
 

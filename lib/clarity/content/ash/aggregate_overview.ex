@@ -80,7 +80,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         Util.id(Resource, [resource]),
         ") |\n",
         "| **Return Type** | ",
-        format_type_with_link(aggregate.type),
+        format_type_with_link(Aggregate.value_type(resource, aggregate)),
         " |\n",
         case aggregate.description do
           nil -> []
@@ -310,11 +310,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         |> String.replace_prefix("Elixir.", "")
         |> String.replace_prefix("Ash.Type.", "")
 
-      ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
-    end
-
-    defp format_type_with_link(type) do
-      type_name = inspect(type)
       ["[", type_name, "](vertex://", Util.id(Type, [type]), ")"]
     end
 
