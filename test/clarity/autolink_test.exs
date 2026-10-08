@@ -18,6 +18,7 @@ defmodule Clarity.AutolinkTest do
   alias Demo.Helpdesk.CustomerContact
   alias Demo.Helpdesk.Message
   alias Demo.Helpdesk.Ticket
+  alias Demo.Projects.Project
 
   @resources [
     Message,
@@ -62,6 +63,27 @@ defmodule Clarity.AutolinkTest do
 
       refute Map.has_key?(names, "Message")
       refute Map.has_key?(names, "Demo.Helpdesk.Message")
+    end
+
+    test "reads text about a module as about the domain or resource it defines", %{graph: graph} do
+      Graph.add_vertex(graph, %Domain{domain: Demo.Projects}, %Root{})
+      Graph.add_vertex(graph, %Resource{resource: Project}, %Root{})
+
+      for vertex <- [%Domain{domain: Demo.Projects}, %Vertex.Module{module: Demo.Projects}] do
+        names = Autolink.names(graph, vertex)
+
+        assert names["Projects"] == %Resource{resource: Project}
+        assert names["Tickets"] == %Resource{resource: Demo.Projects.Ticket}
+      end
+
+      refute Map.has_key?(Autolink.names(graph, %Vertex.Module{module: Message}), "Message")
+    end
+
+    test "prefers a vertex's own name to another's plural, as near", %{graph: graph} do
+      Graph.add_vertex(graph, %Domain{domain: Demo.Projects}, %Root{})
+      Graph.add_vertex(graph, %Resource{resource: Project}, %Root{})
+
+      assert Autolink.names(graph, nil)["Projects"] == %Domain{domain: Demo.Projects}
     end
   end
 

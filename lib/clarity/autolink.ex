@@ -17,7 +17,10 @@ defmodule Clarity.Autolink do
 
   When a name fits more than one vertex, the text's own vertex settles it by
   nearness: its own resource first, then a resource it has a relationship to,
-  then one in its domain; if two are equally near, the name isn't linked.
+  then one in its domain. Of two as near, the one the name names wins over
+  the one it pluralises (`Projects`, the domain, over the Project resource's
+  plural); otherwise the name isn't linked. Text about a module is read as
+  about the domain or resource the module defines.
   Only whole words link, each vertex at its first mention in a paragraph or
   table cell, and never the vertex the text describes, nor text in a heading,
   a link or a code block.
@@ -68,11 +71,14 @@ defmodule Clarity.Autolink do
 
     graph
     |> Graph.vertices({:in, :vertex_type, @linkable})
-    |> Enum.reject(&(&1 == vertex))
-    |> Enum.flat_map(fn named -> Enum.map(spellings(named), &{&1, named}) end)
+    |> Enum.reject(&described?(&1, vertex))
+    |> Enum.flat_map(fn named ->
+      Enum.map(spellings(named), &{&1, {named, :name}}) ++
+        Enum.map(plurals(named), &{&1, {named, :plural}})
+    end)
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Enum.flat_map(fn {name, vertices} ->
-      case pick(Enum.uniq(vertices), context) do
+    |> Enum.flat_map(fn {name, candidates} ->
+      case pick(Enum.uniq(candidates), context) do
         nil -> []
         named -> [{name, named}]
       end
@@ -108,6 +114,17 @@ defmodule Clarity.Autolink do
 
     [open | children] ++ [%MDEx.Raw{literal: "</a>"}]
   end
+
+  # Whether `named` is what the text describes: its own vertex, or for text
+  # about a module, the domain, resource or Reactor the module defines.
+  @spec described?(Vertex.t(), Vertex.t() | nil) :: boolean()
+  defp described?(named, named), do: true
+
+  defp described?(%{__struct__: struct} = named, %Vertex.Module{module: module})
+       when struct in @named_by_module,
+       do: ModuleProvider.module(named) == module
+
+  defp described?(_named, _vertex), do: false
 
   @spec walk(MDEx.Document.md_node(), map(), MapSet.t()) :: {MDEx.Document.md_node(), MapSet.t()}
   defp walk(%MDEx.Link{} = node, _context, linked), do: {node, linked}
@@ -277,29 +294,35 @@ defmodule Clarity.Autolink do
         _parts -> []
       end
 
-    short = List.last(parts)
-    plural = if vertex.__struct__ == Resource, do: [plural(short)], else: []
-
-    Enum.uniq([Enum.join(parts, ".") | in_app] ++ [short | plural])
+    Enum.uniq([Enum.join(parts, ".") | in_app] ++ [List.last(parts)])
   end
 
-  # The English plural of a CamelCase name, by its last word: Policies,
-  # Addresses, LineItems.
-  @spec plural(String.t()) :: String.t()
-  defp plural(name) do
+  # The English plural of a resource's short name, by its last word:
+  # Policies, Addresses, LineItems.
+  @spec plurals(Vertex.t()) :: [String.t()]
+  defp plurals(%Resource{resource: resource}) do
+    name = resource |> Module.split() |> List.last()
+
     cond do
-      String.match?(name, ~r/[^aeiou]y$/) -> String.slice(name, 0..-2//1) <> "ies"
-      String.match?(name, ~r/(s|x|z|ch|sh)$/) -> name <> "es"
-      true -> name <> "s"
+      String.match?(name, ~r/[^aeiou]y$/) -> [String.slice(name, 0..-2//1) <> "ies"]
+      String.match?(name, ~r/(s|x|z|ch|sh)$/) -> [name <> "es"]
+      true -> [name <> "s"]
     end
   end
 
-  # The vertex a name fits, if it fits only one, or one ranks above the rest.
-  @spec pick([Vertex.t()], context()) :: Vertex.t() | nil
-  defp pick([vertex], _context), do: vertex
+  defp plurals(_vertex), do: []
 
-  defp pick(vertices, context) do
-    case vertices |> Enum.group_by(&rank(&1, context)) |> Enum.min_by(&elem(&1, 0)) do
+  # The vertex a name fits, if it fits only one, or one ranks above the rest:
+  # the nearest, and of those as near, the one it names rather than pluralises
+  # (the Projects domain, not the Project resource's plural).
+  @spec pick([{Vertex.t(), :name | :plural}], context()) :: Vertex.t() | nil
+  defp pick([{vertex, _form}], _context), do: vertex
+
+  defp pick(candidates, context) do
+    candidates
+    |> Enum.group_by(fn {vertex, form} -> {rank(vertex, context), form} end, &elem(&1, 0))
+    |> Enum.min_by(&elem(&1, 0))
+    |> case do
       {_rank, [vertex]} -> vertex
       _tied -> nil
     end
@@ -327,23 +350,35 @@ defmodule Clarity.Autolink do
   defp domain_of(vertex), do: vertex |> home() |> domain()
 
   if Code.ensure_loaded?(Ash) do
+    # Text about a resource or its field, or about a domain, resource or
+    # module that is one, is read in its light.
     @spec context(Vertex.t() | nil) :: context()
-    defp context(%{__struct__: Domain, domain: domain}),
-      do: %{resource: nil, related: [], domain: domain}
+    defp context(nil), do: about(nil)
 
-    defp context(%{resource: resource}) when is_atom(resource) and resource != nil do
-      if Info.resource?(resource) do
-        %{
-          resource: resource,
-          related: resource |> Info.relationships() |> Enum.map(& &1.destination),
-          domain: Info.domain(resource)
-        }
-      else
-        context(nil)
+    defp context(%{resource: resource}) when is_atom(resource) and resource != nil,
+      do: about(resource)
+
+    defp context(vertex), do: vertex |> ModuleProvider.module() |> about()
+
+    @spec about(module() | nil) :: context()
+    defp about(module) when is_atom(module) and module != nil do
+      cond do
+        Info.resource?(module) ->
+          %{
+            resource: module,
+            related: module |> Info.relationships() |> Enum.map(& &1.destination),
+            domain: Info.domain(module)
+          }
+
+        Spark.Dsl.is?(module, Ash.Domain) ->
+          %{resource: nil, related: [], domain: module}
+
+        true ->
+          about(nil)
       end
     end
 
-    defp context(_vertex), do: %{resource: nil, related: [], domain: nil}
+    defp about(_module), do: %{resource: nil, related: [], domain: nil}
 
     @spec domain(module() | nil) :: module() | nil
     defp domain(nil), do: nil
