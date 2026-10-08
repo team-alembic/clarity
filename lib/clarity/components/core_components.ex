@@ -159,14 +159,6 @@ defmodule Clarity.CoreComponents do
   @spec flash_group(assigns :: Socket.assigns()) :: Rendered.t()
   def flash_group(assigns)
 
-  attr :class, :string, default: "", doc: "CSS classes to apply to the loading spinner container"
-
-  attr :rest, :global,
-    doc: "the arbitrary HTML attributes to add to the loading spinner container"
-
-  @spec loading_spinner(assigns :: Socket.assigns()) :: Rendered.t()
-  def loading_spinner(assigns)
-
   @doc """
   Renders the Clarity splash screen with animated logo.
   """
@@ -175,6 +167,19 @@ defmodule Clarity.CoreComponents do
 
   @spec splash_screen(map()) :: Rendered.t()
   def splash_screen(assigns)
+
+  @doc """
+  Renders a spinner where the page will be, while its data loads. It fades in
+  only after a moment, so a quick load shows nothing.
+  """
+  @spec page_loading(assigns :: Socket.assigns()) :: Rendered.t()
+  def page_loading(assigns) do
+    ~H"""
+    <div id="page-loading" class="page-loading" role="status" aria-label="Loading">
+      <.icon_spinner class="size-6 animate-spin" />
+    </div>
+    """
+  end
 
   @doc """
   Renders tab navigation for switching between content views.

@@ -1,9 +1,13 @@
 <div
   id="splash"
   class={"min-h-screen w-full flex flex-col items-center justify-center bg-base-light-50 dark:bg-base-dark-900 #{@class}"}
+  role="status"
   {@rest}
 >
   <Clarity.Resources.splash_svg />
 
-  <.loading_spinner class="mt-8" />
+  <.icon_spinner class="mt-8 size-8 animate-spin text-primary-light dark:text-primary-dark" />
+  <p class="mt-4 text-sm text-base-light-500 dark:text-base-dark-400">
+    Introspecting your application…
+  </p>
 </div>

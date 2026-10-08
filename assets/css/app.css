@@ -251,18 +251,44 @@
   overflow: auto;
 }
 
-/* While the page loads, the splash fills the space below the header, and on
-   wider screens beside the activity bar, which keeps its full height; the
-   page doesn't scroll. */
-.layout-container > #splash {
+/* While the page loads, the splash (or, once introspection is done, a
+   spinner) fills the space below the header, and on wider screens beside the
+   activity bar, which keeps its full height; the page doesn't scroll. */
+.layout-container > :is(#splash, #page-loading) {
   grid-area: main;
   min-height: 0;
 }
 
 @media (min-width: 48rem) {
-  .layout-container > #splash {
+  .layout-container > :is(#splash, #page-loading) {
     grid-row: 2 / -1;
     grid-column: 2 / -1;
+  }
+}
+
+/* Shows only once loading has taken a moment, so a quick load doesn't flash. */
+.page-loading {
+  @apply flex items-center justify-center pb-[20vh] text-base-light-400 dark:text-base-dark-500;
+  animation: clarity-fade-in 200ms ease-out 400ms both;
+}
+
+/* A diagram is empty until its hook has rendered it; say so, after a moment. */
+pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]):empty::before {
+  content: "Rendering diagram…";
+  @apply flex h-full min-h-32 items-center justify-center font-sans text-sm text-base-light-500 dark:text-base-dark-400;
+  animation: clarity-fade-in 200ms ease-out 400ms both;
+}
+
+@keyframes clarity-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loading,
+  pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]):empty::before {
+    animation-duration: 0s;
   }
 }
 
@@ -529,7 +555,7 @@
   }
 }
 
-#splash > svg {
+#splash > svg:first-of-type {
   width: 100%;
   max-width: 400px;
   height: auto;

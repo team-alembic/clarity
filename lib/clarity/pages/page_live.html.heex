@@ -30,7 +30,11 @@
           <%!-- The splash covers introspection. Once the graph is loaded, a page
                reached by navigation (e.g. Explore from Reports) loads its data
                without it. --%>
-          <.splash_screen :if={@clarity.status == :working} />
+          <%= if @clarity.status == :working do %>
+            <.splash_screen />
+          <% else %>
+            <.page_loading />
+          <% end %>
         </:loading>
         <:failed :let={reason}>
           <%= case reason do %>

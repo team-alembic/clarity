@@ -66,6 +66,16 @@ defmodule Clarity.Pages.PageLiveTest do
       refute html =~ ~s(id="splash")
     end
 
+    test "shows a quiet loading indicator instead, gone once the page loads", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/debug/root/graph")
+
+      assert html |> LazyHTML.from_fragment() |> LazyHTML.query("#page-loading[role='status']") |> Enum.count() == 1
+
+      render_async(view)
+
+      refute has_element?(view, "#page-loading")
+    end
+
     test "loads root vertex with graph content", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/graph/root/graph")
       html = render_async(view)
