@@ -33,6 +33,17 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "#header-sections a[data-phx-link=redirect]", "Reports")
     end
 
+    test "clicking Explore again keeps the page while the lens's start page loads", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+
+      html = view |> element("#header-sections a", "Explore") |> render_click()
+
+      assert html =~ ~s(class="navigation)
+    end
+
     test "shows no splash while loading once introspection is done", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/debug/root/graph")
 

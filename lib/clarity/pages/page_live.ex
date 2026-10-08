@@ -90,15 +90,17 @@ defmodule Clarity.PageLive do
     default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
 
     socket
-    |> assign(:data, AsyncResult.loading())
+    |> assign(:data, AsyncResult.loading(socket.assigns.data))
     |> navigate_fn.(to: Path.join([socket.assigns.prefix, default_lens_id]))
   end
 
   @spec handle_lens_route(String.t(), Socket.t(), (Socket.t(), keyword() -> Socket.t())) ::
           Socket.t()
+  # Keeping the loaded data (marked as loading) leaves the current page on
+  # screen until the lens's start page has loaded, rather than blanking it.
   defp handle_lens_route(lens_id, socket, navigate_fn) do
     socket
-    |> assign(:data, AsyncResult.loading())
+    |> assign(:data, AsyncResult.loading(socket.assigns.data))
     |> navigate_fn.(
       to: Path.join([socket.assigns.prefix, lens_id, socket.assigns.initial_vertex])
     )
