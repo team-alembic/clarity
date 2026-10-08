@@ -1,58 +1,62 @@
 import mermaid from "mermaid";
 import svgPanZoom from "svg-pan-zoom";
 import { onThemeChange, getInitialTheme, getCurrentTheme } from "./theme.hook";
+import { cacheKey, getSvg, putSvg } from "./svg-cache";
 
 const getMermaidTheme = (theme) => {
   return theme === 'dark' ? 'dark' : 'default';
 };
 
+const initialize = (theme) =>
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "loose",
+    theme,
+    flowchart: {
+      useMaxWidth: false,
+    },
+    maxTextSize: 1000000,
+  });
+
 // Initialize with current theme
-mermaid.initialize({
-  startOnLoad: false,
-  securityLevel: "loose",
-  theme: getMermaidTheme(getInitialTheme()),
-  flowchart: {
-    useMaxWidth: false,
-  },
-  maxTextSize: 1000000,
-});
+initialize(getMermaidTheme(getInitialTheme()));
 
 export default {
   async mounted() {
     this.unsubscribeThemeChange = onThemeChange(() => {
       this.render();
     });
-    
+
     await this.render();
   },
-  
+
   destroyed() {
     if (this.unsubscribeThemeChange) {
       this.unsubscribeThemeChange();
     }
+    if (this.onResize) window.removeEventListener("resize", this.onResize);
   },
-  
+
   async updated() {
     await this.render();
   },
-  
+
+  // Renders the diagram, unless it is already showing for this source and
+  // theme; a diagram rendered before comes from the cache (see svg-cache.js).
   async render() {
-    const currentTheme = getCurrentTheme(); // This gets current theme from DOM
-    const mermaidTheme = getMermaidTheme(currentTheme);
-    
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: "loose",
-      theme: mermaidTheme,
-      flowchart: {
-        useMaxWidth: false,
-      },
-      maxTextSize: 1000000,
-    });
-
+    const mermaidTheme = getMermaidTheme(getCurrentTheme());
     const graph = this.el.dataset.graph;
+    const key = cacheKey(this.el.id, mermaidTheme, graph);
+    if (key === this.renderedKey) return;
 
-    const { svg: svgRaw } = await mermaid.render(`${this.el.id}_content`, graph);
+    let svgRaw = getSvg(key);
+    if (!svgRaw) {
+      initialize(mermaidTheme);
+      ({ svg: svgRaw } = await mermaid.render(`${this.el.id}_content`, graph));
+      putSvg(key, svgRaw);
+    }
+
+    this.renderedKey = key;
     this.el.innerHTML = svgRaw;
 
     const svg = this.el.querySelector("svg");
@@ -61,13 +65,15 @@ export default {
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     svg.setAttribute("style", "");
-    
+
     const zoom = svgPanZoom(svg, {
       controlIconsEnabled: true,
       maxZoom: 100,
       contain: true
     });
 
-    window.addEventListener("resize", () => zoom.resize());
+    if (this.onResize) window.removeEventListener("resize", this.onResize);
+    this.onResize = () => zoom.resize();
+    window.addEventListener("resize", this.onResize);
   },
 };

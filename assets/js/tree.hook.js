@@ -7,7 +7,7 @@
 
 // Unless `row` is already in view below `scroller`'s sticky heading, scrolls
 // it to the middle of that space, among its neighbours.
-function reveal(scroller, row) {
+export function reveal(scroller, row) {
   const heading = scroller.querySelector(".nav-heading")?.offsetHeight ?? 0;
   const view = scroller.getBoundingClientRect();
   const box = row.getBoundingClientRect();
