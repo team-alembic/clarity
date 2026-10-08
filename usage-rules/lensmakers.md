@@ -129,7 +129,7 @@ config :my_app, :clarity_perspective_lensmakers, [
   - Only the built-in Graph lens shows the graph (`Clarity.Content.Graph`): the
     other built-in lenses use `{:except, [Clarity.Content.Graph]}`
   - Default: `:all`, every provider that applies. The built-in
-    Documentation lens, for one, shows only Domain Overview and Module Documentation
+    Documentation lens, for one, shows only Module Documentation
 
 ## Filter Patterns
 

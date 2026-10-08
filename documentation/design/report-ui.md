@@ -97,8 +97,8 @@ Superseded in part by the decisions below.
 6. **Lenses live in the activity bar** (revised). A lens drives both the tree
    (by its filters) and which tabs a vertex shows (its new `contents`), so each
    lens is an activity bar icon in place of the single Explore icon and the
-   header's lens dropdown: e.g. Documentation shows only Domain Overview and
-   Module Documentation, and Graph only the graph. Reports keeps its own icon
+   header's lens dropdown: e.g. Documentation shows only Module
+   Documentation, and Graph only the graph. Reports keeps its own icon
    below a divider; since no lens is current there and reports ignore the
    lens, their URLs no longer carry one.
 

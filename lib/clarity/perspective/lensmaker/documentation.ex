@@ -5,7 +5,7 @@ defmodule Clarity.Perspective.Lensmaker.Documentation do
   The Documentation lens keeps the tree to what carries documentation
   (applications, Ash domains and resources, Phoenix endpoints and routers, and
   modules), over the Architect lens's view of which applications matter, and
-  shows only two tabs: each domain's overview and each module's documentation.
+  shows only one tab: each module's documentation.
   """
 
   @behaviour Clarity.Perspective.Lensmaker
@@ -33,7 +33,7 @@ defmodule Clarity.Perspective.Lensmaker.Documentation do
       Architect.make_lens()
       | id: "documentation",
         name: "Documentation",
-        description: "Shows each domain's overview and each module's documentation",
+        description: "Shows each module's documentation",
         icon: fn ->
           assigns = %{}
 
@@ -42,7 +42,7 @@ defmodule Clarity.Perspective.Lensmaker.Documentation do
           """
         end,
         show_vertex_types: &show_vertex_types/1,
-        contents: [Content.Ash.DomainOverview, Content.Moduledoc]
+        contents: [Content.Moduledoc]
     }
   end
 

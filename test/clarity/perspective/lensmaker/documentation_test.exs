@@ -11,11 +11,11 @@ defmodule Clarity.Perspective.Lensmaker.DocumentationTest do
   alias Phoenix.LiveView.Rendered
 
   describe "make_lens/0" do
-    test "shows only domain overviews and module documentation" do
+    test "shows only module documentation" do
       assert %Lens{id: "documentation", name: "Documentation", contents: contents} =
                Documentation.make_lens()
 
-      assert contents == [Content.Ash.DomainOverview, Content.Moduledoc]
+      assert contents == [Content.Moduledoc]
     end
 
     test "keeps the tree to what carries documentation" do

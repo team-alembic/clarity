@@ -254,12 +254,13 @@ defmodule Clarity.Pages.PageLiveTest do
       end
     end
 
-    test "the Documentation lens shows a domain's overview, not its graph", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/ash-domain-overview")
+    test "the Documentation lens shows only a domain's module documentation", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
       render_async(view)
 
-      assert has_element?(view, ".content-tab", "Domain Overview")
-      refute has_element?(view, ".content-tab", "Graph Navigation")
+      tabs = view |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(".content-tab")
+
+      assert Enum.map(tabs, &(&1 |> LazyHTML.text() |> String.trim())) == ["Module Documentation"]
     end
 
     test "a vertex with none of the lens's tabs says so, rather than showing others",
@@ -280,7 +281,7 @@ defmodule Clarity.Pages.PageLiveTest do
       view |> element("#activity-lens-documentation") |> render_click()
 
       # The Documentation lens has no graph tab, so the vertex opens on its first.
-      assert_patch(view, "/documentation/ash-domain:demo-accounts/ash-domain-overview")
+      assert_patch(view, "/documentation/ash-domain:demo-accounts/moduledoc")
     end
 
     test "keeps the tab when the new lens has it", %{conn: conn} do
