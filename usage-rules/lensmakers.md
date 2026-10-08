@@ -129,8 +129,8 @@ config :my_app, :clarity_perspective_lensmakers, [
   - The built-in Debug lens shows every tab. Of the others, only the Graph lens
     shows the graph (`Clarity.Content.Graph`), only Architect shows
     `ash_diagram`'s class and ER diagrams, and only Security its policy diagram
-    and simulation. Architect leaves module documentation to the Documentation
-    lens
+    and simulation. Architect and Security leave module documentation to the
+    Documentation lens
   - Default: `:all`, every provider that applies. The built-in
     Documentation lens, for one, shows only Module Documentation
 
