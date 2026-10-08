@@ -114,6 +114,10 @@ it matters — over tables of raw data. `Clarity.Report.SupplyChain` and
 Text from outside the codebase, such as an advisory's summary, goes into the
 markdown as-is, so escape markdown in it before interpolating it.
 
+If the analysis is slow (it grows with the app), run it with `assign_async/3` in
+`update/2` and render it with `<.async_result>`, as `Clarity.Report.SecurityPosture`
+does: the page shows at once, and the static render skips the work.
+
 ### 4. Register the Report
 
 ```elixir
