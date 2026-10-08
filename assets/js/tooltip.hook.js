@@ -52,9 +52,17 @@ export function computePosition(anchor, size, viewport) {
 const XLINK = "http://www.w3.org/1999/xlink";
 
 // Graphviz renders each vertex as an <a xlink:href="#vertex-id">. Copies the
-// matching hint from `hints` (see `Clarity.Tooltip.hints/1`) onto each link.
+// matching hint from `hints` (see `Clarity.Tooltip.hints/1`) onto each link,
+// and drops the tooltips the browser would show of its own.
 export function applyHints(svg, hints) {
+  // Graphviz titles every node, edge and the graph itself, and the browser
+  // shows those as its own tooltips, beside the hint: an empty box for a
+  // node's blank title.
+  for (const title of svg.querySelectorAll("title")) title.remove();
+
   for (const link of svg.querySelectorAll("a")) {
+    link.removeAttributeNS(XLINK, "title");
+
     const href = link.getAttributeNS(XLINK, "href") || link.getAttribute("href") || "";
     const hint = hints[href.replace(/^#/, "")];
     if (!hint) continue;

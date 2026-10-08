@@ -528,6 +528,23 @@ describe("tooltip controller", () => {
 });
 
 describe("applyHints", () => {
+  it("drops the browser's own tooltips, the graph's titles, so only the hint shows", () => {
+    document.body.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <title>%3</title>
+        <g class="node"><title>application:demo</title>
+          <a id="node" xlink:href="#application:demo" xlink:title=" "><text>demo</text></a>
+        </g>
+        <g class="edge"><title>root&#45;&gt;application:demo</title><path d="M0,0"></path></g>
+      </svg>
+    `;
+
+    applyHints(document.querySelector("svg")!, {});
+
+    expect(document.querySelectorAll("title")).toHaveLength(0);
+    expect(document.getElementById("node")!.hasAttributeNS("http://www.w3.org/1999/xlink", "title")).toBe(false);
+  });
+
   it("gives graph nodes their hint by the vertex id in their link", () => {
     document.body.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
