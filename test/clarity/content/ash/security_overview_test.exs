@@ -50,6 +50,13 @@ defmodule Clarity.Content.Ash.SecurityOverviewTest do
       assert "read read never conditional conditional" in rows
     end
 
+    test "leads with its policies, before who reaches what" do
+      html = render(%Resource{resource: Ticket})
+
+      assert html |> LazyHTML.query(".ov-section") |> Enum.map(&(&1 |> LazyHTML.attribute("id") |> hd())) ==
+               ["policies", "reachability"]
+    end
+
     test "lists its policies, flagging bypasses" do
       html = render(%Resource{resource: Ticket})
 

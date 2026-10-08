@@ -174,6 +174,23 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           </div>
 
           <.section
+            :if={@policies != []}
+            id="policies"
+            title="Policies"
+            icon="policy"
+            tone="rule"
+            count={length(@policies)}
+          >
+            <ul class="ov-steps">
+              <li :for={policy <- @policies}>
+                <.vertex_link links={@links} vertex={policy} />
+                <.flag :if={policy.policy.bypass?} text="bypass" />
+                <span :if={detail(policy)} class="ov-muted text-xs">{detail(policy)}</span>
+              </li>
+            </ul>
+          </.section>
+
+          <.section
             :if={@summary.protected?}
             id="reachability"
             title="Who can reach each action"
@@ -200,23 +217,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                 <.flag text={Atom.to_string(Enum.at(row.verdicts, index))} />
               </:col>
             </.overview_table>
-          </.section>
-
-          <.section
-            :if={@policies != []}
-            id="policies"
-            title="Policies"
-            icon="policy"
-            tone="rule"
-            count={length(@policies)}
-          >
-            <ul class="ov-steps">
-              <li :for={policy <- @policies}>
-                <.vertex_link links={@links} vertex={policy} />
-                <.flag :if={policy.policy.bypass?} text="bypass" />
-                <span :if={detail(policy)} class="ov-muted text-xs">{detail(policy)}</span>
-              </li>
-            </ul>
           </.section>
 
           <.section
