@@ -56,137 +56,139 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind={kind(@action)}>
-            <:badge :if={@action.primary?}>
-              <.flag text="primary" />
-            </:badge>
-            <:badge :if={Map.get(@action, :manual)}>
-              <.flag text="manual" />
-            </:badge>
-            <:badge :if={Map.get(@action, :upsert?)}>
-              <.flag text="upsert" />
-            </:badge>
-            <:badge :if={Map.get(@action, :soft?)}>
-              <.flag text="soft" />
-            </:badge>
-            <:badge :if={Map.get(@action, :get?)}>
-              <.flag text="gets one" />
-            </:badge>
-            <:headline>
-              <span class="ov-phrase">
-                {verb(@action)}
-                <.vertex_link
-                  links={@links}
-                  vertex={%Resource{resource: @resource}}
-                  label={resource_label(@action, @resource)}
-                />
-                <span :if={@action.type == :action and @action.returns} class="ov-phrase">
-                  <span class="ov-muted">returning</span>
-                  <.ash_type links={@links} type={@action.returns} />
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind={kind(@action)}>
+              <:badge :if={@action.primary?}>
+                <.flag text="primary" />
+              </:badge>
+              <:badge :if={Map.get(@action, :manual)}>
+                <.flag text="manual" />
+              </:badge>
+              <:badge :if={Map.get(@action, :upsert?)}>
+                <.flag text="upsert" />
+              </:badge>
+              <:badge :if={Map.get(@action, :soft?)}>
+                <.flag text="soft" />
+              </:badge>
+              <:badge :if={Map.get(@action, :get?)}>
+                <.flag text="gets one" />
+              </:badge>
+              <:headline>
+                <span class="ov-phrase">
+                  {verb(@action)}
+                  <.vertex_link
+                    links={@links}
+                    vertex={%Resource{resource: @resource}}
+                    label={resource_label(@action, @resource)}
+                  />
+                  <span :if={@action.type == :action and @action.returns} class="ov-phrase">
+                    <span class="ov-muted">returning</span>
+                    <.ash_type links={@links} type={@action.returns} />
+                  </span>
                 </span>
-              </span>
-            </:headline>
-            <.description links={@links} text={description_of(@action)} lead />
-          </.hero>
+              </:headline>
+              <.description links={@links} text={description_of(@action)} lead />
+            </.hero>
 
-          <.facts>
-            <:fact :if={@inputs != []} label="Inputs">
-              {length(@inputs)}
-              <span class="ov-muted">
-                ({Enum.count(@inputs, & &1.required?)} required)
-              </span>
-            </:fact>
-            <:fact :if={@runs} label="Runs">
-              <.vertex_link :if={@runs.vertex} links={@links} vertex={@runs.vertex} />
-              <code :if={!@runs.vertex} class="ov-code">{inspect(@runs.module)}</code>
-            </:fact>
-            <:fact :if={filter(@action)} label="Filter">
-              <code class="ov-code">{filter(@action)}</code>
-            </:fact>
-            <:fact :if={List.wrap(Map.get(@action, :get_by)) != []} label="Gets by">
-              <.code_list names={@action.get_by |> List.wrap() |> Enum.map(&to_string/1)} />
-            </:fact>
-            <:fact :if={pagination(@action)} label="Pagination">{pagination(@action)}</:fact>
-            <:fact :if={Map.get(@action, :upsert_identity)} label="Upsert on">
-              <code class="ov-code">{@action.upsert_identity}</code>
-            </:fact>
-            <:fact :if={Map.get(@action, :manual)} label="Manual">
-              <code class="ov-code">{implementation(@action.manual)}</code>
-            </:fact>
-            <:fact :if={Map.get(@action, :timeout)} label="Timeout">{@action.timeout} ms</:fact>
-            <:fact :if={Map.has_key?(@action, :require_atomic?)} label="Atomic">
-              {if @action.require_atomic?, do: "required", else: "not required"}
-            </:fact>
-            <:fact label="Transaction">{if @action.transaction?, do: "yes", else: "no"}</:fact>
-            <:fact :if={List.wrap(Map.get(@action, :touches_resources)) != []} label="Touches">
-              <span class="ov-phrase">
+            <.facts>
+              <:fact :if={@inputs != []} label="Inputs">
+                {length(@inputs)}
+                <span class="ov-muted">
+                  ({Enum.count(@inputs, & &1.required?)} required)
+                </span>
+              </:fact>
+              <:fact :if={@runs} label="Runs">
+                <.vertex_link :if={@runs.vertex} links={@links} vertex={@runs.vertex} />
+                <code :if={!@runs.vertex} class="ov-code">{inspect(@runs.module)}</code>
+              </:fact>
+              <:fact :if={filter(@action)} label="Filter">
+                <code class="ov-code">{filter(@action)}</code>
+              </:fact>
+              <:fact :if={List.wrap(Map.get(@action, :get_by)) != []} label="Gets by">
+                <.code_list names={@action.get_by |> List.wrap() |> Enum.map(&to_string/1)} />
+              </:fact>
+              <:fact :if={pagination(@action)} label="Pagination">{pagination(@action)}</:fact>
+              <:fact :if={Map.get(@action, :upsert_identity)} label="Upsert on">
+                <code class="ov-code">{@action.upsert_identity}</code>
+              </:fact>
+              <:fact :if={Map.get(@action, :manual)} label="Manual">
+                <code class="ov-code">{implementation(@action.manual)}</code>
+              </:fact>
+              <:fact :if={Map.get(@action, :timeout)} label="Timeout">{@action.timeout} ms</:fact>
+              <:fact :if={Map.has_key?(@action, :require_atomic?)} label="Atomic">
+                {if @action.require_atomic?, do: "required", else: "not required"}
+              </:fact>
+              <:fact label="Transaction">{if @action.transaction?, do: "yes", else: "no"}</:fact>
+              <:fact :if={List.wrap(Map.get(@action, :touches_resources)) != []} label="Touches">
+                <span class="ov-phrase">
+                  <.vertex_link
+                    :for={touched <- @action.touches_resources}
+                    links={@links}
+                    vertex={%Resource{resource: touched}}
+                  />
+                </span>
+              </:fact>
+            </.facts>
+          </div>
+
+          <.section
+            :if={@inputs != []}
+            id="inputs"
+            title="Inputs"
+            icon="attribute"
+            tone="data"
+            count={length(@inputs)}
+          >
+            <.overview_table id="action-inputs" rows={@inputs}>
+              <:col :let={input} label="Name" class="w-0 whitespace-nowrap">
                 <.vertex_link
-                  :for={touched <- @action.touches_resources}
+                  :if={input.vertex}
                   links={@links}
-                  vertex={%Resource{resource: touched}}
+                  vertex={input.vertex}
+                  label={input.name}
+                  code
                 />
-              </span>
-            </:fact>
-          </.facts>
+                <span :if={!input.vertex} class="ov-link ov-code" {Clarity.Tooltip.attrs("Argument")}>
+                  <.type_icon icon="type" tone="neutral" />{input.name}
+                </span>
+              </:col>
+              <:col :let={input} label="Type" class="w-0 whitespace-nowrap">
+                <.ash_type links={@links} type={input.type} />
+              </:col>
+              <:col :let={input} label="About">
+                <div class="ov-flags">
+                  <.flag :if={input.required?} text="required" />
+                  <.flag :if={input.kind == :argument} text="argument" />
+                  <.flag :if={input.sensitive?} text="sensitive" />
+                  <.flag :if={input.default}>default <code>{input.default}</code></.flag>
+                  <span :if={input.one_of} class="ov-phrase">
+                    <span class="ov-muted text-xs">one of</span>
+                    <.code_list names={input.one_of} max={8} />
+                  </span>
+                </div>
+                <.description links={@links} text={input.description} class="mt-0.5" />
+              </:col>
+            </.overview_table>
+          </.section>
+
+          <.section
+            :if={@steps != []}
+            id="steps"
+            title="Steps"
+            icon="action"
+            tone="behaviour"
+            count={length(@steps)}
+          >
+            <ol class="ov-steps">
+              <li :for={{kind, call} <- @steps}>
+                <.flag kind={if kind == :validate, do: :good, else: :plain}>{kind}</.flag>
+                <code class="ov-code">{call}</code>
+              </li>
+            </ol>
+          </.section>
         </div>
-
-        <.section
-          :if={@inputs != []}
-          id="inputs"
-          title="Inputs"
-          icon="attribute"
-          tone="data"
-          count={length(@inputs)}
-        >
-          <.overview_table id="action-inputs" rows={@inputs}>
-            <:col :let={input} label="Name" class="w-0 whitespace-nowrap">
-              <.vertex_link
-                :if={input.vertex}
-                links={@links}
-                vertex={input.vertex}
-                label={input.name}
-                code
-              />
-              <span :if={!input.vertex} class="ov-link ov-code" {Clarity.Tooltip.attrs("Argument")}>
-                <.type_icon icon="type" tone="neutral" />{input.name}
-              </span>
-            </:col>
-            <:col :let={input} label="Type" class="w-0 whitespace-nowrap">
-              <.ash_type links={@links} type={input.type} />
-            </:col>
-            <:col :let={input} label="About">
-              <div class="ov-flags">
-                <.flag :if={input.required?} text="required" />
-                <.flag :if={input.kind == :argument} text="argument" />
-                <.flag :if={input.sensitive?} text="sensitive" />
-                <.flag :if={input.default}>default <code>{input.default}</code></.flag>
-                <span :if={input.one_of} class="ov-phrase">
-                  <span class="ov-muted text-xs">one of</span>
-                  <.code_list names={input.one_of} max={8} />
-                </span>
-              </div>
-              <.description links={@links} text={input.description} class="mt-0.5" />
-            </:col>
-          </.overview_table>
-        </.section>
-
-        <.section
-          :if={@steps != []}
-          id="steps"
-          title="Steps"
-          icon="action"
-          tone="behaviour"
-          count={length(@steps)}
-        >
-          <ol class="ov-steps">
-            <li :for={{kind, call} <- @steps}>
-              <.flag kind={if kind == :validate, do: :good, else: :plain}>{kind}</.flag>
-              <code class="ov-code">{call}</code>
-            </li>
-          </ol>
-        </.section>
       </div>
       """
     end

@@ -58,50 +58,52 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind="Application">
-            <.description
-              :if={@vertex.description != Atom.to_string(@vertex.app)}
-              links={@links}
-              text={@vertex.description}
-              lead
-            />
-          </.hero>
-
-          <.facts>
-            <:fact :if={@vertex.version} label="Version">{to_string(@vertex.version)}</:fact>
-            <:fact label="Domains">{length(@domains)}</:fact>
-            <:fact label="Resources">{@resource_count}</:fact>
-            <:fact :if={@common_data_layer} label="Data layer">
-              <.vertex_link
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind="Application">
+              <.description
+                :if={@vertex.description != Atom.to_string(@vertex.app)}
                 links={@links}
-                vertex={%Vertex.Ash.DataLayer{data_layer: @common_data_layer}}
-                label={@common_data_layer |> Module.split() |> List.last()}
+                text={@vertex.description}
+                lead
               />
-            </:fact>
-          </.facts>
+            </.hero>
 
-          <.stats>
-            <:stat
-              :for={{domain, resources} <- @domains}
-              label={domain_label(domain, @short?)}
-              count={length(resources)}
-              href={"##{section_id(domain)}"}
-              icon="domain"
-              tone="structure"
-            />
-          </.stats>
+            <.facts>
+              <:fact :if={@vertex.version} label="Version">{to_string(@vertex.version)}</:fact>
+              <:fact label="Domains">{length(@domains)}</:fact>
+              <:fact label="Resources">{@resource_count}</:fact>
+              <:fact :if={@common_data_layer} label="Data layer">
+                <.vertex_link
+                  links={@links}
+                  vertex={%Vertex.Ash.DataLayer{data_layer: @common_data_layer}}
+                  label={@common_data_layer |> Module.split() |> List.last()}
+                />
+              </:fact>
+            </.facts>
+
+            <.stats>
+              <:stat
+                :for={{domain, resources} <- @domains}
+                label={domain_label(domain, @short?)}
+                count={length(resources)}
+                href={"##{section_id(domain)}"}
+                icon="domain"
+                tone="structure"
+              />
+            </.stats>
+          </div>
+
+          <.domain_section
+            :for={{domain, resources} <- @domains}
+            links={links_about(@links, %Domain{domain: domain})}
+            domain={domain}
+            resources={resources}
+            common_data_layer={@common_data_layer}
+            short?={@short?}
+          />
         </div>
-
-        <.domain_section
-          :for={{domain, resources} <- @domains}
-          links={links_about(@links, %Domain{domain: domain})}
-          domain={domain}
-          resources={resources}
-          common_data_layer={@common_data_layer}
-          short?={@short?}
-        />
       </div>
       """
     end

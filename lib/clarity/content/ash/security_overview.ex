@@ -75,179 +75,183 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Phoenix.LiveComponent
     def render(%{vertex: %Domain{}} = assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind="Domain">
-            <:badge>
-              <.flag text={elem(@mode, 0)} kind={elem(@mode, 1)} hint={elem(@mode, 2)} />
-            </:badge>
-            <:badge>
-              <.flag
-                :if={@require_actor?}
-                text="actor required"
-                kind={:good}
-                hint="Every call must name an actor"
-              />
-              <.flag
-                :if={not @require_actor?}
-                text="actor optional"
-                hint="Calls may run without an actor"
-              />
-            </:badge>
-            <:headline>
-              <span class="ov-phrase">
-                <b>{@protected} of {length(@resources)}</b> resources enforce policies
-              </span>
-            </:headline>
-            <.meter value={@protected} total={length(@resources)} />
-          </.hero>
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind="Domain">
+              <:badge>
+                <.flag text={elem(@mode, 0)} kind={elem(@mode, 1)} hint={elem(@mode, 2)} />
+              </:badge>
+              <:badge>
+                <.flag
+                  :if={@require_actor?}
+                  text="actor required"
+                  kind={:good}
+                  hint="Every call must name an actor"
+                />
+                <.flag
+                  :if={not @require_actor?}
+                  text="actor optional"
+                  hint="Calls may run without an actor"
+                />
+              </:badge>
+              <:headline>
+                <span class="ov-phrase">
+                  <b>{@protected} of {length(@resources)}</b> resources enforce policies
+                </span>
+              </:headline>
+              <.meter value={@protected} total={length(@resources)} />
+            </.hero>
 
-          <.callout :if={elem(@mode, 1) == :danger} kind={:danger}>
-            Policies run <b>only</b> when the caller passes <code>authorize?: true</code>.
-            Any call that doesn't is unrestricted.
-          </.callout>
+            <.callout :if={elem(@mode, 1) == :danger} kind={:danger}>
+              Policies run <b>only</b> when the caller passes <code>authorize?: true</code>.
+              Any call that doesn't is unrestricted.
+            </.callout>
+          </div>
+
+          <.section
+            :if={@unprotected != []}
+            id="unprotected"
+            title="Enforcing no policies"
+            icon="advisory"
+            tone="warning"
+            count={length(@unprotected)}
+          >
+            <p class="ov-muted mb-2">
+              No policy authorizer: Ash policies don't restrict their actions.
+            </p>
+            <div class="ov-cards">
+              <.security_card :for={summary <- @unprotected} links={@links} summary={summary} />
+            </div>
+          </.section>
+
+          <.section
+            :if={@enforcing != []}
+            id="enforcing"
+            title="Enforcing policies"
+            icon="policy"
+            tone="rule"
+            count={length(@enforcing)}
+          >
+            <div class="ov-cards">
+              <.security_card :for={summary <- @enforcing} links={@links} summary={summary} />
+            </div>
+          </.section>
         </div>
-
-        <.section
-          :if={@unprotected != []}
-          id="unprotected"
-          title="Enforcing no policies"
-          icon="advisory"
-          tone="warning"
-          count={length(@unprotected)}
-        >
-          <p class="ov-muted mb-2">
-            No policy authorizer: Ash policies don't restrict their actions.
-          </p>
-          <div class="ov-cards">
-            <.security_card :for={summary <- @unprotected} links={@links} summary={summary} />
-          </div>
-        </.section>
-
-        <.section
-          :if={@enforcing != []}
-          id="enforcing"
-          title="Enforcing policies"
-          icon="policy"
-          tone="rule"
-          count={length(@enforcing)}
-        >
-          <div class="ov-cards">
-            <.security_card :for={summary <- @enforcing} links={@links} summary={summary} />
-          </div>
-        </.section>
       </div>
       """
     end
 
     def render(%{vertex: %Resource{}} = assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind="Resource">
-            <:badge>
-              <.security_flags links={@links} summary={@summary} />
-            </:badge>
-            <:headline :if={@summary.protected?}>
-              <.reach_line summary={@summary} />
-            </:headline>
-          </.hero>
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind="Resource">
+              <:badge>
+                <.security_flags links={@links} summary={@summary} />
+              </:badge>
+              <:headline :if={@summary.protected?}>
+                <.reach_line summary={@summary} />
+              </:headline>
+            </.hero>
 
-          <.callout :if={not @summary.protected?} kind={:warn}>
-            <b>No policy authorizer.</b>
-            Ash policies don't restrict this resource: every action is allowed,
-            as far as the domain's authorisation mode lets it be.
-          </.callout>
+            <.callout :if={not @summary.protected?} kind={:warn}>
+              <b>No policy authorizer.</b>
+              Ash policies don't restrict this resource: every action is allowed,
+              as far as the domain's authorisation mode lets it be.
+            </.callout>
 
-          <.facts :if={@summary.protected?}>
-            <:fact label="Policies">{@summary.policies}</:fact>
-            <:fact label="Bypass policies">{@summary.bypasses}</:fact>
-            <:fact label="Field policies">{@field_policies}</:fact>
-            <:fact :if={@sensitive != []} label="Sensitive fields">
-              {length(@sensitive)}
-              <span :if={@summary.exposed > 0} class="ov-muted">({@summary.exposed} exposed)</span>
-            </:fact>
-          </.facts>
-        </div>
+            <.facts :if={@summary.protected?}>
+              <:fact label="Policies">{@summary.policies}</:fact>
+              <:fact label="Bypass policies">{@summary.bypasses}</:fact>
+              <:fact label="Field policies">{@field_policies}</:fact>
+              <:fact :if={@sensitive != []} label="Sensitive fields">
+                {length(@sensitive)}
+                <span :if={@summary.exposed > 0} class="ov-muted">({@summary.exposed} exposed)</span>
+              </:fact>
+            </.facts>
+          </div>
 
-        <.section
-          :if={@summary.protected?}
-          id="reachability"
-          title="Who can reach each action"
-          icon="action"
-          tone="behaviour"
-          count={length(@actions)}
-        >
-          <p class="ov-muted mb-2 text-xs">
-            Solved from the policies by Ash's SAT solver, for each kind of actor. Hover a verdict for what it means.
-          </p>
-          <.overview_table id="security-reachability" rows={@actions}>
-            <:col :let={row} label="Action" class="w-0 whitespace-nowrap">
-              <span class="inline-flex items-center gap-1.5">
+          <.section
+            :if={@summary.protected?}
+            id="reachability"
+            title="Who can reach each action"
+            icon="action"
+            tone="behaviour"
+            count={length(@actions)}
+          >
+            <p class="ov-muted mb-2 text-xs">
+              Solved from the policies by Ash's SAT solver, for each kind of actor. Hover a verdict for what it means.
+            </p>
+            <.overview_table id="security-reachability" rows={@actions}>
+              <:col :let={row} label="Action" class="w-0 whitespace-nowrap">
+                <span class="inline-flex items-center gap-1.5">
+                  <.vertex_link
+                    links={@links}
+                    vertex={action(@resource, row.action)}
+                    label={Atom.to_string(row.action.name)}
+                    code
+                  />
+                  <span class="ov-muted text-xs">{row.action.type}</span>
+                </span>
+              </:col>
+              <:col :let={row} :for={{label, index} <- Enum.with_index(@profiles)} label={label}>
+                <.flag text={Atom.to_string(Enum.at(row.verdicts, index))} />
+              </:col>
+            </.overview_table>
+          </.section>
+
+          <.section
+            :if={@policies != []}
+            id="policies"
+            title="Policies"
+            icon="policy"
+            tone="rule"
+            count={length(@policies)}
+          >
+            <ul class="ov-steps">
+              <li :for={policy <- @policies}>
+                <.vertex_link links={@links} vertex={policy} />
+                <.flag :if={policy.policy.bypass?} text="bypass" />
+                <span :if={detail(policy)} class="ov-muted text-xs">{detail(policy)}</span>
+              </li>
+            </ul>
+          </.section>
+
+          <.section
+            :if={@sensitive != []}
+            id="sensitive"
+            title="Sensitive fields"
+            icon="attribute"
+            tone="data"
+            count={length(@sensitive)}
+          >
+            <.overview_table id="security-sensitive" rows={@sensitive}>
+              <:col :let={field} label="Attribute" class="w-0 whitespace-nowrap">
                 <.vertex_link
                   links={@links}
-                  vertex={action(@resource, row.action)}
-                  label={Atom.to_string(row.action.name)}
+                  vertex={attribute(@resource, field.attribute)}
+                  label={Atom.to_string(field.attribute.name)}
                   code
                 />
-                <span class="ov-muted text-xs">{row.action.type}</span>
-              </span>
-            </:col>
-            <:col :let={row} :for={{label, index} <- Enum.with_index(@profiles)} label={label}>
-              <.flag text={Atom.to_string(Enum.at(row.verdicts, index))} />
-            </:col>
-          </.overview_table>
-        </.section>
-
-        <.section
-          :if={@policies != []}
-          id="policies"
-          title="Policies"
-          icon="policy"
-          tone="rule"
-          count={length(@policies)}
-        >
-          <ul class="ov-steps">
-            <li :for={policy <- @policies}>
-              <.vertex_link links={@links} vertex={policy} />
-              <.flag :if={policy.policy.bypass?} text="bypass" />
-              <span :if={detail(policy)} class="ov-muted text-xs">{detail(policy)}</span>
-            </li>
-          </ul>
-        </.section>
-
-        <.section
-          :if={@sensitive != []}
-          id="sensitive"
-          title="Sensitive fields"
-          icon="attribute"
-          tone="data"
-          count={length(@sensitive)}
-        >
-          <.overview_table id="security-sensitive" rows={@sensitive}>
-            <:col :let={field} label="Attribute" class="w-0 whitespace-nowrap">
-              <.vertex_link
-                links={@links}
-                vertex={attribute(@resource, field.attribute)}
-                label={Atom.to_string(field.attribute.name)}
-                code
-              />
-            </:col>
-            <:col :let={field} label="Exposure">
-              <div class="ov-flags">
-                <.flag :if={field.exposed?} text="exposed" />
-                <.flag :if={not field.exposed?} text="protected" />
-                <.flag text={if field.attribute.public?, do: "public", else: "private"} />
-                <.flag
-                  :if={field.covered?}
-                  text="field policy"
-                  kind={:good}
-                  hint="A field policy decides who may read it"
-                />
-              </div>
-            </:col>
-          </.overview_table>
-        </.section>
+              </:col>
+              <:col :let={field} label="Exposure">
+                <div class="ov-flags">
+                  <.flag :if={field.exposed?} text="exposed" />
+                  <.flag :if={not field.exposed?} text="protected" />
+                  <.flag text={if field.attribute.public?, do: "public", else: "private"} />
+                  <.flag
+                    :if={field.covered?}
+                    text="field policy"
+                    kind={:good}
+                    hint="A field policy decides who may read it"
+                  />
+                </div>
+              </:col>
+            </.overview_table>
+          </.section>
+        </div>
       </div>
       """
     end

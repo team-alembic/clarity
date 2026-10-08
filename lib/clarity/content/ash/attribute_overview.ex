@@ -64,107 +64,112 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind="Attribute">
-            <:badge :if={@attribute.primary_key?}>
-              <.flag text="primary key" />
-            </:badge>
-            <:badge :if={not @attribute.allow_nil? and not @attribute.primary_key?}>
-              <.flag text="required" />
-            </:badge>
-            <:badge :if={@attribute.sensitive?}>
-              <.flag text="sensitive" />
-            </:badge>
-            <:badge>
-              <.flag :if={@attribute.public?} text="public" />
-              <.flag :if={not @attribute.public?} text="private" />
-            </:badge>
-            <:badge :if={@attribute.generated?}>
-              <.flag text="generated" />
-            </:badge>
-            <:badge :if={not @attribute.writable?}>
-              <.flag text="read-only" />
-            </:badge>
-            <:headline>
-              <span class="ov-phrase">
-                <.ash_type links={@links} type={@attribute.type} />
-                <span class="ov-muted">on</span>
-                <.vertex_link links={@links} vertex={%Resource{resource: @resource}} />
-              </span>
-            </:headline>
-            <div :if={@one_of} class="ov-phrase">
-              <span class="ov-muted">One of</span>
-              <.code_list names={@one_of} max={20} />
-            </div>
-            <.description links={@links} text={description_of(@attribute)} lead />
-          </.hero>
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind="Attribute">
+              <:badge :if={@attribute.primary_key?}>
+                <.flag text="primary key" />
+              </:badge>
+              <:badge :if={not @attribute.allow_nil? and not @attribute.primary_key?}>
+                <.flag text="required" />
+              </:badge>
+              <:badge :if={@attribute.sensitive?}>
+                <.flag text="sensitive" />
+              </:badge>
+              <:badge>
+                <.flag :if={@attribute.public?} text="public" />
+                <.flag :if={not @attribute.public?} text="private" />
+              </:badge>
+              <:badge :if={@attribute.generated?}>
+                <.flag text="generated" />
+              </:badge>
+              <:badge :if={not @attribute.writable?}>
+                <.flag text="read-only" />
+              </:badge>
+              <:headline>
+                <span class="ov-phrase">
+                  <.ash_type links={@links} type={@attribute.type} />
+                  <span class="ov-muted">on</span>
+                  <.vertex_link links={@links} vertex={%Resource{resource: @resource}} />
+                </span>
+              </:headline>
+              <div :if={@one_of} class="ov-phrase">
+                <span class="ov-muted">One of</span>
+                <.code_list names={@one_of} max={20} />
+              </div>
+              <.description links={@links} text={description_of(@attribute)} lead />
+            </.hero>
 
-          <.facts>
-            <:fact :if={Map.get(@attribute, :default) != nil} label="Default">
-              <code class="ov-code">{value(@attribute.default)}</code>
-            </:fact>
-            <:fact :if={Map.get(@attribute, :update_default) != nil} label="On update">
-              <code class="ov-code">{value(@attribute.update_default)}</code>
-            </:fact>
-            <:fact :for={{key, value} <- @constraints} label={humanize(key)}>
-              <code class="ov-code">{inspect(value)}</code>
-            </:fact>
-            <:fact :if={@attribute.source && @attribute.source != @attribute.name} label="Column">
-              <code class="ov-code">{@attribute.source}</code>
-            </:fact>
-            <:fact :if={not @attribute.filterable? or not @attribute.sortable?} label="Queries">
-              {[
-                if(not @attribute.filterable?, do: "not filterable"),
-                if(not @attribute.sortable?, do: "not sortable")
-              ]
-              |> Enum.reject(&is_nil/1)
-              |> Enum.join(", ")}
-            </:fact>
-            <:fact :if={@attribute.always_select? or not @attribute.select_by_default?} label="Selected">
-              {if @attribute.always_select?, do: "always", else: "only when asked for"}
-            </:fact>
-          </.facts>
+            <.facts>
+              <:fact :if={Map.get(@attribute, :default) != nil} label="Default">
+                <code class="ov-code">{value(@attribute.default)}</code>
+              </:fact>
+              <:fact :if={Map.get(@attribute, :update_default) != nil} label="On update">
+                <code class="ov-code">{value(@attribute.update_default)}</code>
+              </:fact>
+              <:fact :for={{key, value} <- @constraints} label={humanize(key)}>
+                <code class="ov-code">{inspect(value)}</code>
+              </:fact>
+              <:fact :if={@attribute.source && @attribute.source != @attribute.name} label="Column">
+                <code class="ov-code">{@attribute.source}</code>
+              </:fact>
+              <:fact :if={not @attribute.filterable? or not @attribute.sortable?} label="Queries">
+                {[
+                  if(not @attribute.filterable?, do: "not filterable"),
+                  if(not @attribute.sortable?, do: "not sortable")
+                ]
+                |> Enum.reject(&is_nil/1)
+                |> Enum.join(", ")}
+              </:fact>
+              <:fact
+                :if={@attribute.always_select? or not @attribute.select_by_default?}
+                label="Selected"
+              >
+                {if @attribute.always_select?, do: "always", else: "only when asked for"}
+              </:fact>
+            </.facts>
+          </div>
+
+          <.section
+            :if={@actions != [] or @relationships != [] or @identities != []}
+            id="used-by"
+            title="Used by"
+            icon="resource"
+            tone="structure"
+          >
+            <.facts>
+              <:fact :if={@actions != []} label="Accepted by">
+                <span class="ov-phrase">
+                  <.vertex_link
+                    :for={action <- @actions}
+                    links={@links}
+                    vertex={action(@resource, action)}
+                    label={Atom.to_string(action.name)}
+                    code
+                  />
+                </span>
+              </:fact>
+              <:fact :if={@relationships != []} label="Key of">
+                <span class="ov-phrase">
+                  <.vertex_link
+                    :for={relationship <- @relationships}
+                    links={@links}
+                    vertex={relationship(@resource, relationship)}
+                    label={Atom.to_string(relationship.name)}
+                    code
+                  />
+                </span>
+              </:fact>
+              <:fact :for={identity <- @identities} label="Unique, as">
+                <code class="ov-code">{identity.name}</code>
+                <span :if={length(identity.keys) > 1} class="ov-muted">
+                  with {identity.keys |> List.delete(@attribute.name) |> Enum.join(", ")}
+                </span>
+              </:fact>
+            </.facts>
+          </.section>
         </div>
-
-        <.section
-          :if={@actions != [] or @relationships != [] or @identities != []}
-          id="used-by"
-          title="Used by"
-          icon="resource"
-          tone="structure"
-        >
-          <.facts>
-            <:fact :if={@actions != []} label="Accepted by">
-              <span class="ov-phrase">
-                <.vertex_link
-                  :for={action <- @actions}
-                  links={@links}
-                  vertex={action(@resource, action)}
-                  label={Atom.to_string(action.name)}
-                  code
-                />
-              </span>
-            </:fact>
-            <:fact :if={@relationships != []} label="Key of">
-              <span class="ov-phrase">
-                <.vertex_link
-                  :for={relationship <- @relationships}
-                  links={@links}
-                  vertex={relationship(@resource, relationship)}
-                  label={Atom.to_string(relationship.name)}
-                  code
-                />
-              </span>
-            </:fact>
-            <:fact :for={identity <- @identities} label="Unique, as">
-              <code class="ov-code">{identity.name}</code>
-              <span :if={length(identity.keys) > 1} class="ov-muted">
-                with {identity.keys |> List.delete(@attribute.name) |> Enum.join(", ")}
-              </span>
-            </:fact>
-          </.facts>
-        </.section>
       </div>
       """
     end

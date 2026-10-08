@@ -46,92 +46,94 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind="Relationship">
-            <:badge>
-              <.flag>{@relationship.type}</.flag>
-            </:badge>
-            <:badge :if={@relationship.type == :belongs_to and not @relationship.allow_nil?}>
-              <.flag text="required" />
-            </:badge>
-            <:badge :if={Map.get(@relationship, :primary_key?)}>
-              <.flag text="primary key" />
-            </:badge>
-            <:badge>
-              <.flag :if={@relationship.public?} text="public" />
-              <.flag :if={not @relationship.public?} text="private" />
-            </:badge>
-            <:headline>
-              <span class="ov-phrase">
-                <.vertex_link links={@links} vertex={%Resource{resource: @resource}} />
-                <span>{cardinality(@relationship)}</span>
-                <.vertex_link links={@links} vertex={%Resource{resource: @relationship.destination}} />
-                <span :if={@relationship.type == :many_to_many} class="ov-muted">through</span>
-                <.vertex_link
-                  :if={@relationship.type == :many_to_many}
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind="Relationship">
+              <:badge>
+                <.flag>{@relationship.type}</.flag>
+              </:badge>
+              <:badge :if={@relationship.type == :belongs_to and not @relationship.allow_nil?}>
+                <.flag text="required" />
+              </:badge>
+              <:badge :if={Map.get(@relationship, :primary_key?)}>
+                <.flag text="primary key" />
+              </:badge>
+              <:badge>
+                <.flag :if={@relationship.public?} text="public" />
+                <.flag :if={not @relationship.public?} text="private" />
+              </:badge>
+              <:headline>
+                <span class="ov-phrase">
+                  <.vertex_link links={@links} vertex={%Resource{resource: @resource}} />
+                  <span>{cardinality(@relationship)}</span>
+                  <.vertex_link links={@links} vertex={%Resource{resource: @relationship.destination}} />
+                  <span :if={@relationship.type == :many_to_many} class="ov-muted">through</span>
+                  <.vertex_link
+                    :if={@relationship.type == :many_to_many}
+                    links={@links}
+                    vertex={%Resource{resource: @relationship.through}}
+                  />
+                </span>
+              </:headline>
+              <.description links={@links} text={description_of(@relationship)} lead />
+            </.hero>
+
+            <div class="ov-joins">
+              <%= if @relationship.type == :many_to_many do %>
+                <.key_join
                   links={@links}
-                  vertex={%Resource{resource: @relationship.through}}
+                  from={{@resource, @relationship.source_attribute}}
+                  to={{@relationship.through, @relationship.source_attribute_on_join_resource}}
                 />
-              </span>
-            </:headline>
-            <.description links={@links} text={description_of(@relationship)} lead />
-          </.hero>
+                <.key_join
+                  links={@links}
+                  from={{@relationship.through, @relationship.destination_attribute_on_join_resource}}
+                  to={{@relationship.destination, @relationship.destination_attribute}}
+                />
+              <% else %>
+                <.key_join
+                  links={@links}
+                  from={{@resource, @relationship.source_attribute}}
+                  to={{@relationship.destination, @relationship.destination_attribute}}
+                />
+              <% end %>
+            </div>
 
-          <div class="ov-joins">
-            <%= if @relationship.type == :many_to_many do %>
-              <.key_join
-                links={@links}
-                from={{@resource, @relationship.source_attribute}}
-                to={{@relationship.through, @relationship.source_attribute_on_join_resource}}
-              />
-              <.key_join
-                links={@links}
-                from={{@relationship.through, @relationship.destination_attribute_on_join_resource}}
-                to={{@relationship.destination, @relationship.destination_attribute}}
-              />
-            <% else %>
-              <.key_join
-                links={@links}
-                from={{@resource, @relationship.source_attribute}}
-                to={{@relationship.destination, @relationship.destination_attribute}}
-              />
-            <% end %>
+            <.facts>
+              <:fact :if={Map.get(@relationship, :read_action)} label="Read with">
+                <code class="ov-code">{@relationship.read_action}</code>
+              </:fact>
+              <:fact :if={Map.get(@relationship, :filter)} label="Filter">
+                <code class="ov-code">{inspect(@relationship.filter)}</code>
+              </:fact>
+              <:fact :if={List.wrap(Map.get(@relationship, :sort)) != []} label="Sort">
+                <code class="ov-code">{inspect(@relationship.sort)}</code>
+              </:fact>
+              <:fact :if={Map.get(@relationship, :limit)} label="Limit">{@relationship.limit}</:fact>
+              <:fact :if={Map.get(@relationship, :manual)} label="Manual">
+                <code class="ov-code">{inspect(implementation(@relationship.manual))}</code>
+              </:fact>
+              <:fact :if={@relationship.type == :belongs_to} label="Key type">
+                <.ash_type links={@links} type={@relationship.attribute_type} />
+              </:fact>
+              <:fact :if={Map.get(@relationship, :writable?, true) == false} label="Writable">no</:fact>
+              <:fact
+                :if={
+                  Map.get(@relationship, :filterable?, true) == false or
+                    Map.get(@relationship, :sortable?, true) == false
+                }
+                label="Queries"
+              >
+                {[
+                  if(Map.get(@relationship, :filterable?, true) == false, do: "not filterable"),
+                  if(Map.get(@relationship, :sortable?, true) == false, do: "not sortable")
+                ]
+                |> Enum.reject(&is_nil/1)
+                |> Enum.join(", ")}
+              </:fact>
+            </.facts>
           </div>
-
-          <.facts>
-            <:fact :if={Map.get(@relationship, :read_action)} label="Read with">
-              <code class="ov-code">{@relationship.read_action}</code>
-            </:fact>
-            <:fact :if={Map.get(@relationship, :filter)} label="Filter">
-              <code class="ov-code">{inspect(@relationship.filter)}</code>
-            </:fact>
-            <:fact :if={List.wrap(Map.get(@relationship, :sort)) != []} label="Sort">
-              <code class="ov-code">{inspect(@relationship.sort)}</code>
-            </:fact>
-            <:fact :if={Map.get(@relationship, :limit)} label="Limit">{@relationship.limit}</:fact>
-            <:fact :if={Map.get(@relationship, :manual)} label="Manual">
-              <code class="ov-code">{inspect(implementation(@relationship.manual))}</code>
-            </:fact>
-            <:fact :if={@relationship.type == :belongs_to} label="Key type">
-              <.ash_type links={@links} type={@relationship.attribute_type} />
-            </:fact>
-            <:fact :if={Map.get(@relationship, :writable?, true) == false} label="Writable">no</:fact>
-            <:fact
-              :if={
-                Map.get(@relationship, :filterable?, true) == false or
-                  Map.get(@relationship, :sortable?, true) == false
-              }
-              label="Queries"
-            >
-              {[
-                if(Map.get(@relationship, :filterable?, true) == false, do: "not filterable"),
-                if(Map.get(@relationship, :sortable?, true) == false, do: "not sortable")
-              ]
-              |> Enum.reject(&is_nil/1)
-              |> Enum.join(", ")}
-            </:fact>
-          </.facts>
         </div>
       </div>
       """

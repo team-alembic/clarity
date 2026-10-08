@@ -86,250 +86,252 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind="Endpoint">
-            <:badge :if={@code_reloading?}>
-              <.flag text="code reloading" />
-            </:badge>
-            <:headline :if={@steps != nil}>
-              <span class="ov-phrase">
-                Runs <b>{plural(length(@steps), "plug")}</b>
-                <%= if @routers == [] do %>
-                  on each request
-                <% else %>
-                  then hands each request to
-                  <.vertex_link
-                    :for={router <- @routers}
-                    links={@links}
-                    vertex={%RouterVertex{router: router.router}}
-                    label={module_label(router.router, @within)}
-                  />
-                <% end %>
-              </span>
-            </:headline>
-            <.description links={@links} text={@doc} lead />
-          </.hero>
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind="Endpoint">
+              <:badge :if={@code_reloading?}>
+                <.flag text="code reloading" />
+              </:badge>
+              <:headline :if={@steps != nil}>
+                <span class="ov-phrase">
+                  Runs <b>{plural(length(@steps), "plug")}</b>
+                  <%= if @routers == [] do %>
+                    on each request
+                  <% else %>
+                    then hands each request to
+                    <.vertex_link
+                      :for={router <- @routers}
+                      links={@links}
+                      vertex={%RouterVertex{router: router.router}}
+                      label={module_label(router.router, @within)}
+                    />
+                  <% end %>
+                </span>
+              </:headline>
+              <.description links={@links} text={@doc} lead />
+            </.hero>
 
-          <.facts>
-            <:fact label="URL"><code class="ov-code">{@url}</code></:fact>
-            <:fact :if={@app_name} label="Application">
-              <.vertex_link :if={@app} links={@links} vertex={@app} />
-              <code :if={!@app} class="ov-code">{inspect(@app_name)}</code>
-            </:fact>
-            <:fact :if={@sockets != []} label="Sockets">
-              <.code_list names={Enum.map(@sockets, &elem(&1, 0))} />
-            </:fact>
-            <:fact :if={@error_formats != []} label="Errors render as">
-              <.code_list names={@error_formats} />
-            </:fact>
-          </.facts>
+            <.facts>
+              <:fact label="URL"><code class="ov-code">{@url}</code></:fact>
+              <:fact :if={@app_name} label="Application">
+                <.vertex_link :if={@app} links={@links} vertex={@app} />
+                <code :if={!@app} class="ov-code">{inspect(@app_name)}</code>
+              </:fact>
+              <:fact :if={@sockets != []} label="Sockets">
+                <.code_list names={Enum.map(@sockets, &elem(&1, 0))} />
+              </:fact>
+              <:fact :if={@error_formats != []} label="Errors render as">
+                <.code_list names={@error_formats} />
+              </:fact>
+            </.facts>
 
-          <.stats>
-            <:stat
-              :if={@steps != nil}
-              label={plural_word(length(@steps), "Plug")}
-              count={length(@steps)}
-              href="#request-pipeline"
-              icon="endpoint"
-              tone="web"
-            />
-            <:stat
-              :for={router <- @routers}
-              label={plural_word(length(router.pipelines), "Pipeline")}
-              count={length(router.pipelines)}
-              href="#pipelines"
-              icon="router"
-              tone="web"
-            />
-            <:stat
-              :for={router <- @routers}
-              label={plural_word(length(router.routes), "Route")}
-              count={length(router.routes)}
-              href="#routes"
-              icon="router"
-              tone="web"
-            />
-          </.stats>
-        </div>
+            <.stats>
+              <:stat
+                :if={@steps != nil}
+                label={plural_word(length(@steps), "Plug")}
+                count={length(@steps)}
+                href="#request-pipeline"
+                icon="endpoint"
+                tone="web"
+              />
+              <:stat
+                :for={router <- @routers}
+                label={plural_word(length(router.pipelines), "Pipeline")}
+                count={length(router.pipelines)}
+                href="#pipelines"
+                icon="router"
+                tone="web"
+              />
+              <:stat
+                :for={router <- @routers}
+                label={plural_word(length(router.routes), "Route")}
+                count={length(router.routes)}
+                href="#routes"
+                icon="router"
+                tone="web"
+              />
+            </.stats>
+          </div>
 
-        <.callout :if={@steps == nil}>
-          This endpoint's build has no debug info, so its plugs can't be read. Its sockets,
-          router pipelines and routes are below.
-        </.callout>
+          <.callout :if={@steps == nil}>
+            This endpoint's build has no debug info, so its plugs can't be read. Its sockets,
+            router pipelines and routes are below.
+          </.callout>
 
-        <.section
-          :if={@steps != nil}
-          id="request-pipeline"
-          title="Request pipeline"
-          icon="endpoint"
-          tone="web"
-          count={length(@steps)}
-        >
-          <ol class="ov-steps ov-pipeline">
-            <li :if={@sockets != []}>
-              <div class="ov-step-body">
+          <.section
+            :if={@steps != nil}
+            id="request-pipeline"
+            title="Request pipeline"
+            icon="endpoint"
+            tone="web"
+            count={length(@steps)}
+          >
+            <ol class="ov-steps ov-pipeline">
+              <li :if={@sockets != []}>
+                <div class="ov-step-body">
+                  <div class="ov-phrase">
+                    <span class="ov-step-name">Sockets</span>
+                    <span
+                      :for={{{path, handler, _opts}, index} <- Enum.with_index(@sockets)}
+                      class="ov-phrase"
+                    >
+                      <span :if={index > 0} class="ov-muted">·</span>
+                      <code class="ov-code">{path}</code>
+                      <span class="ov-join-arrow">→</span>
+                      <.module_ref links={@links} module={handler} within={@within} />
+                    </span>
+                  </div>
+                  <p class="ov-step-about">
+                    Hands socket connections to their handlers, before any plug runs
+                  </p>
+                </div>
+              </li>
+              <li :for={plug <- @steps}>
+                <div class="ov-step-body">
+                  <div class="ov-phrase">
+                    <.plug_name links={@links} plug={plug} within={@within} />
+                    <.code_list :if={Pipeline.options(plug) != []} names={Pipeline.options(plug)} />
+                    <.flag :if={Pipeline.dev?(plug)} text="dev" />
+                  </div>
+                  <p :if={Pipeline.about(plug)} class="ov-step-about">{Pipeline.about(plug)}</p>
+                </div>
+              </li>
+              <li :for={router <- @routers}>
+                <div class="ov-step-body">
+                  <div class="ov-phrase">
+                    <.vertex_link
+                      links={@links}
+                      vertex={%RouterVertex{router: router.router}}
+                      label={module_label(router.router, @within)}
+                    />
+                    <span class="ov-muted">{plural(length(router.routes), "route")}</span>
+                  </div>
+                  <p class="ov-step-about">
+                    Matches the request to a route, then runs that route's pipelines and its handler
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </.section>
+
+          <.section
+            :for={router <- @routers}
+            :if={router.pipelines != []}
+            id="pipelines"
+            title="Router pipelines"
+            icon="router"
+            tone="web"
+            count={length(router.pipelines)}
+          >
+            <:aside>
+              <.vertex_link
+                links={@links}
+                vertex={%RouterVertex{router: router.router}}
+                label={module_label(router.router, @within)}
+              />
+            </:aside>
+            <div class="ov-cards">
+              <div
+                :for={{name, plugs} <- router.pipelines}
+                id={"pipeline-#{name}"}
+                class="ov-card ov-pipeline-card"
+              >
                 <div class="ov-phrase">
-                  <span class="ov-step-name">Sockets</span>
-                  <span
-                    :for={{{path, handler, _opts}, index} <- Enum.with_index(@sockets)}
-                    class="ov-phrase"
-                  >
-                    <span :if={index > 0} class="ov-muted">·</span>
-                    <code class="ov-code">{path}</code>
-                    <span class="ov-join-arrow">→</span>
-                    <.module_ref links={@links} module={handler} within={@within} />
+                  <.pipeline_pill name={name} />
+                  <span class="ov-muted ml-auto text-xs">
+                    {plural(Enum.count(router.routes, &(name in (&1.pipe_through || []))), "route")}
                   </span>
                 </div>
-                <p class="ov-step-about">
-                  Hands socket connections to their handlers, before any plug runs
-                </p>
+                <ol :if={plugs not in [nil, []]} class="ov-chain">
+                  <li :for={plug <- plugs}>
+                    <.plug_name links={@links} plug={plug} within={@within} hint />
+                    <.code_list :if={Pipeline.options(plug) != []} names={Pipeline.options(plug)} />
+                  </li>
+                </ol>
+                <p :if={plugs == []} class="ov-muted mt-1.5 text-xs">Runs no plugs</p>
               </div>
-            </li>
-            <li :for={plug <- @steps}>
-              <div class="ov-step-body">
-                <div class="ov-phrase">
-                  <.plug_name links={@links} plug={plug} within={@within} />
-                  <.code_list :if={Pipeline.options(plug) != []} names={Pipeline.options(plug)} />
-                  <.flag :if={Pipeline.dev?(plug)} text="dev" />
-                </div>
-                <p :if={Pipeline.about(plug)} class="ov-step-about">{Pipeline.about(plug)}</p>
-              </div>
-            </li>
-            <li :for={router <- @routers}>
-              <div class="ov-step-body">
-                <div class="ov-phrase">
-                  <.vertex_link
-                    links={@links}
-                    vertex={%RouterVertex{router: router.router}}
-                    label={module_label(router.router, @within)}
-                  />
-                  <span class="ov-muted">{plural(length(router.routes), "route")}</span>
-                </div>
-                <p class="ov-step-about">
-                  Matches the request to a route, then runs that route's pipelines and its handler
-                </p>
-              </div>
-            </li>
-          </ol>
-        </.section>
+            </div>
+          </.section>
 
-        <.section
-          :for={router <- @routers}
-          :if={router.pipelines != []}
-          id="pipelines"
-          title="Router pipelines"
-          icon="router"
-          tone="web"
-          count={length(router.pipelines)}
-        >
-          <:aside>
-            <.vertex_link
-              links={@links}
-              vertex={%RouterVertex{router: router.router}}
-              label={module_label(router.router, @within)}
-            />
-          </:aside>
-          <div class="ov-cards">
-            <div
-              :for={{name, plugs} <- router.pipelines}
-              id={"pipeline-#{name}"}
-              class="ov-card ov-pipeline-card"
+          <.section :if={@routers != []} id="try" title="Try a request" icon="endpoint" tone="web">
+            <.form
+              for={@try_form}
+              id="try-request"
+              class="ov-try"
+              phx-change="try"
+              phx-submit="try"
+              phx-target={@myself}
             >
-              <div class="ov-phrase">
-                <.pipeline_pill name={name} />
-                <span class="ov-muted ml-auto text-xs">
-                  {plural(Enum.count(router.routes, &(name in (&1.pipe_through || []))), "route")}
-                </span>
-              </div>
-              <ol :if={plugs not in [nil, []]} class="ov-chain">
-                <li :for={plug <- plugs}>
-                  <.plug_name links={@links} plug={plug} within={@within} hint />
-                  <.code_list :if={Pipeline.options(plug) != []} names={Pipeline.options(plug)} />
-                </li>
-              </ol>
-              <p :if={plugs == []} class="ov-muted mt-1.5 text-xs">Runs no plugs</p>
-            </div>
-          </div>
-        </.section>
-
-        <.section :if={@routers != []} id="try" title="Try a request" icon="endpoint" tone="web">
-          <.form
-            for={@try_form}
-            id="try-request"
-            class="ov-try"
-            phx-change="try"
-            phx-submit="try"
-            phx-target={@myself}
-          >
-            <select id="try-method" name={@try_form[:method].name} aria-label="Method">
-              <option :for={method <- @methods} value={method} selected={method == @request.method}>
-                {method}
-              </option>
-            </select>
-            <input
-              id="try-path"
-              type="text"
-              name={@try_form[:path].name}
-              value={@request.path}
-              aria-label="Path"
-              placeholder="/path"
-              autocomplete="off"
-              spellcheck="false"
-              phx-debounce="150"
+              <select id="try-method" name={@try_form[:method].name} aria-label="Method">
+                <option :for={method <- @methods} value={method} selected={method == @request.method}>
+                  {method}
+                </option>
+              </select>
+              <input
+                id="try-path"
+                type="text"
+                name={@try_form[:path].name}
+                value={@request.path}
+                aria-label="Path"
+                placeholder="/path"
+                autocomplete="off"
+                spellcheck="false"
+                phx-debounce="150"
+              />
+            </.form>
+            <.journey
+              links={@links}
+              request={@request}
+              steps={@steps}
+              routers={@routers}
+              within={@within}
             />
-          </.form>
-          <.journey
-            links={@links}
-            request={@request}
-            steps={@steps}
-            routers={@routers}
-            within={@within}
-          />
-        </.section>
+          </.section>
 
-        <.section
-          :for={router <- @routers}
-          id="routes"
-          title="Routes"
-          icon="router"
-          tone="web"
-          count={length(router.routes)}
-        >
-          <p :if={router.routes == []} class="ov-muted">This router has no routes.</p>
-          <div
-            :for={{{pipe_through, routes}, index} <- Enum.with_index(groups(router.routes))}
-            class="ov-route-group"
+          <.section
+            :for={router <- @routers}
+            id="routes"
+            title="Routes"
+            icon="router"
+            tone="web"
+            count={length(router.routes)}
           >
-            <div class="ov-route-group-head">
-              <.pipe_through names={pipe_through} />
-              <span class="ov-count">{length(routes)}</span>
+            <p :if={router.routes == []} class="ov-muted">This router has no routes.</p>
+            <div
+              :for={{{pipe_through, routes}, index} <- Enum.with_index(groups(router.routes))}
+              class="ov-route-group"
+            >
+              <div class="ov-route-group-head">
+                <.pipe_through names={pipe_through} />
+                <span class="ov-count">{length(routes)}</span>
+              </div>
+              <.overview_table id={"routes-#{index}"} rows={routes} class="ov-routes">
+                <:col :let={route} label="Method" class="ov-routes-method">
+                  <.method_flag verb={route.verb} />
+                </:col>
+                <:col :let={route} label="Path" class="ov-routes-path">
+                  <a
+                    href="#try"
+                    class="ov-try-path"
+                    phx-click={
+                      JS.push("try",
+                        value: %{method: method(route.verb), path: route.path},
+                        target: @myself
+                      )
+                    }
+                    {Tooltip.attrs("Try this route")}
+                  >
+                    <.route_path path={route.path} />
+                  </a>
+                </:col>
+                <:col :let={route} label="Handler">
+                  <.handler links={@links} handler={route.handler} within={@within} />
+                </:col>
+              </.overview_table>
             </div>
-            <.overview_table id={"routes-#{index}"} rows={routes} class="ov-routes">
-              <:col :let={route} label="Method" class="ov-routes-method">
-                <.method_flag verb={route.verb} />
-              </:col>
-              <:col :let={route} label="Path" class="ov-routes-path">
-                <a
-                  href="#try"
-                  class="ov-try-path"
-                  phx-click={
-                    JS.push("try",
-                      value: %{method: method(route.verb), path: route.path},
-                      target: @myself
-                    )
-                  }
-                  {Tooltip.attrs("Try this route")}
-                >
-                  <.route_path path={route.path} />
-                </a>
-              </:col>
-              <:col :let={route} label="Handler">
-                <.handler links={@links} handler={route.handler} within={@within} />
-              </:col>
-            </.overview_table>
-          </div>
-        </.section>
+          </.section>
+        </div>
       </div>
       """
     end

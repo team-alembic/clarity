@@ -59,53 +59,55 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <div class="ov-page" id={@id}>
-        <div class="ov-head">
-          <.hero vertex={@vertex} kind="Domain">
-            <.description links={@links} text={@description} lead />
-          </.hero>
+      <div class="content w-full" id={@id}>
+        <div class="ov-page">
+          <div class="ov-head">
+            <.hero vertex={@vertex} kind="Domain">
+              <.description links={@links} text={@description} lead />
+            </.hero>
 
-          <.facts>
-            <:fact label="Domain">
-              <.vertex_link
-                links={@links}
-                vertex={@vertex}
-                label={if @short?, do: Vertex.Name.in_app(@domain), else: inspect(@domain)}
-              />
-            </:fact>
-            <:fact :if={@app} label="Application">
-              <.vertex_link links={@links} vertex={@app} />
-            </:fact>
-            <:fact label="Resources">{length(@resources)}</:fact>
-            <:fact :if={@common_data_layer} label="Data layer">
-              <.vertex_link
-                links={@links}
-                vertex={%Clarity.Vertex.Ash.DataLayer{data_layer: @common_data_layer}}
-                label={@common_data_layer |> Module.split() |> List.last()}
-              />
-            </:fact>
-            <:fact label="Actions">{@action_count}</:fact>
-          </.facts>
-        </div>
-
-        <.section
-          id="resources"
-          title="Resources"
-          icon="resource"
-          tone="structure"
-          count={length(@resources)}
-        >
-          <p :if={@resources == []} class="ov-muted">This domain has no resources.</p>
-          <div :if={@resources != []} class="ov-cards">
-            <.resource_card
-              :for={resource <- @resources}
-              links={links_about(@links, %Vertex.Ash.Resource{resource: resource})}
-              resource={resource}
-              common_data_layer={@common_data_layer}
-              label={if @short?, do: Vertex.Name.within(resource, @domain), else: inspect(resource)}
-            />
+            <.facts>
+              <:fact label="Domain">
+                <.vertex_link
+                  links={@links}
+                  vertex={@vertex}
+                  label={if @short?, do: Vertex.Name.in_app(@domain), else: inspect(@domain)}
+                />
+              </:fact>
+              <:fact :if={@app} label="Application">
+                <.vertex_link links={@links} vertex={@app} />
+              </:fact>
+              <:fact label="Resources">{length(@resources)}</:fact>
+              <:fact :if={@common_data_layer} label="Data layer">
+                <.vertex_link
+                  links={@links}
+                  vertex={%Clarity.Vertex.Ash.DataLayer{data_layer: @common_data_layer}}
+                  label={@common_data_layer |> Module.split() |> List.last()}
+                />
+              </:fact>
+              <:fact label="Actions">{@action_count}</:fact>
+            </.facts>
           </div>
-        </.section>
+
+          <.section
+            id="resources"
+            title="Resources"
+            icon="resource"
+            tone="structure"
+            count={length(@resources)}
+          >
+            <p :if={@resources == []} class="ov-muted">This domain has no resources.</p>
+            <div :if={@resources != []} class="ov-cards">
+              <.resource_card
+                :for={resource <- @resources}
+                links={links_about(@links, %Vertex.Ash.Resource{resource: resource})}
+                resource={resource}
+                common_data_layer={@common_data_layer}
+                label={if @short?, do: Vertex.Name.within(resource, @domain), else: inspect(resource)}
+              />
+            </div>
+          </.section>
+        </div>
       </div>
       """
     end
