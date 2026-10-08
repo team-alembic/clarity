@@ -21,6 +21,7 @@ defmodule Clarity.ReportLiveTest do
 
     test "renders the supply-chain report under its name", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/reports/supply-chain")
+      render_async(view)
 
       assert has_element?(view, ".report-status")
       assert has_element?(view, ".title h1", "Supply chain security")
