@@ -3,8 +3,11 @@ defmodule Clarity.Vertex.Spark.EntityTest do
 
   alias Ash.Resource.Info
   alias Clarity.Vertex
+  alias Clarity.Vertex.ModuleProvider
+  alias Clarity.Vertex.Name
   alias Clarity.Vertex.Spark.Entity
   alias Demo.Accounts.User
+  alias Spark.Dsl.Extension
 
   setup do
     attribute = User |> Info.attributes() |> List.first()
@@ -28,6 +31,22 @@ defmodule Clarity.Vertex.Spark.EntityTest do
   describe inspect(&Vertex.name/1) do
     test "returns entity name", %{vertex: vertex, attribute: attribute} do
       assert Vertex.name(vertex) == to_string(attribute.name)
+    end
+
+    test "names an entity without a name field by its definition's first argument" do
+      [reference | _] = Extension.get_entities(Demo.Accounts, [:resources])
+      vertex = %Entity{module: Demo.Accounts, path: [:resources], entity: reference}
+
+      assert Vertex.name(vertex) == inspect(reference.resource)
+      refute Vertex.name(vertex) =~ "%"
+      assert ModuleProvider.module(vertex) == reference.resource
+      assert Name.display(vertex, :short) == reference.resource |> Module.split() |> List.last()
+    end
+
+    test "names a struct without a definition by its type, not its contents" do
+      vertex = %Entity{module: User, path: [:test], entity: %URI{host: "example.com"}}
+
+      assert Vertex.name(vertex) == "URI"
     end
 
     test "handles entity without name field" do
