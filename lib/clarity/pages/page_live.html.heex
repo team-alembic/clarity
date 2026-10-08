@@ -27,7 +27,10 @@
 
       <.async_result :let={data} assign={@data}>
         <:loading>
-          <.splash_screen />
+          <%!-- The splash covers introspection. Once the graph is loaded, a page
+               reached by navigation (e.g. Explore from Reports) loads its data
+               without it. --%>
+          <.splash_screen :if={@clarity.status == :working} />
         </:loading>
         <:failed :let={reason}>
           <%= case reason do %>

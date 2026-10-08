@@ -26,6 +26,19 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "#header-sections a[href='/debug/reports']", "Reports")
     end
 
+    test "Explore patches within Explore, keeping the loaded page", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+
+      assert has_element?(view, "#header-sections a[data-phx-link=patch]", "Explore")
+      assert has_element?(view, "#header-sections a[data-phx-link=redirect]", "Reports")
+    end
+
+    test "shows no splash while loading once introspection is done", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/debug/root/graph")
+
+      refute html =~ ~s(id="splash")
+    end
+
     test "loads root vertex with graph content", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
       html = render_async(view)

@@ -46,6 +46,27 @@ defmodule Clarity.CoreComponents do
   @spec header(assigns :: Socket.assigns()) :: Rendered.t()
   def header(assigns)
 
+  attr :to, :string, required: true, doc: "Where the section starts"
+  attr :current, :boolean, required: true, doc: "Whether this section is the one shown"
+  slot :inner_block, required: true
+
+  # A link to one of the header's top-level sections. Within the current section
+  # it patches, which keeps the page's LiveView and the data it has loaded; only
+  # crossing to the other section's LiveView needs a navigation.
+  @doc false
+  @spec header_section(map()) :: Rendered.t()
+  def header_section(%{current: true} = assigns) do
+    ~H"""
+    <.link patch={@to} class="header-section" aria-current="page">{render_slot(@inner_block)}</.link>
+    """
+  end
+
+  def header_section(assigns) do
+    ~H"""
+    <.link navigate={@to} class="header-section">{render_slot(@inner_block)}</.link>
+    """
+  end
+
   attr :id, :string, required: true, doc: "The unique ID for the visualization element"
   attr :graph, :string, required: true, doc: "The graph data in DOT language format"
 

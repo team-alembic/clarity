@@ -22,20 +22,12 @@
     aria-label="Sections"
     class="ml-4 flex items-center gap-1 flex-1 min-w-0"
   >
-    <.link
-      navigate={Path.join([@prefix, @lens.id])}
-      class="header-section"
-      aria-current={@section == :explore && "page"}
-    >
+    <.header_section to={Path.join([@prefix, @lens.id])} current={@section == :explore}>
       Explore
-    </.link>
-    <.link
-      navigate={Path.join([@prefix, @lens.id, "reports"])}
-      class="header-section"
-      aria-current={@section == :reports && "page"}
-    >
+    </.header_section>
+    <.header_section to={Path.join([@prefix, @lens.id, "reports"])} current={@section == :reports}>
       Reports
-    </.link>
+    </.header_section>
   </nav>
 
   <div class="flex justify-center mx-4">

@@ -55,6 +55,9 @@ defmodule Clarity.ReportLiveTest do
 
       assert has_element?(view, "#header-sections a[aria-current=page]", "Reports")
       assert has_element?(view, "#header-sections a[href='/security']", "Explore")
+      # Reports stays in this LiveView; Explore is another one.
+      assert has_element?(view, "#header-sections a[data-phx-link=patch]", "Reports")
+      assert has_element?(view, "#header-sections a[data-phx-link=redirect]", "Explore")
     end
 
     test "has no sidebar, so no button to toggle one", %{conn: conn} do
