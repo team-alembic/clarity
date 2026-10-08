@@ -97,7 +97,8 @@ defmodule Clarity.Graph.Cache do
     metadata = %{
       version: clarity_version(),
       clarity_config_hash: clarity_config_hash(),
-      app_configs_hash: app_configs_hash()
+      app_configs_hash: app_configs_hash(),
+      introspectors_hash: introspectors_hash()
     }
 
     metadata_path = Path.join(cache_path, "metadata.etf")
@@ -115,7 +116,8 @@ defmodule Clarity.Graph.Cache do
          metadata = :erlang.binary_to_term(binary),
          :ok <- validate_version(metadata),
          :ok <- validate_clarity_config(metadata),
-         :ok <- validate_app_configs(metadata) do
+         :ok <- validate_app_configs(metadata),
+         :ok <- validate_introspectors(metadata) do
       :ok
     else
       {:error, reason} -> {:error, {:invalid, reason}}
@@ -148,6 +150,18 @@ defmodule Clarity.Graph.Cache do
       {:error, :app_configs_changed}
     end
   end
+
+  @spec validate_introspectors(map()) :: :ok | {:error, :introspectors_changed}
+  defp validate_introspectors(%{introspectors_hash: hash}) do
+    if hash == introspectors_hash() do
+      :ok
+    else
+      {:error, :introspectors_changed}
+    end
+  end
+
+  # Caches written before introspectors were fingerprinted.
+  defp validate_introspectors(_metadata), do: {:error, :introspectors_changed}
 
   @spec clarity_version() :: String.t()
   defp clarity_version do
@@ -189,5 +203,15 @@ defmodule Clarity.Graph.Cache do
       0 ->
         :ok
     end
+  end
+
+  # Introspectors decide what the graph holds, so a change to one's code makes
+  # the cache stale even when no version or config changed, as the server
+  # already assumes when it reloads code (see Clarity.Server).
+  @spec introspectors_hash() :: integer()
+  defp introspectors_hash do
+    Clarity.Config.list_introspectors()
+    |> Enum.map(&(Code.ensure_loaded?(&1) and &1.module_info(:md5)))
+    |> :erlang.phash2()
   end
 end

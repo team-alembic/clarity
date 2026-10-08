@@ -90,6 +90,29 @@ defmodule Clarity.Graph.CacheTest do
       assert {:error, {:invalid, :app_configs_changed}} = Cache.load(cache)
     end
 
+    test "returns error when an introspector's code changed", %{tmp_dir: tmp_dir} do
+      cache_path = Path.join(tmp_dir, "introspectors_changed")
+
+      cache =
+        start_supervised!(
+          {Cache, clarity_server: self(), cache_path: cache_path, name: __MODULE__.LoadIntrospectorsChanged}
+        )
+
+      :ok = File.mkdir_p(cache_path)
+      :ok = Graph.persist(Graph.new(), cache_path)
+
+      metadata = %{
+        version: :clarity |> Application.spec(:vsn) |> List.to_string(),
+        clarity_config_hash: :erlang.phash2(Application.get_all_env(:clarity)),
+        app_configs_hash: app_configs_hash(),
+        introspectors_hash: 999_999
+      }
+
+      File.write!(Path.join(cache_path, "metadata.etf"), :erlang.term_to_binary(metadata))
+
+      assert {:error, {:invalid, :introspectors_changed}} = Cache.load(cache)
+    end
+
     test "returns ok with graph when cache is valid", %{tmp_dir: tmp_dir} do
       cache_path = Path.join(tmp_dir, "valid_cache")
 
@@ -106,7 +129,8 @@ defmodule Clarity.Graph.CacheTest do
       metadata = %{
         version: clarity_version,
         clarity_config_hash: :erlang.phash2(Application.get_all_env(:clarity)),
-        app_configs_hash: app_configs_hash()
+        app_configs_hash: app_configs_hash(),
+        introspectors_hash: introspectors_hash()
       }
 
       metadata_path = Path.join(cache_path, "metadata.etf")
@@ -155,6 +179,7 @@ defmodule Clarity.Graph.CacheTest do
       assert metadata.version == clarity_version
       assert is_integer(metadata.clarity_config_hash)
       assert is_integer(metadata.app_configs_hash)
+      assert metadata.introspectors_hash == introspectors_hash()
     end
 
     test "logs warning when persistence fails", %{tmp_dir: tmp_dir} do
@@ -235,6 +260,13 @@ defmodule Clarity.Graph.CacheTest do
         key in [:clarity_introspectors, :clarity_content_providers, :clarity_perspective_lensmakers]
       end)
     end)
+    |> :erlang.phash2()
+  end
+
+  @spec introspectors_hash() :: integer()
+  defp introspectors_hash do
+    Clarity.Config.list_introspectors()
+    |> Enum.map(&(Code.ensure_loaded?(&1) and &1.module_info(:md5)))
     |> :erlang.phash2()
   end
 end
