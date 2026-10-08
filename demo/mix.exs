@@ -23,7 +23,7 @@ defmodule Demo.MixProject do
   defp deps do
     [
       {:clarity, path: "..", override: true},
-      {:ash_diagram, "~> 0.2.2"},
+      {:ash_diagram, "~> 0.2.3"},
       {:ash, "~> 3.6"},
       {:picosat_elixir, "~> 0.2.3"},
       {:phoenix, "~> 1.8"},
