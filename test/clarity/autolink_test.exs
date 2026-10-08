@@ -8,6 +8,7 @@ defmodule Clarity.AutolinkTest do
   alias Clarity.Vertex.Ash.Aggregate
   alias Clarity.Vertex.Ash.Attribute
   alias Clarity.Vertex.Ash.Domain
+  alias Clarity.Vertex.Ash.Relationship
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
@@ -18,7 +19,9 @@ defmodule Clarity.AutolinkTest do
   alias Demo.Helpdesk.CustomerContact
   alias Demo.Helpdesk.Message
   alias Demo.Helpdesk.Ticket
+  alias Demo.Projects.Comment
   alias Demo.Projects.Project
+  alias Demo.Projects.TimeEntry
 
   @resources [
     Message,
@@ -246,11 +249,100 @@ defmodule Clarity.AutolinkTest do
     end
   end
 
-  @spec render(String.t(), Autolink.names(), (Vertex.t() -> String.t())) :: String.t()
-  defp render(markdown, names, path \\ &("/to/" <> short(&1))) do
+  describe "lowercase" do
+    setup do
+      graph = Graph.new()
+      Graph.add_vertex(graph, %Domain{domain: Demo.Projects}, %Root{})
+
+      for resource <- [
+            Demo.Projects.Ticket,
+            Project,
+            Comment,
+            TimeEntry,
+            Demo.Projects.Attachment,
+            User,
+            Ticket
+          ] do
+        Graph.add_vertex(graph, %Resource{resource: resource}, %Root{})
+
+        for relationship <- Info.relationships(resource),
+            do: Graph.add_vertex(graph, %Relationship{relationship: relationship, resource: resource}, %Root{})
+      end
+
+      %{graph: graph}
+    end
+
+    test "names resources and domains in lowercase too, only when asked", %{graph: graph} do
+      names = Autolink.names(graph, nil, lowercase: true)
+
+      assert names["project"] == %Resource{resource: Project}
+      assert names["time entries"] == %Resource{resource: TimeEntry}
+      assert names["projects"] == %Domain{domain: Demo.Projects}
+      refute Map.has_key?(Autolink.names(graph, nil), "time entries")
+    end
+
+    test "prefers a resource to another's field, as near", %{graph: graph} do
+      assert Autolink.names(graph, nil, lowercase: true)["user"] == %Resource{resource: User}
+    end
+
+    test "links lowercase mentions, written as the names they stand for", %{graph: graph} do
+      vertex = %Resource{resource: Comment}
+      names = Autolink.names(graph, vertex, lowercase: true)
+
+      html =
+        render("Logs time entries against a project, by a user.", names, &field_path/1, lowercase: true, vertex: vertex)
+
+      assert html =~ ~s(>TimeEntries</a> against)
+      assert html =~ ~s(href="/to/#{Vertex.id(%Resource{resource: TimeEntry})}")
+      assert html =~ ~s(>Project</a>, by a)
+      assert html =~ ~s(>User</a>.)
+    end
+
+    test "links lowercase field names in text about their own resource only, before resources", %{graph: graph} do
+      ticket = %Resource{resource: Demo.Projects.Ticket}
+      text = "Has a reporter, and comments."
+
+      html = render(text, Autolink.names(graph, ticket, lowercase: true), &field_path/1, lowercase: true, vertex: ticket)
+
+      assert html =~ ~s(>reporter</a>, and)
+      assert html =~ ~s(href="/to/#{Vertex.id(relationship(Demo.Projects.Ticket, :comments))}")
+
+      html =
+        render("Logs time entries.", Autolink.names(graph, ticket, lowercase: true), &field_path/1,
+          lowercase: true,
+          vertex: ticket
+        )
+
+      assert html =~ ~s(href="/to/#{Vertex.id(relationship(Demo.Projects.Ticket, :time_entries))}")
+      assert html =~ ">time entries</a>."
+
+      user = %Resource{resource: User}
+      html = render(text, Autolink.names(graph, user, lowercase: true), &field_path/1, lowercase: true, vertex: user)
+
+      assert html =~ "Has a reporter, and"
+      assert html =~ ~s(>Comments</a>.)
+    end
+
+    test "leaves a lowercase name as written once its vertex is linked", %{graph: graph} do
+      names = Autolink.names(graph, nil, lowercase: true)
+      html = render("A TimeEntry, then more time entries.", names, &field_path/1, lowercase: true)
+
+      assert html =~ ">TimeEntry</a>, then more time entries."
+    end
+
+    test "leaves lowercase names unlinked unless asked, or when they tie", %{graph: graph} do
+      names = Autolink.names(graph, nil, lowercase: true)
+
+      refute render("Logs time entries against a project.", Autolink.names(graph, nil), &field_path/1) =~ "<a "
+      refute render("Raises tickets.", names, &field_path/1, lowercase: true) =~ "<a "
+    end
+  end
+
+  @spec render(String.t(), Autolink.names(), (Vertex.t() -> String.t()), keyword()) :: String.t()
+  defp render(markdown, names, path \\ &("/to/" <> short(&1)), opts \\ []) do
     markdown
     |> MDEx.parse_document!(extension: [table: true])
-    |> Autolink.link(names, path)
+    |> Autolink.link(names, path, opts)
     |> MDEx.to_html!()
   end
 
@@ -261,6 +353,10 @@ defmodule Clarity.AutolinkTest do
 
   @spec aggregate(module(), atom()) :: Aggregate.t()
   defp aggregate(resource, name), do: %Aggregate{aggregate: Info.aggregate(resource, name), resource: resource}
+
+  @spec relationship(module(), atom()) :: Relationship.t()
+  defp relationship(resource, name),
+    do: %Relationship{relationship: Info.relationship(resource, name), resource: resource}
 
   @spec attribute(module(), atom()) :: Attribute.t()
   defp attribute(resource, name), do: %Attribute{attribute: Info.attribute(resource, name), resource: resource}
