@@ -82,6 +82,7 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.PolicyOverview,
           Clarity.Content.Ash.SecurityOverview,
           Clarity.Content.Ash.RelationshipOverview,
+          Clarity.Content.Ash.StateMachineDiagram,
           Clarity.Content.Phoenix.RouterRoutes,
           Clarity.Content.Advisory,
           Clarity.Content.Dependency
@@ -104,6 +105,8 @@ defmodule Clarity.MixProject do
       {:usage_rules, "~> 1.2", only: [:dev]},
       {:ash, "~> 3.6", optional: true},
       {:spark, "~> 2.3", optional: true},
+      {:reactor, "~> 1.0", optional: true},
+      {:ash_state_machine, "~> 0.2.13", optional: true},
       {:phoenix, "~> 1.8"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},

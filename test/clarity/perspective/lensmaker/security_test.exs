@@ -120,12 +120,13 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
       assert is_function(lens.filter, 1)
     end
 
-    test "leaves out the graph, module documentation and ash_diagram's architecture, class and ER diagrams" do
+    test "leaves out the graph, module documentation and the Architect lens's diagrams" do
       assert Security.make_lens().contents ==
                {:except,
                 [
                   Content.Graph,
                   Content.Moduledoc,
+                  Content.Ash.StateMachineDiagram,
                   ClarityContent.ArchitectureDiagram,
                   ClarityContent.ClassDiagram,
                   ClarityContent.ErDiagram
