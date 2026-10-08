@@ -17,6 +17,8 @@ defmodule Clarity.AutolinkTest do
     Message,
     Conversation,
     Demo.Helpdesk.CustomerContact,
+    Demo.Helpdesk.SlaPolicy,
+    Demo.Billing.LineItem,
     Ticket,
     Demo.Projects.Ticket,
     Demo.Accounts.User,
@@ -62,11 +64,15 @@ defmodule Clarity.AutolinkTest do
       %{names: Autolink.names(graph, %Resource{resource: Message})}
     end
 
-    test "links the first mention of each name", %{names: names} do
+    test "links each name at its first mention in a paragraph", %{names: names} do
       html =
         render(
-          "A single utterance inside a Conversation, from a User or a CustomerContact. " <>
-            "The Conversation belongs to a Ticket.",
+          """
+          A single utterance inside a Conversation, from a User or a CustomerContact.
+          The Conversation belongs to a Ticket.
+
+          Each Conversation has many messages.
+          """,
           names
         )
 
@@ -75,6 +81,22 @@ defmodule Clarity.AutolinkTest do
       assert html =~ ~s(<a href="/to/CustomerContact")
       assert html =~ ~s(<a href="/to/Ticket")
       assert html =~ "The Conversation belongs"
+      assert links(html, "Conversation") == 2
+    end
+
+    test "links each name at its first mention in a table cell", %{names: names} do
+      html = render("| Name | About |\n|---|---|\n| Conversation | Holds a User's Conversation |", names)
+
+      assert links(html, "Conversation") == 2
+      assert links(html, "User") == 1
+    end
+
+    test "links plurals to the vertex they name", %{names: names} do
+      html = render("Invoices, LineItems and SlaPolicies.", names)
+
+      assert html =~ ~s(<a href="/to/Invoice" data-phx-link="patch" data-phx-link-state="push">Invoices</a>)
+      assert html =~ ~s(<a href="/to/LineItem" data-phx-link="patch" data-phx-link-state="push">LineItems</a>)
+      assert html =~ ~s(<a href="/to/SlaPolicy" data-phx-link="patch" data-phx-link-state="push">SlaPolicies</a>)
     end
 
     test "links the longest name a mention spells", %{names: names} do
@@ -85,7 +107,7 @@ defmodule Clarity.AutolinkTest do
     end
 
     test "links only whole words", %{names: names} do
-      html = render("Users and UserTokens and a Conversations list.", names)
+      html = render("UserTokens and Conversational and Invoiced.", names)
 
       refute html =~ "<a "
     end
@@ -117,10 +139,13 @@ defmodule Clarity.AutolinkTest do
   @spec render(String.t(), Autolink.names()) :: String.t()
   defp render(markdown, names) do
     markdown
-    |> MDEx.parse_document!()
+    |> MDEx.parse_document!(extension: [table: true])
     |> Autolink.link(names, &("/to/" <> short(&1)))
     |> MDEx.to_html!()
   end
+
+  @spec links(String.t(), String.t()) :: non_neg_integer()
+  defp links(html, to), do: length(String.split(html, ~s(href="/to/#{to}"))) - 1
 
   @spec short(Vertex.t()) :: String.t()
   defp short(vertex), do: vertex |> Vertex.ModuleProvider.module() |> Module.split() |> List.last()

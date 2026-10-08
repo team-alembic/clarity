@@ -6,12 +6,13 @@ defmodule Clarity.Autolink do
 
   A vertex is named by its module (`Demo.Helpdesk.Conversation`), by its name
   within the application (`Helpdesk.Conversation`) and by its short name
-  (`Conversation`, or `Accounts` for a domain). When a short name fits more
-  than one vertex, the text's own vertex settles it: a resource it has a
-  relationship to first, then one in its domain; if that doesn't, the name
-  isn't linked. Only whole words link, each vertex only at its first mention,
-  and never the vertex the text describes, nor text in a heading, a link or a
-  code block.
+  (`Conversation`, or `Accounts` for a domain), and a resource by its plural
+  too (`Conversations`, `Policies`). When a short name fits more than one
+  vertex, the text's own vertex settles it: a resource it has a relationship
+  to first, then one in its domain; if that doesn't, the name isn't linked.
+  Only whole words link, each vertex at its first mention in a paragraph or
+  table cell, and never the vertex the text describes, nor text in a heading,
+  a link or a code block.
   """
 
   alias Ash.Resource.Info
@@ -93,6 +94,13 @@ defmodule Clarity.Autolink do
   defp walk(%MDEx.Link{} = node, _context, linked), do: {node, linked}
   defp walk(%MDEx.Heading{} = node, _context, linked), do: {node, linked}
 
+  # Each paragraph or table cell links its own first mentions.
+  defp walk(%block{nodes: nodes} = node, context, linked)
+       when block in [MDEx.Paragraph, MDEx.TableCell] do
+    {nodes, _linked} = Enum.flat_map_reduce(nodes, MapSet.new(), &child(&1, context, &2))
+    {%{node | nodes: nodes}, linked}
+  end
+
   defp walk(%{nodes: nodes} = node, context, linked) when is_list(nodes) do
     {nodes, linked} = Enum.flat_map_reduce(nodes, linked, &child(&1, context, &2))
     {%{node | nodes: nodes}, linked}
@@ -141,7 +149,21 @@ defmodule Clarity.Autolink do
         _parts -> []
       end
 
-    Enum.uniq([Enum.join(parts, ".") | in_app] ++ [List.last(parts)])
+    short = List.last(parts)
+    plural = if vertex.__struct__ == Resource, do: [plural(short)], else: []
+
+    Enum.uniq([Enum.join(parts, ".") | in_app] ++ [short | plural])
+  end
+
+  # The English plural of a CamelCase name, by its last word: Policies,
+  # Addresses, LineItems.
+  @spec plural(String.t()) :: String.t()
+  defp plural(name) do
+    cond do
+      String.match?(name, ~r/[^aeiou]y$/) -> String.slice(name, 0..-2//1) <> "ies"
+      String.match?(name, ~r/(s|x|z|ch|sh)$/) -> name <> "es"
+      true -> name <> "s"
+    end
   end
 
   # The vertex a name fits, if it fits only one, or one ranks above the rest.
