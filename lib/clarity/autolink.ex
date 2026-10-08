@@ -86,6 +86,10 @@ defmodule Clarity.Autolink do
   # The most words a lowercase name runs to ("sla policy", "time entries").
   @phrase_words 4
 
+  # A URL or path, such as /app/projects/new: any run of text with a slash.
+  # Its words are never linked, nor written otherwise.
+  @url ~r{[^\s]*/[^\s]*}u
+
   @doc """
   Returns the names to link in text about `vertex` (or about nothing in
   particular, with `nil`), from the vertices in `graph`.
@@ -305,8 +309,18 @@ defmodule Clarity.Autolink do
   @spec child(MDEx.Document.md_node(), String.t() | nil, map(), MapSet.t()) ::
           {[MDEx.Document.md_node()], MapSet.t()}
   defp child(%MDEx.Text{literal: text}, _owner, context, linked) do
-    # Alternates text and tokens, starting and ending with text.
-    @token |> Regex.split(text, include_captures: true) |> scan(nil, context, linked)
+    # Alternates prose and URLs, starting and ending with prose.
+    @url
+    |> Regex.split(text, include_captures: true)
+    |> Enum.chunk_every(2)
+    |> Enum.flat_map_reduce(linked, fn chunk, linked ->
+      [prose | url] = chunk
+      # Alternates text and tokens, starting and ending with text.
+      {nodes, linked} =
+        @token |> Regex.split(prose, include_captures: true) |> scan(nil, context, linked)
+
+      {nodes ++ Enum.flat_map(url, &text_nodes/1), linked}
+    end)
   end
 
   defp child(%MDEx.Code{literal: literal} = code, owner, context, linked) do

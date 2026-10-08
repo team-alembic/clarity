@@ -376,6 +376,32 @@ defmodule Clarity.AutolinkTest do
       assert html =~ ~s(>User</a>.)
     end
 
+    test "never links a word in a URL or path, nor changes it", %{graph: graph} do
+      vertex = %Resource{resource: Comment}
+      names = Autolink.names(graph, vertex, lowercase: true)
+
+      html =
+        render(
+          """
+          | Verb | Path |
+          | --- | --- |
+          | GET | /app/projects/:id/time_entries/new |
+
+          See https://example.com/projects/User?project=1, or ./projects/Ticket.ex, for a project.
+          """,
+          names,
+          &field_path/1,
+          lowercase: true,
+          vertex: vertex
+        )
+
+      assert html =~ "/app/projects/:id/time_entries/new"
+      assert html =~ "./projects/Ticket.ex"
+      refute html =~ ~s(>Projects</a>)
+      refute html =~ ~s(>Ticket</a>)
+      assert html =~ ~s(>Project</a>.)
+    end
+
     test "links lowercase field names in text about their own resource only, before resources", %{graph: graph} do
       ticket = %Resource{resource: Demo.Projects.Ticket}
       text = "Has a reporter, and comments."
