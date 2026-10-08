@@ -6,7 +6,8 @@ defmodule Clarity.Perspective.Lensmaker.Security do
   highlighting authentication, authorization, encryption, and other security
   concerns while filtering out unrelated implementation details. It leaves
   out the graph, module documentation (the Documentation lens's), and
-  `ash_diagram`'s class and ER diagrams, which belong to the Architect lens.
+  `ash_diagram`'s architecture, class and ER diagrams, which belong to the
+  Architect lens.
   """
 
   @behaviour Clarity.Perspective.Lensmaker
@@ -41,7 +42,13 @@ defmodule Clarity.Perspective.Lensmaker.Security do
       status_filter: &surface_status?/1,
       contents:
         {:except,
-         [Content.Graph, Content.Moduledoc, ClarityContent.ClassDiagram, ClarityContent.ErDiagram]}
+         [
+           Content.Graph,
+           Content.Moduledoc,
+           ClarityContent.ArchitectureDiagram,
+           ClarityContent.ClassDiagram,
+           ClarityContent.ErDiagram
+         ]}
     }
   end
 
