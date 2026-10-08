@@ -243,8 +243,8 @@ defmodule Clarity.Pages.PageLiveTest do
       assert Enum.map(tabs, &(&1 |> LazyHTML.text() |> String.trim())) == ["Graph Navigation"]
     end
 
-    test "only the Graph lens shows the graph tab", %{conn: conn} do
-      for lens <- ["architect", "security", "documentation", "debug"] do
+    test "only the Graph and Debug lenses show the graph tab", %{conn: conn} do
+      for lens <- ["architect", "security", "documentation"] do
         {:ok, view, _html} =
           conn |> live("/#{lens}/ash-domain:demo-accounts") |> follow_redirect(conn)
 
@@ -252,6 +252,15 @@ defmodule Clarity.Pages.PageLiveTest do
 
         refute has_element?(view, ".content-tab", "Graph Navigation"), "#{lens} shows the graph"
       end
+    end
+
+    test "the Debug lens shows every tab, the graph included", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      render_async(view)
+
+      assert has_element?(view, ".content-tab", "Graph Navigation")
+      assert has_element?(view, ".content-tab", "Domain Overview")
+      assert has_element?(view, ".content-tab", "Module Documentation")
     end
 
     test "the Documentation lens shows only a domain's module documentation", %{conn: conn} do

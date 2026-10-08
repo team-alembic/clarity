@@ -1,6 +1,8 @@
 defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
   use ExUnit.Case, async: true
 
+  alias AshDiagram.ClarityContent
+  alias Clarity.Content
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Architect
@@ -28,6 +30,11 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
       assert is_function(content_sorter, 2)
     end
 
+    test "leaves out the graph and ash_diagram's policy tabs" do
+      assert Architect.make_lens().contents ==
+               {:except, [Content.Graph, ClarityContent.PolicyDiagram, ClarityContent.PolicySimulation]}
+    end
+
     test "architect lens focuses on structural elements" do
       lens = Architect.make_lens()
 
@@ -50,7 +57,7 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
       assert lens.content_sorter == (&Lens.sort_alphabetically/2)
 
       # Create test content (using the Registry.Content struct)
-      content_a = %Clarity.Content{
+      content_a = %Content{
         id: "content_a",
         name: "Content A",
         provider: __MODULE__,
@@ -58,7 +65,7 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
         live_component?: false
       }
 
-      content_z = %Clarity.Content{
+      content_z = %Content{
         id: "content_z",
         name: "Content Z",
         provider: __MODULE__,
@@ -66,7 +73,7 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
         live_component?: false
       }
 
-      content_b = %Clarity.Content{
+      content_b = %Content{
         id: "content_b",
         name: "Content B",
         provider: __MODULE__,

@@ -4,7 +4,9 @@ defmodule Clarity.Perspective.Lensmaker.Security do
 
   The Security lens focuses on security-related elements of the codebase,
   highlighting authentication, authorization, encryption, and other security
-  concerns while filtering out unrelated implementation details.
+  concerns while filtering out unrelated implementation details. It leaves
+  out the graph, and `ash_diagram`'s class and ER diagrams, which belong to the
+  Architect lens.
   """
 
   @behaviour Clarity.Perspective.Lensmaker
@@ -12,6 +14,8 @@ defmodule Clarity.Perspective.Lensmaker.Security do
   import Clarity.IconComponents
   import Phoenix.Component
 
+  alias AshDiagram.ClarityContent
+  alias Clarity.Content
   alias Clarity.Dependency
   alias Clarity.Dependency.Registry
   alias Clarity.Graph
@@ -35,7 +39,7 @@ defmodule Clarity.Perspective.Lensmaker.Security do
       filter: &filter/1,
       show_vertex_types: &show_vertex_types/1,
       status_filter: &surface_status?/1,
-      contents: {:except, [Clarity.Content.Graph]}
+      contents: {:except, [Content.Graph, ClarityContent.ClassDiagram, ClarityContent.ErDiagram]}
     }
   end
 

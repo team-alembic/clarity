@@ -28,6 +28,10 @@ defmodule Clarity.Perspective.Lensmaker.DebugTest do
       assert is_function(content_sorter, 2)
     end
 
+    test "shows every tab" do
+      assert Debug.make_lens().contents == :all
+    end
+
     test "debug lens icon renders bug emoji" do
       lens = Debug.make_lens()
 

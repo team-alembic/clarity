@@ -13,8 +13,9 @@ defmodule Clarity.Perspective.Lens do
   A lens also decides which tabs a vertex shows: `contents` is `:all` (every
   content provider that applies), a list of the content providers whose tabs it
   shows, or `{:except, providers}` for every one but those. A vertex left with
-  no tabs says the lens has nothing to show for it. Only the Graph lens shows
-  the graph (`Clarity.Content.Graph`); the other built-in lenses leave it out.
+  no tabs says the lens has nothing to show for it. The built-in Debug lens
+  shows every tab; of the others, only the Graph lens shows the graph
+  (`Clarity.Content.Graph`).
   """
 
   alias Clarity.Content

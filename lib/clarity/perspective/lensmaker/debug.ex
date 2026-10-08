@@ -4,7 +4,8 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
 
   The Debug lens is designed for developers and debugging purposes, showing
   the most important vertices while filtering out noise. It provides a clean
-  view of the graph structure suitable for navigation and exploration.
+  view of the graph structure suitable for navigation and exploration, and
+  shows every tab that applies to a vertex.
   """
 
   @behaviour Clarity.Perspective.Lensmaker
@@ -38,8 +39,7 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
         _a, %Content{provider: Content.Graph} -> false
         a, b -> Lens.sort_alphabetically(a, b)
       end,
-      show_vertex_types: & &1,
-      contents: {:except, [Content.Graph]}
+      show_vertex_types: & &1
     }
   end
 

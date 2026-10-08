@@ -3,6 +3,8 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
   # ETS table, which must not race with concurrent tests reading it via the lens.
   use ExUnit.Case, async: false
 
+  alias AshDiagram.ClarityContent
+  alias Clarity.Content
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Security
@@ -118,6 +120,11 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
       assert is_function(lens.filter, 1)
     end
 
+    test "leaves out the graph and ash_diagram's class and ER diagrams" do
+      assert Security.make_lens().contents ==
+               {:except, [Content.Graph, ClarityContent.ClassDiagram, ClarityContent.ErDiagram]}
+    end
+
     test "security lens surfaces :security and :hygiene status indicators" do
       filter = Security.make_lens().status_filter
 
@@ -140,7 +147,7 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
       assert lens.content_sorter == (&Lens.sort_alphabetically/2)
 
       # Create test content (using the Registry.Content struct)
-      content_a = %Clarity.Content{
+      content_a = %Content{
         id: "content_a",
         name: "Content A",
         provider: __MODULE__,
@@ -148,7 +155,7 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
         live_component?: false
       }
 
-      content_z = %Clarity.Content{
+      content_z = %Content{
         id: "content_z",
         name: "Content Z",
         provider: __MODULE__,
@@ -156,7 +163,7 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
         live_component?: false
       }
 
-      content_b = %Clarity.Content{
+      content_b = %Content{
         id: "content_b",
         name: "Content B",
         provider: __MODULE__,
