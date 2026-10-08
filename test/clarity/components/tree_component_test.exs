@@ -97,7 +97,10 @@ defmodule Clarity.TreeComponentTest do
 
     @spec group_labels(LazyHTML.t()) :: [String.t()]
     defp group_labels(tree),
-      do: tree |> LazyHTML.query("[id^='tree-group-'] > summary") |> Enum.map(&String.trim(LazyHTML.text(&1)))
+      do:
+        tree
+        |> LazyHTML.query("[id^='tree-group-'] > summary")
+        |> Enum.map(&(&1 |> LazyHTML.text() |> String.split() |> Enum.join(" ")))
 
     test "a node's only group gets no row of its own; its items sit directly under the node" do
       tree = render_app_tree([{%Vertex.Module{module: Demo.Accounts}, :module}])
@@ -223,6 +226,74 @@ defmodule Clarity.TreeComponentTest do
         ])
 
       assert group_labels(tree) == ["domain", "router", "module"]
+    end
+  end
+
+  describe "long groups" do
+    # An application with `count` advisories, plus `extra` edges, rendered with
+    # the given opened ids.
+    @spec render_long_tree(pos_integer(), [{Vertex.t(), atom()}], MapSet.t()) :: LazyHTML.t()
+    defp render_long_tree(count, extra, opened \\ MapSet.new()) do
+      app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
+      graph = Graph.new()
+      Graph.add_vertex(graph, app, %Vertex.Root{})
+      Graph.add_edge(graph, %Vertex.Root{}, app, :child)
+
+      advisories =
+        for n <- 1..count do
+          %Vertex.Advisory{advisory: %Clarity.Advisory{id: "GHSA-#{n}", package: "dep"}}
+        end
+
+      for {vertex, label} <- Enum.map(advisories, &{&1, :advisory}) ++ extra do
+        Graph.add_vertex(graph, vertex, app)
+        Graph.add_edge(graph, app, vertex, label)
+      end
+
+      {:ok, lens} = Lensmaker.get_lens_by_id("debug")
+
+      TreeComponent
+      |> render_component(
+        id: "tree",
+        graph: graph,
+        lens: lens,
+        prefix: "/",
+        active_vertex: app,
+        breadcrumbs: [%Vertex.Root{}, app],
+        opened: opened,
+        collapsed: MapSet.new(),
+        name_style: :short
+      )
+      |> LazyHTML.from_fragment()
+    end
+
+    @spec advisory_rows(LazyHTML.t()) :: non_neg_integer()
+    defp advisory_rows(tree), do: tree |> LazyHTML.query("a[data-tooltip-type='Advisory']") |> Enum.count()
+
+    test "start closed, showing their count, and sort after short groups" do
+      tree = render_long_tree(30, [{%Vertex.Module{module: Demo.Accounts}, :module}])
+
+      assert group_labels(tree) == ["module", "advisory (30)"]
+      assert advisory_rows(tree) == 0
+    end
+
+    test "short groups stay open, without a count" do
+      tree = render_long_tree(3, [{%Vertex.Module{module: Demo.Accounts}, :module}])
+
+      assert group_labels(tree) == ["advisory", "module"]
+      assert advisory_rows(tree) == 3
+    end
+
+    test "keep a row of their own even as a node's only group, to open them by" do
+      tree = render_long_tree(30, [])
+
+      assert group_labels(tree) == ["advisory (30)"]
+      assert advisory_rows(tree) == 0
+    end
+
+    test "open once opened, as by the user or navigating into them" do
+      opened = MapSet.new(["application:clarity/advisory"])
+
+      assert 30 |> render_long_tree([], opened) |> advisory_rows() == 30
     end
   end
 

@@ -1,4 +1,6 @@
 defmodule Clarity.TreeComponent do
+  @long_group 25
+
   @moduledoc """
   A lazy-loading navigation tree component that only renders visible nodes.
 
@@ -11,7 +13,8 @@ defmodule Clarity.TreeComponent do
 
   A node is open when it is on the breadcrumb path or the user expanded it,
   unless the user has collapsed it; a group is open unless the user has
-  collapsed it. The parent owns both sets so they survive graph updates, and
+  collapsed it. A group of more than #{@long_group} items sorts last and starts
+  closed, showing its count, until the user or a navigation opens it. The parent owns both sets so they survive graph updates, and
   when the path changes it drops the collapses along it (see `path_ids/2`),
   revealing the newly current vertex.
 
@@ -69,10 +72,10 @@ defmodule Clarity.TreeComponent do
       when is_boolean(open) do
     %{opened: opened, collapsed: collapsed} = socket.assigns
 
-    collapsed =
+    {opened, collapsed} =
       if open,
-        do: MapSet.delete(collapsed, group_id),
-        else: MapSet.put(collapsed, group_id)
+        do: {MapSet.put(opened, group_id), MapSet.delete(collapsed, group_id)},
+        else: {MapSet.delete(opened, group_id), MapSet.put(collapsed, group_id)}
 
     set_tree_state(socket, opened, collapsed)
   end
@@ -372,12 +375,15 @@ defmodule Clarity.TreeComponent do
 
     for {label, children} <- groups, label != :content do
       id = group_id(vertex, label)
+      long? = long_group?(children)
 
       %{
         id: id,
         label: label,
+        count: length(children),
+        long?: long?,
         children: sort_by_label(Enum.zip(children, Name.display_all(children, name_style))),
-        open?: not MapSet.member?(collapsed, id),
+        open?: group_open?(id, long?, collapsed, visible_ids),
         active?: not active_is_open? and Enum.any?(children, &(Vertex.id(&1) == active_id)),
         any_has_children?: Enum.any?(children, &has_children?(graph, &1))
       }
@@ -393,10 +399,28 @@ defmodule Clarity.TreeComponent do
         {String.downcase(label), label, Vertex.name(child)}
       end)
 
-  # Groups go in alphabetical order, but modules last: there are many, and
-  # they repeat the domains, resources and the like in the groups above.
-  @spec group_order({term(), [Vertex.t()]}) :: {boolean(), String.t()}
-  defp group_order({label, _children}), do: {label == :module, to_string(label)}
+  # Groups go in alphabetical order, but long groups last, and modules last of
+  # all: there are many, and they repeat the domains, resources and the like in
+  # the groups above.
+  @spec group_order({term(), [Vertex.t()]}) :: {boolean(), boolean(), String.t()}
+  defp group_order({label, children}),
+    do: {long_group?(children), label == :module, to_string(label)}
+
+  # A long group starts closed, showing its count, so it doesn't bury the
+  # rest of the tree.
+  @spec long_group?([Vertex.t()]) :: boolean()
+  defp long_group?(children), do: length(children) > @long_group
+
+  # A group is open unless the user collapsed it, and a long group only once
+  # the user, or navigating into it, opened it (see path_ids/2).
+  @spec group_open?(String.t(), boolean(), MapSet.t(), MapSet.t()) :: boolean()
+  defp group_open?(id, long?, collapsed, visible_ids) do
+    cond do
+      MapSet.member?(collapsed, id) -> false
+      long? -> MapSet.member?(visible_ids, id)
+      true -> true
+    end
+  end
 
   # The active guide stays visible; see render_vertex.html.heex.
   @spec guide_class(boolean()) :: [String.t() | false]

@@ -5,8 +5,9 @@
   and its siblings.
 --%>
 <%= case navigation_groups(@graph, @vertex, @collapsed, @name_style, @active_vertex, @visible_ids) do %>
-  <% [group] -> %>
-    <%!-- A lone group says nothing the items' icons don't, so it gets no row. --%>
+  <% [%{long?: false} = group] -> %>
+    <%!-- A lone group says nothing the items' icons don't, so it gets no row,
+         unless it is long and needs one to fold it away. --%>
     <.group_items
       group={group}
       class={!@root? && guide_class(group.active? or current?(@vertex, @active_vertex))}
@@ -26,7 +27,15 @@
       >
         <summary class="flex items-center cursor-pointer text-base-light-600 dark:text-base-dark-400">
           <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
-          <span class="min-w-0 truncate px-1 py-px">{group.label}</span>
+          <span class="min-w-0 truncate px-1 py-px">
+            {group.label}
+            <span
+              :if={group.long?}
+              class="tabular-nums text-base-light-500 dark:text-base-dark-500"
+            >
+              ({group.count})
+            </span>
+          </span>
         </summary>
         <.group_items
           :if={group.open?}
