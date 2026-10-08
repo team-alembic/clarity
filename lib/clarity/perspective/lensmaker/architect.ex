@@ -5,8 +5,8 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
   The Architect lens focuses on the architectural and structural elements
   of the codebase, filtering out implementation details to show the high-level
   organization and relationships between major components. It leaves out the
-  graph, and `ash_diagram`'s policy diagram and simulation, which belong to the
-  Security lens.
+  graph, module documentation (the Documentation lens's), and `ash_diagram`'s
+  policy diagram and simulation, which belong to the Security lens.
   """
 
   @behaviour Clarity.Perspective.Lensmaker
@@ -37,7 +37,13 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       filter: &filter/1,
       show_vertex_types: &show_vertex_types/1,
       contents:
-        {:except, [Content.Graph, ClarityContent.PolicyDiagram, ClarityContent.PolicySimulation]}
+        {:except,
+         [
+           Content.Graph,
+           Content.Moduledoc,
+           ClarityContent.PolicyDiagram,
+           ClarityContent.PolicySimulation
+         ]}
     }
   end
 

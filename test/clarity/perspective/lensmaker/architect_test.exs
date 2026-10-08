@@ -30,9 +30,15 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
       assert is_function(content_sorter, 2)
     end
 
-    test "leaves out the graph and ash_diagram's policy tabs" do
+    test "leaves out the graph, module documentation and ash_diagram's policy tabs" do
       assert Architect.make_lens().contents ==
-               {:except, [Content.Graph, ClarityContent.PolicyDiagram, ClarityContent.PolicySimulation]}
+               {:except,
+                [
+                  Content.Graph,
+                  Content.Moduledoc,
+                  ClarityContent.PolicyDiagram,
+                  ClarityContent.PolicySimulation
+                ]}
     end
 
     test "architect lens focuses on structural elements" do
