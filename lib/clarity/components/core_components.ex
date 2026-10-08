@@ -230,6 +230,17 @@ defmodule Clarity.CoreComponents do
   def vertex_not_found_error(assigns)
 
   @doc """
+  Renders an error message when the page's data failed to load for any other
+  reason; the server log has the details.
+  """
+  attr :prefix, :string, required: true, doc: "URL prefix for navigation link"
+  attr :lens, Lens, required: true, doc: "Current lens for navigation"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the error container"
+
+  @spec data_load_error(assigns :: Socket.assigns()) :: Rendered.t()
+  def data_load_error(assigns)
+
+  @doc """
   Renders an error message when content cannot be found for a vertex.
   """
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the error container"

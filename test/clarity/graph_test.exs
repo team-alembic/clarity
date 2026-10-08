@@ -205,6 +205,24 @@ defmodule Clarity.GraphTest do
       assert app in vertices
     end
 
+    test "a vertex with thousands of neighbours can be filtered to its neighbourhood" do
+      graph = Graph.new()
+      app = %Application{app: :big_app, description: "Big App", version: "1.0.0"}
+      Graph.add_vertex(graph, app, %Root{})
+      Graph.add_edge(graph, %Root{}, app, :application)
+
+      for n <- 1..2_000 do
+        advisory = %Vertex.Advisory{advisory: %Clarity.Advisory{id: "GHSA-#{n}", package: "big"}}
+        Graph.add_vertex(graph, advisory, app)
+        Graph.add_edge(graph, app, advisory, :advisory)
+      end
+
+      # within_steps filters on {:in, :vertex_id, ids} with every neighbour's id.
+      subgraph = Graph.filter(graph, Filter.within_steps(app, 1, 1))
+
+      assert length(Graph.vertices(subgraph)) == 2_002
+    end
+
     test "circular references are handled correctly" do
       graph = Graph.new()
       mod1 = %Module{module: Mod1}

@@ -37,6 +37,16 @@ defmodule Clarity.CoreComponentsTest do
     )
   end
 
+  describe "data_load_error/1" do
+    test "says the page couldn't load and links back to the root" do
+      lens = %Lens{id: "graph", name: "Graph", icon: fn -> nil end, filter: true}
+      html = render_component(&CoreComponents.data_load_error/1, prefix: "/", lens: lens)
+
+      assert html =~ "Couldn't Load This Page"
+      assert html =~ ~s(href="/graph/root")
+    end
+  end
+
   describe "tabs/1 status dots" do
     test "flags the tab whose class the vertex carries" do
       html = tabs(%{hygiene: :info})

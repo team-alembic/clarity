@@ -379,10 +379,10 @@ defmodule Clarity.Graph do
     false
   end
 
+  # One map lookup rather than a comparison per value: a chain of comparisons is
+  # slow for many values, and deep enough to exceed ETS's match spec limits.
   defp query_to_match_condition({:in, field, values}) when is_list(values) do
-    values
-    |> Enum.map(&query_to_match_condition({:==, field, &1}))
-    |> Enum.reduce(fn a, b -> {:orelse, a, b} end)
+    {:is_map_key, query_subject(field), {:const, Map.from_keys(values, true)}}
   end
 
   @spec query_subject(query_subject()) :: term()

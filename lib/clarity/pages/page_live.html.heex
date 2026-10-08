@@ -37,6 +37,8 @@
           <%= case reason do %>
             <% :vertex_not_found -> %>
               <.vertex_not_found_error prefix={@prefix} lens={lens} />
+            <% _reason -> %>
+              <.data_load_error prefix={@prefix} lens={lens} />
           <% end %>
         </:failed>
 
