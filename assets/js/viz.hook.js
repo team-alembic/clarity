@@ -1,5 +1,5 @@
 import * as Viz from "@viz-js/viz";
-import svgPanZoom from "svg-pan-zoom";
+import { panZoom } from "./pan-zoom";
 import { applyHints } from "./tooltip.hook";
 import { cacheKey, getSvg, putSvg } from "./svg-cache";
 
@@ -49,11 +49,7 @@ export default {
     this.el.appendChild(svg);
     this.oldSvg = svg;
 
-    const zoom = svgPanZoom(svg, {
-      controlIconsEnabled: true,
-      maxZoom: 100,
-      contain: true
-    });
+    const zoom = panZoom(this.el, svg);
 
     if (this.onResize) window.removeEventListener("resize", this.onResize);
     this.onResize = () => zoom.resize();

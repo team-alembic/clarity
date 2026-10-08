@@ -279,6 +279,16 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]):empty::before {
   animation: clarity-fade-in 200ms ease-out 400ms both;
 }
 
+/* Zoom controls in a pannable diagram's corner (assets/js/pan-zoom.js). */
+pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
+  position: relative;
+}
+
+.diagram-controls {
+  @apply absolute right-3 bottom-3 flex flex-col gap-px rounded-md border p-0.5 font-sans shadow-sm;
+  @apply border-base-light-300 bg-white/90 dark:border-base-dark-600 dark:bg-base-dark-800/90;
+}
+
 @keyframes clarity-fade-in {
   from {
     opacity: 0;

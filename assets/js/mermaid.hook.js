@@ -1,5 +1,5 @@
 import mermaid from "mermaid";
-import svgPanZoom from "svg-pan-zoom";
+import { panZoom } from "./pan-zoom";
 import { onThemeChange, getInitialTheme, getCurrentTheme } from "./theme";
 import { cacheKey, getSvg, putSvg } from "./svg-cache";
 
@@ -74,11 +74,7 @@ export default {
 
     svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
 
-    const zoom = svgPanZoom(svg, {
-      controlIconsEnabled: true,
-      maxZoom: 100,
-      contain: true
-    });
+    const zoom = panZoom(this.el, svg);
 
     if (this.onResize) window.removeEventListener("resize", this.onResize);
     this.onResize = () => zoom.resize();
