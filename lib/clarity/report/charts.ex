@@ -21,9 +21,9 @@ defmodule Clarity.Report.Charts do
   @spec stat(map()) :: Rendered.t()
   def stat(assigns) do
     ~H"""
-    <div class={["rounded-lg p-4 ring-1 ring-inset", card_classes(@tone)]}>
-      <div class="text-3xl font-bold tabular-nums leading-none">{@value}</div>
-      <div class="text-sm mt-1 opacity-80">{@label}</div>
+    <div class={["rounded-lg px-3 py-2.5 ring-1 ring-inset", card_classes(@tone)]}>
+      <div class="text-2xl font-semibold tabular-nums leading-none">{@value}</div>
+      <div class="mt-1 text-xs font-medium opacity-80">{@label}</div>
     </div>
     """
   end

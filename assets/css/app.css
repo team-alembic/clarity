@@ -366,6 +366,228 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:focus-visible:outline-primary-dark;
 }
 
+/* Reports (Clarity.Report.Components): a status line, the to-dos, then
+   reference data in closed sections. */
+.report-status-block {
+  @apply space-y-1;
+}
+
+.report-status {
+  @apply flex items-center gap-2 text-lg font-semibold;
+}
+
+.report-status[data-tone="attention"] {
+  @apply text-base-light-900 dark:text-base-dark-50;
+}
+
+.report-status[data-tone="ok"] {
+  @apply text-green-700 dark:text-green-400;
+}
+
+.report-status[data-tone="pending"] {
+  @apply text-base-light-600 dark:text-base-dark-300;
+}
+
+.report-status-meta {
+  @apply text-xs text-base-light-500 dark:text-base-dark-400;
+}
+
+.report-todos {
+  @apply space-y-3;
+}
+
+.report-todo {
+  @apply rounded-lg border border-l-4 bg-white p-4 dark:bg-base-dark-800;
+  @apply border-base-light-200 dark:border-base-dark-700;
+}
+
+.report-todo[data-severity="high"] {
+  @apply border-l-red-500;
+}
+
+.report-todo[data-severity="medium"] {
+  @apply border-l-amber-500;
+}
+
+.report-todo[data-severity="low"] {
+  @apply border-l-sky-500;
+}
+
+.report-todo-head {
+  @apply flex items-baseline gap-2.5;
+}
+
+.report-severity {
+  @apply shrink-0 rounded px-1.5 py-px text-[0.6875rem] font-semibold uppercase tracking-wide;
+}
+
+.report-todo[data-severity="high"] .report-severity {
+  @apply bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300;
+}
+
+.report-todo[data-severity="medium"] .report-severity {
+  @apply bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300;
+}
+
+.report-todo[data-severity="low"] .report-severity {
+  @apply bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300;
+}
+
+.report-todo-title {
+  @apply text-[0.9375rem] font-semibold text-base-light-900 dark:text-base-dark-50;
+}
+
+.report-todo-count {
+  @apply ml-2 rounded-full bg-base-light-100 px-2 py-px text-xs font-medium tabular-nums text-base-light-600;
+  @apply dark:bg-base-dark-700 dark:text-base-dark-300;
+}
+
+.report-todo-affects {
+  @apply mt-2.5 flex flex-wrap items-center gap-1.5 text-sm;
+}
+
+/* A group within a to-do: a resource, then its fields or actions. */
+.report-todo-group {
+  @apply flex basis-full flex-wrap items-center gap-1.5;
+}
+
+.report-todo-group-label {
+  @apply mr-1 text-sm font-medium text-base-light-800 dark:text-base-dark-100;
+}
+
+.report-todo-fix {
+  @apply mt-2.5 text-sm text-base-light-600 dark:text-base-dark-300;
+}
+
+.report-todo-fix code,
+.report-table code {
+  @apply rounded bg-base-light-100 px-1 py-px font-mono text-[0.8125rem] dark:bg-base-dark-700;
+}
+
+.report-command {
+  @apply mt-2.5 flex items-center gap-1 rounded-md border pl-3 pr-0.5;
+  @apply border-base-light-200 bg-base-light-50 dark:border-base-dark-600 dark:bg-base-dark-900;
+}
+
+.report-command code {
+  @apply min-w-0 flex-1 truncate py-1.5 font-mono text-[0.8125rem] text-base-light-800 dark:text-base-dark-100;
+}
+
+.report-command .icon-button {
+  @apply size-7;
+}
+
+.report-chip {
+  @apply inline-flex items-center rounded-md border px-1.5 py-px font-mono text-[0.8125rem] leading-5 whitespace-nowrap;
+  @apply border-base-light-200 bg-base-light-50 text-base-light-800;
+  @apply dark:border-base-dark-600 dark:bg-base-dark-900 dark:text-base-dark-100;
+}
+
+a.report-chip {
+  @apply transition-colors hover:border-primary-light hover:text-primary-light;
+  @apply dark:hover:border-primary-dark dark:hover:text-primary-dark;
+}
+
+.report-chip-muted {
+  @apply text-base-light-500 dark:text-base-dark-400;
+}
+
+.report-section {
+  @apply rounded-lg border border-base-light-200 dark:border-base-dark-700;
+}
+
+.report-section > summary {
+  @apply flex cursor-pointer select-none items-center gap-2 px-4 py-3 text-[0.9375rem] font-semibold;
+  @apply text-base-light-900 hover:bg-base-light-100 dark:text-base-dark-50 dark:hover:bg-base-dark-800;
+  list-style: none;
+}
+
+.report-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-section-chevron {
+  @apply size-4 shrink-0 text-base-light-500 transition-transform dark:text-base-dark-400;
+}
+
+.report-section[open] > summary .report-section-chevron {
+  transform: rotate(90deg);
+}
+
+.report-section[open] > summary {
+  @apply border-b border-base-light-200 dark:border-base-dark-700;
+}
+
+.report-section-count {
+  @apply rounded-full bg-base-light-100 px-2 py-px text-xs font-medium tabular-nums text-base-light-600;
+  @apply dark:bg-base-dark-700 dark:text-base-dark-300;
+}
+
+.report-section-body {
+  @apply overflow-x-auto p-4;
+}
+
+/* Reference tables: compact, the header kept in view, rows divided. */
+.report-table {
+  @apply w-full border-collapse text-left text-sm;
+}
+
+.report-table th {
+  @apply sticky top-0 border-b px-3 py-2 text-xs font-semibold uppercase tracking-wide whitespace-nowrap;
+  @apply border-base-light-200 bg-base-light-50 text-base-light-500;
+  @apply dark:border-base-dark-700 dark:bg-base-dark-900 dark:text-base-dark-400;
+}
+
+.report-table td {
+  @apply border-b px-3 py-2 align-top border-base-light-100 dark:border-base-dark-800;
+}
+
+.report-table tbody tr:hover {
+  @apply bg-base-light-100/60 dark:bg-base-dark-800/60;
+}
+
+.report-table td > .prose {
+  @apply max-w-none text-sm leading-normal;
+}
+
+.report-table td > .prose > :first-child {
+  margin-top: 0;
+}
+
+.report-table td > .prose > :last-child {
+  margin-bottom: 0;
+}
+
+.report-muted {
+  @apply text-base-light-500 dark:text-base-dark-400;
+}
+
+.report-tag {
+  @apply inline-flex items-center rounded px-1.5 py-px text-xs font-medium whitespace-nowrap;
+  @apply bg-base-light-100 text-base-light-700 dark:bg-base-dark-700 dark:text-base-dark-200;
+}
+
+.report-tag[data-tone="warning"] {
+  @apply bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300;
+}
+
+.report-tag[data-tone="error"] {
+  @apply bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300;
+}
+
+.report-tag[data-tone="ok"] {
+  @apply bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300;
+}
+
+/* A small coverage bar in a table cell. */
+.report-meter {
+  @apply inline-block h-1.5 w-16 overflow-hidden rounded-full align-middle bg-base-light-200 dark:bg-base-dark-700;
+}
+
+.report-meter > span {
+  @apply block h-full bg-green-500;
+}
+
 /* Shared hover hint, positioned by the Tooltip hook (assets/js/tooltip.hook.js).
    Content is capped server-side, so it never scrolls and needs no pointer events. */
 .clarity-tooltip {
