@@ -47,6 +47,13 @@ defmodule Clarity.Autolink do
   @typedoc "Names that link, each to the vertex it names."
   @type names() :: %{String.t() => Vertex.t()}
 
+  @typedoc "Every name the vertices of a graph go by, from `index/2`."
+  @type index() :: %{
+          graph: Graph.t(),
+          spellings: [{String.t(), [{Vertex.t(), :name | :plural}]}],
+          neighbours: %{optional(module()) => [module()]}
+        }
+
   @typedoc """
   How text links names: at `every` mention rather than each paragraph's
   first, and `lowercase` mentions too. Both are off unless given.
@@ -54,7 +61,11 @@ defmodule Clarity.Autolink do
   @type options() :: [every: boolean(), lowercase: boolean()]
 
   # The text's vertex's own resource, the resources it relates to, and its domain.
-  @typep context() :: %{resource: module() | nil, related: [module()], domain: module() | nil}
+  @typep context() :: %{
+           resource: module() | nil,
+           domain: module() | nil,
+           distances: %{optional(module()) => non_neg_integer()}
+         }
 
   @named_by_module [Resource, Domain, Vertex.Reactor]
   # Vertices for a resource's fields, with the key holding the field.
@@ -83,19 +94,43 @@ defmodule Clarity.Autolink do
   word by word: `ticket`, `tickets`, `time entries`, `billing`.
   """
   @spec names(Graph.t(), Vertex.t() | nil, keyword()) :: names()
-  def names(graph, vertex, opts \\ []) do
-    context = context(vertex)
+  def names(graph, vertex, opts \\ []), do: graph |> index(opts) |> names_in(vertex)
+
+  @doc """
+  Gathers every name the vertices in `graph` go by, once, so that
+  `names_in/2` can settle them for text about one vertex after another.
+  Takes `lowercase:` as `names/3` does.
+  """
+  @spec index(Graph.t(), keyword()) :: index()
+  def index(graph, opts \\ []) do
     lowercase? = Keyword.get(opts, :lowercase, false)
 
-    graph
-    |> Graph.vertices({:in, :vertex_type, @linkable})
-    |> Enum.reject(&described?(&1, vertex))
-    |> Enum.flat_map(fn named ->
-      Enum.map(forms(named, lowercase?), fn {name, form} -> {name, {named, form}} end)
-    end)
-    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    spellings =
+      graph
+      |> Graph.vertices({:in, :vertex_type, @linkable})
+      |> Enum.flat_map(fn named ->
+        Enum.map(forms(named, lowercase?), fn {name, form} -> {name, {named, form}} end)
+      end)
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Enum.map(fn {name, candidates} -> {name, Enum.uniq(candidates)} end)
+
+    %{graph: graph, spellings: spellings, neighbours: neighbours(graph)}
+  end
+
+  @doc """
+  Returns the names to link in text about `vertex`, as `names/3` does, from
+  an `index/2`.
+  """
+  @spec names_in(index(), Vertex.t() | nil) :: names()
+  def names_in(%{spellings: spellings, neighbours: neighbours}, vertex) do
+    context = vertex |> context() |> with_distances(neighbours)
+
+    spellings
     |> Enum.flat_map(fn {name, candidates} ->
-      case pick(Enum.uniq(candidates), context) do
+      candidates
+      |> Enum.reject(fn {named, _form} -> described?(named, vertex) end)
+      |> pick(context)
+      |> case do
         nil -> []
         named -> [{name, named}]
       end
@@ -114,24 +149,25 @@ defmodule Clarity.Autolink do
   text links lowercase mentions too: of a resource or domain, written as the
   name it stands for ("time entries" as TimeEntries), and of a field of the
   resource the text is about (`vertex:`), as written ("reporter").
+
+  Given the `index:` the names came from, text under a heading that links a
+  resource, domain or field (by a `vertex://` link), until the next heading
+  as high, is about that vertex instead, and so is a table row that links
+  one: the Projects domain's section of an overview prefers the Projects
+  domain's Ticket.
   """
   @spec link(MDEx.Document.t(), names(), (Vertex.t() -> String.t()), keyword()) ::
           MDEx.Document.t()
-  def link(document, names, path, opts \\ [])
-  def link(document, names, _path, _opts) when map_size(names) == 0, do: document
-
-  def link(document, names, path, opts) do
+  def link(document, names, path, opts \\ []) do
     lowercase? = Keyword.get(opts, :lowercase, false)
-
-    resource =
-      if lowercase?, do: opts |> Keyword.get(:vertex) |> context() |> Map.fetch!(:resource)
 
     context = %{
       names: names,
       path: path,
       every?: Keyword.get(opts, :every, false),
       lowercase?: lowercase?,
-      resource: resource
+      resource: resource_of(Keyword.get(opts, :vertex), lowercase?),
+      index: Keyword.get(opts, :index)
     }
 
     {document, _linked} = walk(document, context, MapSet.new())
@@ -166,9 +202,37 @@ defmodule Clarity.Autolink do
 
   defp described?(_named, _vertex), do: false
 
-  @spec walk(MDEx.Document.md_node(), map(), MapSet.t()) :: {MDEx.Document.md_node(), MapSet.t()}
+  @spec walk(node, map(), MapSet.t()) :: {node, MapSet.t()}
+        when node: MDEx.Document.t() | MDEx.Document.md_node()
   defp walk(%MDEx.Link{} = node, _context, linked), do: {node, linked}
   defp walk(%MDEx.Heading{} = node, _context, linked), do: {node, linked}
+
+  # Under a heading about a vertex, text is about it until a heading as high.
+  defp walk(%MDEx.Document{nodes: nodes} = document, context, linked) do
+    {nodes, {_sections, linked}} =
+      Enum.map_reduce(nodes, {[{0, context}], linked}, fn
+        %MDEx.Heading{level: level} = heading, {sections, linked} ->
+          sections = Enum.drop_while(sections, fn {above, _context} -> above >= level end)
+          [{_level, outer} | _] = sections
+
+          case subject(heading, outer) do
+            nil -> {heading, {sections, linked}}
+            inner -> {heading, {[{level, inner} | sections], linked}}
+          end
+
+        node, {[{_level, context} | _] = sections, linked} ->
+          {node, linked} = walk(node, context, linked)
+          {node, {sections, linked}}
+      end)
+
+    {%{document | nodes: nodes}, linked}
+  end
+
+  # A table row about a vertex is about it.
+  defp walk(%MDEx.TableRow{nodes: cells} = row, context, linked) do
+    {cells, linked} = children(cells, subject(row, context) || context, linked)
+    {%{row | nodes: cells}, linked}
+  end
 
   # Each paragraph or table cell links its own first mentions.
   defp walk(%block{nodes: nodes} = node, context, linked)
@@ -183,6 +247,41 @@ defmodule Clarity.Autolink do
   end
 
   defp walk(node, _context, linked), do: {node, linked}
+
+  # The context for text about the resource, domain or field that `node`
+  # links first, if it links one and there's an index to name things from.
+  @spec subject(MDEx.Document.md_node(), map()) :: map() | nil
+  defp subject(_node, %{index: nil}), do: nil
+
+  defp subject(node, context) do
+    with "vertex://" <> path <- first_vertex_link(node),
+         [id | _rest] = String.split(path, "/"),
+         %{__struct__: struct} = vertex
+         when struct in [Resource, Domain] or is_map_key(@fields, struct) <-
+           Graph.get_vertex(context.index.graph, id) do
+      %{
+        context
+        | names: names_in(context.index, vertex),
+          resource: resource_of(vertex, context.lowercase?)
+      }
+    else
+      _no_subject -> nil
+    end
+  end
+
+  @spec first_vertex_link(MDEx.Document.md_node()) :: String.t() | nil
+  defp first_vertex_link(%MDEx.Link{url: "vertex://" <> _path = url}), do: url
+
+  defp first_vertex_link(%{nodes: nodes}) when is_list(nodes),
+    do: Enum.find_value(nodes, &first_vertex_link/1)
+
+  defp first_vertex_link(_node), do: nil
+
+  # The resource whose fields lowercase text links: the one text about
+  # `vertex` is about.
+  @spec resource_of(Vertex.t() | nil, boolean()) :: module() | nil
+  defp resource_of(_vertex, false), do: nil
+  defp resource_of(vertex, true), do: context(vertex).resource
 
   # Each child, with the name whose possessive the text before it ends in.
   @spec children([MDEx.Document.md_node()], map(), MapSet.t()) ::
@@ -244,7 +343,7 @@ defmodule Clarity.Autolink do
   # The longest name, of words a space apart, that starts at `token`, and the
   # pieces after it.
   @spec phrase(String.t(), [String.t()], map()) :: {String.t(), [String.t()]}
-  defp phrase(token, rest, %{lowercase?: true, names: names}) do
+  defp phrase(token, rest, %{names: names}) do
     Enum.find_value((@phrase_words - 1)..1//-1, {token, rest}, fn more ->
       {run, after_run} = Enum.split(rest, 2 * more)
       phrase = Enum.join([token | Enum.take_every(tl(run), 2)], " ")
@@ -254,8 +353,6 @@ defmodule Clarity.Autolink do
          do: {phrase, after_run}
     end)
   end
-
-  defp phrase(token, rest, _context), do: {token, rest}
 
   # "Invoice's total_cents": a field named after its resource's possessive is
   # that resource's, however near another resource's is, and links even when
@@ -314,7 +411,9 @@ defmodule Clarity.Autolink do
   defp lowercase_mention(%{__struct__: struct} = vertex, text, _context)
        when struct in [Resource, Domain] do
     written =
-      Enum.find([short(vertex) | plurals(vertex)], text, &(lowercase(&1) == text))
+      Enum.find_value(prose_forms(vertex), text, fn {name, _form} ->
+        if lowercase(name) == text, do: name
+      end)
 
     {vertex, written}
   end
@@ -369,34 +468,58 @@ defmodule Clarity.Autolink do
   # word by word, as running text writes them ("time entries").
   @spec forms(Vertex.t(), boolean()) :: [{String.t(), :name | :plural}]
   defp forms(vertex, lowercase?) do
-    forms = Enum.map(spellings(vertex), &{&1, :name}) ++ Enum.map(plurals(vertex), &{&1, :plural})
+    forms = Enum.uniq(Enum.map(spellings(vertex), &{&1, :name}) ++ prose_forms(vertex))
 
-    case vertex do
-      %{__struct__: struct} when lowercase? and struct in [Resource, Domain] ->
-        lowercase =
-          Enum.map([{short(vertex), :name} | Enum.map(plurals(vertex), &{&1, :plural})], fn {name,
-                                                                                             form} ->
+    if lowercase?,
+      do:
+        forms ++
+          Enum.map(prose_forms(vertex) ++ field_forms(vertex), fn {name, form} ->
             {lowercase(name), form}
-          end)
+          end),
+      else: forms
+  end
 
-        forms ++ lowercase
+  # The names prose writes a resource or domain by: its short name, a
+  # resource's plural, and either after its domain's ("Helpdesk Ticket").
+  @spec prose_forms(Vertex.t()) :: [{String.t(), :name | :plural}]
+  defp prose_forms(%Resource{resource: resource} = vertex) do
+    own = [{short(vertex), :name} | Enum.map(plurals(vertex), &{&1, :plural})]
 
-      %{__struct__: struct} when lowercase? and is_map_key(@fields, struct) ->
-        name = field_name(vertex)
-        if String.contains?(name, "_"), do: forms ++ [{lowercase(name), :name}], else: forms
+    case domain(resource) do
+      nil ->
+        own
 
-      _vertex ->
-        forms
+      domain ->
+        domain_name = domain |> Module.split() |> List.last()
+        own ++ Enum.map(own, fn {name, form} -> {domain_name <> " " <> name, form} end)
     end
   end
+
+  defp prose_forms(%Domain{} = vertex), do: [{short(vertex), :name}]
+  defp prose_forms(_vertex), do: []
+
+  # A field's name of several words, which lowercase text writes apart
+  # ("time entries" for time_entries).
+  @spec field_forms(Vertex.t()) :: [{String.t(), :name}]
+  defp field_forms(%{__struct__: struct} = vertex) when is_map_key(@fields, struct) do
+    name = field_name(vertex)
+    if String.contains?(name, "_"), do: [{name, :name}], else: []
+  end
+
+  defp field_forms(_vertex), do: []
 
   @spec field_name(Vertex.t()) :: String.t()
   defp field_name(%{__struct__: struct} = vertex),
     do: vertex |> Map.fetch!(Map.fetch!(@fields, struct)) |> Map.fetch!(:name) |> Atom.to_string()
 
-  # A name in lowercase words: "time entries" for TimeEntries or time_entries.
+  # A name in lowercase words: "time entries" for TimeEntries or time_entries,
+  # "helpdesk ticket" for Helpdesk Ticket.
   @spec lowercase(String.t()) :: String.t()
-  defp lowercase(name), do: name |> Macro.underscore() |> String.replace("_", " ")
+  defp lowercase(name) do
+    name
+    |> String.split(" ")
+    |> Enum.map_join(" ", &(&1 |> Macro.underscore() |> String.replace("_", " ")))
+  end
 
   @spec short(Vertex.t()) :: String.t()
   defp short(vertex), do: vertex |> ModuleProvider.module() |> Module.split() |> List.last()
@@ -441,15 +564,14 @@ defmodule Clarity.Autolink do
     end
   end
 
-  defp plurals(_vertex), do: []
-
   # The vertex a name fits, if it fits only one, or one ranks above the rest:
   # a field of the text's own resource; then a resource, domain or Reactor
   # before another resource's field ("user" the resource, not a
-  # relationship of the same name); then the nearest; then the one the name
-  # names rather than pluralises (the Projects domain, not the Project
-  # resource's plural).
+  # relationship of the same name); then the nearest (see rank/2); then the
+  # one the name names rather than pluralises (the Projects domain, not the
+  # Project resource's plural).
   @spec pick([{Vertex.t(), :name | :plural}], context()) :: Vertex.t() | nil
+  defp pick([], _context), do: nil
   defp pick([{vertex, _form}], _context), do: vertex
 
   defp pick(candidates, context) do
@@ -457,7 +579,7 @@ defmodule Clarity.Autolink do
     |> Enum.group_by(
       fn {vertex, form} ->
         rank = rank(vertex, context)
-        {rank > 0, Map.has_key?(@fields, vertex.__struct__), rank, form}
+        {rank != {0, 0}, Map.has_key?(@fields, vertex.__struct__), rank, form}
       end,
       &elem(&1, 0)
     )
@@ -468,15 +590,18 @@ defmodule Clarity.Autolink do
     end
   end
 
-  @spec rank(Vertex.t(), context()) :: 0 | 1 | 2 | 3
+  # How near a vertex is to the text: the text's own resource, or one of its
+  # fields; then, in the text's domain and after that outside it, the fewest
+  # relationships away from the text's resource (or its domain's nearest).
+  @spec rank(Vertex.t(), context()) :: {0 | 1 | 2, non_neg_integer() | :infinity}
   defp rank(vertex, context) do
     home = home(vertex)
+    distance = if home == nil, do: :infinity, else: Map.get(context.distances, home, :infinity)
 
     cond do
-      home != nil and home == context.resource -> 0
-      home in context.related -> 1
-      context.domain != nil and domain_of(vertex) == context.domain -> 2
-      true -> 3
+      home != nil and home == context.resource -> {0, 0}
+      context.domain != nil and domain_of(vertex) == context.domain -> {1, distance}
+      true -> {2, distance}
     end
   end
 
@@ -503,22 +628,61 @@ defmodule Clarity.Autolink do
     @spec about(module() | nil) :: context()
     defp about(module) when is_atom(module) and module != nil do
       cond do
-        Info.resource?(module) ->
-          %{
-            resource: module,
-            related: module |> Info.relationships() |> Enum.map(& &1.destination),
-            domain: Info.domain(module)
-          }
-
-        Spark.Dsl.is?(module, Ash.Domain) ->
-          %{resource: nil, related: [], domain: module}
-
-        true ->
-          about(nil)
+        Info.resource?(module) -> %{resource: module, domain: Info.domain(module), distances: %{}}
+        Spark.Dsl.is?(module, Ash.Domain) -> %{resource: nil, domain: module, distances: %{}}
+        true -> about(nil)
       end
     end
 
-    defp about(_module), do: %{resource: nil, related: [], domain: nil}
+    defp about(_module), do: %{resource: nil, domain: nil, distances: %{}}
+
+    # How many relationships apart each resource is from the text's
+    # resource, or from the nearest of its domain's resources, going along
+    # relationships either way.
+    @spec with_distances(context(), %{module() => [module()]}) :: context()
+    defp with_distances(context, neighbours) do
+      sources =
+        cond do
+          context.resource != nil -> [context.resource]
+          context.domain != nil -> Ash.Domain.Info.resources(context.domain)
+          true -> []
+        end
+
+      distances = spread(sources, neighbours, Map.new(sources, &{&1, 0}), 0)
+      %{context | distances: distances}
+    end
+
+    # Each resource's neighbours: those it has a relationship to, and those
+    # with one to it.
+    @spec neighbours(Graph.t()) :: %{module() => [module()]}
+    defp neighbours(graph) do
+      for %Resource{resource: resource} <- Graph.vertices(graph, {:==, :vertex_type, Resource}),
+          %{destination: destination} <- Info.relationships(resource),
+          {from, to} <- [{resource, destination}, {destination, resource}],
+          reduce: %{} do
+        neighbours -> Map.update(neighbours, from, [to], &[to | &1])
+      end
+    end
+
+    # Breadth first, out from `frontier`, `distance` relationships away.
+    @spec spread([module()], %{module() => [module()]}, map(), non_neg_integer()) ::
+            %{module() => non_neg_integer()}
+    defp spread([], _neighbours, distances, _distance), do: distances
+
+    defp spread(frontier, neighbours, distances, distance) do
+      next =
+        frontier
+        |> Enum.flat_map(&Map.get(neighbours, &1, []))
+        |> Enum.uniq()
+        |> Enum.reject(&Map.has_key?(distances, &1))
+
+      spread(
+        next,
+        neighbours,
+        Map.merge(distances, Map.new(next, &{&1, distance + 1})),
+        distance + 1
+      )
+    end
 
     @spec domain(module() | nil) :: module() | nil
     defp domain(nil), do: nil
@@ -528,7 +692,13 @@ defmodule Clarity.Autolink do
     end
   else
     @spec context(Vertex.t() | nil) :: context()
-    defp context(_vertex), do: %{resource: nil, related: [], domain: nil}
+    defp context(_vertex), do: %{resource: nil, domain: nil, distances: %{}}
+
+    @spec with_distances(context(), %{module() => [module()]}) :: context()
+    defp with_distances(context, _neighbours), do: context
+
+    @spec neighbours(Graph.t()) :: %{module() => [module()]}
+    defp neighbours(_graph), do: %{}
 
     @spec domain(module() | nil) :: module() | nil
     defp domain(_module), do: nil

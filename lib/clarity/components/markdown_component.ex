@@ -134,12 +134,13 @@ defmodule Clarity.Components.MarkdownComponent do
 
   defp link_names(document, %{graph: graph, vertex: vertex, linking: linking}, prefix, lens) do
     default_lens = default_lens()
+    index = Autolink.index(graph, linking)
 
     Autolink.link(
       document,
-      Autolink.names(graph, vertex, linking),
+      Autolink.names_in(index, vertex),
       &build_clarity_path(Vertex.id(&1), prefix, link_lens(&1, lens, default_lens)),
-      [{:vertex, vertex} | linking]
+      [vertex: vertex, index: index] ++ linking
     )
   end
 

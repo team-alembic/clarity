@@ -55,10 +55,30 @@ defmodule Clarity.AutolinkTest do
     end
 
     test "leaves out a short name two vertices share, unless the context settles it", %{graph: graph} do
-      refute Map.has_key?(Autolink.names(graph, %Resource{resource: Invoice}), "Ticket")
+      refute Map.has_key?(Autolink.names(graph, nil), "Ticket")
 
       assert Autolink.names(graph, %Resource{resource: Message})["Ticket"] ==
                %Resource{resource: Ticket}
+    end
+
+    test "settles a shared name by the text's domain, then by the fewest relationships away", %{graph: graph} do
+      # Message isn't related to Helpdesk's Ticket, but shares its domain.
+      assert Autolink.names(graph, %Resource{resource: Message})["Ticket"] == %Resource{resource: Ticket}
+
+      # From an Invoice, Helpdesk's Ticket is three relationships away, through
+      # its Subscription's Organization; Projects' is four.
+      for resource <- [Demo.Billing.Subscription, Demo.Accounts.Organization],
+          do: Graph.add_vertex(graph, %Resource{resource: resource}, %Root{})
+
+      assert Autolink.names(graph, %Resource{resource: Invoice})["Ticket"] == %Resource{resource: Ticket}
+    end
+
+    test "names a resource after its domain too, as prose does", %{graph: graph} do
+      names = Autolink.names(graph, nil)
+
+      assert names["Helpdesk Ticket"] == %Resource{resource: Ticket}
+      assert names["Projects Tickets"] == %Resource{resource: Demo.Projects.Ticket}
+      assert render("Every Helpdesk Ticket is answered.", names) =~ ~s(>Helpdesk Ticket</a> is answered)
     end
 
     test "leaves out the vertex the text describes", %{graph: graph} do
@@ -123,6 +143,50 @@ defmodule Clarity.AutolinkTest do
 
       assert links(html, "Conversation") == 2
       assert links(html, "User") == 2
+    end
+
+    test "reads text under a heading, or in a table row, as about the vertex it links", %{graph: graph} do
+      helpdesk = %Domain{domain: Demo.Helpdesk}
+      project = %Resource{resource: Project}
+      Graph.add_vertex(graph, helpdesk, %Root{})
+      Graph.add_vertex(graph, project, %Root{})
+      index = Autolink.index(graph)
+
+      html =
+        """
+        Raises a Ticket.
+
+        ## [Helpdesk](vertex://#{Vertex.id(helpdesk)})
+
+        Raises a Ticket.
+
+        | Resource | Description |
+        | --- | --- |
+        | [Project](vertex://#{Vertex.id(project)}) | Holds a Ticket. |
+
+        ## Elsewhere
+
+        Raises a Ticket.
+        """
+        |> MDEx.parse_document!(extension: [table: true])
+        |> Autolink.link(Autolink.names_in(index, nil), &field_path/1, index: index)
+        |> MDEx.to_html!()
+
+      # Each "a Ticket", in order, with what it links to.
+      mentions =
+        ~r/a (?:<a href="([^"]*)"[^>]*>)?Ticket/
+        |> Regex.scan(html)
+        |> Enum.map(fn
+          [_mention, href] -> href
+          [_mention] -> nil
+        end)
+
+      assert mentions == [
+               nil,
+               "/to/" <> Vertex.id(%Resource{resource: Ticket}),
+               "/to/" <> Vertex.id(%Resource{resource: Demo.Projects.Ticket}),
+               nil
+             ]
     end
 
     test "links each name at its first mention in a table cell", %{names: names} do
@@ -228,8 +292,12 @@ defmodule Clarity.AutolinkTest do
                {LineItem, :total_cents}
     end
 
+    test "prefers the field of a resource in the text's domain to a related one's", %{graph: graph} do
+      assert field(Autolink.names(graph, %Resource{resource: Message})["email"]) == {CustomerContact, :email}
+    end
+
     test "leaves a field unlinked when the nearest resources tie", %{graph: graph} do
-      refute Map.has_key?(Autolink.names(graph, %Resource{resource: Message}), "email")
+      refute Map.has_key?(Autolink.names(graph, nil), "email")
     end
 
     test "names a field by its resource too", %{graph: graph} do
