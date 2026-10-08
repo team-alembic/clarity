@@ -319,13 +319,22 @@ defmodule Clarity.TreeComponent do
       %{
         id: id,
         label: label,
-        children: Enum.zip(children, Name.display_all(children, name_style)),
+        children: sort_by_label(Enum.zip(children, Name.display_all(children, name_style))),
         open?: not MapSet.member?(collapsed, id),
         active?: not active_is_open? and Enum.any?(children, &(Vertex.id(&1) == active_id)),
         any_has_children?: Enum.any?(children, &has_children?(graph, &1))
       }
     end
   end
+
+  # Rows go in the order of the labels they show, ignoring case, rather than
+  # of their vertices' full names.
+  @spec sort_by_label([{Vertex.t(), String.t()}]) :: [{Vertex.t(), String.t()}]
+  defp sort_by_label(children),
+    do:
+      Enum.sort_by(children, fn {child, label} ->
+        {String.downcase(label), label, Vertex.name(child)}
+      end)
 
   # Groups go in alphabetical order, but modules last: there are many, and
   # they repeat the domains, resources and the like in the groups above.

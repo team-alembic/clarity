@@ -50,6 +50,17 @@ defmodule Clarity.TreeComponentTest do
 
       assert labels == ["Accounts", "Billing.Domain", "Org.Domain"]
     end
+
+    test "rows go in the order of their labels, not their full names" do
+      labels =
+        [User, Demo.Billing.Invoice, Demo.Projects.Attachment]
+        |> Enum.map(&{%Vertex.Module{module: &1}, :module})
+        |> render_app_tree()
+        |> LazyHTML.query("a[data-tooltip-type='Module']")
+        |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+
+      assert labels == ["Attachment", "Invoice", "User"]
+    end
   end
 
   describe "group rows" do
