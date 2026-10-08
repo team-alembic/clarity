@@ -4,14 +4,14 @@ defmodule Clarity.Report do
   place, an alternative to navigating it vertex by vertex.
 
   Reports have their own icon in the activity bar, below the lenses, so no
-  report is hidden behind a lens choice. `Clarity.ReportLive` renders them at
+  report is hidden behind a lens choice. Clarity renders them at
   `prefix/reports`: the sidebar lists every registered report as a tree,
   grouped by category, and the selected one fills the main pane under its
   name. A report declares its `name/0`, and optionally a `description/0` and
   the `category/0` it is grouped under.
 
   The module is also a LiveComponent (`use Clarity.Web, :live_component`).
-  `Clarity.ReportLive` embeds the selected report with these assigns:
+  Clarity embeds the selected report with these assigns:
 
     * `graph` - the whole `Clarity.Graph`, not filtered by any lens; query it with
       `Clarity.Graph.vertices/2`, e.g.
@@ -24,8 +24,7 @@ defmodule Clarity.Report do
   Reports are prose: they explain what's going on and why it matters, typically
   as generated markdown rendered with `Clarity.Components.MarkdownComponent`.
 
-  Reports are registered per-application under `:clarity_reports` and discovered
-  via `Clarity.Config.list_reports/0`:
+  Reports are registered per-application under `:clarity_reports`:
 
       config :my_app, :clarity_reports, [MyApp.Report.Compliance]
 
