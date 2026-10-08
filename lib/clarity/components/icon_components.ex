@@ -263,4 +263,13 @@ defmodule Clarity.IconComponents do
 
   @spec icon_code(assigns :: Socket.assigns()) :: Rendered.t()
   def icon_code(assigns)
+
+  @doc """
+  Renders a search icon (magnifying glass).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_search(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_search(assigns)
 end

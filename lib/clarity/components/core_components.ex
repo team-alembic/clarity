@@ -215,6 +215,20 @@ defmodule Clarity.CoreComponents do
   defp tab_status_dot(:info), do: "bg-blue-500"
 
   @doc """
+  Renders a message where there is nothing to show, or something went wrong:
+  an icon, a title, a sentence or two, and optionally a way on.
+  """
+  attr :title, :string, required: true, doc: "What happened, in a few words"
+  attr :class, :any, default: nil, doc: "CSS classes to apply to the container"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the container"
+  slot :icon, required: true, doc: "An icon, sized by the component"
+  slot :inner_block, doc: "What to do about it"
+  slot :action, doc: "Links or buttons on from here"
+
+  @spec empty_state(assigns :: Socket.assigns()) :: Rendered.t()
+  def empty_state(assigns)
+
+  @doc """
   Renders an error page when a lens cannot be found.
   """
   attr :prefix, :string, required: true, doc: "URL prefix for navigation link"

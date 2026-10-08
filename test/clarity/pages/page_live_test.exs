@@ -427,8 +427,8 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, html} = live(conn, "/invalid_lens/root/graph")
 
       # Should show lens not found error
-      assert html =~ "Lens Not Found"
-      assert html =~ "Go to Default Page"
+      assert html =~ "Lens not found"
+      assert html =~ "Go to the default lens"
 
       # Should not show normal page layout
       refute has_element?(view, "nav.tabs")
@@ -443,8 +443,8 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, html} = live(conn, "/debug/invalid_vertex/graph")
 
       # Should show vertex not found error
-      assert html =~ "Vertex Not Found"
-      assert html =~ "Go to Root"
+      assert html =~ "Vertex not found"
+      assert html =~ "Go to root"
 
       # Should not show tabs
       refute has_element?(view, "nav.tabs")
@@ -459,8 +459,8 @@ defmodule Clarity.Pages.PageLiveTest do
       html = render_async(view)
 
       # Should show content not found error inside the content area
-      assert html =~ "Content Not Found"
-      assert html =~ "Try selecting a different tab"
+      assert html =~ "Tab not found"
+      assert html =~ "Pick one of the tabs above"
 
       # Should still show tabs for the valid vertex
       assert has_element?(view, "nav.tabs")

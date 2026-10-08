@@ -1,6 +1,7 @@
 defmodule Clarity.CoreComponentsTest do
   use ExUnit.Case, async: true
 
+  import Phoenix.Component, only: [sigil_H: 2]
   import Phoenix.LiveViewTest
 
   alias Clarity.Content
@@ -37,13 +38,52 @@ defmodule Clarity.CoreComponentsTest do
     )
   end
 
+  describe "empty_state/1" do
+    test "shows an icon, a title, what to do and a way on" do
+      assigns = %{}
+
+      doc =
+        ~H"""
+        <CoreComponents.empty_state title="Nothing here" id="empty">
+          <:icon><svg id="icon" /></:icon>
+          Pick something else.
+          <:action><a href="/elsewhere">Elsewhere</a></:action>
+        </CoreComponents.empty_state>
+        """
+        |> rendered_to_string()
+        |> LazyHTML.from_fragment()
+
+      assert doc |> LazyHTML.query("#empty.empty-state .empty-state-icon #icon") |> Enum.count() == 1
+      assert doc |> LazyHTML.query("#empty .empty-state-title") |> LazyHTML.text() == "Nothing here"
+      assert doc |> LazyHTML.query("#empty .empty-state-text") |> LazyHTML.text() =~ "Pick something else."
+      assert doc |> LazyHTML.query("#empty .empty-state-actions a[href='/elsewhere']") |> Enum.count() == 1
+    end
+
+    test "leaves out the actions when there are none" do
+      assigns = %{}
+
+      doc =
+        ~H"""
+        <CoreComponents.empty_state title="Nothing here">
+          <:icon><svg /></:icon>
+        </CoreComponents.empty_state>
+        """
+        |> rendered_to_string()
+        |> LazyHTML.from_fragment()
+
+      assert doc |> LazyHTML.query(".empty-state-actions") |> Enum.empty?()
+    end
+  end
+
   describe "data_load_error/1" do
     test "says the page couldn't load and links back to the root" do
       lens = %Lens{id: "graph", name: "Graph", icon: fn -> nil end, filter: true}
-      html = render_component(&CoreComponents.data_load_error/1, prefix: "/", lens: lens)
+      doc = (&CoreComponents.data_load_error/1) |> render_component(prefix: "/", lens: lens) |> LazyHTML.from_fragment()
 
-      assert html =~ "Couldn't Load This Page"
-      assert html =~ ~s(href="/graph/root")
+      assert doc |> LazyHTML.query("#data-load-error.empty-state .empty-state-title") |> LazyHTML.text() ==
+               "Couldn't load this page"
+
+      assert doc |> LazyHTML.query(".empty-state-actions a[href='/graph/root']") |> Enum.count() == 1
     end
   end
 

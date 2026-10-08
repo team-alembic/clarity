@@ -1,0 +1,6 @@
+<div class={["empty-state", @class]} {@rest}>
+  <div class="empty-state-icon" aria-hidden="true">{render_slot(@icon)}</div>
+  <h2 class="empty-state-title">{@title}</h2>
+  <p :if={@inner_block != []} class="empty-state-text">{render_slot(@inner_block)}</p>
+  <div :if={@action != []} class="empty-state-actions">{render_slot(@action)}</div>
+</div>

@@ -440,10 +440,10 @@ defmodule Clarity.PageLive do
   defp update_page_title(socket)
 
   defp update_page_title(%Socket{assigns: %{lens: nil}} = socket),
-    do: assign(socket, page_title: "Lens Not Found")
+    do: assign(socket, page_title: "Lens not found")
 
   defp update_page_title(%Socket{assigns: %{vertex: nil}} = socket),
-    do: assign(socket, page_title: "Vertex Not Found")
+    do: assign(socket, page_title: "Vertex not found")
 
   defp update_page_title(socket) do
     page_title =

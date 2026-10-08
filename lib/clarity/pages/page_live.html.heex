@@ -113,12 +113,15 @@
                 <.splash_screen />
               </div>
             <% @contents == [] -> %>
-              <div
+              <.empty_state
                 id="no-lens-content"
-                class="content p-6 text-sm text-base-light-600 dark:text-base-dark-400"
+                title={"Nothing to show in the #{lens.name} lens"}
+                class="content"
               >
-                The {lens.name} lens has nothing to show for {Vertex.name(@vertex)}.
-              </div>
+                <:icon><.icon_aperture /></:icon>
+                The {lens.name} lens has no tabs for {Vertex.name(@vertex)}. Pick something in
+                the tree, or look through another lens.
+              </.empty_state>
             <% true -> %>
               <.render_content
                 content={@content}

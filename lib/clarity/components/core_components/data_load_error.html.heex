@@ -1,16 +1,9 @@
-<div id="data-load-error" class="content p-8 text-center" {@rest}>
-  <div class="max-w-md mx-auto">
-    <h1 class="text-3xl font-bold text-base-light-900 dark:text-base-dark-100 mb-4">
-      Couldn't Load This Page
-    </h1>
-    <p class="text-base-light-600 dark:text-base-dark-400 mb-6">
-      Clarity failed to build the graph for this page. The server log has the details.
-    </p>
-    <.link
-      patch={Path.join([@prefix, @lens.id, "root"])}
-      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xs shadow-xs text-white bg-primary-light hover:bg-primary-light/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary-light dark:focus:ring-primary-dark"
-    >
-      ← Go to Root
+<.empty_state id="data-load-error" title="Couldn't load this page" class="content" {@rest}>
+  <:icon><.icon_error /></:icon>
+  Clarity couldn't build the graph for this page. The server log has the details.
+  <:action>
+    <.link patch={Path.join([@prefix, @lens.id, "root"])} class="empty-state-action">
+      Go to root
     </.link>
-  </div>
-</div>
+  </:action>
+</.empty_state>

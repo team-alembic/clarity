@@ -266,6 +266,40 @@
   }
 }
 
+/* Nothing to show, or something went wrong (`empty_state/1`): centred a
+   little above the middle, quiet, with at most a sentence or two. */
+.empty-state {
+  @apply flex flex-col items-center justify-center px-6 pt-16 pb-[20vh] text-center;
+}
+
+.empty-state-icon {
+  @apply flex size-10 items-center justify-center rounded-full;
+  @apply bg-base-light-200 text-base-light-500 dark:bg-base-dark-800 dark:text-base-dark-400;
+}
+
+.empty-state-icon > svg {
+  @apply size-5;
+}
+
+.empty-state-title {
+  @apply mt-4 text-base font-semibold text-base-light-900 dark:text-base-dark-100;
+}
+
+.empty-state-text {
+  @apply mt-1 max-w-sm text-sm text-base-light-600 dark:text-base-dark-400;
+}
+
+.empty-state-actions {
+  @apply mt-5 flex flex-wrap justify-center gap-2;
+}
+
+.empty-state-action {
+  @apply inline-flex h-8 items-center rounded-md border px-3 text-sm font-medium transition-colors;
+  @apply border-base-light-300 bg-white text-base-light-800 hover:bg-base-light-100;
+  @apply dark:border-base-dark-600 dark:bg-base-dark-800 dark:text-base-dark-100 dark:hover:bg-base-dark-700;
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-light dark:focus-visible:outline-primary-dark;
+}
+
 /* Shared hover hint, positioned by the Tooltip hook (assets/js/tooltip.hook.js).
    Content is capped server-side, so it never scrolls and needs no pointer events. */
 .clarity-tooltip {
