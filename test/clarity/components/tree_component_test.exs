@@ -228,6 +228,15 @@ defmodule Clarity.TreeComponentTest do
     end
   end
 
+  describe "revealing the current row" do
+    test "the tree names the lens and current vertex for its hook to reveal" do
+      [tree] = [] |> render_app_tree(nil, "documentation") |> LazyHTML.query("[phx-hook='Tree']") |> Enum.to_list()
+
+      assert LazyHTML.attribute(tree, "data-current") == ["documentation/application:clarity"]
+      assert LazyHTML.attribute(tree, "data-loading") == []
+    end
+  end
+
   describe "rows the lens has no tabs for" do
     @spec module_rows(LazyHTML.t(), String.t()) :: [String.t()]
     defp module_rows(tree, selector) do

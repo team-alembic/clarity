@@ -49,6 +49,7 @@
               module={Clarity.TreeComponent}
               id="navigation-tree"
               graph={data.graph}
+              loading?={@data.loading != nil}
               active_vertex={@vertex}
               breadcrumbs={@breadcrumbs}
               prefix={@prefix}

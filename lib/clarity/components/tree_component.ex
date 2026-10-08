@@ -35,7 +35,9 @@ defmodule Clarity.TreeComponent do
 
   @impl Phoenix.LiveComponent
   def mount(socket) do
-    {:ok, socket}
+    # The parent sets `loading?` while it loads the graph for a new lens or
+    # vertex, still passing the previous graph meanwhile.
+    {:ok, assign(socket, loading?: false)}
   end
 
   @impl Phoenix.LiveComponent
