@@ -33,6 +33,7 @@ defprotocol Clarity.Vertex.HintProvider do
           | :generic
           | :module
           | :policy
+          | :reactor
           | :relationship
           | :resource
           | :router

@@ -58,6 +58,7 @@ defmodule Clarity.MixProject do
           Clarity.Introspector.Ash.DataLayer,
           Clarity.Introspector.Ash.Spark,
           Clarity.Introspector.Ash.Type,
+          Clarity.Introspector.Reactor,
           Clarity.Introspector.Phoenix.Endpoint,
           Clarity.Introspector.Phoenix.Router,
           Clarity.Introspector.Advisory
@@ -83,6 +84,7 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.SecurityOverview,
           Clarity.Content.Ash.RelationshipOverview,
           Clarity.Content.Ash.StateMachineDiagram,
+          Clarity.Content.Reactor.FlowDiagram,
           Clarity.Content.Phoenix.RouterRoutes,
           Clarity.Content.Advisory,
           Clarity.Content.Dependency

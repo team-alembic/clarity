@@ -127,6 +127,7 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
                   Content.Graph,
                   Content.Moduledoc,
                   Content.Ash.StateMachineDiagram,
+                  Content.Reactor.FlowDiagram,
                   ClarityContent.ArchitectureDiagram,
                   ClarityContent.ClassDiagram,
                   ClarityContent.ErDiagram

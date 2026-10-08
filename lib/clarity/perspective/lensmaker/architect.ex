@@ -54,7 +54,10 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       graph
       |> Graph.vertices({:==, :vertex_type, Vertex.Application})
       |> Enum.filter(fn vertex ->
-        Enum.any?([:domain, :router, :endpoint], &(Graph.out_degree(graph, vertex, &1) > 0))
+        Enum.any?(
+          [:domain, :router, :endpoint, :reactor],
+          &(Graph.out_degree(graph, vertex, &1) > 0)
+        )
       end)
       |> Enum.map(&Vertex.id/1)
 
@@ -75,7 +78,8 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       Vertex.Ash.Relationship,
       Vertex.Ash.Resource,
       Vertex.Phoenix.Endpoint,
-      Vertex.Phoenix.Router
+      Vertex.Phoenix.Router,
+      Vertex.Reactor
     ]
 
     Enum.filter(available_types, &(&1 in architectural_types))

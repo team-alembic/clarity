@@ -28,8 +28,8 @@ enriched with diagrams, tooltips, and documentation.
 - 📊 **Graph navigation** – explore your application structure visually.
 - 🗂 **Extensible introspection** – support for Ash domains/resources, Phoenix
   endpoints, Ecto repos, and more.
-- 🖼 **Mermaid & Graphviz diagrams** – ER diagrams, class diagrams, and policy
-  diagrams where available.
+- 🖼 **Mermaid & Graphviz diagrams** – ER, class and policy diagrams, state
+  machines (`ash_state_machine`) and Reactor flows, where available.
 - 📝 **Markdown rendering** – show documentation from moduledocs and resource
   definitions.
 - 🔎 **Interactive tooltips** – quick overviews of vertices and edges.

@@ -49,6 +49,7 @@ defmodule Clarity.Content.Ash.StateMachineDiagramTest do
     end
   end
 
+  @spec diagram(Ash.Resource.t()) :: String.t()
   defp diagram(resource) do
     assert {:mermaid, render} =
              StateMachineDiagram.render_static(%Resource{resource: resource}, nil)

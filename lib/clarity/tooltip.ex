@@ -43,6 +43,7 @@ defmodule Clarity.Tooltip do
     generic: "neutral",
     module: "structure",
     policy: "rule",
+    reactor: "behaviour",
     relationship: "data",
     resource: "structure",
     router: "web",
