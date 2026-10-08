@@ -47,7 +47,7 @@ with {:module, AshStateMachine} <- Code.ensure_loaded(AshStateMachine) do
                 patch={tab_path(@prefix, @lens, resource)}
                 class="text-primary-light dark:text-primary-dark hover:underline"
               >
-                {short_name(resource)}
+                {Vertex.Name.in_app(resource)}
               </.link>
             </h3>
             <.mermaid
@@ -78,7 +78,7 @@ with {:module, AshStateMachine} <- Code.ensure_loaded(AshStateMachine) do
       |> Enum.flat_map(&Ash.Domain.Info.resources/1)
       |> Enum.filter(&StateMachineDiagram.state_machine?/1)
       |> Enum.uniq()
-      |> Enum.sort_by(&short_name/1)
+      |> Enum.sort_by(&Vertex.Name.in_app/1)
     end
 
     @spec tab_path(String.t(), Clarity.Perspective.Lens.t(), Ash.Resource.t()) :: String.t()
@@ -89,16 +89,6 @@ with {:module, AshStateMachine} <- Code.ensure_loaded(AshStateMachine) do
         Vertex.id(%Vertex.Ash.Resource{resource: resource}),
         Content.content_id(StateMachineDiagram)
       ])
-    end
-
-    # The resource's name without the application's namespace, e.g.
-    # "Billing.Invoice" for Demo.Billing.Invoice.
-    @spec short_name(Ash.Resource.t()) :: String.t()
-    defp short_name(resource) do
-      case Module.split(resource) do
-        [_app | [_ | _] = rest] -> Enum.join(rest, ".")
-        parts -> Enum.join(parts, ".")
-      end
     end
   end
 end

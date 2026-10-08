@@ -52,7 +52,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
       edges =
         for %Vertex.Reactor{reactor: reactor} = reactor_vertex <-
               Clarity.Graph.vertices(graph, {:==, :vertex_type, Vertex.Reactor}),
-            domain(reactor, domains(reactor)) == domain,
+            Vertex.Reactor.domain(reactor) == domain,
             domain_vertex not in Clarity.Graph.in_neighbors(graph, reactor_vertex),
             do: {:edge, domain_vertex, reactor_vertex, :reactor}
 
@@ -64,7 +64,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
     @spec parent(module(), Clarity.Graph.t()) ::
             {:ok, Vertex.t() | nil} | {:error, :unmet_dependencies}
     defp parent(reactor, graph) do
-      case domain(reactor, domains(reactor)) do
+      case Vertex.Reactor.domain(reactor) do
         nil ->
           app = Application.get_application(reactor)
           {:ok, Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))}
@@ -75,32 +75,6 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
             domain_vertex -> {:ok, domain_vertex}
           end
       end
-    end
-
-    @doc false
-    @spec domain(module(), [module()]) :: module() | nil
-    def domain(reactor, domains) do
-      Enum.find(domains, &runs?(&1, reactor)) ||
-        Enum.find(domains, &String.starts_with?(inspect(reactor), inspect(&1) <> "."))
-    end
-
-    if Code.ensure_loaded?(Ash) do
-      @spec domains(module()) :: [module()]
-      defp domains(reactor), do: reactor |> Application.get_application() |> Ash.Info.domains()
-
-      @spec runs?(module(), module()) :: boolean()
-      defp runs?(domain, reactor) do
-        domain
-        |> Ash.Domain.Info.resources()
-        |> Enum.flat_map(&Ash.Resource.Info.actions/1)
-        |> Enum.any?(&(Vertex.Reactor.run_by(&1) == reactor))
-      end
-    else
-      @spec domains(module()) :: [module()]
-      defp domains(_reactor), do: []
-
-      @spec runs?(module(), module()) :: boolean()
-      defp runs?(_domain, _reactor), do: false
     end
   end
 end

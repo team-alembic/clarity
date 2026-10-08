@@ -33,6 +33,40 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
 
     def run_by(_action), do: nil
 
+    @doc """
+    Returns the Ash domain a Reactor belongs to, among its application's
+    domains (or `domains`): the one whose resources have an action that runs
+    it, else the one its module is named under, else `nil`.
+    """
+    @spec domain(module()) :: module() | nil
+    def domain(reactor), do: domain(reactor, domains_of(reactor))
+
+    @spec domain(module(), [module()]) :: module() | nil
+
+    def domain(reactor, domains) do
+      Enum.find(domains, &runs?(&1, reactor)) ||
+        Enum.find(domains, &String.starts_with?(inspect(reactor), inspect(&1) <> "."))
+    end
+
+    if Code.ensure_loaded?(Ash) do
+      @spec domains_of(module()) :: [module()]
+      defp domains_of(reactor), do: reactor |> Application.get_application() |> Ash.Info.domains()
+
+      @spec runs?(module(), module()) :: boolean()
+      defp runs?(domain, reactor) do
+        domain
+        |> Ash.Domain.Info.resources()
+        |> Enum.flat_map(&Ash.Resource.Info.actions/1)
+        |> Enum.any?(&(run_by(&1) == reactor))
+      end
+    else
+      @spec domains_of(module()) :: [module()]
+      defp domains_of(_reactor), do: []
+
+      @spec runs?(module(), module()) :: boolean()
+      defp runs?(_domain, _reactor), do: false
+    end
+
     defimpl Clarity.Vertex do
       alias Clarity.Vertex.Util
 

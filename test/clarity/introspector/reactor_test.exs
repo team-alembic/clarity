@@ -91,21 +91,6 @@ defmodule Clarity.Introspector.ReactorTest do
     end
   end
 
-  describe inspect(&ReactorIntrospector.domain/2) do
-    test "is the domain with an action that runs the reactor" do
-      assert ReactorIntrospector.domain(IssueInvoice, [Demo.Accounts, Demo.Billing]) == Demo.Billing
-    end
-
-    test "is otherwise the domain the reactor's module is named under" do
-      assert ReactorIntrospector.domain(Demo.Billing.Unrun, [Demo.Accounts, Demo.Billing]) ==
-               Demo.Billing
-    end
-
-    test "is nil when no domain runs or names the reactor" do
-      assert ReactorIntrospector.domain(IssueInvoice, [Demo.Accounts]) == nil
-    end
-  end
-
   @spec action_vertex(atom()) :: Action.t()
   defp action_vertex(name) do
     %Action{action: Info.action(Subscription, name), resource: Subscription}

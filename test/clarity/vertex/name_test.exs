@@ -13,6 +13,8 @@ defmodule Clarity.Vertex.NameTest do
   alias Demo.Accounts.User
   alias Foo.Bar.Baz
 
+  doctest Name
+
   describe inspect(&Name.display/2) do
     test "returns Vertex.name/1 for :qualified" do
       vertex = %Resource{resource: User}

@@ -53,6 +53,26 @@ defmodule Clarity.Vertex.Name do
   its module that no clashing sibling ends in, so `Demo.Billing.Domain` and
   `Demo.Org.Domain` read `Billing.Domain` and `Org.Domain`.
   """
+  @doc """
+  Returns a module's name without its application's namespace, its first
+  segment: `"Billing.Invoice"` for `Demo.Billing.Invoice`.
+
+  ## Examples
+
+      iex> Clarity.Vertex.Name.in_app(Demo.Billing.Invoice)
+      "Billing.Invoice"
+
+      iex> Clarity.Vertex.Name.in_app(Demo)
+      "Demo"
+  """
+  @spec in_app(module()) :: String.t()
+  def in_app(module) do
+    case Module.split(module) do
+      [_app | [_ | _] = rest] -> Enum.join(rest, ".")
+      parts -> Enum.join(parts, ".")
+    end
+  end
+
   @spec display_all([Vertex.t()], style()) :: [String.t()]
   def display_all(vertices, :short) do
     segments = Enum.map(vertices, &module_segments/1)

@@ -45,8 +45,11 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
 
     defp reactor(_vertex), do: nil
 
+    @doc """
+    Returns the Mermaid flowchart of a Reactor.
+    """
     @spec diagram(module()) :: iodata()
-    defp diagram(module) do
+    def diagram(module) do
       reactor = Reactor.Info.to_struct!(module)
       # The planned Reactor holds its inputs and steps last defined first.
       steps = Enum.reverse(reactor.steps)
