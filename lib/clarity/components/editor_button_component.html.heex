@@ -4,32 +4,35 @@
       {""}
     <% :editor_not_available -> %>
       <button
-        disabled
-        class="p-2 rounded-xs transition-colors opacity-50 cursor-not-allowed text-base-light-400 dark:text-base-dark-600"
-        aria-label="No editor configured - set CLARITY_EDITOR, ELIXIR_EDITOR, or EDITOR environment variable"
-        {Tooltip.attrs("No editor configured - set CLARITY_EDITOR, ELIXIR_EDITOR, or EDITOR environment variable")}
+        type="button"
+        aria-disabled="true"
+        class="icon-button"
+        aria-label="Open in editor"
+        {Tooltip.attrs("No editor configured: set CLARITY_EDITOR, ELIXIR_EDITOR or EDITOR")}
       >
-        <.icon_external_link class="w-4 h-4" />
+        <.icon_external_link />
       </button>
     <% {:url, url} -> %>
       <a
         href={url}
         target="_blank"
-        class="p-2 rounded-xs transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark block"
-        aria-label="Open in Browser"
-        {Tooltip.attrs("Open in Browser")}
+        rel="noopener"
+        class="icon-button"
+        aria-label="View source online"
+        {Tooltip.attrs("View source online")}
       >
-        <.icon_external_link class="w-4 h-4" />
+        <.icon_external_link />
       </a>
     <% {:execute, _execute_fn} -> %>
       <button
+        type="button"
         phx-click="open_in_editor"
         phx-target={@myself}
-        class="p-2 rounded-xs transition-colors hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark"
-        aria-label="Open in Editor"
-        {Tooltip.attrs("Open in Editor")}
+        class="icon-button"
+        aria-label="Open in editor"
+        {Tooltip.attrs("Open in editor")}
       >
-        <.icon_external_link class="w-4 h-4" />
+        <.icon_external_link />
       </button>
   <% end %>
 </div>

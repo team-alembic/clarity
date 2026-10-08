@@ -16,19 +16,26 @@ defmodule Clarity.EditorButtonComponentTest do
   describe "icon-only actions" do
     test "keep an accessible name and gain a hover hint" do
       cases = [
-        {:editor_not_available,
-         "No editor configured - set CLARITY_EDITOR, ELIXIR_EDITOR, or EDITOR environment variable"},
-        {{:url, "https://example.com"}, "Open in Browser"},
-        {{:execute, fn -> :ok end}, "Open in Editor"}
+        {:editor_not_available, "Open in editor", "No editor configured: set CLARITY_EDITOR, ELIXIR_EDITOR or EDITOR"},
+        {{:url, "https://example.com"}, "View source online", "View source online"},
+        {{:execute, fn -> :ok end}, "Open in editor", "Open in editor"}
       ]
 
-      for {action, label} <- cases do
+      for {action, name, hint} <- cases do
         assert action
                |> render_action()
-               |> LazyHTML.query("[aria-label='#{label}'][data-tooltip-text='#{label}']")
+               |> LazyHTML.query(".icon-button[aria-label='#{name}'][data-tooltip-text='#{hint}']")
                |> Enum.count() == 1,
-               "expected #{inspect(action)} to carry #{inspect(label)}"
+               "expected #{inspect(action)} to be named #{inspect(name)} with hint #{inspect(hint)}"
       end
+    end
+
+    test "without an editor, stay hoverable so the hint can say why, but do nothing" do
+      button = :editor_not_available |> render_action() |> LazyHTML.query("button.icon-button")
+
+      assert LazyHTML.attribute(button, "aria-disabled") == ["true"]
+      assert LazyHTML.attribute(button, "disabled") == []
+      assert LazyHTML.attribute(button, "phx-click") == []
     end
   end
 end

@@ -318,10 +318,18 @@ defmodule Clarity.CoreComponents do
   Renders a drawer for displaying raw content (mermaid, viz, markdown).
   """
   attr :show, :boolean, required: true, doc: "Whether the drawer is visible"
-  attr :content_type, :string, required: true, doc: "The type of content (mermaid, viz, markdown)"
+
+  attr :content_type, :string,
+    required: true,
+    doc: "The type of content (mermaid, graphviz, markdown)"
+
   attr :raw_content, :string, required: true, doc: "The raw content to display"
   attr :rest, :global, doc: "Additional HTML attributes"
 
   @spec raw_content_drawer(assigns :: Socket.assigns()) :: Rendered.t()
   def raw_content_drawer(assigns)
+
+  @spec source_format(String.t()) :: String.t()
+  defp source_format("graphviz"), do: "Graphviz"
+  defp source_format(content_type), do: String.capitalize(content_type)
 end

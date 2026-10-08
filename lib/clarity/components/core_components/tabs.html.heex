@@ -32,16 +32,16 @@
     </li>
   </ul>
 
-  <div class="flex shrink-0 items-center gap-1">
+  <div class="flex shrink-0 items-center gap-0.5">
     <%= if @content && match?({type, _} when type in [:mermaid, :viz, :markdown], @content.render_static) do %>
       <button
         type="button"
         phx-click="toggle_raw_drawer"
-        class="flex items-center gap-1.5 px-2 py-1 text-sm rounded-md hover:bg-base-light-200 dark:hover:bg-base-dark-800 text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 transition-colors"
-        {Tooltip.attrs("Show raw source")}
+        class="icon-button"
+        aria-label="View source"
+        {Tooltip.attrs("View source")}
       >
-        <.icon_code class="w-4 h-4" />
-        <span>Raw</span>
+        <.icon_code />
       </button>
     <% end %>
     <%= if Vertex.SourceLocationProvider.source_location(@vertex) != nil do %>

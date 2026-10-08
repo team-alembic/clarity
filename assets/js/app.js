@@ -71,20 +71,16 @@ liveSocket.disableDebug();
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket;
 
-// Copy to clipboard handler
+// Copy to clipboard handler: the button shows a tick for a moment (see
+// .copy-button in app.css).
 window.addEventListener("clarity:copy-to-clipboard", (event) => {
   const content = event.detail.content;
   if (content) {
     navigator.clipboard.writeText(content).then(() => {
-      // Show brief feedback through the button's hover hint
       const button = event.target;
-      const originalHint = button.dataset.tooltipText;
-      button.dataset.tooltipText = "Copied!";
-      button.classList.add("text-green-500");
-      setTimeout(() => {
-        button.dataset.tooltipText = originalHint;
-        button.classList.remove("text-green-500");
-      }, 1500);
+      button.dataset.copied = "";
+      clearTimeout(button.copiedTimer);
+      button.copiedTimer = setTimeout(() => delete button.dataset.copied, 1500);
     });
   }
 });

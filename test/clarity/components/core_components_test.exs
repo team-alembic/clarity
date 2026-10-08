@@ -169,7 +169,7 @@ defmodule Clarity.CoreComponentsTest do
              |> Enum.count() == 1
     end
 
-    test "the raw source button has a hover hint" do
+    test "the view source button is an icon button with a name and a hover hint" do
       static = %{content("graph", "Graph", []) | render_static: {:markdown, fn _ -> "" end}}
 
       html =
@@ -184,7 +184,9 @@ defmodule Clarity.CoreComponentsTest do
 
       assert html
              |> LazyHTML.from_fragment()
-             |> LazyHTML.query("button[phx-click='toggle_raw_drawer'][data-tooltip-text='Show raw source']")
+             |> LazyHTML.query(
+               "button.icon-button[phx-click='toggle_raw_drawer'][aria-label='View source'][data-tooltip-text='View source']"
+             )
              |> Enum.count() == 1
     end
   end
@@ -203,6 +205,34 @@ defmodule Clarity.CoreComponentsTest do
       for label <- ["Copy to clipboard", "Close"] do
         assert doc |> LazyHTML.query("button[aria-label='#{label}'][data-tooltip-text='#{label}']") |> Enum.count() == 1
       end
+    end
+  end
+
+  describe "raw_content_drawer/1" do
+    @spec drawer(boolean(), String.t()) :: LazyHTML.t()
+    defp drawer(show, content_type) do
+      (&CoreComponents.raw_content_drawer/1)
+      |> render_component(show: show, content_type: content_type, raw_content: "flowchart LR")
+      |> LazyHTML.from_fragment()
+    end
+
+    test "is a dialog titled by the source's format" do
+      doc = drawer(true, "mermaid")
+
+      assert doc |> LazyHTML.query("#raw-content-drawer[role='dialog']") |> Enum.count() == 1
+      assert doc |> LazyHTML.query("#raw-content-drawer-title") |> LazyHTML.text() =~ "Mermaid source"
+
+      assert true |> drawer("graphviz") |> LazyHTML.query("#raw-content-drawer-title") |> LazyHTML.text() =~
+               "Graphviz source"
+    end
+
+    test "closes on Escape only while open" do
+      assert true
+             |> drawer("mermaid")
+             |> LazyHTML.query("#raw-content-drawer[phx-window-keydown='close_raw_drawer'][phx-key='Escape']")
+             |> Enum.count() == 1
+
+      assert false |> drawer("mermaid") |> LazyHTML.query("[phx-window-keydown]") |> Enum.empty?()
     end
   end
 
