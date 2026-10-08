@@ -14,9 +14,40 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
     @endpoint_vertex %Endpoint{endpoint: DemoWeb.Endpoint}
 
     describe inspect(&EndpointPipeline.applies?/2) do
-      test "applies to endpoints only" do
+      test "applies to endpoints and routers" do
         assert EndpointPipeline.applies?(@endpoint_vertex, Architect.make_lens())
-        refute EndpointPipeline.applies?(%Router{router: DemoWeb.Router}, Architect.make_lens())
+        assert EndpointPipeline.applies?(%Router{router: DemoWeb.Router}, Architect.make_lens())
+        refute EndpointPipeline.applies?(%Clarity.Vertex.Root{}, Architect.make_lens())
+      end
+    end
+
+    describe "render a router" do
+      test "leads with its routes and pipelines, behind the endpoint that hands it requests" do
+        html = render_overview(EndpointPipeline, %Router{router: DemoWeb.Router})
+
+        assert text(html, ".ov-headline") ==
+                 "Routes 29 paths through 3 pipelines behind DemoWeb.Endpoint"
+
+        assert texts(html, ".ov-stat") == ["3 Pipelines", "29 Routes"]
+        assert html |> LazyHTML.query("#request-pipeline") |> Enum.empty?()
+      end
+
+      test "shows its routes as code, never linking their text to names" do
+        html = render_overview(EndpointPipeline, %Router{router: DemoWeb.Router})
+
+        assert "POST /api/v1/tickets/:id/close DemoWeb.API.V1.TicketController :close after require_api_key" in texts(
+                 html,
+                 "#routes tbody tr"
+               )
+
+        assert html |> LazyHTML.query("#routes td.ov-routes-path a[data-phx-link]") |> Enum.empty?()
+        assert ":close" in texts(html, "#routes td code.ov-muted")
+      end
+
+      test "traces a request through the endpoint's plugs too" do
+        html = %Router{router: DemoWeb.Router} |> mount() |> request("GET", "/admin") |> render_html()
+
+        assert texts(html, "#try-journey > li .ov-journey-stage") == ["Endpoint", "admin", "Handler"]
       end
     end
 

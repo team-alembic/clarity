@@ -2,7 +2,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
   defmodule Clarity.Content.Phoenix.EndpointPipeline do
     @moduledoc """
     Content provider for the path a request takes through a Phoenix
-    endpoint.
+    endpoint, or router.
 
     Leads with how many plugs the endpoint runs before it hands a request to
     its router, then each step in order: the socket dispatch, every plug
@@ -12,8 +12,14 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
     that handles it; and the routes, grouped by the pipelines they pass
     through, each of which fills in the box.
 
+    A router's tab leads with its routes and pipelines, and the endpoint that
+    hands it requests, then shows the same pipelines, box and routes, the
+    box tracing requests through that endpoint's plugs too.
+
     `Clarity.Phoenix.Pipeline` reads the plugs from compiled code. Without
-    debug info, the tab says so and shows the rest.
+    debug info, the tab says so and shows the rest. Routes are code, so
+    their text is never linked to names (`:close` is a controller's action,
+    not an Ash action of that name).
     """
 
     @behaviour Clarity.Content
@@ -52,6 +58,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
 
     @impl Clarity.Content
     def applies?(%Endpoint{}, _lens), do: true
+    def applies?(%RouterVertex{}, _lens), do: true
     def applies?(_vertex, _lens), do: false
 
     @impl Phoenix.LiveComponent
@@ -65,15 +72,14 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
           links: links(assigns),
           within:
             if(Map.get(assigns, :name_style, :qualified) == :short,
-              do: Application.get_application(assigns.vertex.endpoint)
+              do: Application.get_application(subject(assigns.vertex))
             )
         )
 
       # Read the endpoint once; later updates keep the request being tried.
       socket =
         if fresh?,
-          do:
-            socket |> assign(read(assigns.vertex.endpoint, socket.assigns.links)) |> try_a_route(),
+          do: socket |> assign(read(assigns.vertex, socket.assigns.links)) |> try_a_route(),
           else: socket
 
       {:ok, socket}
@@ -89,11 +95,25 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
       <div class="content w-full" id={@id}>
         <div class="ov-page">
           <div class="ov-head">
-            <.hero vertex={@vertex} kind="Endpoint">
-              <:badge :if={@code_reloading?}>
+            <.hero vertex={@vertex} kind={if @router?, do: "Router", else: "Endpoint"}>
+              <:badge :if={@code_reloading? and !@router?}>
                 <.flag text="code reloading" />
               </:badge>
-              <:headline :if={@steps != nil}>
+              <:headline :if={@router?}>
+                <span :for={router <- @routers} class="ov-phrase">
+                  Routes <b>{plural(length(router.routes), "path")}</b>
+                  through <b>{plural(length(router.pipelines), "pipeline")}</b>
+                  <span :if={@endpoint} class="ov-phrase">
+                    behind
+                    <.vertex_link
+                      links={@links}
+                      vertex={%Endpoint{endpoint: @endpoint}}
+                      label={module_label(@endpoint, @within)}
+                    />
+                  </span>
+                </span>
+              </:headline>
+              <:headline :if={!@router? and @steps != nil}>
                 <span class="ov-phrase">
                   Runs <b>{plural(length(@steps), "plug")}</b>
                   <%= if @routers == [] do %>
@@ -113,22 +133,22 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
             </.hero>
 
             <.facts>
-              <:fact label="URL"><code class="ov-code">{@url}</code></:fact>
+              <:fact :if={@url} label="URL"><code class="ov-code">{@url}</code></:fact>
               <:fact :if={@app_name} label="Application">
                 <.vertex_link :if={@app} links={@links} vertex={@app} />
                 <code :if={!@app} class="ov-code">{inspect(@app_name)}</code>
               </:fact>
-              <:fact :if={@sockets != []} label="Sockets">
+              <:fact :if={@sockets != [] and !@router?} label="Sockets">
                 <.code_list names={Enum.map(@sockets, &elem(&1, 0))} />
               </:fact>
-              <:fact :if={@error_formats != []} label="Errors render as">
+              <:fact :if={@error_formats != [] and !@router?} label="Errors render as">
                 <.code_list names={@error_formats} />
               </:fact>
             </.facts>
 
             <.stats>
               <:stat
-                :if={@steps != nil}
+                :if={@steps != nil and !@router?}
                 label={plural_word(length(@steps), "Plug")}
                 count={length(@steps)}
                 href="#request-pipeline"
@@ -154,13 +174,13 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
             </.stats>
           </div>
 
-          <.callout :if={@steps == nil}>
+          <.callout :if={@steps == nil and !@router?}>
             This endpoint's build has no debug info, so its plugs can't be read. Its sockets,
             router pipelines and routes are below.
           </.callout>
 
           <.section
-            :if={@steps != nil}
+            :if={@steps != nil and !@router?}
             id="request-pipeline"
             title="Request pipeline"
             icon="endpoint"
@@ -224,7 +244,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
             tone="web"
             count={length(router.pipelines)}
           >
-            <:aside>
+            <:aside :if={!@router?}>
               <.vertex_link
                 links={@links}
                 vertex={%RouterVertex{router: router.router}}
@@ -593,10 +613,73 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
       """
     end
 
+    # What the tab shows of an endpoint, or of a router and the endpoint that
+    # hands it requests, if one does.
+    @spec read(Endpoint.t() | RouterVertex.t(), map()) :: keyword()
+    defp read(%Endpoint{endpoint: endpoint}, links),
+      do: [router?: false] ++ read_endpoint(endpoint, links)
+
+    defp read(%RouterVertex{router: router}, links) do
+      case endpoint_of(router) do
+        nil ->
+          [
+            router?: true,
+            endpoint: nil,
+            doc: moduledoc(router),
+            url: nil,
+            app_name: Application.get_application(router),
+            app: app(router, links),
+            host: nil,
+            code_reloading?: false,
+            error_formats: [],
+            sockets: [],
+            steps: nil,
+            routers: [router(router, nil)],
+            methods: @methods
+          ]
+
+        endpoint ->
+          endpoint
+          |> read_endpoint(links)
+          |> Keyword.merge(
+            router?: true,
+            doc: moduledoc(router),
+            routers: [router(router, endpoint.host())]
+          )
+      end
+    end
+
+    # The endpoint of the router's application that plugs it in, or one whose
+    # plugs can't be read, which may.
+    @spec endpoint_of(module()) :: module() | nil
+    defp endpoint_of(router) do
+      case :application.get_key(Application.get_application(router), :modules) do
+        {:ok, modules} -> Enum.find(modules, &plugs_in?(&1, router))
+        :undefined -> nil
+      end
+    end
+
+    @spec plugs_in?(module(), module()) :: boolean()
+    defp plugs_in?(module, router) do
+      endpoint?(module) and
+        case Pipeline.plugs(module) do
+          {:ok, plugs} -> Enum.any?(plugs, &(&1.kind == :module and &1.module == router))
+          :error -> true
+        end
+    end
+
+    @spec endpoint?(module()) :: boolean()
+    defp endpoint?(module),
+      do: Code.ensure_loaded?(module) and function_exported?(module, :__sockets__, 0)
+
+    @spec subject(Endpoint.t() | RouterVertex.t()) :: module()
+    defp subject(%Endpoint{endpoint: endpoint}), do: endpoint
+    defp subject(%RouterVertex{router: router}), do: router
+
     # What the tab shows of an endpoint: its plugs (nil when they can't be
     # read), sockets and routers, each with its pipelines and routes.
-    @spec read(module(), map()) :: keyword()
-    defp read(endpoint, links) do
+    @spec read_endpoint(module(), map()) :: keyword()
+    defp read_endpoint(endpoint, links) do
       plugs = Pipeline.plugs(endpoint)
       host = endpoint.host()
       routers = endpoint |> routers(plugs) |> Enum.map(&router(&1, host))
@@ -869,11 +952,11 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
         else: inspect(module)
     end
 
-    # The endpoint's application's vertex, from the graph, which knows its
+    # The module's application's vertex, from the graph, which knows its
     # description and version.
     @spec app(module(), map()) :: Vertex.Application.t() | nil
-    defp app(endpoint, links) do
-      case Application.get_application(endpoint) do
+    defp app(module, links) do
+      case Application.get_application(module) do
         nil -> nil
         app -> in_graph(links, %Vertex.Application{app: app, description: nil, version: nil})
       end
