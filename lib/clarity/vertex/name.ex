@@ -46,14 +46,6 @@ defmodule Clarity.Vertex.Name do
   def display(vertex, _style), do: Vertex.name(vertex)
 
   @doc """
-  Render sibling `vertices` using the requested `style`, in order.
-
-  As `display/2`, except that in the `:short` style module names that would
-  read the same are told apart: each takes the fewest trailing segments of
-  its module that no clashing sibling ends in, so `Demo.Billing.Domain` and
-  `Demo.Org.Domain` read `Billing.Domain` and `Org.Domain`.
-  """
-  @doc """
   Returns a module's name without its application's namespace, its first
   segment: `"Billing.Invoice"` for `Demo.Billing.Invoice`.
 
@@ -73,6 +65,14 @@ defmodule Clarity.Vertex.Name do
     end
   end
 
+  @doc """
+  Render sibling `vertices` using the requested `style`, in order.
+
+  As `display/2`, except that in the `:short` style module names that would
+  read the same are told apart: each takes the fewest trailing segments of
+  its module that no clashing sibling ends in, so `Demo.Billing.Domain` and
+  `Demo.Org.Domain` read `Billing.Domain` and `Org.Domain`.
+  """
   @spec display_all([Vertex.t()], style()) :: [String.t()]
   def display_all(vertices, :short) do
     segments = Enum.map(vertices, &module_segments/1)
