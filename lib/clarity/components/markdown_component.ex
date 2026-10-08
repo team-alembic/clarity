@@ -3,12 +3,16 @@ defmodule Clarity.Components.MarkdownComponent do
   Phoenix component for rendering markdown content with vertex:// link transformation.
 
   This component parses markdown content and transforms vertex:// links into proper
-  application routes, enabling navigation within the Clarity interface.
+  application routes, enabling navigation within the Clarity interface. Given the
+  lens's `graph`, it also links the names of vertices the text mentions (see
+  `Clarity.Autolink`), settling ambiguous names by the `vertex` the text is about.
   """
 
   use Phoenix.Component
 
+  alias Clarity.Autolink
   alias Clarity.Perspective.Lens
+  alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
 
@@ -20,6 +24,8 @@ defmodule Clarity.Components.MarkdownComponent do
   attr :content, :any, required: true, doc: "The markdown content to render"
   attr :prefix, :string, required: true, doc: "URL prefix for link generation"
   attr :lens, Lens, required: true, doc: "Current lens for link generation"
+  attr :graph, :any, default: nil, doc: "The graph whose vertices' names to link; nil links none"
+  attr :vertex, :any, default: nil, doc: "The vertex the text is about, if any"
   attr :class, :string, default: "", doc: "CSS classes to apply to the markdown container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the markdown container"
 
@@ -27,7 +33,7 @@ defmodule Clarity.Components.MarkdownComponent do
   def markdown(assigns) do
     ~H"""
     <div class={"prose dark:prose-invert #{@class}"} {@rest}>
-      {render_markdown_with_vertex_links(@content, @prefix, @lens)}
+      {render_markdown_with_vertex_links(@content, @prefix, @lens, @graph, @vertex)}
     </div>
     """
   end
@@ -35,14 +41,16 @@ defmodule Clarity.Components.MarkdownComponent do
   @spec render_markdown_with_vertex_links(
           content :: String.t() | iodata(),
           prefix :: String.t(),
-          lens :: Lens.t()
+          lens :: Lens.t(),
+          graph :: Clarity.Graph.t() | nil,
+          vertex :: Vertex.t() | nil
         ) ::
           Phoenix.HTML.safe()
   # HTML is produced and escaped by MDEx; prefix/lens are path-safe values, not user HTML.
   # sobelow_skip ["XSS.Raw"]
-  defp render_markdown_with_vertex_links(content, prefix, lens) do
+  defp render_markdown_with_vertex_links(content, prefix, lens, graph, vertex) do
     content
-    |> parse_and_transform_markdown(prefix, lens)
+    |> parse_and_transform_markdown(prefix, lens, graph, vertex)
     |> Phoenix.HTML.raw()
   end
 
@@ -52,14 +60,18 @@ defmodule Clarity.Components.MarkdownComponent do
   @spec parse_and_transform_markdown(
           content :: String.t() | iodata(),
           prefix :: String.t(),
-          lens :: Lens.t()
+          lens :: Lens.t(),
+          graph :: Clarity.Graph.t() | nil,
+          vertex :: Vertex.t() | nil
         ) :: String.t()
-  defp parse_and_transform_markdown(content, prefix, lens) do
+  defp parse_and_transform_markdown(content, prefix, lens, graph, vertex) do
     highlight_opts = highlight_opts()
 
     content
     |> IO.iodata_to_binary()
     |> MDEx.parse_document!(@extension_opts ++ highlight_opts)
+    # Before vertex:// links become raw HTML, while they're still links to skip.
+    |> link_names(graph, vertex, prefix, lens)
     |> MDEx.traverse_and_update(&transform_vertex_links(&1, prefix, lens))
     |> MDEx.to_html!(highlight_opts)
   rescue
@@ -99,6 +111,24 @@ defmodule Clarity.Components.MarkdownComponent do
     end
   end
 
+  @spec link_names(
+          MDEx.Document.t(),
+          Clarity.Graph.t() | nil,
+          Vertex.t() | nil,
+          String.t(),
+          Lens.t()
+        ) ::
+          MDEx.Document.t()
+  defp link_names(document, nil, _vertex, _prefix, _lens), do: document
+
+  defp link_names(document, graph, vertex, prefix, lens) do
+    Autolink.link(
+      document,
+      Autolink.names(graph, vertex),
+      &build_clarity_path(Vertex.id(&1), prefix, lens)
+    )
+  end
+
   @spec transform_vertex_links(MDEx.Document.md_node(), String.t(), Lens.t()) ::
           MDEx.Document.md_node()
   defp transform_vertex_links(%{nodes: children} = parent, prefix, lens) when is_list(children) do
@@ -115,7 +145,6 @@ defmodule Clarity.Components.MarkdownComponent do
   defp vertex_link?(%MDEx.Link{url: "vertex://" <> _}), do: true
   defp vertex_link?(_), do: false
 
-  # MDEx.Link has no HTML attributes field; use Raw nodes for data-phx-link attrs.
   @spec rewrite_vertex_links([MDEx.Document.md_node()], String.t(), Lens.t()) ::
           [MDEx.Document.md_node()]
   defp rewrite_vertex_links(children, prefix, lens) do
@@ -123,33 +152,12 @@ defmodule Clarity.Components.MarkdownComponent do
       %MDEx.Link{url: "vertex://" <> vertex_path, nodes: link_children, title: title} ->
         vertex_path
         |> build_clarity_path(prefix, lens)
-        |> raw_phx_link(link_children, title)
+        |> Autolink.patch_link(link_children, title)
 
       other ->
         [other]
     end)
   end
-
-  @spec raw_phx_link(
-          url :: String.t(),
-          children :: [MDEx.Document.md_node()],
-          title :: String.t() | nil
-        ) :: [MDEx.Document.md_node()]
-  defp raw_phx_link(url, children, title) do
-    title_attr = if title in [nil, ""], do: "", else: ~s( title="#{escape(title)}")
-
-    open = %MDEx.Raw{
-      literal:
-        ~s(<a href="#{escape(url)}" data-phx-link="patch" data-phx-link-state="push"#{title_attr}>)
-    }
-
-    close = %MDEx.Raw{literal: "</a>"}
-    [open | children] ++ [close]
-  end
-
-  # Escape untrusted values before splicing into Raw HTML literals.
-  @spec escape(value :: String.t()) :: String.t()
-  defp escape(value), do: value |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
   @spec build_clarity_path(
           vertex_path :: String.t(),

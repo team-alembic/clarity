@@ -76,6 +76,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
        assign(socket,
          prefix: assigns.prefix,
          lens: assigns.lens,
+         graph: assigns.graph,
          markdown: build_markdown(entities),
          dashboard: dashboard(entities)
        )}
@@ -95,7 +96,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           <Charts.stacked_bar title="Documentation coverage" segments={@dashboard.coverage} />
         </div>
 
-        <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
+        <.markdown
+          content={@markdown}
+          prefix={@prefix}
+          lens={@lens}
+          graph={@graph}
+          class="max-w-[75ch]"
+        />
       </section>
       """
     end

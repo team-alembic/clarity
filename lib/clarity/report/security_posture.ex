@@ -58,7 +58,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       {:ok,
        socket
-       |> assign(prefix: assigns.prefix, lens: assigns.lens)
+       |> assign(prefix: assigns.prefix, lens: assigns.lens, graph: graph)
        |> assign_async(:posture, fn -> {:ok, %{posture: analyse(graph)}} end)}
     end
 
@@ -91,7 +91,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </div>
           </div>
 
-          <.markdown content={posture.markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
+          <.markdown
+            content={posture.markdown}
+            prefix={@prefix}
+            lens={@lens}
+            graph={@graph}
+            class="max-w-[75ch]"
+          />
         </.async_result>
       </section>
       """

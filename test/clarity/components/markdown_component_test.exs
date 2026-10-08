@@ -6,6 +6,8 @@ defmodule Clarity.Components.MarkdownComponentTest do
   import Phoenix.LiveViewTest
 
   alias Clarity.Perspective.Lens
+  alias Clarity.Vertex.Ash.Resource
+  alias Demo.Helpdesk.Message
 
   @spec test_lens(String.t()) :: Lens.t()
   defp test_lens(id) do
@@ -25,6 +27,31 @@ defmodule Clarity.Components.MarkdownComponentTest do
     rendered_to_string(~H"""
     <.markdown content={@content} prefix={@prefix} lens={@lens} class={@class} />
     """)
+  end
+
+  describe "markdown/1 with a graph" do
+    test "links the vertices the text names, settling short names by its vertex" do
+      graph = Clarity.Graph.new()
+
+      for resource <- [Message, Demo.Helpdesk.Conversation, Demo.Accounts.User] do
+        Clarity.Graph.add_vertex(graph, %Resource{resource: resource}, %Clarity.Vertex.Root{})
+      end
+
+      assigns = %{
+        content: "A single utterance inside a Conversation, sent by a User.",
+        graph: graph,
+        vertex: %Resource{resource: Message},
+        lens: test_lens("architect")
+      }
+
+      html =
+        rendered_to_string(~H"""
+        <.markdown content={@content} prefix="/c" lens={@lens} graph={@graph} vertex={@vertex} />
+        """)
+
+      assert html =~ ~s(<a href="/c/architect/ash-resource:demo-helpdesk-conversation" data-phx-link="patch")
+      assert html =~ ~s(<a href="/c/architect/ash-resource:demo-accounts-user" data-phx-link="patch")
+    end
   end
 
   describe "markdown/1" do

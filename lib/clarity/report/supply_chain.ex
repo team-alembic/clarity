@@ -62,6 +62,7 @@ defmodule Clarity.Report.SupplyChain do
      assign(socket,
        prefix: assigns.prefix,
        lens: assigns.lens,
+       graph: assigns.graph,
        markdown: build_markdown(findings, unchecked, pending?),
        dashboard: dashboard(findings, length(apps), unchecked)
      )}
@@ -81,7 +82,13 @@ defmodule Clarity.Report.SupplyChain do
         <Charts.stacked_bar title="Dependency health" segments={@dashboard.segments} />
       </div>
 
-      <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
+      <.markdown
+        content={@markdown}
+        prefix={@prefix}
+        lens={@lens}
+        graph={@graph}
+        class="max-w-[75ch]"
+      />
     </section>
     """
   end
