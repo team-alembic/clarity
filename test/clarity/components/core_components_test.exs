@@ -76,14 +76,14 @@ defmodule Clarity.CoreComponentsTest do
   end
 
   describe "data_load_error/1" do
-    test "says the page couldn't load and links back to the root" do
+    test "says the page couldn't load and links home, to the lens's start page" do
       lens = %Lens{id: "graph", name: "Graph", icon: fn -> nil end, filter: true}
       doc = (&CoreComponents.data_load_error/1) |> render_component(prefix: "/", lens: lens) |> LazyHTML.from_fragment()
 
       assert doc |> LazyHTML.query("#data-load-error.empty-state .empty-state-title") |> LazyHTML.text() ==
                "Couldn't load this page"
 
-      assert doc |> LazyHTML.query(".empty-state-actions a[href='/graph/root']") |> Enum.count() == 1
+      assert doc |> LazyHTML.query(".empty-state-actions a[href='/graph']") |> Enum.count() == 1
     end
   end
 

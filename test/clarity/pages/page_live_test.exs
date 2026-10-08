@@ -454,15 +454,23 @@ defmodule Clarity.Pages.PageLiveTest do
 
       # Should show vertex not found error
       assert html =~ "Vertex not found"
-      assert html =~ "Go to root"
+      assert html =~ "Go home"
 
       # Should not show tabs, and fills the page beside the activity bar,
       # as there is no tree beside it
       refute has_element?(view, "nav.tabs")
       assert has_element?(view, ".layout-container > .page-state")
 
-      # Should have link to root
-      assert has_element?(view, "a[href='/debug/root']")
+      # Should link home, to the lens's start page
+      assert has_element?(view, ".empty-state-actions a[href='/debug']")
+    end
+
+    test "the home link leads to the app's page, not the empty root", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/invalid_vertex/graph")
+
+      view |> element(".empty-state-actions a") |> render_click()
+
+      assert_patch(view, "/debug/application:clarity/graph")
     end
 
     test "shows content 404 for invalid content", %{conn: conn} do

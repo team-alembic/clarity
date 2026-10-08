@@ -2,8 +2,7 @@
   <:icon><.icon_error /></:icon>
   Clarity couldn't build the graph for this page. The server log has the details.
   <:action>
-    <.link patch={Path.join([@prefix, @lens.id, "root"])} class="empty-state-action">
-      Go to root
-    </.link>
+    <%!-- The lens's start page, which opens on the app's own page. --%>
+    <.link patch={Path.join(@prefix, @lens.id)} class="empty-state-action">Go home</.link>
   </:action>
 </.empty_state>

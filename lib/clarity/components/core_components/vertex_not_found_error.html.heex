@@ -3,8 +3,7 @@
   Nothing in the graph has this address. It may have gone since the last introspection,
   or the link may be wrong.
   <:action>
-    <.link patch={Path.join([@prefix, @lens.id, "root"])} class="empty-state-action">
-      Go to root
-    </.link>
+    <%!-- The lens's start page, which opens on the app's own page. --%>
+    <.link patch={Path.join(@prefix, @lens.id)} class="empty-state-action">Go home</.link>
   </:action>
 </.empty_state>
