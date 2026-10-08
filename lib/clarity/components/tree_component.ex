@@ -14,10 +14,14 @@ defmodule Clarity.TreeComponent do
   collapsed it. The parent owns both sets so they survive graph updates, and
   when the path changes it drops the collapses along it (see `path_ids/2`),
   revealing the newly current vertex.
+
+  A vertex the lens has no tabs for (see the lens's `contents`) is greyed out,
+  though it still opens and links to its page.
   """
 
   use Clarity.Web, :live_component
 
+  alias Clarity.Content
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Status.Index
@@ -40,8 +44,10 @@ defmodule Clarity.TreeComponent do
 
     visible_ids = compute_visible_ids(socket.assigns)
     status_index = Index.build(socket.assigns.graph, socket.assigns.lens)
+    providers = Content.providers_for_lens(socket.assigns.lens)
 
-    {:ok, assign(socket, visible_ids: visible_ids, status_index: status_index)}
+    {:ok,
+     assign(socket, visible_ids: visible_ids, status_index: status_index, providers: providers)}
   end
 
   @impl Phoenix.LiveComponent
@@ -117,6 +123,7 @@ defmodule Clarity.TreeComponent do
   attr :myself, :any, required: true
   attr :name_style, :atom, required: true
   attr :status_index, :any, required: true
+  attr :providers, :list, required: true, doc: "The content providers whose tabs the lens shows"
 
   attr :root?, :boolean,
     default: false,
@@ -137,6 +144,7 @@ defmodule Clarity.TreeComponent do
   attr :name, :string, required: true, doc: "The vertex's name among its siblings"
   attr :any_sibling_has_children, :boolean, required: true
   attr :status_index, :any, required: true
+  attr :providers, :list, required: true, doc: "The content providers whose tabs the lens shows"
 
   @spec render_node(map()) :: Rendered.t()
   def render_node(assigns)
@@ -152,6 +160,7 @@ defmodule Clarity.TreeComponent do
   attr :myself, :any, required: true
   attr :name_style, :atom, required: true
   attr :status_index, :any, required: true
+  attr :providers, :list, required: true, doc: "The content providers whose tabs the lens shows"
 
   @spec group_items(assigns :: Socket.assigns()) :: Rendered.t()
   defp group_items(assigns) do
@@ -181,7 +190,8 @@ defmodule Clarity.TreeComponent do
       :lens,
       :myself,
       :name_style,
-      :status_index
+      :status_index,
+      :providers
     ])
   end
 
@@ -190,16 +200,19 @@ defmodule Clarity.TreeComponent do
   attr :prefix, :string, required: true
   attr :lens, Lens, required: true
   attr :name, :string, required: true
+  attr :providers, :list, required: true
 
   # A vertex's label: its type icon, in its colour, then its name and any
   # detail (Clarity.Vertex.DetailProvider), muted. Cut short with an ellipsis
-  # rather than wrapped, the detail first; the hover hint has it all.
+  # rather than wrapped, the detail first; the hover hint has it all. A vertex
+  # the lens has no tabs for is greyed out.
   @spec node_link(map()) :: Rendered.t()
   defp node_link(assigns) do
     assigns =
       assign(assigns,
         type_icon: Tooltip.type_icon(assigns.vertex),
-        detail: Vertex.DetailProvider.detail(assigns.vertex)
+        detail: Vertex.DetailProvider.detail(assigns.vertex),
+        empty?: not Content.any_applies?(assigns.providers, assigns.vertex, assigns.lens)
       )
 
     ~H"""
@@ -209,6 +222,7 @@ defmodule Clarity.TreeComponent do
       {Tooltip.attrs(@vertex)}
       class={[
         "flex min-w-0 items-center gap-1 px-1 py-px rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
+        @empty? && "tree-empty",
         @vertex == @active_vertex &&
           "bg-primary-light dark:bg-primary-dark text-white dark:text-base-dark-900"
       ]}

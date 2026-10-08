@@ -198,6 +198,18 @@ defmodule Clarity.ContentTest do
       assert [] = Content.get_contents_for_vertex(vertex, %{lens | contents: [TestContentProvider]})
     end
 
+    test "any_applies?/3 says whether the lens has any tab for a vertex", %{
+      vertex: vertex,
+      lens: lens
+    } do
+      Application.put_env(:clarity, :clarity_content_providers, [TestContentProvider, AlwaysFalseProvider])
+
+      assert Content.any_applies?(Content.providers_for_lens(lens), vertex, lens)
+
+      lens = %{lens | contents: {:except, [TestContentProvider]}}
+      refute Content.any_applies?(Content.providers_for_lens(lens), vertex, lens)
+    end
+
     test "builds content struct with correct fields", %{vertex: vertex, lens: lens} do
       providers = [TestContentProvider]
       Application.put_env(:clarity, :clarity_content_providers, providers)

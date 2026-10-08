@@ -8,6 +8,7 @@ defmodule Clarity.TreeComponentTest do
   alias Clarity.Perspective.Lensmaker
   alias Clarity.TreeComponent
   alias Clarity.Vertex
+  alias Demo.Accounts.ApiKey
   alias Demo.Accounts.User
 
   describe "short names" do
@@ -53,8 +54,8 @@ defmodule Clarity.TreeComponentTest do
 
   describe "group rows" do
     # An application with modules and, optionally, a domain, rendered open.
-    @spec render_app_tree([{Vertex.t(), atom()}], Vertex.t() | nil) :: LazyHTML.t()
-    defp render_app_tree(edges, active \\ nil) do
+    @spec render_app_tree([{Vertex.t(), atom()}], Vertex.t() | nil, String.t()) :: LazyHTML.t()
+    defp render_app_tree(edges, active \\ nil, lens_id \\ "debug") do
       app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
 
       graph = Graph.new()
@@ -66,7 +67,7 @@ defmodule Clarity.TreeComponentTest do
         Graph.add_edge(graph, app, vertex, label)
       end
 
-      {:ok, lens} = Lensmaker.get_lens_by_id("debug")
+      {:ok, lens} = Lensmaker.get_lens_by_id(lens_id)
 
       TreeComponent
       |> render_component(
@@ -224,6 +225,37 @@ defmodule Clarity.TreeComponentTest do
         |> LazyHTML.query("a[data-tooltip-type='Module']")
 
       assert row |> LazyHTML.query(".tree-detail") |> Enum.empty?()
+    end
+  end
+
+  describe "rows the lens has no tabs for" do
+    @spec module_rows(LazyHTML.t(), String.t()) :: [String.t()]
+    defp module_rows(tree, selector) do
+      tree
+      |> LazyHTML.query("a#{selector}[data-tooltip-type='Module']")
+      |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+    end
+
+    test "are greyed out, while rows with tabs are not" do
+      tree =
+        render_app_tree(
+          [
+            {%Vertex.Module{module: Demo.Accounts}, :module},
+            {%Vertex.Module{module: ApiKey}, :module}
+          ],
+          nil,
+          "documentation"
+        )
+
+      # Demo.Accounts.ApiKey sets @moduledoc false.
+      assert module_rows(tree, ".tree-empty") == ["ApiKey"]
+      assert module_rows(tree, ":not(.tree-empty)") == ["Accounts"]
+    end
+
+    test "are none under a lens with a tab for every vertex" do
+      tree = render_app_tree([{%Vertex.Module{module: ApiKey}, :module}], nil, "graph")
+
+      assert tree |> LazyHTML.query(".tree-empty") |> Enum.empty?()
     end
   end
 

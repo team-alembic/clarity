@@ -408,6 +408,16 @@
   @apply text-current opacity-80;
 }
 
+/* A row the lens has no tabs for is greyed out, unless it is current or
+   under the pointer. */
+.tree-empty:not([aria-current="page"], :hover) {
+  @apply font-normal text-base-light-400 dark:text-base-dark-500;
+}
+
+.tree-empty:not([aria-current="page"], :hover) > .tree-icon {
+  @apply opacity-50;
+}
+
 /* Type icons take their tone's colour; see Clarity.Tooltip. */
 .tree-icon {
   @apply size-4 shrink-0 text-base-light-500 dark:text-base-dark-400;

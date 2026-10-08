@@ -170,12 +170,22 @@ defmodule Clarity.Content do
   @doc false
   @spec get_contents_for_vertex(Vertex.t(), Lens.t()) :: [t()]
   def get_contents_for_vertex(vertex, lens) do
-    Clarity.Config.list_content_providers()
+    lens
+    |> providers_for_lens()
     |> Enum.filter(&applies?(&1, vertex, lens))
-    |> shown_by(lens)
     |> Enum.map(&build_content_struct(&1, vertex, lens))
     |> Enum.sort(lens.content_sorter)
   end
+
+  @doc false
+  @spec providers_for_lens(Lens.t()) :: [module()]
+  def providers_for_lens(lens), do: shown_by(Clarity.Config.list_content_providers(), lens)
+
+  # Whether any of the lens's providers (providers_for_lens/1) has a tab for the
+  # vertex, without building the tabs.
+  @doc false
+  @spec any_applies?([module()], Vertex.t(), Lens.t()) :: boolean()
+  def any_applies?(providers, vertex, lens), do: Enum.any?(providers, &applies?(&1, vertex, lens))
 
   # A lens may name the providers whose tabs it shows, or those it doesn't.
   @spec shown_by([module()], Lens.t()) :: [module()]
