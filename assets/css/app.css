@@ -124,8 +124,7 @@
     "navigation"
     "title"
     "tabs"
-    "main"
-    "splash";
+    "main";
 
   grid-column-gap: 0px;
   grid-row-gap: 0px;
@@ -142,8 +141,7 @@
       "header header header"
       "activity navigation title"
       "activity navigation tabs"
-      "activity navigation main"
-      "splash splash splash";
+      "activity navigation main";
 
     height: 100vh;
   }
@@ -253,8 +251,19 @@
   overflow: auto;
 }
 
+/* While the page loads, the splash fills the space below the header, and on
+   wider screens beside the activity bar, which keeps its full height; the
+   page doesn't scroll. */
 .layout-container > #splash {
-  grid-area: splash;
+  grid-area: main;
+  min-height: 0;
+}
+
+@media (min-width: 48rem) {
+  .layout-container > #splash {
+    grid-row: 2 / -1;
+    grid-column: 2 / -1;
+  }
 }
 
 /* Shared hover hint, positioned by the Tooltip hook (assets/js/tooltip.hook.js).
