@@ -19,27 +19,29 @@ defmodule Clarity.Pages.PageLiveTest do
                live_redirect(view, to: "/architect")
     end
 
-    test "the header offers Explore, marked current, and Reports for the lens", %{conn: conn} do
+    test "the activity bar's current Explore item toggles the sidebar", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
-      assert has_element?(view, "#header-sections a[aria-current=page]", "Explore")
-      assert has_element?(view, "#header-sections a[href='/debug/reports']", "Reports")
+      assert has_element?(
+               view,
+               "button#activity-explore[aria-current=page][phx-click*='clarity:toggle-nav']"
+             )
     end
 
-    test "Explore patches within Explore, keeping the loaded page", %{conn: conn} do
+    test "the activity bar's Reports item goes to the lens's reports", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
-      assert has_element?(view, "#header-sections a[data-phx-link=patch]", "Explore")
-      assert has_element?(view, "#header-sections a[data-phx-link=redirect]", "Reports")
+      assert has_element?(view, "a#activity-reports[href='/debug/reports'][data-phx-link=redirect]")
     end
 
-    test "clicking Explore again keeps the page while the lens's start page loads", %{
+    test "switching lens keeps the page on screen while the lens's start page loads", %{
       conn: conn
     } do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
       render_async(view)
 
-      html = view |> element("#header-sections a", "Explore") |> render_click()
+      view |> element("button[aria-label='Switch lens perspective']") |> render_click()
+      html = view |> element("button[phx-value-lens-id='architect']") |> render_click()
 
       assert html =~ ~s(class="navigation)
     end
@@ -512,12 +514,13 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, "#nav-resize[role='separator'][phx-hook='NavPanel']")
     end
 
-    test "is hidden from its own top edge and shown again from where it was", %{conn: conn} do
+    test "is shown and hidden from the activity bar, not buttons of its own", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       render_async(view)
 
-      assert has_element?(view, ".navigation #hide-nav[aria-label='Hide sidebar']")
-      assert has_element?(view, ".title #show-nav[aria-label='Show sidebar']")
+      assert has_element?(view, "#activity-bar button#activity-explore")
+      refute has_element?(view, "#hide-nav")
+      refute has_element?(view, "#show-nav")
       refute has_element?(view, "header #toggle-sidebar")
     end
 

@@ -139,6 +139,24 @@ defmodule Clarity.IconComponents do
   def icon_sidebar(assigns)
 
   @doc """
+  Renders the Explore icon (a branching list).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_explore(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_explore(assigns)
+
+  @doc """
+  Renders a report icon (a page of text).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_report(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_report(assigns)
+
+  @doc """
   Renders a check icon (checkmark).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"

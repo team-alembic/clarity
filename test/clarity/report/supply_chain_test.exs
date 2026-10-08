@@ -30,7 +30,6 @@ defmodule Clarity.Report.SupplyChainTest do
 
       html = render_report(graph, lens)
 
-      assert html =~ "Supply chain security"
       assert html =~ "stale"
       assert html =~ "2.0.0"
       # dependency hygiene renders as a table with a "Via" column

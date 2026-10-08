@@ -8,12 +8,13 @@ the relevant information in one place (e.g. a "Supply chain security" or
 "Security posture" report), a report gathers the relevant vertices and narrates
 them.
 
-Reports are a top-level section: the header shows **Explore** and **Reports**
-under every lens, so no report is hidden behind a lens choice. Reports opens
-`Clarity.ReportLive` at `prefix/:lens/reports`, which shows every registered
-report as a tab and embeds the selected one at `prefix/:lens/reports/:report_id`.
-The lens stays in the URL so Explore returns to it; it doesn't change which
-reports are listed.
+Reports are a top-level section: the activity bar down the left edge shows
+**Explore** and **Reports** under every lens, so no report is hidden behind a
+lens choice. Reports opens `Clarity.ReportLive` at `prefix/:lens/reports`,
+whose sidebar lists every registered report as a tree, grouped by category, and
+which shows the selected one at `prefix/:lens/reports/:report_id` under its
+name and description. The lens stays in the URL so Explore returns to it; it
+doesn't change which reports are listed.
 
 ## When to Create a Report
 
@@ -24,7 +25,10 @@ vertices. If you're adding a view for a *single* vertex, use a
 
 ## How Reports Work
 
-- A report declares its `name/0` and an optional `description/0`.
+- A report declares its `name/0`, an optional `description/0`, and an optional
+  `category/0` that groups it in the Reports sidebar (reports without one sit
+  below the categories). `ReportLive` shows the name and description as the
+  page's title, so the component doesn't repeat them.
 - The module is also a **LiveComponent** (`use Clarity.Web, :live_component`);
   `ReportLive` embeds it with these assigns:
   - `graph` - the whole graph, not filtered by any lens
@@ -66,6 +70,9 @@ def name, do: "Compliance"
 
 @impl Clarity.Report
 def description, do: "Licence and policy compliance across resources"
+
+@impl Clarity.Report
+def category, do: "Compliance"
 ```
 
 ### 3. Implement the LiveComponent
@@ -100,7 +107,6 @@ defp build_markdown(graph) do
   resources = Graph.vertices(graph, {:==, :vertex_type, Vertex.Ash.Resource})
 
   [
-    "## Compliance\n\n",
     "This report reviews compliance across #{length(resources)} resources.\n\n",
     # ... narrative sections built from the analysis ...
   ]
@@ -173,4 +179,4 @@ For the end-to-end routes, drive `Clarity.ReportLive` with
 ## Next Steps
 
 1. Test the report renders the right roll-up for a hand-built graph.
-2. Register it, then check it appears as a tab under Reports.
+2. Register it, then check it appears in the Reports sidebar under its category.

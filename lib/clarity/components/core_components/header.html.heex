@@ -9,26 +9,11 @@
       class="size-6"
     />
   </.link>
-  <h1 class="text-base font-semibold tracking-tight text-base-light-900 dark:text-base-dark-50">
+  <h1 class="text-base font-semibold tracking-tight flex-1 truncate text-base-light-900 dark:text-base-dark-50">
     <.link navigate={@prefix}>
       Clarity
     </.link>
   </h1>
-
-  <%!-- Top-level sections. Both are always shown, under every lens, so no
-       section (and no report) is hidden behind a lens choice. --%>
-  <nav
-    id="header-sections"
-    aria-label="Sections"
-    class="ml-4 flex items-center gap-1 flex-1 min-w-0"
-  >
-    <.header_section to={Path.join([@prefix, @lens.id])} current={@section == :explore}>
-      Explore
-    </.header_section>
-    <.header_section to={Path.join([@prefix, @lens.id, "reports"])} current={@section == :reports}>
-      Reports
-    </.header_section>
-  </nav>
 
   <div class="flex justify-center mx-4">
     {live_render(@socket, Clarity.Components.StatusLive,
@@ -47,7 +32,6 @@
     />
     <.theme_toggle id="header-theme-toggle" theme={@theme} />
     <button
-      :if={@navigation}
       type="button"
       class="inline-flex items-center justify-center p-2 rounded-md text-base-light-600 dark:text-base-dark-400 hover:text-base-light-900 dark:hover:text-base-dark-100 hover:bg-base-light-200 dark:hover:bg-base-dark-700 md:hidden"
       phx-click="toggle_navigation"

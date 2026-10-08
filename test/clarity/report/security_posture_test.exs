@@ -46,7 +46,6 @@ defmodule Clarity.Report.SecurityPostureTest do
     test "shows the analysis is under way until it finishes" do
       html = render_report(Graph.new(), Architect.make_lens())
 
-      assert html =~ "Security posture"
       assert html =~ "Analysing"
     end
   end

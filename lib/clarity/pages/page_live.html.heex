@@ -12,6 +12,8 @@
         class="header z-10"
       />
 
+      <.activity_bar prefix={@prefix} lens={lens} section={:explore} />
+
       <%!-- One shared element for every hover hint; the Tooltip hook owns its content. --%>
       <div
         id="clarity-tooltip"
@@ -42,17 +44,7 @@
         <%= if @vertex do %>
           <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 px-2 pb-3 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
             <div class="nav-heading">
-              <span>Navigation</span>
-              <button
-                id="hide-nav"
-                type="button"
-                class="nav-toggle"
-                phx-click={JS.dispatch("clarity:toggle-nav")}
-                aria-label="Hide sidebar"
-                {Tooltip.attrs("Hide sidebar (⌘B)")}
-              >
-                <.icon_sidebar class="size-4" />
-              </button>
+              <span>Explore</span>
             </div>
             <.live_component
               module={Clarity.TreeComponent}
@@ -79,17 +71,6 @@
           </div>
 
           <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3 flex items-center">
-            <%!-- Shown only while the sidebar is hidden; see .nav-show in app.css. --%>
-            <button
-              id="show-nav"
-              type="button"
-              class="nav-toggle nav-show mr-2"
-              phx-click={JS.dispatch("clarity:toggle-nav")}
-              aria-label="Show sidebar"
-              {Tooltip.attrs("Show sidebar (⌘B)")}
-            >
-              <.icon_sidebar class="size-4" />
-            </button>
             <nav class="breadcrumbs mr-3">
               <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
                 <%= for {breadcrumb, idx} <- Enum.with_index(Enum.drop(@breadcrumbs, -1)) do %>

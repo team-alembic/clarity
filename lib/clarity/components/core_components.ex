@@ -26,15 +26,6 @@ defmodule Clarity.CoreComponents do
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
 
-  attr :navigation, :boolean,
-    default: true,
-    doc: "Whether the page has a navigation sidebar, and so the buttons that toggle it"
-
-  attr :section, :atom,
-    default: :explore,
-    values: [:explore, :reports],
-    doc: "The top-level section shown, marked current in the header's menu"
-
   attr :lens_path, :any,
     default: nil,
     doc:
@@ -46,24 +37,71 @@ defmodule Clarity.CoreComponents do
   @spec header(assigns :: Socket.assigns()) :: Rendered.t()
   def header(assigns)
 
-  attr :to, :string, required: true, doc: "Where the section starts"
-  attr :current, :boolean, required: true, doc: "Whether this section is the one shown"
-  slot :inner_block, required: true
+  @doc """
+  Renders the activity bar: the strip of section icons down the left edge, as
+  in VS Code. Every section is always there, under every lens, so none (and no
+  report) is hidden behind a lens choice. The current section's icon shows or
+  hides the sidebar; another section's icon goes to that section.
+  """
+  attr :prefix, :string, required: true, doc: "The URL prefix for links"
+  attr :lens, Lens, required: true, doc: "Current lens, kept when changing section"
+  attr :section, :atom, required: true, values: [:explore, :reports], doc: "The section shown"
 
-  # A link to one of the header's top-level sections. Within the current section
-  # it patches, which keeps the page's LiveView and the data it has loaded; only
-  # crossing to the other section's LiveView needs a navigation.
-  @doc false
-  @spec header_section(map()) :: Rendered.t()
-  def header_section(%{current: true} = assigns) do
+  @spec activity_bar(assigns :: Socket.assigns()) :: Rendered.t()
+  def activity_bar(assigns) do
     ~H"""
-    <.link patch={@to} class="header-section" aria-current="page">{render_slot(@inner_block)}</.link>
+    <nav id="activity-bar" class="activity-bar" aria-label="Sections">
+      <.activity_item
+        id="activity-explore"
+        label="Explore"
+        current={@section == :explore}
+        to={Path.join([@prefix, @lens.id])}
+      >
+        <.icon_explore class="size-6" />
+      </.activity_item>
+      <.activity_item
+        id="activity-reports"
+        label="Reports"
+        current={@section == :reports}
+        to={Path.join([@prefix, @lens.id, "reports"])}
+      >
+        <.icon_report class="size-6" />
+      </.activity_item>
+    </nav>
     """
   end
 
-  def header_section(assigns) do
+  attr :id, :string, required: true
+  attr :label, :string, required: true
+  attr :current, :boolean, required: true
+  attr :to, :string, required: true
+  slot :inner_block, required: true
+
+  # The current section's item toggles the sidebar (the NavPanel hook listens
+  # for clarity:toggle-nav, as for ⌘B); another section's item navigates to it,
+  # since each section is its own LiveView.
+  @spec activity_item(map()) :: Rendered.t()
+  defp activity_item(%{current: true} = assigns) do
     ~H"""
-    <.link navigate={@to} class="header-section">{render_slot(@inner_block)}</.link>
+    <button
+      id={@id}
+      type="button"
+      class="activity-item"
+      aria-current="page"
+      aria-label={"#{@label}: show or hide the sidebar"}
+      phx-click={JS.dispatch("clarity:toggle-nav")}
+      {Tooltip.attrs("#{@label} · show or hide the sidebar (⌘B)")}
+    >
+      {render_slot(@inner_block)}
+    </button>
+    """
+  end
+
+  defp activity_item(assigns) do
+    ~H"""
+    <.link id={@id} navigate={@to} class="activity-item" aria-label={@label} {Tooltip.attrs(@label)}>
+      {render_slot(@inner_block)}
+    </.link>
     """
   end
 

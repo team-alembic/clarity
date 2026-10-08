@@ -3,10 +3,12 @@ defmodule Clarity.Report do
   Behaviour for reports: written documents that sum up part of the graph in one
   place, an alternative to navigating it vertex by vertex.
 
-  Reports are a top-level section beside Explore, in the header under every
-  lens, so no report is hidden behind a lens choice. `Clarity.ReportLive` renders
-  them at `prefix/:lens/reports`, every registered report as a tab. A report
-  declares its `name/0` and an optional `description/0`.
+  Reports are a top-level section beside Explore in the activity bar, under
+  every lens, so no report is hidden behind a lens choice. `Clarity.ReportLive`
+  renders them at `prefix/:lens/reports`: the sidebar lists every registered
+  report as a tree, grouped by category, and the selected one fills the main
+  pane under its name. A report declares its `name/0`, and optionally a
+  `description/0` and the `category/0` it is grouped under.
 
   The module is also a LiveComponent (`use Clarity.Web, :live_component`).
   `Clarity.ReportLive` embeds the selected report with these assigns:
@@ -46,8 +48,9 @@ defmodule Clarity.Report do
 
   @callback name() :: String.t()
   @callback description() :: String.t() | nil
+  @callback category() :: String.t()
 
-  @optional_callbacks [description: 0]
+  @optional_callbacks [description: 0, category: 0]
 
   @doc """
   All registered reports, sorted by name.
@@ -57,6 +60,19 @@ defmodule Clarity.Report do
     Clarity.Config.list_reports()
     |> Enum.filter(&Code.ensure_loaded?/1)
     |> Enum.sort_by(& &1.name())
+  end
+
+  @doc """
+  All registered reports grouped as the reports sidebar shows them: each
+  category, sorted by name, with its reports; then the reports without one,
+  under `nil`.
+  """
+  @spec grouped() :: [{String.t() | nil, [module()]}]
+  def grouped do
+    {uncategorised, categorised} = all() |> Enum.group_by(&category/1) |> Map.pop(nil, [])
+
+    Enum.sort_by(categorised, &elem(&1, 0)) ++
+      if(uncategorised == [], do: [], else: [{nil, uncategorised}])
   end
 
   @doc """
@@ -93,5 +109,14 @@ defmodule Clarity.Report do
   def description(report) do
     if Code.ensure_loaded?(report) and function_exported?(report, :description, 0),
       do: report.description()
+  end
+
+  @doc """
+  The category the report is grouped under, or `nil` if it doesn't define one.
+  """
+  @spec category(module()) :: String.t() | nil
+  def category(report) do
+    if Code.ensure_loaded?(report) and function_exported?(report, :category, 0),
+      do: report.category()
   end
 end

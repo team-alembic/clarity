@@ -19,20 +19,29 @@ defmodule Clarity.ReportLiveTest do
       assert {:error, {:live_redirect, %{to: ^expected}}} = live(conn, "/nolens/reports")
     end
 
-    test "lists every report under any lens", %{conn: conn} do
+    test "lists every report in the sidebar tree under any lens", %{conn: conn} do
       for lens <- ["architect", "security", "debug"] do
         {:ok, view, _html} = live(conn, "/#{lens}/reports/supply-chain")
 
-        assert has_element?(view, "#report-tabs a", "Supply chain security")
-        assert has_element?(view, "#report-tabs a", "Security posture")
+        assert has_element?(view, "#reports-tree a", "Supply chain security")
+        assert has_element?(view, "#reports-tree a", "Security posture")
       end
     end
 
-    test "renders the supply-chain report", %{conn: conn} do
+    test "groups the reports by category", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/security/reports/supply-chain")
+
+      assert has_element?(view, "#report-category-security summary", "Security")
+      assert has_element?(view, "#report-category-security a", "Supply chain security")
+      assert has_element?(view, "#report-category-security a", "Security posture")
+    end
+
+    test "renders the supply-chain report under its name", %{conn: conn} do
       {:ok, view, html} = live(conn, "/security/reports/supply-chain")
 
       assert html =~ "Dependency health"
-      assert has_element?(view, "#report-tabs a[aria-current=page]", "Supply chain security")
+      assert has_element?(view, ".title h1", "Supply chain security")
+      assert has_element?(view, "#reports-tree a[aria-current=page]", "Supply chain security")
     end
 
     test "renders the security posture report once its analysis finishes", %{conn: conn} do
@@ -43,28 +52,34 @@ defmodule Clarity.ReportLiveTest do
       assert render_async(view) =~ "found any Ash resources"
     end
 
-    test "switching report tabs patches to the other report", %{conn: conn} do
+    test "choosing another report in the tree patches to it", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/security/reports/supply-chain")
 
-      view |> element("#report-tabs a", "Security posture") |> render_click()
+      view |> element("#reports-tree a", "Security posture") |> render_click()
 
       assert_patch(view, "/security/reports/security-posture")
     end
 
-    test "marks Reports as the current section, with Explore beside it", %{conn: conn} do
+    test "the activity bar's current Reports item toggles the sidebar, and Explore goes back",
+         %{conn: conn} do
       {:ok, view, _html} = live(conn, "/security/reports/supply-chain")
 
-      assert has_element?(view, "#header-sections a[aria-current=page]", "Reports")
-      assert has_element?(view, "#header-sections a[href='/security']", "Explore")
-      # Reports stays in this LiveView; Explore is another one.
-      assert has_element?(view, "#header-sections a[data-phx-link=patch]", "Reports")
-      assert has_element?(view, "#header-sections a[data-phx-link=redirect]", "Explore")
+      assert has_element?(
+               view,
+               "button#activity-reports[aria-current=page][phx-click*='clarity:toggle-nav']"
+             )
+
+      assert has_element?(view, "a#activity-explore[href='/security'][data-phx-link=redirect]")
     end
 
-    test "has no sidebar, so no button to toggle one", %{conn: conn} do
+    test "the header's menu button shows the sidebar on narrow screens", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/security/reports/supply-chain")
 
-      refute has_element?(view, "button[phx-click='toggle_navigation']")
+      assert has_element?(view, ".navigation.hidden")
+
+      view |> element("button[phx-click='toggle_navigation']") |> render_click()
+
+      assert has_element?(view, ".navigation.block")
     end
 
     test "switching lens keeps the report shown", %{conn: conn} do

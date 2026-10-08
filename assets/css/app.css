@@ -136,20 +136,20 @@
 @media (min-width: 48rem) {
   /* The NavPanel hook sets the width, and the collapsed class, on <html>. */
   .layout-container {
-    grid-template-columns: var(--clarity-nav-width, minmax(20rem, 25vw)) 1fr;
+    grid-template-columns: 3rem var(--clarity-nav-width, minmax(20rem, 25vw)) 1fr;
     grid-template-rows: min-content min-content min-content 1fr;
     grid-template-areas:
-      "header header"
-      "navigation title"
-      "navigation tabs"
-      "navigation main"
-      "splash splash";
+      "header header header"
+      "activity navigation title"
+      "activity navigation tabs"
+      "activity navigation main"
+      "splash splash splash";
 
     height: 100vh;
   }
 
   .clarity-nav-collapsed .layout-container {
-    grid-template-columns: 0 1fr;
+    grid-template-columns: 3rem 0 1fr;
   }
 
   .clarity-nav-collapsed .layout-container > :is(.navigation, .nav-resize) {
@@ -173,46 +173,42 @@
   @apply text-base-light-900 border-primary-light dark:text-base-dark-50 dark:border-primary-dark;
 }
 
-/* The header's top-level sections (Explore, Reports). */
-.header-section {
-  @apply flex h-8 items-center rounded-md px-2.5 text-sm font-medium;
-  @apply text-base-light-600 hover:text-base-light-900 hover:bg-base-light-200;
-  @apply dark:text-base-dark-400 dark:hover:text-base-dark-100 dark:hover:bg-base-dark-700;
-  @apply transition-colors;
+/* The activity bar: section icons down the left edge, as in VS Code. Only on
+   wide screens; narrow ones use the header's menu button. The current
+   section's icon carries an accent bar, which goes while the sidebar it
+   toggles is hidden. */
+.activity-bar {
+  @apply hidden md:flex flex-col items-center gap-1 py-2;
+  @apply bg-base-light-200 dark:bg-base-dark-850 border-r border-base-light-300 dark:border-base-dark-700;
 }
 
-.header-section[aria-current="page"] {
-  @apply text-base-light-900 bg-base-light-200 dark:text-base-dark-50 dark:bg-base-dark-700;
+.layout-container > .activity-bar {
+  grid-area: activity;
 }
 
-/* The sidebar's own heading row, which holds the button that hides it. */
+.activity-item {
+  @apply relative flex size-10 items-center justify-center rounded-md transition-colors;
+  @apply text-base-light-500 hover:text-base-light-900 dark:text-base-dark-400 dark:hover:text-base-dark-100;
+}
+
+.activity-item[aria-current="page"] {
+  @apply text-base-light-900 dark:text-base-dark-50;
+}
+
+.activity-item[aria-current="page"]::before {
+  content: "";
+  @apply absolute -left-1 top-2 bottom-2 w-0.5 rounded-full bg-primary-light dark:bg-primary-dark;
+}
+
+.clarity-nav-collapsed .activity-item[aria-current="page"]::before {
+  display: none;
+}
+
+/* The sidebar's heading row, naming what it shows. */
 .nav-heading {
   @apply sticky top-0 z-10 -mx-2 mb-1 flex h-8 items-center justify-between px-3;
   @apply bg-base-light-100 dark:bg-base-dark-800;
   @apply text-[0.6875rem] font-semibold uppercase tracking-wider text-base-light-500 dark:text-base-dark-400;
-}
-
-.nav-toggle {
-  @apply inline-flex items-center justify-center rounded p-1;
-  @apply text-base-light-500 hover:bg-base-light-200 hover:text-base-light-900;
-  @apply dark:text-base-dark-400 dark:hover:bg-base-dark-700 dark:hover:text-base-dark-100;
-}
-
-/* Hiding the sidebar only applies on wide screens; narrow ones use the
-   header's menu button. The show button stands in for the hidden sidebar. */
-.nav-heading > .nav-toggle,
-.nav-show {
-  display: none;
-}
-
-@media (min-width: 48rem) {
-  .nav-heading > .nav-toggle {
-    display: inline-flex;
-  }
-
-  .clarity-nav-collapsed .nav-show {
-    display: inline-flex;
-  }
 }
 
 /* Drag handle on the navigation's right edge, over its border. */

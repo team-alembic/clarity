@@ -42,6 +42,9 @@ defmodule Clarity.Report.SupplyChain do
   @impl Clarity.Report
   def description, do: "Dependencies with advisories or outdated/retired versions"
 
+  @impl Clarity.Report
+  def category, do: "Security"
+
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
     apps = Graph.vertices(assigns.graph, {:==, :vertex_type, Vertex.Application})
@@ -69,7 +72,6 @@ defmodule Clarity.Report.SupplyChain do
     ~H"""
     <section class="space-y-6">
       <div class="space-y-4">
-        <h2 class="text-2xl font-bold">Supply chain security</h2>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Charts.stat label="Dependencies" value={@dashboard.total} />
           <Charts.stat label="Advisories" value={@dashboard.advisories} tone={:error} />

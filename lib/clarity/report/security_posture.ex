@@ -45,6 +45,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def description,
       do: "Authorisation posture, action reachability, and sensitive-field exposure"
 
+    @impl Clarity.Report
+    def category, do: "Security"
+
     # Solving every action's policies for each actor grows with the app, so it
     # runs asynchronously: the page shows at once, and the analysis follows.
     # (Async work only starts once the socket connects, so the first, static
@@ -63,8 +66,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def render(assigns) do
       ~H"""
       <section class="space-y-6">
-        <h2 class="text-2xl font-bold">Security posture</h2>
-
         <.async_result :let={posture} assign={@posture}>
           <:loading>
             <p class="text-sm text-base-light-600 dark:text-base-dark-400">

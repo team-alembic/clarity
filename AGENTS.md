@@ -62,7 +62,7 @@ Flag vertices with `info`/`warning`/`error` indicators that roll up the navigati
 
 ### 6. Reports (`lib/clarity/report/`)
 
-Written roll-ups of the graph, in prose — an alternative to graph navigation. Implement the `Clarity.Report` behaviour with `name/0` and optional `description/0`; the module is also a LiveComponent, embedded by `Clarity.ReportLive` with `graph`/`lens`/`prefix`/`version`. Reports are a top-level section beside Explore in the header, shown under every lens; `prefix/:lens/reports` lists every registered report as a tab, whatever the lens.
+Written roll-ups of the graph, in prose — an alternative to graph navigation. Implement the `Clarity.Report` behaviour with `name/0` and optional `description/0` and `category/0`; the module is also a LiveComponent, embedded by `Clarity.ReportLive` with `graph`/`lens`/`prefix`/`version`. Reports are a top-level section beside Explore in the activity bar, shown under every lens; `prefix/:lens/reports` lists every registered report in a sidebar tree grouped by category, whatever the lens.
 
 ### Core Modules
 

@@ -85,15 +85,21 @@ Superseded in part by the decisions below.
    think to look. A lens is a role's named, filtered view of the graph; a report
    is something else, and key reports must not be hidden behind a lens choice.
    (Making Reports a lens of its own was tried and dropped for the same reason:
-   it isn't a filter.) The header now has **Explore** and **Reports** as
-   top-level menu items under every lens, and Reports lists every registered
-   report whatever the lens. The lens stays in the URL, so Explore returns to it;
-   a lens may later order or filter a report's contents for its role, but never
-   hide a report.
+   it isn't a filter.) An activity bar down the left edge, as in VS Code, now
+   has **Explore** and **Reports** under every lens, and Reports lists every
+   registered report whatever the lens. The lens stays in the URL, so Explore
+   returns to it; a lens may later order or filter a report's contents for its
+   role, but never hide a report.
+5. **Reports live in a sidebar tree** (revised). There will be many reports, so
+   instead of tabs they share Explore's layout: the sidebar lists them as a tree
+   grouped by an optional `category/0`, and the selected one fills the main pane
+   under its name. The current section's activity bar icon shows or hides the
+   sidebar, replacing the sidebar's own toggle buttons.
 
 ## Architecture
 
-- **`Clarity.Report`** (behaviour): `name/0`, `description/0` (optional). The
+- **`Clarity.Report`** (behaviour): `name/0`, `description/0` and `category/0`
+  (both optional). The
   module also `use`s the LiveComponent macro and implements `update/2` +
   `render/1`, receiving `graph` (unfiltered), `lens` (the current lens),
   `prefix` and `version` assigns. Registered via `:clarity_reports`; discovered
@@ -101,14 +107,17 @@ Superseded in part by the decisions below.
 - **Router**: `prefix/:lens/reports` (opens the first report) and
   `prefix/:lens/reports/:report_id`, with the literal `reports` segment ahead of
   `prefix/:lens/:vertex`.
-- **`Clarity.ReportLive`**: lists every report as a tab and embeds the selected
-  one; an unknown lens moves to the default lens's reports. Fetches
+- **`Clarity.ReportLive`**: lists every report in a sidebar tree grouped by
+  category (`Clarity.Report.grouped/0`), and shows the selected one under its
+  name and description; an unknown lens moves to the default lens's reports.
+  Fetches
   `clarity.graph` via `Clarity.get/2`, and fetches it again when introspection
   starts or finishes, passing the graph's update count as `version` so the
   report re-renders.
-- **Header**: Explore and Reports as top-level menu items (`section` attr marks
-  the current one). The lens switcher patches within the current section; on
-  the reports page it keeps the report shown.
+- **Activity bar** (`activity_bar/1`): Explore and Reports icons; the current
+  section's icon toggles the shared sidebar (as ⌘B does), the other navigates
+  to its section. The lens switcher patches within the current section; on the
+  reports page it keeps the report shown.
 
 ## Phasing
 

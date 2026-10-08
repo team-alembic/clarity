@@ -1,55 +1,125 @@
-<div class="min-h-screen bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
+<article class="layout-container bg-base-light-50 dark:bg-base-dark-900 text-base-light-900 dark:text-base-dark-100">
   <.header
     socket={@socket}
     prefix={@prefix}
     lens={@lens}
     theme={@theme}
     clarity_pid={@clarity_pid}
-    section={:reports}
-    navigation={false}
     lens_path={&report_lens_path(@prefix, &1, @selected)}
+    class="header z-10"
   />
 
-  <div class="max-w-[100ch] mx-auto p-6">
-    <%= if @reports == [] do %>
-      <p id="no-reports" class="italic opacity-70">No reports are registered.</p>
-    <% else %>
-      <nav
-        id="report-tabs"
-        class="border-b border-base-light-300 dark:border-base-dark-700 mb-6"
-      >
-        <ul class="content-tabs flex min-w-0 overflow-x-auto">
-          <li :for={report <- @reports} class="flex shrink-0">
-            <.link
-              patch={Path.join([@prefix, @lens.id, "reports", Clarity.Report.report_id(report)])}
-              class="content-tab"
-              aria-current={report == @selected && "page"}
-              title={Clarity.Report.description(report)}
-            >
-              {report.name()}
-            </.link>
-          </li>
-        </ul>
-      </nav>
-
-      <p
-        :if={@working?}
-        id="report-working"
-        class="mb-6 text-sm text-base-light-600 dark:text-base-dark-400"
-      >
-        Clarity is still introspecting, so this report may be incomplete. It updates
-        when introspection finishes.
-      </p>
-
-      <.live_component
-        :if={@selected}
-        module={@selected}
-        id="report"
-        graph={@graph}
-        version={@version}
-        lens={@lens}
-        prefix={@prefix}
-      />
-    <% end %>
+  <%!-- One shared element for every hover hint; the Tooltip hook owns its content. --%>
+  <div
+    id="clarity-tooltip"
+    role="tooltip"
+    popover="manual"
+    phx-hook="Tooltip"
+    phx-update="ignore"
+    class="clarity-tooltip"
+    hidden
+  >
   </div>
-</div>
+
+  <.activity_bar prefix={@prefix} lens={@lens} section={:reports} />
+
+  <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 px-2 pb-3 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
+    <div class="nav-heading">
+      <span>Reports</span>
+    </div>
+    <p :if={@reports == []} id="no-reports" class="px-1 text-sm italic opacity-70">
+      No reports are registered.
+    </p>
+    <ul id="reports-tree" class="clarity-tree text-sm">
+      <%= for {category, reports} <- @report_groups do %>
+        <%= if category do %>
+          <li>
+            <%!-- Open by default; the browser keeps it as the user leaves it. --%>
+            <details
+              id={"report-category-#{category_id(category)}"}
+              class="tree-node"
+              open
+              phx-mounted={JS.ignore_attributes(["open"])}
+            >
+              <summary class="flex items-center cursor-pointer select-none">
+                <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
+                <span class="truncate px-1 text-base-light-500 dark:text-base-dark-400">
+                  {category}
+                </span>
+              </summary>
+              <ul class="tree-children">
+                <li :for={report <- reports}>
+                  <.report_link
+                    report={report}
+                    selected={@selected}
+                    prefix={@prefix}
+                    lens={@lens}
+                  />
+                </li>
+              </ul>
+            </details>
+          </li>
+        <% else %>
+          <li :for={report <- reports}>
+            <.report_link report={report} selected={@selected} prefix={@prefix} lens={@lens} />
+          </li>
+        <% end %>
+      <% end %>
+    </ul>
+  </nav>
+  <div
+    id="nav-resize"
+    class="nav-resize"
+    phx-hook="NavPanel"
+    role="separator"
+    aria-orientation="vertical"
+    aria-label="Resize navigation"
+    tabindex="0"
+  >
+  </div>
+
+  <%= if @selected do %>
+    <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3">
+      <nav class="breadcrumbs">
+        <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
+          <li>Reports</li>
+          <li :if={Clarity.Report.category(@selected)} class="flex items-center">
+            <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
+            {Clarity.Report.category(@selected)}
+          </li>
+        </ol>
+      </nav>
+      <h1 class="text-2xl font-bold text-base-light-900 dark:text-base-dark-100">
+        {@selected.name()}
+      </h1>
+      <p
+        :if={Clarity.Report.description(@selected)}
+        class="mt-1 text-sm text-base-light-600 dark:text-base-dark-400"
+      >
+        {Clarity.Report.description(@selected)}
+      </p>
+    </div>
+
+    <div class="content">
+      <div class="max-w-[100ch] p-6">
+        <p
+          :if={@working?}
+          id="report-working"
+          class="mb-6 text-sm text-base-light-600 dark:text-base-dark-400"
+        >
+          Clarity is still introspecting, so this report may be incomplete. It updates
+          when introspection finishes.
+        </p>
+
+        <.live_component
+          module={@selected}
+          id="report"
+          graph={@graph}
+          version={@version}
+          lens={@lens}
+          prefix={@prefix}
+        />
+      </div>
+    </div>
+  <% end %>
+</article>
