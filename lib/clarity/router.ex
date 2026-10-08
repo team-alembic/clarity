@@ -106,8 +106,23 @@ defmodule Clarity.Router do
           private: private
         )
 
-        # Reports, reached from the activity bar's Reports item. The literal
-        # "reports" segment must precede the `:lens` routes to win over the param.
+        # The things to do the reports find, and the reports themselves,
+        # reached from the activity bar. The literal "actions" and "reports"
+        # segments must precede the `:lens` routes to win over the param.
+        live(
+          "#{path}/actions",
+          Clarity.ReportLive,
+          :actions,
+          private: private
+        )
+
+        live(
+          "#{path}/actions/:report_id",
+          Clarity.ReportLive,
+          :report_actions,
+          private: private
+        )
+
         live(
           "#{path}/reports",
           Clarity.ReportLive,

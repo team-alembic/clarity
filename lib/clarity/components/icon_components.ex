@@ -272,4 +272,13 @@ defmodule Clarity.IconComponents do
 
   @spec icon_search(assigns :: Socket.assigns()) :: Rendered.t()
   def icon_search(assigns)
+
+  @doc """
+  Renders a checklist icon (the things to do).
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_list_checks(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_list_checks(assigns)
 end

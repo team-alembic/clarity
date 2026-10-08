@@ -6,10 +6,13 @@ defmodule Clarity.Report.SecurityPostureTest do
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Architect
+  alias Clarity.Report.Action
   alias Clarity.Report.SecurityPosture
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
+  alias Demo.Accounts.Membership
   alias Demo.Accounts.User
+  alias Demo.Helpdesk.CustomerContact
 
   @spec render_report(Graph.t(), Lens.t()) :: String.t()
   defp render_report(graph, lens) do
@@ -34,92 +37,93 @@ defmodule Clarity.Report.SecurityPostureTest do
   @spec text(LazyHTML.t(), String.t()) :: String.t()
   defp text(doc, selector), do: doc |> LazyHTML.query(selector) |> LazyHTML.text() |> String.split() |> Enum.join(" ")
 
-  # The to-do with the given title, as text.
-  @spec todo(LazyHTML.t(), atom(), String.t()) :: String.t()
-  defp todo(doc, severity, title) do
-    doc
-    |> LazyHTML.query(".report-todo[data-severity='#{severity}']")
-    |> Enum.find(&(&1 |> LazyHTML.query(".report-todo-title") |> LazyHTML.text() =~ title))
-    |> case do
-      nil -> flunk("no #{severity} to-do titled #{inspect(title)}")
-      todo -> todo |> LazyHTML.text() |> String.split() |> Enum.join(" ")
+  # The action titled `title`, as {its severity, each group's label and items' text}.
+  @spec action([Action.t()], String.t()) :: {atom(), [{String.t() | nil, [String.t()]}]}
+  defp action(actions, title) do
+    case Enum.find(actions, &(&1.title == title)) do
+      nil -> flunk("no action titled #{inspect(title)}")
+      action -> {action.severity, Enum.map(action.groups, &{&1[:label], Enum.map(&1.items, fn item -> item.text end)})}
+    end
+  end
+
+  describe "actions/2" do
+    setup do
+      graph = graph_of([CustomerContact, User, Membership])
+      %{actions: SecurityPosture.actions(graph, [])}
+    end
+
+    test "counts each field, resource and action as a to-do, most severe first", %{actions: actions} do
+      assert Enum.map(actions, & &1.severity) == [:high, :medium, :medium, :low, :low]
+      assert Action.tally(actions) == %{high: 2, medium: 2, low: 4, total: 8, worst: :high}
+    end
+
+    test "puts sensitive fields anyone can read first, under their resource", %{actions: actions} do
+      assert action(actions, "Sensitive fields anyone can read") ==
+               {:high, [{"Helpdesk.CustomerContact", ["email", "phone"]}]}
+    end
+
+    test "lists resources with no policies by domain, saying how to add them", %{actions: actions} do
+      assert action(actions, "Resources with no policies") == {:medium, [{"Helpdesk", ["CustomerContact"]}]}
+      assert Enum.find(actions, &(&1.title == "Resources with no policies")).fix =~ "Ash.Policy.Authorizer"
+    end
+
+    test "lists actions anonymous callers may reach on resources with policies", %{actions: actions} do
+      assert action(actions, "Actions anonymous callers can reach") == {:medium, [{"Accounts.Membership", ["revoke"]}]}
+    end
+
+    test "lists sensitive fields signed-in actors can read without a field policy", %{actions: actions} do
+      assert {:low, [{"Accounts.User", fields}]} = action(actions, "Sensitive fields without field policies")
+      assert "date_of_birth" in fields
+    end
+
+    test "lists bypasses to review", %{actions: actions} do
+      assert {:low, [{nil, resources}]} = action(actions, "Bypass policies to review")
+      assert "Accounts.User" in resources
+      assert "Accounts.Membership" in resources
+    end
+
+    test "links each item to its vertex", %{actions: actions} do
+      %{groups: [%{id: resource_id, items: [%{id: field_id} | _fields]}]} =
+        Enum.find(actions, &(&1.title == "Sensitive fields anyone can read"))
+
+      assert resource_id == "ash-resource:demo-helpdesk-customer-contact"
+      assert field_id == "ash-attribute:demo-helpdesk-customer-contact:email"
+    end
+
+    test "has nothing to do with no resources" do
+      assert SecurityPosture.actions(Graph.new(), []) == []
     end
   end
 
   describe "posture/1" do
     setup do
-      graph = graph_of([Demo.Helpdesk.CustomerContact, User, Demo.Accounts.Membership])
+      graph = graph_of([CustomerContact, User, Membership])
       %{doc: graph |> SecurityPosture.analyse() |> posture()}
     end
 
-    test "says how many things there are to do, without explaining itself first", %{doc: doc} do
-      assert text(doc, ".report-status") == "5 things to do"
+    test "shows what there is to know, not what there is to do", %{doc: doc} do
+      assert doc |> LazyHTML.query(".report-todo") |> Enum.empty?()
       refute LazyHTML.text(doc) =~ "This report reviews"
     end
 
-    test "puts sensitive fields anyone can read first", %{doc: doc} do
-      [first | _todos] = doc |> LazyHTML.query(".report-todo") |> Enum.to_list()
-
-      assert LazyHTML.text(first) =~ "Sensitive fields anyone can read"
-      assert todo(doc, :high, "Sensitive fields anyone can read") =~ "Helpdesk.CustomerContact email phone"
-    end
-
-    test "lists resources with no policies, saying how to add them", %{doc: doc} do
-      todo = todo(doc, :medium, "Resources with no policies")
-
-      # grouped by domain, each named within it
-      assert todo =~ "Helpdesk CustomerContact"
-      refute todo =~ "User"
-      assert todo =~ "Ash.Policy.Authorizer"
-    end
-
-    test "lists actions anonymous callers may reach on resources with policies", %{doc: doc} do
-      assert todo(doc, :medium, "Actions anonymous callers can reach") =~ "Accounts.Membership revoke"
-    end
-
-    test "lists sensitive fields signed-in actors can read without a field policy", %{doc: doc} do
-      assert todo(doc, :low, "Sensitive fields without field policies") =~ "Accounts.User"
-    end
-
-    test "lists bypasses to review", %{doc: doc} do
-      todo = todo(doc, :low, "Bypass policies to review")
-
-      assert todo =~ "Accounts.User"
-      assert todo =~ "Accounts.Membership"
+    test "shows who can reach what, and every resource's posture, open to scroll through", %{doc: doc} do
+      assert doc |> LazyHTML.query("details#reach[open] table.report-table") |> Enum.count() == 1
+      assert doc |> LazyHTML.query("details#resources[open] table.report-table") |> Enum.count() == 1
+      # a resource no actor can reach says so, rather than listing nothing
+      assert text(doc, "#reach") =~ "none"
     end
 
     test "links each resource to its page", %{doc: doc} do
       assert doc
-             |> LazyHTML.query("a.report-chip[href='/c/architect/ash-resource:demo-accounts-user']")
+             |> LazyHTML.query("a.report-link[href='/c/architect/ash-resource:demo-accounts-user']")
              |> Enum.count() > 0
     end
 
-    test "keeps who can reach what, and every resource's posture, in closed sections", %{doc: doc} do
-      assert doc |> LazyHTML.query("details#reach.report-section:not([open]) table.report-table") |> Enum.count() == 1
-      assert doc |> LazyHTML.query("details#resources.report-section:not([open]) table.report-table") |> Enum.count() == 1
-      # a resource no actor can reach says so, rather than listing nothing
-      assert text(doc, "#reach") =~ "none"
+    test "says so when there are no resources" do
+      doc = Graph.new() |> SecurityPosture.analyse() |> posture()
+
+      assert text(doc, ".report-status-meta") =~ "No Ash resources found"
     end
-  end
-
-  test "flags a domain that checks policies only when asked, first of all" do
-    analysis =
-      [User]
-      |> graph_of()
-      |> SecurityPosture.analyse()
-      |> Map.put(:lax_domains, [%{name: "Accounts", id: "ash-domain:demo-accounts"}])
-
-    doc = posture(analysis)
-
-    assert todo(doc, :high, "Domains that check policies only when asked") =~ "Accounts"
-    assert todo(doc, :high, "Domains that check policies only when asked") =~ "authorize :by_default"
-  end
-
-  test "says there's nothing to do with no resources" do
-    doc = Graph.new() |> SecurityPosture.analyse() |> posture()
-
-    assert text(doc, ".report-status[data-tone='ok']") == "Nothing to do"
-    assert text(doc, ".report-status-meta") =~ "No Ash resources found"
   end
 
   describe "render" do

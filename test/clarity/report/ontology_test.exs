@@ -45,10 +45,10 @@ defmodule Clarity.Report.OntologyTest do
     do: doc |> LazyHTML.query(selector) |> Enum.map(&(&1 |> LazyHTML.text() |> String.split() |> Enum.join(" ")))
 
   describe "render" do
-    test "leads with what to do, without explaining itself first" do
+    test "shows what there is to know, without explaining itself first" do
       doc = User |> graph_for() |> render_report(Architect.make_lens()) |> doc()
 
-      assert text(doc, ".report-status") =~ "to do"
+      assert doc |> LazyHTML.query(".report-todo") |> Enum.empty?()
       refute LazyHTML.text(doc) =~ "This report is"
       # executive dashboard: KPI cards + a stacked bar
       assert text(doc, "figcaption") == "Documentation coverage"
@@ -61,9 +61,9 @@ defmodule Clarity.Report.OntologyTest do
       assert doc |> texts("#entities tbody tr td") |> Enum.take(2) == ["Demo.Accounts.User", "Demo.Accounts"]
       # Ash's own data layers by their short name
       assert "Ets" in texts(doc, "#entities tbody td")
-      # the dictionary waits, closed, below the to-dos
-      assert doc |> LazyHTML.query("details#entities:not([open])") |> Enum.count() == 1
-      assert doc |> LazyHTML.query("details#terms:not([open])") |> Enum.count() == 1
+      # open, to scroll through
+      assert doc |> LazyHTML.query("details#entities[open]") |> Enum.count() == 1
+      assert doc |> LazyHTML.query("details#terms[open]") |> Enum.count() == 1
     end
 
     test "names domains within the application, and entities and terms within what holds them, when short" do
@@ -120,26 +120,12 @@ defmodule Clarity.Report.OntologyTest do
       assert "required" in tags
     end
 
-    test "flags undocumented terms, and lists them, private ones too, as a to-do" do
+    test "flags undocumented terms in the dictionary" do
       doc = User |> graph_for() |> render_report(Architect.make_lens()) |> doc()
 
       # the documented term shows its description
       assert text(doc, "#terms") =~ "Lorem ipsum"
-      # undocumented public terms are marked in the dictionary...
       assert "undocumented" in texts(doc, "#terms .report-tag")
-      # ...and listed in the to-do, private ones included but faded
-      todo = ".report-todo[data-severity='low']"
-      assert text(doc, "#{todo} .report-todo-title") =~ "Terms without a description"
-      assert "org" in texts(doc, "#{todo} .report-chip-muted")
-      assert "api_key" in texts(doc, "#{todo} .report-chip")
-    end
-
-    test "lists resources with no description as a to-do" do
-      doc = OntologyFixture |> graph_for() |> render_report(Architect.make_lens()) |> doc()
-      todo = ".report-todo[data-severity='medium']"
-
-      assert text(doc, "#{todo} .report-todo-title") =~ "Resources without a description"
-      assert texts(doc, "#{todo} .report-chip") == ["Clarity.Test.OntologyFixture"]
     end
 
     test "reports documentation coverage per entity and overall" do
@@ -166,11 +152,40 @@ defmodule Clarity.Report.OntologyTest do
       assert html =~ "ash-type:ash-type-atom"
     end
 
-    test "says there's nothing to do with no resources" do
+    test "says so with no resources" do
       doc = Graph.new() |> render_report(Architect.make_lens()) |> doc()
 
-      assert text(doc, ".report-status[data-tone='ok']") == "Nothing to do"
       assert text(doc, ".report-status-meta") =~ "No Ash resources found"
+    end
+  end
+
+  describe "actions/2" do
+    test "lists each undocumented term as a to-do, under its resource, private ones faded" do
+      [action] = User |> graph_for() |> Ontology.actions([])
+
+      assert action.severity == :low
+      assert action.title == "Terms without a description"
+      assert [%{label: "Demo.Accounts.User", id: "ash-resource:demo-accounts-user", items: items}] = action.groups
+      assert %{text: "org", muted?: true} = Enum.find(items, &(&1.text == "org"))
+      assert %{muted?: false} = Enum.find(items, &(&1.text == "email"))
+    end
+
+    test "lists each resource with no description as a to-do" do
+      [undescribed, _terms] = OntologyFixture |> graph_for() |> Ontology.actions([])
+
+      assert undescribed.severity == :medium
+      assert undescribed.title == "Resources without a description"
+      assert [%{items: [%{text: "Clarity.Test.OntologyFixture"}]}] = undescribed.groups
+    end
+
+    test "names resources by their domain too, when short" do
+      [action] = User |> graph_for() |> Ontology.actions(name_style: :short)
+
+      assert [%{label: "Accounts.User"}] = action.groups
+    end
+
+    test "has nothing to do with no resources" do
+      assert Ontology.actions(Graph.new(), []) == []
     end
   end
 end

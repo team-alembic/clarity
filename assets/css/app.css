@@ -388,6 +388,52 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   @apply text-base-light-600 dark:text-base-dark-300;
 }
 
+a.report-status-link {
+  @apply transition-colors hover:text-primary-light dark:hover:text-primary-dark;
+}
+
+/* How many to-dos at each severity, tinted as the severity labels are. */
+.report-tallies {
+  @apply ml-1 flex flex-wrap items-center gap-1.5 text-sm font-medium;
+}
+
+.report-tally,
+.count-badge {
+  @apply inline-flex items-center rounded-full px-2 py-px tabular-nums;
+  @apply bg-base-light-100 text-base-light-700 dark:bg-base-dark-700 dark:text-base-dark-200;
+}
+
+:is(.report-tally, .count-badge)[data-severity="high"] {
+  @apply bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300;
+}
+
+:is(.report-tally, .count-badge)[data-severity="medium"] {
+  @apply bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300;
+}
+
+:is(.report-tally, .count-badge)[data-severity="low"] {
+  @apply bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300;
+}
+
+/* A count of to-dos beside a row in the sidebar, or on the activity bar. */
+.count-badge {
+  @apply ml-auto shrink-0 px-1.5 text-[0.6875rem] font-semibold leading-4;
+}
+
+.activity-item .count-badge {
+  @apply absolute -right-1 -top-0.5 ml-0 min-w-4 justify-center px-1 text-[0.625rem] ring-2;
+  @apply ring-base-light-200 dark:ring-base-dark-850;
+}
+
+/* A to-do on a line of its own: what it is, a note, and any details below. */
+.report-todo-note {
+  @apply font-mono text-[0.8125rem] tabular-nums text-base-light-700 dark:text-base-dark-200;
+}
+
+.report-todo-detail {
+  @apply basis-full pl-1 text-sm text-base-light-600 dark:text-base-dark-300;
+}
+
 .report-status-meta {
   @apply text-xs text-base-light-500 dark:text-base-dark-400;
 }
@@ -638,6 +684,10 @@ a.report-chip {
 
 .report-tag[data-tone="error"] {
   @apply bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300;
+}
+
+.report-tag[data-tone="info"] {
+  @apply bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300;
 }
 
 .report-tag[data-tone="ok"] {

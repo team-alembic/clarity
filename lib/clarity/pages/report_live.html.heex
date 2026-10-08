@@ -18,14 +18,20 @@
   >
   </div>
 
-  <.activity_bar prefix={@prefix} lenses={@lenses} section={:reports} />
+  <.activity_bar prefix={@prefix} lenses={@lenses} section={@section} tallies={@action_tallies} />
 
   <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 px-2 pb-3 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
     <div class="nav-heading">
-      <span>Reports</span>
+      <span>{if @section == :actions, do: "Actions", else: "Reports"}</span>
+      <Components.count_badge
+        :if={@section == :actions}
+        tally={category_tally(@action_tallies, @reports)}
+      />
     </div>
     <p :if={@reports == []} id="no-reports" class="px-1 text-sm italic opacity-70">
-      No reports are registered.
+      {if @section == :actions,
+        do: "No report lists things to do.",
+        else: "No reports are registered."}
     </p>
     <ul id="reports-tree" class="clarity-tree text-sm">
       <%= for {category, reports} <- @report_groups do %>
@@ -38,22 +44,36 @@
               open
               phx-mounted={JS.ignore_attributes(["open"])}
             >
-              <summary class="flex items-center cursor-pointer select-none">
+              <summary class="flex items-center cursor-pointer select-none pr-1">
                 <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
                 <span class="truncate px-1 text-base-light-500 dark:text-base-dark-400">
                   {category}
                 </span>
+                <Components.count_badge
+                  :if={@section == :actions}
+                  tally={category_tally(@action_tallies, reports)}
+                />
               </summary>
               <ul class="tree-children">
                 <li :for={report <- reports}>
-                  <.report_link report={report} selected={@selected} prefix={@prefix} />
+                  <.report_link
+                    report={report}
+                    selected={@selected}
+                    path={section_path(@prefix, @section, report)}
+                    tally={@section == :actions && tally_for(@action_tallies, report)}
+                  />
                 </li>
               </ul>
             </details>
           </li>
         <% else %>
           <li :for={report <- reports}>
-            <.report_link report={report} selected={@selected} prefix={@prefix} />
+            <.report_link
+              report={report}
+              selected={@selected}
+              path={section_path(@prefix, @section, report)}
+              tally={@section == :actions && tally_for(@action_tallies, report)}
+            />
           </li>
         <% end %>
       <% end %>
@@ -74,7 +94,7 @@
     <div class="title bg-base-light-50 dark:bg-base-dark-900 border-b border-base-light-300 dark:border-base-dark-700 px-4 py-3">
       <nav class="breadcrumbs">
         <ol class="flex flex-wrap text-xs text-base-light-600 dark:text-base-dark-400 space-x-1">
-          <li>Reports</li>
+          <li>{if @section == :actions, do: "Actions", else: "Reports"}</li>
           <li :if={Clarity.Report.category(@selected)} class="flex items-center">
             <span class="mx-1 text-base-light-500 dark:text-base-dark-600">→</span>
             {Clarity.Report.category(@selected)}
@@ -93,26 +113,57 @@
     </div>
 
     <div class="content">
-      <div class="max-w-[100ch] p-6">
+      <div class="max-w-[100ch] space-y-6 p-6">
         <p
           :if={@working?}
           id="report-working"
-          class="mb-6 text-sm text-base-light-600 dark:text-base-dark-400"
+          class="text-sm text-base-light-600 dark:text-base-dark-400"
         >
-          Clarity is still introspecting, so this report may be incomplete. It updates
-          when introspection finishes.
+          Clarity is still introspecting, so this may be incomplete. It updates when
+          introspection finishes.
         </p>
 
-        <.live_component
-          module={@selected}
-          id="report"
-          graph={@graph}
-          version={@version}
-          linking={@linking}
-          name_style={@name_style}
-          lens={@lens}
-          prefix={@prefix}
-        />
+        <%= if @section == :actions do %>
+          <.async_result :let={found} assign={@report_actions}>
+            <:loading>
+              <Components.status tally={Action.empty_tally()} pending="Working out what to do…" />
+            </:loading>
+            <:failed>
+              <p class="text-sm text-base-light-600 dark:text-base-dark-400">
+                Clarity couldn't work out what to do.
+              </p>
+            </:failed>
+
+            <div id="report-actions" class="space-y-6">
+              <Components.status tally={Action.tally(found.actions)} pending={found.pending} />
+              <Components.actions actions={found.actions} prefix={@prefix} lens={@lens} />
+              <.link
+                id="read-report"
+                patch={section_path(@prefix, :reports, @selected)}
+                class="report-status-meta inline-block hover:text-primary-light dark:hover:text-primary-dark"
+              >
+                Read the {@selected.name()} report →
+              </.link>
+            </div>
+          </.async_result>
+        <% else %>
+          <Components.status
+            :if={tally_for(@action_tallies, @selected)}
+            tally={tally_for(@action_tallies, @selected)}
+            patch={section_path(@prefix, :actions, @selected)}
+          />
+
+          <.live_component
+            module={@selected}
+            id="report"
+            graph={@graph}
+            version={@version}
+            linking={@linking}
+            name_style={@name_style}
+            lens={@lens}
+            prefix={@prefix}
+          />
+        <% end %>
       </div>
     </div>
   <% end %>

@@ -10,7 +10,13 @@
         class="header z-10"
       />
 
-      <.activity_bar prefix={@prefix} lenses={@lenses} lens={lens} section={:explore} />
+      <.activity_bar
+        prefix={@prefix}
+        lenses={@lenses}
+        lens={lens}
+        section={:explore}
+        tallies={@action_tallies}
+      />
 
       <%!-- One shared element for every hover hint; the Tooltip hook owns its content. --%>
       <div

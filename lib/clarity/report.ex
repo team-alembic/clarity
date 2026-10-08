@@ -25,9 +25,10 @@ defmodule Clarity.Report do
     * `name_style` - `:short` to name modules within what holds them where the
       report shows that, or `:qualified` in full (`t:Clarity.Vertex.Name.style/0`)
 
-  Reports lead with what needs doing: a status line, then to-dos most severe
-  first, each with what it affects and the fix, and reference data below in
-  closed sections, built from `Clarity.Report.Components`.
+  A report is for reading: what there is to know, in sections built from
+  `Clarity.Report.Components`. What there is to do it lists separately, with
+  `c:actions/2`: Clarity shows those under Actions in the activity bar, with a
+  badge counting them, one per item, by severity.
 
   Reports are registered per-application under `:clarity_reports`:
 
@@ -54,7 +55,20 @@ defmodule Clarity.Report do
   @callback description() :: String.t() | nil
   @callback category() :: String.t()
 
-  @optional_callbacks [description: 0, category: 0]
+  @doc """
+  The things to do the report finds in `graph`, most severe first, shown
+  under Actions in the activity bar and counted in its badges. `opts` holds
+  the viewer's `name_style`.
+  """
+  @callback actions(graph :: Clarity.Graph.t(), opts :: keyword()) :: [Clarity.Report.Action.t()]
+
+  @doc """
+  What the report is still waiting for before its actions are complete, e.g.
+  a database download, or `nil` once they are.
+  """
+  @callback pending(graph :: Clarity.Graph.t()) :: String.t() | nil
+
+  @optional_callbacks [description: 0, category: 0, actions: 2, pending: 1]
 
   @doc """
   All registered reports, sorted by name.
@@ -77,6 +91,31 @@ defmodule Clarity.Report do
 
     Enum.sort_by(categorised, &elem(&1, 0)) ++
       if(uncategorised == [], do: [], else: [{nil, uncategorised}])
+  end
+
+  @doc """
+  The registered reports with actions, grouped as `grouped/0` groups them.
+  """
+  @spec grouped_with_actions() :: [{String.t() | nil, [module()]}]
+  def grouped_with_actions do
+    for {category, reports} <- grouped(),
+        reports = Enum.filter(reports, &actions?/1),
+        reports != [],
+        do: {category, reports}
+  end
+
+  @doc "Whether the report lists things to do (`c:actions/2`)."
+  @spec actions?(module()) :: boolean()
+  def actions?(report),
+    do: Code.ensure_loaded?(report) and function_exported?(report, :actions, 2)
+
+  @doc """
+  What the report is still waiting for (`c:pending/1`), or `nil`.
+  """
+  @spec pending(module(), Clarity.Graph.t()) :: String.t() | nil
+  def pending(report, graph) do
+    if Code.ensure_loaded?(report) and function_exported?(report, :pending, 1),
+      do: report.pending(graph)
   end
 
   @doc """

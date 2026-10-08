@@ -69,6 +69,54 @@ defmodule Clarity.ReportLiveTest do
       end
     end
 
+    test "the activity bar has Actions above Reports", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/reports/supply-chain")
+
+      assert has_element?(view, "a#activity-actions[href='/actions']")
+
+      assert view
+             |> render()
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query(".activity-item")
+             |> Enum.map(&LazyHTML.attribute(&1, "id"))
+             |> List.flatten()
+             |> Enum.take(-2) ==
+               ["activity-actions", "activity-reports"]
+    end
+
+    test "a report counts its things to do, linking to them under Actions", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/reports/security-posture")
+      render_async(view)
+
+      # The test graph has no Ash resources, so there's nothing to do.
+      assert has_element?(view, ".report-status[data-tone='ok']", "Nothing to do")
+    end
+  end
+
+  describe "ReportLive under Actions" do
+    test "the index opens on the first report with things to do", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/actions/ontology"}}} = live(conn, "/actions")
+    end
+
+    test "lists only the reports with things to do, in the same tree", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/actions/supply-chain")
+
+      assert has_element?(view, ".nav-heading", "Actions")
+      assert has_element?(view, "#report-category-security a[href='/actions/security-posture']")
+      assert has_element?(view, "#reports-tree a[aria-current=page]", "Supply chain security")
+      assert has_element?(view, "button#activity-actions[aria-current=page]")
+    end
+
+    test "shows a report's things to do, and links to the report", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/actions/security-posture")
+      render_async(view)
+
+      assert has_element?(view, "#report-actions .report-status", "Nothing to do")
+      assert has_element?(view, "a#read-report[href='/reports/security-posture']")
+    end
+  end
+
+  describe "ReportLive sidebar" do
     test "the header's menu button shows the sidebar on narrow screens", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/reports/supply-chain")
 

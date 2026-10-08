@@ -8,6 +8,7 @@ defmodule Clarity.CoreComponents do
 
   alias Clarity.Content
   alias Clarity.Perspective.Lens
+  alias Clarity.Report.Action
   alias Clarity.Tooltip
   alias Clarity.Vertex
   alias Phoenix.LiveView.JS
@@ -37,7 +38,15 @@ defmodule Clarity.CoreComponents do
   attr :prefix, :string, required: true, doc: "The URL prefix for links"
   attr :lenses, :list, required: true, doc: "Every lens, in the order shown"
   attr :lens, Lens, default: nil, doc: "The lens explored through; nil on the reports"
-  attr :section, :atom, required: true, values: [:explore, :reports], doc: "The section shown"
+
+  attr :section, :atom,
+    required: true,
+    values: [:explore, :actions, :reports],
+    doc: "The section shown"
+
+  attr :tallies, :any,
+    default: nil,
+    doc: "Each report's things to do counted (`Clarity.Report.Actions.tallies/1`), maybe async"
 
   @spec activity_bar(assigns :: Socket.assigns()) :: Rendered.t()
   def activity_bar(assigns) do
@@ -57,6 +66,15 @@ defmodule Clarity.CoreComponents do
       </.activity_item>
       <hr class="activity-divider" />
       <.activity_item
+        id="activity-actions"
+        label="Actions"
+        current={@section == :actions}
+        to={Path.join([@prefix, "actions"])}
+      >
+        <.icon_list_checks class="size-6" />
+        <Clarity.Report.Components.count_badge tally={total_tally(@tallies)} />
+      </.activity_item>
+      <.activity_item
         id="activity-reports"
         label="Reports"
         current={@section == :reports}
@@ -67,6 +85,14 @@ defmodule Clarity.CoreComponents do
     </nav>
     """
   end
+
+  # Every report's things to do, summed, once they've been counted.
+  @spec total_tally(term()) :: Action.tally() | nil
+  defp total_tally(%Phoenix.LiveView.AsyncResult{ok?: true, result: tallies}),
+    do: total_tally(tallies)
+
+  defp total_tally(%{} = tallies) when not is_struct(tallies), do: Action.sum(Map.values(tallies))
+  defp total_tally(_tallies), do: nil
 
   attr :id, :string, required: true
   attr :label, :string, required: true

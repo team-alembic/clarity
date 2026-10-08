@@ -4,6 +4,8 @@ defmodule Clarity.Pages.Setup do
   import Phoenix.Component
   import Phoenix.LiveView
 
+  alias Clarity.Report.Actions
+  alias Phoenix.LiveView.AsyncResult
   alias Phoenix.LiveView.Socket
 
   @doc false
@@ -34,9 +36,35 @@ defmodule Clarity.Pages.Setup do
         clarity_pid: Map.get(session, "clarity_pid", Clarity.Server)
       )
       |> attach_hook(:settings_handler, :handle_event, &handle_settings_event/3)
+      |> assign_action_tallies()
+      |> attach_hook(:action_tallies, :handle_info, &handle_work_completed/2)
 
     {:cont, socket}
   end
+
+  # Every page's activity bar counts the things to do the reports find. The
+  # counting runs off the page (some reports' actions take a while), and runs
+  # again when introspection finishes; Clarity.Report.Actions caches it per
+  # change to the graph, so pages share the work.
+  @spec assign_action_tallies(Socket.t()) :: Socket.t()
+  defp assign_action_tallies(socket) do
+    if connected?(socket) do
+      clarity_pid = socket.assigns.clarity_pid
+
+      assign_async(socket, :action_tallies, fn ->
+        graph = Clarity.get(clarity_pid, :partial).graph
+        {:ok, %{action_tallies: Actions.tallies(graph)}}
+      end)
+    else
+      assign(socket, :action_tallies, AsyncResult.loading())
+    end
+  end
+
+  @spec handle_work_completed(term(), Socket.t()) :: {:cont, Socket.t()}
+  defp handle_work_completed({:clarity, :work_completed}, socket),
+    do: {:cont, assign_action_tallies(socket)}
+
+  defp handle_work_completed(_message, socket), do: {:cont, socket}
 
   @spec handle_settings_event(event :: String.t(), params :: map(), socket :: Socket.t()) ::
           {:cont, Socket.t()} | {:halt, Socket.t()}

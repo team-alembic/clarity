@@ -3,13 +3,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @moduledoc """
     Ontology report: the domain vocabulary declared by the project's Ash
     resources — every entity (resource) and the terms it defines (attributes,
-    calculations, aggregates, and relationships).
+    calculations, aggregates, and relationships), with names, types,
+    constraints and descriptions read from the code, so always in sync.
+    Actions are left out: they are verbs, and this is a dictionary of nouns.
 
-    It leads with what to do about it: the resources with no description, and
-    the terms still missing one, private ones included. The dictionary itself
-    — names, types, constraints and descriptions read from the code, so always
-    in sync — sits below in closed sections. Actions are left out: they are
-    verbs, and this is a dictionary of nouns.
+    Its actions (`actions/2`) are the documentation to write: resources
+    without a description, and terms without one, private ones included.
     """
 
     @behaviour Clarity.Report
@@ -22,6 +21,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Resource.Relationships
     alias Clarity.Autolink
     alias Clarity.Graph
+    alias Clarity.Report.Action
     alias Clarity.Report.Charts
     alias Clarity.Report.Components
     alias Clarity.Vertex
@@ -77,6 +77,57 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Clarity.Report
     def category, do: "Architecture"
 
+    @impl Clarity.Report
+    def actions(graph, opts) do
+      name_style = Keyword.get(opts, :name_style, :qualified)
+      entities = entities(graph)
+      undescribed = Enum.filter(entities, &(&1.moduledoc == nil))
+
+      gaps =
+        entities
+        |> Enum.reject(&(&1.undocumented == []))
+        |> Enum.sort_by(&(-length(&1.undocumented)))
+
+      Enum.reject(
+        [
+          undescribed != [] &&
+            %Action{
+              severity: :medium,
+              title: "Resources without a description",
+              hint: "A resource's description is the first paragraph of its @moduledoc.",
+              fix: "Add a `@moduledoc` saying what each one is.",
+              groups: [
+                %{items: Enum.map(undescribed, &%{text: todo_name(&1, name_style), id: &1.id})}
+              ]
+            },
+          gaps != [] &&
+            %Action{
+              severity: :low,
+              title: "Terms without a description",
+              hint:
+                "Every undocumented attribute, calculation, aggregate and relationship, private ones (faded) included; most first.",
+              fix: ~s(Add `description "…"` to each.),
+              groups:
+                for entity <- gaps do
+                  %{
+                    label: todo_name(entity, name_style),
+                    id: entity.id,
+                    items:
+                      Enum.map(entity.undocumented, fn gap ->
+                        %{
+                          text: gap.name,
+                          muted?: gap.private?,
+                          hint: if(gap.private?, do: "Private")
+                        }
+                      end)
+                  }
+                end
+            }
+        ],
+        &(&1 == false)
+      )
+    end
+
     @impl Phoenix.LiveComponent
     def update(assigns, socket) do
       entities = entities(assigns.graph)
@@ -92,11 +143,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          # Built once for every description the report renders.
          index: Autolink.index(assigns.graph, linking),
          linking: linking,
-         undescribed: Enum.filter(entities, &(&1.moduledoc == nil)),
-         gaps:
-           entities
-           |> Enum.reject(&(&1.undocumented == []))
-           |> Enum.sort_by(&(-length(&1.undocumented))),
          terms: length(terms),
          documented: Enum.count(terms, &(&1.description != nil))
        )}
@@ -104,19 +150,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @impl Phoenix.LiveComponent
     def render(assigns) do
-      assigns =
-        assign(assigns,
-          todos: Enum.count([assigns.undescribed, assigns.gaps], &(&1 != [])),
-          # A resource's first few gaps; the rest behind "+N more".
-          shown_gaps: 6,
-          gap_count: Enum.sum_by(assigns.gaps, &length(&1.undocumented))
-        )
-
       ~H"""
       <section class="space-y-6">
-        <Components.status count={@todos}>
-          <:meta :if={@entities == []}>No Ash resources found.</:meta>
-        </Components.status>
+        <p :if={@entities == []} class="report-status-meta">No Ash resources found.</p>
 
         <div :if={@entities != []} class="space-y-4">
           <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -137,49 +173,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             ]}
           />
         </div>
-
-        <Components.todo_list :if={@todos > 0}>
-          <Components.todo
-            :if={@undescribed != []}
-            severity={:medium}
-            title="Resources without a description"
-            count={length(@undescribed)}
-            hint="A resource's description is the first paragraph of its @moduledoc."
-          >
-            <Components.chip
-              :for={entity <- @undescribed}
-              patch={Components.path(@prefix, @lens, entity.id)}
-            >
-              {todo_name(entity, @name_style)}
-            </Components.chip>
-            <:fix>Add a <code>@moduledoc</code> saying what each one is.</:fix>
-          </Components.todo>
-
-          <Components.todo
-            :if={@gaps != []}
-            severity={:low}
-            title="Terms without a description"
-            count={@gap_count}
-            hint="Every undocumented attribute, calculation, aggregate and relationship, private ones (faded) included; most first."
-          >
-            <Components.group :for={entity <- @gaps}>
-              <:label>
-                <.link patch={Components.path(@prefix, @lens, entity.id)} class="report-link">
-                  {todo_name(entity, @name_style)}
-                </.link>
-                <span class="report-todo-count">{length(entity.undocumented)}</span>
-              </:label>
-              <.gap :for={gap <- Enum.take(entity.undocumented, @shown_gaps)} gap={gap} />
-              <Components.more
-                :if={length(entity.undocumented) > @shown_gaps}
-                count={length(entity.undocumented) - @shown_gaps}
-              >
-                <.gap :for={gap <- Enum.drop(entity.undocumented, @shown_gaps)} gap={gap} />
-              </Components.more>
-            </Components.group>
-            <:fix>Add <code>description "…"</code> to each.</:fix>
-          </Components.todo>
-        </Components.todo_list>
 
         <Components.section
           :if={@entities != []}
@@ -301,17 +294,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         vertex={%Resource{resource: @entity.module}}
         linking={@linking}
       />
-      """
-    end
-
-    attr :gap, :map, required: true
-
-    @spec gap(map()) :: Rendered.t()
-    defp gap(assigns) do
-      ~H"""
-      <Components.chip muted={@gap.private?} hint={if(@gap.private?, do: "Private")}>
-        {@gap.name}
-      </Components.chip>
       """
     end
 

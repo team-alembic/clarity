@@ -1,9 +1,12 @@
 defmodule Clarity.Report.Components do
   @moduledoc """
-  The building blocks every report shares, so each reads the same way: a
-  `status/1` line saying how much there is to do, a list of `todo/1` items
-  (most severe first), each naming what it affects with `chip/1`s and how to
-  fix it, and the reference data below in closed `section/1`s.
+  The building blocks every report shares, so each reads the same way.
+
+  A report's things to do (`Clarity.Report.Action`s) render with `actions/1`:
+  `todo/1`s, most severe first, each naming what it affects with `chip/1`s
+  and how to fix it. A `status/1` line counts them by severity, and a
+  `count_badge/1` sums them up wherever they're listed. What there is to know
+  goes in `section/1`s with `.report-table`s.
 
   Styled by the `.report-*` classes in `app.css`.
   """
@@ -11,41 +14,90 @@ defmodule Clarity.Report.Components do
   use Clarity.Web, :html
 
   alias Clarity.Perspective.Lens
+  alias Clarity.Report.Action
   alias Clarity.Tooltip
   alias Phoenix.LiveView.Rendered
 
-  @typedoc "How soon a to-do wants doing."
-  @type severity() :: :high | :medium | :low
-
-  attr :count, :integer, required: true, doc: "How many to-dos the report lists"
+  attr :tally, :map, required: true, doc: "The to-dos counted by severity, `Action.tally/1`"
   attr :pending, :string, default: nil, doc: "What is still being checked, if anything"
+  attr :patch, :string, default: nil, doc: "Where the to-dos are listed, if elsewhere"
   slot :meta, doc: "Small print below, e.g. how fresh the data is"
 
-  @doc "The report's verdict, in a line: how many things there are to do."
+  @doc """
+  The verdict, in a line: how many things there are to do, and how many at
+  each severity.
+  """
   @spec status(map()) :: Rendered.t()
   def status(assigns) do
     ~H"""
     <div class="report-status-block">
-      <p class="report-status" data-tone={status_tone(@count, @pending)}>
-        <.icon_check :if={@count == 0 and @pending == nil} class="size-5" />
+      <p class="report-status" data-tone={status_tone(@tally, @pending)}>
+        <.icon_check :if={@tally.total == 0 and @pending == nil} class="size-5" />
         <.icon_spinner :if={@pending} class="size-5 animate-spin" />
-        {status_text(@count, @pending)}
+        <.link
+          :if={@patch && @pending == nil && @tally.total > 0}
+          patch={@patch}
+          class="report-status-link"
+        >
+          {status_text(@tally, nil)} →
+        </.link>
+        <span :if={!(@patch && @pending == nil && @tally.total > 0)}>
+          {status_text(@tally, @pending)}
+        </span>
+        <span :if={@pending == nil and @tally.total > 0} class="report-tallies">
+          <span
+            :for={severity <- Action.severities()}
+            :if={@tally[severity] > 0}
+            class="report-tally"
+            data-severity={severity}
+          >
+            {@tally[severity]} {severity}
+          </span>
+        </span>
       </p>
       <p :for={meta <- @meta} class="report-status-meta">{render_slot(meta)}</p>
     </div>
     """
   end
 
-  @spec status_tone(non_neg_integer(), String.t() | nil) :: String.t()
-  defp status_tone(_count, pending) when is_binary(pending), do: "pending"
-  defp status_tone(0, nil), do: "ok"
-  defp status_tone(_count, nil), do: "attention"
+  @spec status_tone(Action.tally(), String.t() | nil) :: String.t()
+  defp status_tone(_tally, pending) when is_binary(pending), do: "pending"
+  defp status_tone(%{total: 0}, nil), do: "ok"
+  defp status_tone(_tally, nil), do: "attention"
 
-  @spec status_text(non_neg_integer(), String.t() | nil) :: String.t()
-  defp status_text(_count, pending) when is_binary(pending), do: pending
-  defp status_text(0, nil), do: "Nothing to do"
-  defp status_text(1, nil), do: "1 thing to do"
-  defp status_text(count, nil), do: "#{count} things to do"
+  @spec status_text(Action.tally(), String.t() | nil) :: String.t()
+  defp status_text(_tally, pending) when is_binary(pending), do: pending
+  defp status_text(%{total: 0}, nil), do: "Nothing to do"
+  defp status_text(%{total: 1}, nil), do: "1 thing to do"
+  defp status_text(%{total: total}, nil), do: "#{total} things to do"
+
+  attr :tally, :map, default: nil, doc: "The to-dos counted, or nil while counting"
+  attr :class, :any, default: nil
+
+  @doc """
+  The number of things to do, tinted by the most severe of them; nothing
+  when there are none, or while they're being counted.
+  """
+  @spec count_badge(map()) :: Rendered.t()
+  def count_badge(assigns) do
+    ~H"""
+    <span
+      :if={@tally && @tally.total > 0}
+      class={["count-badge", @class]}
+      data-severity={@tally.worst}
+      {Tooltip.attrs(tally_hint(@tally))}
+    >
+      {if @tally.total > 999, do: "999+", else: @tally.total}
+    </span>
+    """
+  end
+
+  @spec tally_hint(Action.tally()) :: String.t()
+  defp tally_hint(tally) do
+    Action.severities()
+    |> Enum.filter(&(tally[&1] > 0))
+    |> Enum.map_join(" · ", &"#{tally[&1]} #{&1}")
+  end
 
   slot :inner_block, required: true
 
@@ -83,7 +135,7 @@ defmodule Clarity.Report.Components do
     """
   end
 
-  @spec severity_label(severity()) :: String.t()
+  @spec severity_label(Action.severity()) :: String.t()
   defp severity_label(:high), do: "High"
   defp severity_label(:medium), do: "Medium"
   defp severity_label(:low), do: "Low"
@@ -164,12 +216,12 @@ defmodule Clarity.Report.Components do
   attr :id, :string, required: true
   attr :title, :string, required: true
   attr :count, :integer, default: nil
-  attr :open, :boolean, default: false
+  attr :open, :boolean, default: true
   slot :inner_block, required: true
 
   @doc """
-  Reference data below the to-dos, closed until wanted. The browser keeps it
-  as the reader leaves it.
+  A section of what there is to know, open to scroll through; the reader can
+  fold it away, and the browser keeps it as they leave it.
   """
   @spec section(map()) :: Rendered.t()
   def section(assigns) do
@@ -189,6 +241,107 @@ defmodule Clarity.Report.Components do
     </details>
     """
   end
+
+  attr :actions, :list, required: true, doc: "`Clarity.Report.Action`s, most severe first"
+  attr :prefix, :string, required: true
+  attr :lens, :any, required: true
+  attr :shown, :integer, default: 6, doc: "Items shown beside a label before \"+N more\""
+
+  @doc "A report's things to do, from its `c:Clarity.Report.actions/2`."
+  @spec actions(map()) :: Rendered.t()
+  def actions(assigns) do
+    ~H"""
+    <.todo_list :if={@actions != []}>
+      <.todo
+        :for={action <- @actions}
+        severity={action.severity}
+        title={action.title}
+        count={Action.count(action)}
+        hint={action.hint}
+        command={action.command}
+      >
+        <%= for group <- action.groups do %>
+          <%= if action.layout == :lines do %>
+            <div :for={item <- group.items} class="report-todo-line">
+              <.item item={item} prefix={@prefix} lens={@lens} />
+              <span :if={item[:note]} class="report-todo-note">{item.note}</span>
+              <span :for={detail <- item[:details] || []} class="report-todo-detail">{detail}</span>
+            </div>
+          <% else %>
+            <.group :if={group[:label]}>
+              <:label>
+                <.link
+                  :if={group[:id]}
+                  patch={path(@prefix, @lens, group.id)}
+                  class="report-link"
+                >
+                  {group.label}
+                </.link>
+                <span :if={!group[:id]}>{group.label}</span>
+              </:label>
+              <.item
+                :for={item <- Enum.take(group.items, @shown)}
+                item={item}
+                prefix={@prefix}
+                lens={@lens}
+              />
+              <.more :if={length(group.items) > @shown} count={length(group.items) - @shown}>
+                <.item
+                  :for={item <- Enum.drop(group.items, @shown)}
+                  item={item}
+                  prefix={@prefix}
+                  lens={@lens}
+                />
+              </.more>
+            </.group>
+            <.item
+              :for={item <- if(group[:label], do: [], else: group.items)}
+              item={item}
+              prefix={@prefix}
+              lens={@lens}
+            />
+          <% end %>
+        <% end %>
+        <:fix :if={action.fix}>{fix_text(action.fix)}</:fix>
+      </.todo>
+    </.todo_list>
+    """
+  end
+
+  attr :item, :map, required: true
+  attr :prefix, :string, required: true
+  attr :lens, :any, required: true
+
+  @spec item(map()) :: Rendered.t()
+  defp item(assigns) do
+    ~H"""
+    <.chip
+      patch={@item[:id] && path(@prefix, @lens, @item.id)}
+      muted={@item[:muted?] || false}
+      hint={@item[:hint]}
+    >
+      {@item.text}
+    </.chip>
+    """
+  end
+
+  # A fix's text, with the parts between backticks as code. Built as one
+  # string, so no whitespace creeps in between the parts.
+  # sobelow_skip ["XSS.Raw"]
+  @spec fix_text(String.t()) :: Phoenix.HTML.safe()
+  defp fix_text(text) do
+    text
+    |> String.split("`")
+    |> Enum.with_index()
+    |> Enum.map(fn
+      {part, index} when rem(index, 2) == 1 -> ["<code>", escape(part), "</code>"]
+      {part, _index} -> escape(part)
+    end)
+    |> raw()
+  end
+
+  @spec escape(String.t()) :: iodata()
+  defp escape(text), do: text |> html_escape() |> safe_to_string()
 
   @doc "A vertex's page in a lens."
   @spec path(String.t(), Lens.t(), String.t()) :: String.t()
