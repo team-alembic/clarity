@@ -4,6 +4,7 @@ import {
   applyHints,
   computePosition,
   createTooltipController,
+  PRESS_QUIET_DISTANCE,
   SHOW_DELAY,
   SKIP_DELAY_WINDOW,
 } from "../js/tooltip.hook.js";
@@ -57,8 +58,22 @@ describe("tooltip controller", () => {
   let plain: HTMLDivElement;
   let controller: { destroy(): void };
 
-  const hover = (el: Element, pointerType = "mouse") =>
+  // Moves the pointer onto `el`, as a real pointer does: over, then moving.
+  const hover = (el: Element, pointerType = "mouse", at = { x: 0, y: 0 }) => {
     el.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType }));
+    move(el, at, pointerType);
+  };
+  const move = (el: Element, at: { x: number; y: number }, pointerType = "mouse") =>
+    el.dispatchEvent(
+      new PointerEvent("pointermove", { bubbles: true, pointerType, clientX: at.x, clientY: at.y }),
+    );
+  const press = (el: Element, at = { x: 0, y: 0 }) => {
+    el.dispatchEvent(
+      new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse", clientX: at.x, clientY: at.y }),
+    );
+    el.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "mouse" }));
+  };
   const shown = () => !tip.hidden;
   const flushObservers = () => vi.advanceTimersByTimeAsync(0);
 
@@ -270,6 +285,78 @@ describe("tooltip controller", () => {
     });
   });
 
+  describe("interactions", () => {
+    it("shows nothing for a trigger that moves under a pointer that doesn't", () => {
+      // As when a LiveView patch shifts the page after a click.
+      vertex.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }));
+      vi.advanceTimersByTime(SHOW_DELAY * 4);
+
+      expect(shown()).toBe(false);
+    });
+
+    it("hides on a press, and keeps the pressed trigger's hint away until the pointer leaves it", () => {
+      hover(vertex);
+      vi.advanceTimersByTime(SHOW_DELAY);
+      press(vertex);
+      expect(shown()).toBe(false);
+
+      move(vertexChild, { x: 100, y: 0 });
+      vi.advanceTimersByTime(SHOW_DELAY * 4);
+      expect(shown()).toBe(false);
+
+      hover(plain, "mouse", { x: 200, y: 0 });
+      hover(vertex, "mouse", { x: 300, y: 0 });
+      vi.advanceTimersByTime(SHOW_DELAY);
+      expect(shown()).toBe(true);
+    });
+
+    it("restarts a pending hint's delay from zero on a press", () => {
+      hover(label);
+      vi.advanceTimersByTime(SHOW_DELAY - 100);
+      press(plain);
+      hover(label, "mouse", { x: 100, y: 0 });
+      vi.advanceTimersByTime(SHOW_DELAY - 1);
+
+      expect(shown()).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(shown()).toBe(true);
+    });
+
+    it("waits after a press until the pointer has moved some way before timing a hint", () => {
+      press(plain, { x: 10, y: 10 });
+      hover(label, "mouse", { x: 10 + PRESS_QUIET_DISTANCE - 1, y: 10 });
+      vi.advanceTimersByTime(SHOW_DELAY * 4);
+      expect(shown()).toBe(false);
+
+      move(label, { x: 10 + PRESS_QUIET_DISTANCE, y: 10 });
+      vi.advanceTimersByTime(SHOW_DELAY);
+      expect(shown()).toBe(true);
+    });
+
+    it("waits the full delay after a press, rather than swapping hints straight away", () => {
+      hover(vertex);
+      vi.advanceTimersByTime(SHOW_DELAY);
+      press(plain);
+      hover(label, "mouse", { x: 100, y: 0 });
+
+      expect(shown()).toBe(false);
+      vi.advanceTimersByTime(SHOW_DELAY);
+      expect(shown()).toBe(true);
+    });
+
+    it("restarts a pending hint's delay from zero on a key press", () => {
+      hover(label);
+      vi.advanceTimersByTime(SHOW_DELAY - 100);
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true }));
+      vi.advanceTimersByTime(SHOW_DELAY * 4);
+      expect(shown()).toBe(false);
+
+      move(label, { x: 5, y: 0 });
+      vi.advanceTimersByTime(SHOW_DELAY);
+      expect(shown()).toBe(true);
+    });
+  });
+
   describe("containers with their own delay", () => {
     let treeRow: HTMLAnchorElement;
     let otherTreeRow: HTMLAnchorElement;
@@ -319,6 +406,12 @@ describe("tooltip controller", () => {
       expect(shown()).toBe(true);
 
       vertex.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      expect(shown()).toBe(false);
+    });
+
+    it("shows nothing for focus that comes from a press", () => {
+      press(label);
+
       expect(shown()).toBe(false);
     });
 

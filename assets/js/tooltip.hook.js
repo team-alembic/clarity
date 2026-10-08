@@ -16,6 +16,9 @@ export const SHOW_DELAY = 700;
 // After a hint hides, entering another trigger within this window shows it at
 // once, so sweeping along the tree swaps hints rather than flickering.
 export const SKIP_DELAY_WINDOW = 300;
+// After a press, hints wait until the pointer has moved this far (in px), so
+// clicking around doesn't pop them up between clicks.
+export const PRESS_QUIET_DISTANCE = 16;
 
 const OFFSET = 8;
 const MARGIN = 8;
@@ -130,8 +133,10 @@ export function createTooltipController(tip) {
   let source = null; // how it was shown: "pointer" or "focus"
   let pending = null; // trigger waiting out the show delay
   let timer = null;
-  let dismissed = null; // trigger hidden with Escape, ignored until left
+  let dismissed = null; // trigger hidden with Escape or a press, ignored until left
   let hiddenAt = -Infinity;
+  let pressedAt = null; // where the last press was, until the pointer moves away
+  let pressing = false; // between pointerdown and pointerup
 
   function render(trigger) {
     const { tooltipTitle, tooltipType, tooltipIcon, tooltipTone, tooltipText } = trigger.dataset;
@@ -237,6 +242,10 @@ export function createTooltipController(tip) {
     timer = win.setTimeout(() => show(trigger, "pointer"), ownDelay || SHOW_DELAY);
   }
 
+  // Hints follow Radix UI's tooltip: the delay starts when the pointer moves
+  // over a trigger, not when a trigger appears under a still pointer (as
+  // after a LiveView patch), and a press hides the hint until the pointer
+  // leaves that trigger.
   function onPointerOver(event) {
     if (event.pointerType === "touch") return;
 
@@ -248,9 +257,33 @@ export function createTooltipController(tip) {
       if (source === "pointer") hide();
     } else if (trigger === current) {
       cancelPending();
-    } else if (trigger !== dismissed) {
-      schedule(trigger);
     }
+  }
+
+  function onPointerMove(event) {
+    if (event.pointerType === "touch") return;
+
+    if (pressedAt) {
+      const moved = Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y);
+      if (moved < PRESS_QUIET_DISTANCE) return;
+      pressedAt = null;
+    }
+
+    const trigger = findTrigger(event.target);
+    if (trigger && trigger !== current && trigger !== dismissed) schedule(trigger);
+  }
+
+  function onPointerDown(event) {
+    pressing = true;
+    pressedAt = { x: event.clientX, y: event.clientY };
+    dismissed = findTrigger(event.target);
+    hide();
+    // A press isn't sweeping between hints, so the next one waits in full.
+    hiddenAt = -Infinity;
+  }
+
+  function onPointerUp() {
+    pressing = false;
   }
 
   function onPointerOut(event) {
@@ -261,6 +294,9 @@ export function createTooltipController(tip) {
   }
 
   function onFocusIn(event) {
+    // Focus a press gives, rather than the keyboard, shows nothing.
+    if (pressing) return;
+
     const trigger = findTrigger(event.target);
     if (trigger) {
       dismissed = null;
@@ -276,6 +312,9 @@ export function createTooltipController(tip) {
     if (event.key === "Escape" && current) {
       dismissed = current;
       hide();
+    } else {
+      // Typing or a shortcut restarts the wait; the pointer must move again.
+      cancelPending();
     }
   }
 
@@ -301,6 +340,10 @@ export function createTooltipController(tip) {
   const listeners = [
     [doc, "pointerover", onPointerOver],
     [doc, "pointerout", onPointerOut],
+    [doc, "pointermove", onPointerMove, { passive: true }],
+    [doc, "pointerdown", onPointerDown, { capture: true }],
+    [doc, "pointerup", onPointerUp, { capture: true }],
+    [doc, "pointercancel", onPointerUp, { capture: true }],
     [doc, "focusin", onFocusIn],
     [doc, "focusout", onFocusOut],
     [doc, "keydown", onKeyDown],
