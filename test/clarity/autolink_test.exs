@@ -127,7 +127,7 @@ defmodule Clarity.AutolinkTest do
           names
         )
 
-      assert html =~ ~s(<a href="/to/Conversation" data-phx-link="patch" data-phx-link-state="push">Conversation</a>)
+      assert html =~ ~r{<a href="/to/Conversation" data-phx-link="patch" data-phx-link-state="push"[^>]*>Conversation</a>}
       assert html =~ ~s(<a href="/to/User")
       assert html =~ ~s(<a href="/to/CustomerContact")
       assert html =~ ~s(<a href="/to/Ticket")
@@ -199,16 +199,18 @@ defmodule Clarity.AutolinkTest do
     test "links plurals to the vertex they name", %{names: names} do
       html = render("Invoices, LineItems and SlaPolicies.", names)
 
-      assert html =~ ~s(<a href="/to/Invoice" data-phx-link="patch" data-phx-link-state="push">Invoices</a>)
-      assert html =~ ~s(<a href="/to/LineItem" data-phx-link="patch" data-phx-link-state="push">LineItems</a>)
-      assert html =~ ~s(<a href="/to/SlaPolicy" data-phx-link="patch" data-phx-link-state="push">SlaPolicies</a>)
+      assert html =~ ~r{<a href="/to/Invoice" data-phx-link="patch" data-phx-link-state="push"[^>]*>Invoices</a>}
+      assert html =~ ~r{<a href="/to/LineItem" data-phx-link="patch" data-phx-link-state="push"[^>]*>LineItems</a>}
+      assert html =~ ~r{<a href="/to/SlaPolicy" data-phx-link="patch" data-phx-link-state="push"[^>]*>SlaPolicies</a>}
     end
 
     test "links the longest name a mention spells", %{names: names} do
       html = render("Escalates to Demo.Helpdesk.Ticket, never Projects.Ticket.", names)
 
-      assert html =~ ~s(<a href="/to/Ticket" data-phx-link="patch" data-phx-link-state="push">Demo.Helpdesk.Ticket</a>)
-      assert html =~ ~s(<a href="/to/Ticket" data-phx-link="patch" data-phx-link-state="push">Projects.Ticket</a>)
+      assert html =~
+               ~r{<a href="/to/Ticket" data-phx-link="patch" data-phx-link-state="push"[^>]*>Demo\.Helpdesk\.Ticket</a>}
+
+      assert html =~ ~r{<a href="/to/Ticket" data-phx-link="patch" data-phx-link-state="push"[^>]*>Projects\.Ticket</a>}
     end
 
     test "copes with thousands of names" do
@@ -245,7 +247,7 @@ defmodule Clarity.AutolinkTest do
         )
 
       assert html =~
-               ~s(<a href="/to/User" data-phx-link="patch" data-phx-link-state="push"><code>Demo.Accounts.User</code></a>)
+               ~r{<a href="/to/User" data-phx-link="patch" data-phx-link-state="push"[^>]*><code>Demo\.Accounts\.User</code></a>}
 
       refute html =~ ~s(href="/to/Conversation")
     end
@@ -324,6 +326,14 @@ defmodule Clarity.AutolinkTest do
       assert html =~ "The status and"
       assert html =~ ~s(>sla_due_at</a>)
       assert html =~ ~s(<code>status</code></a>)
+    end
+
+    test "gives each link its vertex's hover hint, and no title beside it", %{graph: graph} do
+      html = render("A User.", Autolink.names(graph, nil))
+
+      assert html =~ ~s(data-tooltip-title="Demo.Accounts.User")
+      assert html =~ ~s(data-tooltip-type="Resource")
+      refute html =~ ~s( title=")
     end
   end
 

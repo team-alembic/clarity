@@ -121,7 +121,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               <:col :let={argument} label="About">
                 <div class="ov-flags">
                   <.flag :if={not argument.allow_nil?} text="required" />
-                  <.flag :if={default(argument)}>default <code>{default(argument)}</code></.flag>
+                  <.flag :if={default(argument)} hint="The value it takes when none is given">
+                    default <code>{default(argument)}</code>
+                  </.flag>
                 </div>
                 <.description links={@links} text={description_of(argument)} class="mt-0.5" />
               </:col>

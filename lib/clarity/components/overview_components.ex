@@ -118,6 +118,8 @@ defmodule Clarity.Components.OverviewComponents do
     required: true,
     doc: ~s(What the vertex is, on its type pill: "Create action")
 
+  attr :kind_hint, :string, default: nil, doc: "What that kind is, on hovering its pill"
+
   slot :badge, doc: "Flags beside the type pill"
   slot :headline, doc: "The vertex's essence, in a sentence"
   slot :inner_block, doc: "The description, and whatever else leads the overview"
@@ -134,7 +136,9 @@ defmodule Clarity.Components.OverviewComponents do
     <header class="ov-hero">
       <div class="min-w-0 flex-1">
         <div :if={@specific? or @badge != []} class="flex flex-wrap items-center gap-1.5">
-          <span :if={@specific?} class="ov-pill" data-tone={@type.tone}>{@kind}</span>
+          <span :if={@specific?} class="ov-pill" data-tone={@type.tone} {Tooltip.attrs(@kind_hint)}>
+            {@kind}
+          </span>
           {render_slot(@badge)}
         </div>
         <p :if={@headline != []} class="ov-headline">{render_slot(@headline)}</p>

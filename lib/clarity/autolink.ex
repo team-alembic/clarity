@@ -34,6 +34,7 @@ defmodule Clarity.Autolink do
 
   alias Ash.Resource.Info
   alias Clarity.Graph
+  alias Clarity.Tooltip
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Action
   alias Clarity.Vertex.Ash.Aggregate
@@ -179,17 +180,28 @@ defmodule Clarity.Autolink do
   end
 
   @doc """
-  Returns nodes that wrap `children` in a link LiveView follows by patching.
+  Returns nodes that wrap `children` in a link LiveView follows by patching,
+  with the hover hint `hint` (`Clarity.Tooltip.attrs/1`) if given, or else
+  its `title`, so the browser's tooltip never shows beside the hint.
   """
-  @spec patch_link(String.t(), [MDEx.Document.md_node()], String.t() | nil) ::
+  @spec patch_link(String.t(), [MDEx.Document.md_node()], String.t() | nil, keyword(String.t())) ::
           [MDEx.Document.md_node()]
-  def patch_link(url, children, title \\ nil) do
-    title_attr = if title in [nil, ""], do: "", else: ~s( title="#{escape(title)}")
+  def patch_link(url, children, title \\ nil, hint \\ []) do
+    attrs =
+      cond do
+        hint != [] -> Enum.map(hint, fn {name, value} -> ~s( #{name}="#{escape(value)}") end)
+        title in [nil, ""] -> ""
+        true -> ~s( title="#{escape(title)}")
+      end
 
     # MDEx.Link has no attributes field, so the anchor is raw HTML.
     open = %MDEx.Raw{
       literal:
-        ~s(<a href="#{escape(url)}" data-phx-link="patch" data-phx-link-state="push"#{title_attr}>)
+        IO.iodata_to_binary([
+          ~s(<a href="#{escape(url)}" data-phx-link="patch" data-phx-link-state="push"),
+          attrs,
+          ">"
+        ])
     }
 
     [open | children] ++ [%MDEx.Raw{literal: "</a>"}]
@@ -463,7 +475,9 @@ defmodule Clarity.Autolink do
   defp link_vertex(vertex, nodes, context, linked) do
     if linked?(vertex, context, linked),
       do: {nodes, linked},
-      else: {patch_link(context.path.(vertex), nodes), MapSet.put(linked, vertex)}
+      else:
+        {patch_link(context.path.(vertex), nodes, nil, Tooltip.attrs(vertex)),
+         MapSet.put(linked, vertex)}
   end
 
   # Whether `vertex` is already linked, so its mention stays plain text,

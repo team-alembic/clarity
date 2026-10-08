@@ -2,7 +2,7 @@
   class={"flex items-center h-12 px-4 bg-base-light-100 dark:bg-base-dark-800 border-b border-base-light-300 dark:border-base-dark-700 #{@class}"}
   {@rest}
 >
-  <.link navigate={@prefix} class="mr-2.5">
+  <.link navigate={@prefix} class="mr-2.5" {Clarity.Tooltip.attrs("Clarity's start page")}>
     <img
       src={Clarity.Resources.logo_uri()}
       alt="Clarity logo"

@@ -14,6 +14,7 @@ defmodule Clarity.Components.MarkdownComponent do
   alias Clarity.Autolink
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
+  alias Clarity.Tooltip
   alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
@@ -107,7 +108,7 @@ defmodule Clarity.Components.MarkdownComponent do
     |> MDEx.parse_document!(@extension_opts ++ highlight_opts)
     # Before vertex:// links become raw HTML, while they're still links to skip.
     |> link_names(naming, prefix, lens)
-    |> MDEx.traverse_and_update(&transform_vertex_links(&1, prefix, lens))
+    |> MDEx.traverse_and_update(&transform_vertex_links(&1, prefix, lens, graph_of(naming)))
     |> MDEx.to_html!(highlight_opts)
   rescue
     exception ->
@@ -196,34 +197,63 @@ defmodule Clarity.Components.MarkdownComponent do
     end
   end
 
-  @spec transform_vertex_links(MDEx.Document.md_node(), String.t(), Lens.t()) ::
-          MDEx.Document.md_node()
-  defp transform_vertex_links(%{nodes: children} = parent, prefix, lens) when is_list(children) do
+  @spec transform_vertex_links(
+          MDEx.Document.md_node(),
+          String.t(),
+          Lens.t(),
+          Clarity.Graph.t() | nil
+        ) :: MDEx.Document.md_node()
+  defp transform_vertex_links(%{nodes: children} = parent, prefix, lens, graph)
+       when is_list(children) do
     if Enum.any?(children, &vertex_link?/1) do
-      %{parent | nodes: rewrite_vertex_links(children, prefix, lens)}
+      %{parent | nodes: rewrite_vertex_links(children, prefix, lens, graph)}
     else
       parent
     end
   end
 
-  defp transform_vertex_links(node, _prefix, _lens), do: node
+  defp transform_vertex_links(node, _prefix, _lens, _graph), do: node
 
   @spec vertex_link?(node :: MDEx.Document.md_node()) :: boolean()
   defp vertex_link?(%MDEx.Link{url: "vertex://" <> _}), do: true
   defp vertex_link?(_), do: false
 
-  @spec rewrite_vertex_links([MDEx.Document.md_node()], String.t(), Lens.t()) ::
-          [MDEx.Document.md_node()]
-  defp rewrite_vertex_links(children, prefix, lens) do
+  @spec rewrite_vertex_links(
+          [MDEx.Document.md_node()],
+          String.t(),
+          Lens.t(),
+          Clarity.Graph.t() | nil
+        ) :: [MDEx.Document.md_node()]
+  defp rewrite_vertex_links(children, prefix, lens, graph) do
     Enum.flat_map(children, fn
       %MDEx.Link{url: "vertex://" <> vertex_path, nodes: link_children, title: title} ->
         vertex_path
         |> build_clarity_path(prefix, lens)
-        |> Autolink.patch_link(link_children, title)
+        |> Autolink.patch_link(link_children, title, hint(graph, vertex_path))
 
       other ->
         [other]
     end)
+  end
+
+  # The graph the text's names come from, if any: given, or the index's.
+  @spec graph_of(map()) :: Clarity.Graph.t() | nil
+  defp graph_of(%{graph: graph}) when graph != nil, do: graph
+  defp graph_of(%{index: %{graph: graph}}), do: graph
+  defp graph_of(_naming), do: nil
+
+  # The hover hint of the vertex a `vertex://` link opens (its path may go
+  # on to one of its tabs), when the graph holds it.
+  @spec hint(Clarity.Graph.t() | nil, String.t()) :: keyword(String.t())
+  defp hint(nil, _vertex_path), do: []
+
+  defp hint(graph, vertex_path) do
+    [vertex_id | _tab] = String.split(vertex_path, "/", parts: 2)
+
+    case Clarity.Graph.get_vertex(graph, vertex_id) do
+      nil -> []
+      vertex -> Tooltip.attrs(vertex)
+    end
   end
 
   @spec build_clarity_path(

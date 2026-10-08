@@ -59,6 +59,7 @@ defmodule Clarity.Tooltip do
     "argument" => {:plain, "An input of the action's own, not an attribute of its resource"},
     "async" => {:plain, "Computed in a process of its own"},
     "bypass" => {:danger, "A bypass policy: when it passes, the rest are skipped"},
+    "change" => {:plain, "Changes the record as the action runs"},
     "code reloading" => {:muted, "Recompiles changed code on each request, as in development"},
     "conditional" => {:good, "Allowed for this actor when the policies' checks pass at runtime"},
     "dev" => {:muted, "Only development builds run it"},
@@ -72,6 +73,7 @@ defmodule Clarity.Tooltip do
     "multitenant" => {:warn, "Keeps each tenant's records apart"},
     "never" => {:muted, "Never allowed for this actor"},
     "no policies" => {:warn, "No policy authorizer: Ash policies don't restrict it"},
+    "prepare" => {:plain, "Shapes the query before it runs: its filter, sort or loads"},
     "primary" => {:key, "The action of its type that Ash uses unless told otherwise"},
     "primary key" => {:key, "Part of the resource's primary key"},
     "private" => {:muted, "Hidden from public interfaces, such as APIs"},
@@ -84,7 +86,8 @@ defmodule Clarity.Tooltip do
     "unique values" => {:plain, "Counts each distinct value once"},
     "unknown" => {:plain, "Couldn't be worked out: the action failed on empty input"},
     "unrestricted" => {:danger, "No policy applies to it: allowed for anyone"},
-    "upsert" => {:warn, "Updates the record with the same identity, when there is one"}
+    "upsert" => {:warn, "Updates the record with the same identity, when there is one"},
+    "validate" => {:good, "Checks the input, and stops the action when it fails"}
   }
 
   @typedoc "How a badge is coloured, the same on hover hints and overview flags."

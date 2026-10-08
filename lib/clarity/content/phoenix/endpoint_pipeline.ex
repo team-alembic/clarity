@@ -530,10 +530,21 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
 
     @spec handler(map()) :: Rendered.t()
     defp handler(assigns) do
+      assigns =
+        assign(
+          assigns,
+          :action_hint,
+          Tooltip.attrs(
+            if assigns.handler.live?,
+              do: "The LiveView's live action",
+              else: "The action it calls"
+          )
+        )
+
       ~H"""
       <span class="ov-phrase">
         <.module_ref links={@links} module={@handler.module} within={@within} />
-        <code :if={@handler.action} class="ov-code ov-muted">:{@handler.action}</code>
+        <code :if={@handler.action} class="ov-code ov-muted" {@action_hint}>:{@handler.action}</code>
         <.flag :if={@handler.live?} text="live" />
         <span :if={@plugs and @handler.plugs != []} class="ov-phrase">
           <span class="ov-muted">after</span>

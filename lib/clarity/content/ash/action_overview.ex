@@ -59,7 +59,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       <div class="content w-full" id={@id}>
         <div class="ov-page">
           <div class="ov-head">
-            <.hero vertex={@vertex} kind={kind(@action)}>
+            <.hero vertex={@vertex} kind={kind(@action)} kind_hint={kind_hint(@action)}>
               <:badge :if={@action.primary?}>
                 <.flag text="primary" />
               </:badge>
@@ -162,7 +162,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                   <.flag :if={input.required?} text="required" />
                   <.flag :if={input.kind == :argument} text="argument" />
                   <.flag :if={input.sensitive?} text="sensitive" />
-                  <.flag :if={input.default}>default <code>{input.default}</code></.flag>
+                  <.flag :if={input.default} hint="The value it takes when none is given">
+                    default <code>{input.default}</code>
+                  </.flag>
                   <span :if={input.one_of} class="ov-phrase">
                     <span class="ov-muted text-xs">one of</span>
                     <.code_list names={input.one_of} max={8} />
@@ -183,7 +185,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           >
             <ol class="ov-steps">
               <li :for={{kind, call} <- @steps}>
-                <.flag kind={if kind == :validate, do: :good, else: :plain}>{kind}</.flag>
+                <.flag text={Atom.to_string(kind)} />
                 <code class="ov-code">{call}</code>
               </li>
             </ol>
@@ -196,6 +198,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @spec kind(Actions.action()) :: String.t()
     defp kind(%{type: :action}), do: "Generic action"
     defp kind(%{type: type}), do: String.capitalize(to_string(type)) <> " action"
+
+    @spec kind_hint(Actions.action()) :: String.t()
+    defp kind_hint(%{type: :create}), do: "Makes a new record"
+    defp kind_hint(%{type: :read}), do: "Reads records, changing nothing"
+    defp kind_hint(%{type: :update}), do: "Changes a record"
+    defp kind_hint(%{type: :destroy}), do: "Removes a record, or marks it removed"
+    defp kind_hint(%{type: :action}), do: "Runs logic of its own, and may return a value"
 
     # What the action does to its resource, as the start of a sentence.
     @spec verb(Actions.action()) :: String.t()

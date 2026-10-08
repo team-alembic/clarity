@@ -173,7 +173,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         <.visibility_flag field={@attribute} unusual={@unusual} />
         <.flag :if={@attribute.generated?} text="generated" />
         <.flag :if={not @attribute.writable?} text="read-only" />
-        <.flag :if={default(@attribute)}>default <code>{default(@attribute)}</code></.flag>
+        <.flag :if={default(@attribute)} hint="The value it takes when none is given">
+          default <code>{default(@attribute)}</code>
+        </.flag>
         <span :if={@one_of} class="ov-phrase">
           <span class="ov-muted text-xs">one of</span>
           <.code_list names={@one_of} max={8} />

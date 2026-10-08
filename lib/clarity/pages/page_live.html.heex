@@ -115,7 +115,9 @@
               <h1 class="page-subject-name">
                 {@breadcrumbs |> named_path(@vertex, @name_style) |> List.last()}
               </h1>
-              <span class="ov-pill" data-tone={type.tone}>{Tooltip.type_name(@vertex)}</span>
+              <span class="ov-pill" data-tone={type.tone} {Tooltip.attrs(@vertex)}>
+                {Tooltip.type_name(@vertex)}
+              </span>
             </div>
           </div>
           <.tabs
