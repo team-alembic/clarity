@@ -55,23 +55,32 @@ defmodule Clarity.Tooltip do
   # flags. Each has a kind, which colours it the same everywhere, and a line
   # that explains it.
   @badges %{
+    "always" => {:danger, "Allowed for this actor whatever the checks: open to them"},
     "argument" => {:plain, "An input of the action's own, not an attribute of its resource"},
     "async" => {:plain, "Computed in a process of its own"},
+    "bypass" => {:danger, "A bypass policy: when it passes, the rest are skipped"},
+    "conditional" => {:good, "Allowed for this actor when the policies' checks pass at runtime"},
     "embedded" => {:plain, "Stored inside other resources' attributes, not on its own"},
+    "exposed" => {:danger, "Sensitive, yet public with no field policy to restrict who reads it"},
     "generated" => {:muted, "Given its value by the data layer"},
     "gets one" => {:plain, "Returns one record, not a list"},
     "includes nil" => {:plain, "Counts nil values too"},
     "manual" => {:warn, "Carried out by a module of its own"},
     "multitenant" => {:warn, "Keeps each tenant's records apart"},
+    "never" => {:muted, "Never allowed for this actor"},
+    "no policies" => {:warn, "No policy authorizer: Ash policies don't restrict it"},
     "primary" => {:key, "The action of its type that Ash uses unless told otherwise"},
     "primary key" => {:key, "Part of the resource's primary key"},
     "private" => {:muted, "Hidden from public interfaces, such as APIs"},
+    "protected" => {:good, "Sensitive, and private or decided by a field policy"},
     "public" => {:good, "Shown to public interfaces, such as APIs"},
     "read-only" => {:muted, "No action writes it"},
     "required" => {:warn, "Must have a value: it doesn't allow nil"},
     "sensitive" => {:danger, "Holds sensitive data, kept out of logs and inspection"},
     "soft" => {:warn, "Marks records destroyed instead of deleting them"},
     "unique values" => {:plain, "Counts each distinct value once"},
+    "unknown" => {:plain, "Couldn't be worked out: the action failed on empty input"},
+    "unrestricted" => {:danger, "No policy applies to it: allowed for anyone"},
     "upsert" => {:warn, "Updates the record with the same identity, when there is one"}
   }
 

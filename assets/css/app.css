@@ -921,6 +921,50 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   content: counter(step);
 }
 
+.ov-meter {
+  @apply mt-2 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-base-light-200 dark:bg-base-dark-700;
+}
+
+.ov-meter-fill {
+  @apply block h-full rounded-full bg-emerald-500 dark:bg-emerald-400;
+}
+
+.ov-callout {
+  @apply flex items-start gap-2 rounded-lg border px-3 py-2 text-sm;
+  @apply border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100;
+}
+
+.ov-callout[data-kind="danger"] {
+  @apply border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100;
+}
+
+.ov-callout .ov-icon {
+  @apply mt-0.5;
+}
+
+.ov-reach {
+  @apply mt-auto flex flex-wrap items-center gap-1.5 pt-2;
+}
+
+/* How many actions an actor reaches: muted when none, green when only as
+   checks allow, rose when any whatever the checks. */
+.ov-reach-actor {
+  @apply inline-flex items-center gap-1 rounded-full px-2 text-xs leading-5 tabular-nums;
+  @apply bg-base-light-100 text-base-light-500 dark:bg-base-dark-800 dark:text-base-dark-400;
+}
+
+.ov-reach-actor[data-kind="good"] {
+  @apply bg-emerald-50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200;
+}
+
+.ov-reach-actor[data-kind="danger"] {
+  @apply bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200;
+}
+
+.ov-reach-actor b {
+  @apply font-semibold;
+}
+
 .ov-code-block {
   @apply m-0 overflow-x-auto rounded-lg border border-base-light-200 bg-white px-3 py-2 font-mono text-[13px] leading-relaxed whitespace-pre-wrap;
   @apply text-base-light-800 dark:border-base-dark-700 dark:bg-base-dark-900 dark:text-base-dark-100;

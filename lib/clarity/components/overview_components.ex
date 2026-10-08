@@ -348,6 +348,52 @@ defmodule Clarity.Components.OverviewComponents do
   end
 
   @doc """
+  Renders how much of a whole something is, as a bar.
+  """
+  attr :value, :integer, required: true
+  attr :total, :integer, required: true
+  attr :label, :string, default: nil, doc: "What the bar measures, for screen readers"
+
+  @spec meter(map()) :: Rendered.t()
+  def meter(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :percent,
+        if(assigns.total > 0, do: round(assigns.value * 100 / assigns.total), else: 0)
+      )
+
+    ~H"""
+    <div
+      class="ov-meter"
+      role="meter"
+      aria-valuemin="0"
+      aria-valuemax={@total}
+      aria-valuenow={@value}
+      aria-label={@label}
+    >
+      <span class="ov-meter-fill" style={"width: #{@percent}%"}></span>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a callout: a finding worth reading first, coloured for its kind.
+  """
+  attr :kind, :atom, default: :warn, values: [:warn, :danger]
+  slot :inner_block, required: true
+
+  @spec callout(map()) :: Rendered.t()
+  def callout(assigns) do
+    ~H"""
+    <div class="ov-callout" data-kind={@kind} role="note">
+      <.type_icon icon="advisory" tone="warning" />
+      <div class="min-w-0">{render_slot(@inner_block)}</div>
+    </div>
+    """
+  end
+
+  @doc """
   Renders names as code, a few at a time, with a count of the rest.
   """
   attr :names, :list, required: true
