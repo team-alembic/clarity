@@ -144,6 +144,7 @@ defmodule Clarity.Report.SupplyChain do
      assign(socket,
        prefix: assigns.prefix,
        lens: assigns.lens,
+       graph: assigns.graph,
        dependencies: Enum.sort_by(dependencies, &{standing_index(&1.standing), &1.app}),
        counts: by_standing,
        refreshed_at: Source.last_refreshed_at()
@@ -193,9 +194,14 @@ defmodule Clarity.Report.SupplyChain do
           <tbody>
             <tr :for={dependency <- @dependencies}>
               <td>
-                <.link patch={Components.path(@prefix, @lens, dependency.id)} class="report-link">
+                <Components.vertex_link
+                  graph={@graph}
+                  prefix={@prefix}
+                  lens={@lens}
+                  id={dependency.id}
+                >
                   {dependency.app}
-                </.link>
+                </Components.vertex_link>
               </td>
               <td class="font-mono text-[0.8125rem] tabular-nums">{dependency.version}</td>
               <td class="font-mono text-[0.8125rem] tabular-nums">

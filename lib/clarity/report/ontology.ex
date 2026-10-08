@@ -138,6 +138,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
        assign(socket,
          prefix: assigns.prefix,
          lens: assigns.lens,
+         graph: assigns.graph,
          entities: entities,
          name_style: Map.get(assigns, :name_style, :qualified),
          # Built once for every description the report renders.
@@ -183,9 +184,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           <table class="report-table">
             <thead>
               <tr>
-                <th>Entity</th>
+                <th class="min-w-36">Entity</th>
                 <th>Domain</th>
-                <th>Description</th>
+                <th class="min-w-32">Description</th>
                 <th>Data layer</th>
                 <th>Documented</th>
               </tr>
@@ -193,11 +194,11 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             <tbody>
               <tr :for={entity <- @entities}>
                 <td>
-                  <.link patch={Components.path(@prefix, @lens, entity.id)} class="report-link">
-                    {entity_name(entity, @name_style)}
-                  </.link>
+                  <Components.vertex_link graph={@graph} prefix={@prefix} lens={@lens} id={entity.id}>
+                    <Components.dotted name={entity_name(entity, @name_style)} />
+                  </Components.vertex_link>
                 </td>
-                <td>{domain_name(entity.domain, @name_style)}</td>
+                <td><Components.dotted name={domain_name(entity.domain, @name_style)} /></td>
                 <td>
                   <.description
                     text={entity.moduledoc}
@@ -208,7 +209,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                     linking={@linking}
                   />
                 </td>
-                <td class="whitespace-nowrap">{entity.data_layer}</td>
+                <td><Components.dotted name={entity.data_layer} /></td>
                 <td class="whitespace-nowrap"><.coverage terms={entity.terms} /></td>
               </tr>
             </tbody>
@@ -226,29 +227,33 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               <table class="report-table">
                 <thead>
                   <tr>
-                    <th>Term</th>
+                    <th class="min-w-40">Term</th>
                     <th>Kind</th>
                     <th>Type</th>
-                    <th>Description</th>
-                    <th class="min-w-52">Notes</th>
+                    <th class="min-w-32">Description</th>
+                    <th class="min-w-28">Notes</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr :for={term <- entity.terms}>
-                    <td class="whitespace-nowrap">
-                      <.link
+                    <td>
+                      <Components.vertex_link
                         :if={term.linked?}
-                        patch={Components.path(@prefix, @lens, term.id)}
-                        class="report-link"
+                        graph={@graph}
+                        prefix={@prefix}
+                        lens={@lens}
+                        id={term.id}
                       >
-                        {term_name(term, @name_style)}
-                      </.link>
+                        <Components.dotted name={term_name(term, @name_style)} />
+                      </Components.vertex_link>
                       <span :if={!term.linked?} class="font-medium">
-                        {term_name(term, @name_style)}
+                        <Components.dotted name={term_name(term, @name_style)} />
                       </span>
                     </td>
                     <td><span class="report-tag">{term.kind}</span></td>
-                    <td><.segments segments={term.type} prefix={@prefix} lens={@lens} /></td>
+                    <td>
+                      <.segments segments={term.type} graph={@graph} prefix={@prefix} lens={@lens} />
+                    </td>
                     <td>
                       <.description
                         text={term.description}
@@ -298,6 +303,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     attr :segments, :list, required: true
+    attr :graph, :any, required: true
     attr :prefix, :string, required: true
     attr :lens, :any, required: true
 
@@ -308,7 +314,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         <%= for segment <- @segments do %>
           <%= case segment do %>
             <% {:link, text, id} -> %>
-              <.link patch={Components.path(@prefix, @lens, id)} class="report-link">{text}</.link>
+              <Components.vertex_link graph={@graph} prefix={@prefix} lens={@lens} id={id}>{text}</Components.vertex_link>
             <% {:code, text} -> %>
               <code>{text}</code>
             <% text -> %>

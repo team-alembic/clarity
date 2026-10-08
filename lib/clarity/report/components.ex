@@ -346,4 +346,46 @@ defmodule Clarity.Report.Components do
   @doc "A vertex's page in a lens."
   @spec path(String.t(), Lens.t(), String.t()) :: String.t()
   def path(prefix, %Lens{id: lens_id}, vertex_id), do: Path.join([prefix, lens_id, vertex_id])
+
+  attr :name, :string, required: true
+
+  @doc """
+  A dotted name, such as `Demo.Accounts.User.email`, that may break after a
+  dot when it doesn't fit, rather than push what's beside it aside. Give its
+  column a minimum width, or a table squeezed for room breaks it at every dot.
+  """
+  @spec dotted(map()) :: Rendered.t()
+  def dotted(assigns) do
+    assigns = assign(assigns, :parts, String.split(assigns.name, "."))
+
+    ~H"""
+    <span phx-no-format><%= for {part, index} <- Enum.with_index(@parts) do %><%= if index > 0 do %>.<wbr /><% end %>{part}<% end %></span>
+    """
+  end
+
+  attr :graph, :any, required: true, doc: "The graph that holds the vertex, for its hover hint"
+  attr :prefix, :string, required: true
+  attr :lens, :any, required: true
+  attr :id, :string, required: true, doc: "The vertex's id"
+  slot :inner_block, required: true
+
+  @doc "A link to a vertex's page, by its id, with the vertex's hover hint."
+  @spec vertex_link(map()) :: Rendered.t()
+  def vertex_link(assigns) do
+    assigns = assign(assigns, :hint, hint(assigns.graph, assigns.id))
+
+    ~H"""
+    <.link patch={path(@prefix, @lens, @id)} class="report-link" {@hint}>{render_slot(@inner_block)}</.link>
+    """
+  end
+
+  @spec hint(Clarity.Graph.t() | nil, String.t()) :: keyword(String.t())
+  defp hint(nil, _id), do: []
+
+  defp hint(graph, id) do
+    case Clarity.Graph.get_vertex(graph, id) do
+      nil -> []
+      vertex -> Tooltip.attrs(vertex)
+    end
+  end
 end

@@ -218,7 +218,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       {:ok,
        socket
-       |> assign(prefix: assigns.prefix, lens: assigns.lens)
+       |> assign(prefix: assigns.prefix, lens: assigns.lens, graph: graph)
        |> assign_async(:analysis, fn -> {:ok, %{analysis: analyse(graph)}} end)}
     end
 
@@ -236,13 +236,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </p>
           </:failed>
 
-          <.posture analysis={analysis} prefix={@prefix} lens={@lens} />
+          <.posture analysis={analysis} graph={@graph} prefix={@prefix} lens={@lens} />
         </.async_result>
       </section>
       """
     end
 
     attr :analysis, :map, required: true, doc: "From `analyse/1`"
+    attr :graph, :any, default: nil, doc: "The graph analysed, for its links' hover hints"
     attr :prefix, :string, required: true
     attr :lens, :any, required: true
 
@@ -290,7 +291,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </thead>
             <tbody>
               <tr :for={finding <- @resources}>
-                <td><.resource finding={finding} prefix={@prefix} lens={@lens} /></td>
+                <td><.resource finding={finding} graph={@graph} prefix={@prefix} lens={@lens} /></td>
                 <td :for={actor <- @actors}>
                   <.reach actions={Map.get(finding.reach, actor, [])} all={finding.actions} />
                 </td>
@@ -317,7 +318,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </thead>
             <tbody>
               <tr :for={finding <- @resources}>
-                <td><.resource finding={finding} prefix={@prefix} lens={@lens} /></td>
+                <td><.resource finding={finding} graph={@graph} prefix={@prefix} lens={@lens} /></td>
                 <td>{finding.domain}</td>
                 <td>
                   <span :if={finding.governed?} class="report-tag" data-tone="ok">Yes</span>
@@ -342,15 +343,16 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     attr :finding, :map, required: true
+    attr :graph, :any, required: true
     attr :prefix, :string, required: true
     attr :lens, :any, required: true
 
     @spec resource(map()) :: Rendered.t()
     defp resource(assigns) do
       ~H"""
-      <.link patch={Components.path(@prefix, @lens, @finding.id)} class="report-link">
+      <Components.vertex_link graph={@graph} prefix={@prefix} lens={@lens} id={@finding.id}>
         {@finding.name}
-      </.link>
+      </Components.vertex_link>
       """
     end
 
