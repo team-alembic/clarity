@@ -3,15 +3,17 @@ defmodule Clarity.Components.MarkdownComponent do
   Phoenix component for rendering markdown content with vertex:// link transformation.
 
   This component parses markdown content and transforms vertex:// links into proper
-  application routes, enabling navigation within the Clarity interface. Given the
-  lens's `graph`, it also links the names of vertices the text mentions (see
-  `Clarity.Autolink`), settling ambiguous names by the `vertex` the text is about.
+  application routes, enabling navigation within the Clarity interface. Given
+  Clarity's `graph`, it also links the names of vertices the text mentions (see
+  `Clarity.Autolink`), settling ambiguous names by the `vertex` the text is about,
+  each in the lens if its tree shows it, else in the default lens.
   """
 
   use Phoenix.Component
 
   alias Clarity.Autolink
   alias Clarity.Perspective.Lens
+  alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
@@ -124,11 +126,36 @@ defmodule Clarity.Components.MarkdownComponent do
   defp link_names(document, nil, _vertex, _prefix, _lens), do: document
 
   defp link_names(document, graph, vertex, prefix, lens) do
+    default_lens = default_lens()
+
     Autolink.link(
       document,
       Autolink.names(graph, vertex),
-      &build_clarity_path(Vertex.id(&1), prefix, lens)
+      &build_clarity_path(Vertex.id(&1), prefix, link_lens(&1, lens, default_lens))
     )
+  end
+
+  # The lens a named vertex opens in: this one if its tree shows vertices of
+  # the kind, or else the default lens, so a field named in the Documentation
+  # lens, whose tree has no fields, opens where it has tabs.
+  @spec link_lens(Vertex.t(), Lens.t(), Lens.t() | nil) :: Lens.t()
+  defp link_lens(%type{}, lens, default_lens) do
+    cond do
+      shows?(lens, type) -> lens
+      default_lens != nil and shows?(default_lens, type) -> default_lens
+      true -> lens
+    end
+  end
+
+  @spec shows?(Lens.t(), module()) :: boolean()
+  defp shows?(lens, type), do: type in lens.show_vertex_types.([type])
+
+  @spec default_lens() :: Lens.t() | nil
+  defp default_lens do
+    case Lensmaker.get_lens_by_id(Clarity.Config.fetch_default_perspective_lens!()) do
+      {:ok, lens} -> lens
+      {:error, :lens_not_found} -> nil
+    end
   end
 
   @spec transform_vertex_links(MDEx.Document.md_node(), String.t(), Lens.t()) ::

@@ -257,7 +257,7 @@ defmodule Clarity.CoreComponents do
   attr :socket, Socket, required: true, doc: "The LiveView socket"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
-  attr :graph, :any, default: nil, doc: "The lens's graph, whose vertices' names text links"
+  attr :graph, :any, default: nil, doc: "Clarity's graph, whose vertices' names text links"
   attr :zoom_level, :any, required: true, doc: "Zoom level tuple {outgoing, incoming}"
   attr :shown_vertex_types, :list, required: true, doc: "List of vertex types currently shown"
   attr :available_vertex_types, :list, required: true, doc: "List of all available vertex types"

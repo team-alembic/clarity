@@ -5,8 +5,13 @@ defmodule Clarity.Components.MarkdownComponentTest do
   import Phoenix.Component
   import Phoenix.LiveViewTest
 
+  alias Ash.Resource.Info
   alias Clarity.Perspective.Lens
+  alias Clarity.Perspective.Lensmaker.Documentation
+  alias Clarity.Vertex.Ash.Aggregate
   alias Clarity.Vertex.Ash.Resource
+  alias Clarity.Vertex.Root
+  alias Demo.Billing.Invoice
   alias Demo.Helpdesk.Message
 
   @spec test_lens(String.t()) :: Lens.t()
@@ -34,7 +39,7 @@ defmodule Clarity.Components.MarkdownComponentTest do
       graph = Clarity.Graph.new()
 
       for resource <- [Message, Demo.Helpdesk.Conversation, Demo.Accounts.User] do
-        Clarity.Graph.add_vertex(graph, %Resource{resource: resource}, %Clarity.Vertex.Root{})
+        Clarity.Graph.add_vertex(graph, %Resource{resource: resource}, %Root{})
       end
 
       assigns = %{
@@ -51,6 +56,28 @@ defmodule Clarity.Components.MarkdownComponentTest do
 
       assert html =~ ~s(<a href="/c/architect/ash-resource:demo-helpdesk-conversation" data-phx-link="patch")
       assert html =~ ~s(<a href="/c/architect/ash-resource:demo-accounts-user" data-phx-link="patch")
+    end
+
+    test "opens a vertex the lens's tree doesn't show in the default lens" do
+      graph = Clarity.Graph.new()
+      Clarity.Graph.add_vertex(graph, %Resource{resource: Invoice}, %Root{})
+
+      total_cents = %Aggregate{aggregate: Info.aggregate(Invoice, :total_cents), resource: Invoice}
+      Clarity.Graph.add_vertex(graph, total_cents, %Resource{resource: Invoice})
+
+      assigns = %{
+        content: "`total_cents` sums the LineItems.",
+        graph: graph,
+        vertex: %Resource{resource: Invoice},
+        lens: Documentation.make_lens()
+      }
+
+      html =
+        rendered_to_string(~H"""
+        <.markdown content={@content} prefix="/c" lens={@lens} graph={@graph} vertex={@vertex} />
+        """)
+
+      assert html =~ ~s(<a href="/c/architect/#{Clarity.Vertex.id(total_cents)}")
     end
   end
 
