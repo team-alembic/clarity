@@ -16,9 +16,9 @@ defmodule Clarity.Report.OntologyTest do
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
 
-  @spec render_report(Graph.t(), Lens.t()) :: String.t()
-  defp render_report(graph, lens) do
-    render_component(Ontology, id: "report", graph: graph, lens: lens, prefix: "/c")
+  @spec render_report(Graph.t(), Lens.t(), keyword()) :: String.t()
+  defp render_report(graph, lens, assigns \\ []) do
+    render_component(Ontology, [id: "report", graph: graph, lens: lens, prefix: "/c"] ++ assigns)
   end
 
   @spec graph_for(module()) :: Graph.t()
@@ -44,6 +44,17 @@ defmodule Clarity.Report.OntologyTest do
       # executive dashboard: KPI cards + a stacked bar
       assert html =~ "Documentation coverage"
       assert html =~ "data-segment"
+    end
+
+    test "names domains within the application, and entities and terms within what holds them, when short" do
+      html = render_report(graph_for(User), Architect.make_lens(), name_style: :short)
+
+      assert html =~ "<td>Accounts</td>"
+      assert html =~ ~s(>User</a></td>)
+      # Terms sit under their entity's heading, which keeps its full name.
+      assert html =~ "Demo.Accounts.User</code>"
+      assert html =~ "<td>email</td>"
+      refute html =~ "Demo.Accounts.User.email"
     end
 
     test "lists fully-qualified public terms of every kind" do

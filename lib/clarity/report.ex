@@ -22,6 +22,8 @@ defmodule Clarity.Report do
       changes the graph, so `update/2` runs again and the report stays current
     * `linking` - the viewer's text linking options (`t:Clarity.Autolink.options/0`);
       pass them on to `Clarity.Components.MarkdownComponent`
+    * `name_style` - `:short` to name modules within what holds them where the
+      report shows that, or `:qualified` in full (`t:Clarity.Vertex.Name.style/0`)
 
   Reports are prose: they explain what's going on and why it matters, typically
   as generated markdown rendered with `Clarity.Components.MarkdownComponent`.

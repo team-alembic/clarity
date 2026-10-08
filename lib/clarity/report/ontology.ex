@@ -51,8 +51,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @typep entity() :: %{
              required(:name) => String.t(),
+             required(:module) => module(),
              required(:id) => String.t(),
-             required(:domain) => String.t(),
+             required(:domain) => module() | nil,
              required(:moduledoc) => String.t() | nil,
              required(:data_layer) => String.t(),
              required(:terms) => [term_entry()],
@@ -78,7 +79,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          lens: assigns.lens,
          graph: assigns.graph,
          linking: Map.get(assigns, :linking, []),
-         markdown: build_markdown(entities),
+         markdown: build_markdown(entities, Map.get(assigns, :name_style, :qualified)),
          dashboard: dashboard(entities)
        )}
     end
@@ -146,8 +147,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     defp entity(%Resource{resource: resource}, linked_ids) do
       %{
         name: inspect(resource),
+        module: resource,
         id: Util.id(Resource, [resource]),
-        domain: domain_name(resource),
+        domain: Info.domain(resource),
         moduledoc: moduledoc(resource),
         data_layer: inspect(Info.data_layer(resource)),
         terms: terms(resource, linked_ids),
@@ -298,16 +300,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     # Markdown
 
-    @spec build_markdown([entity()]) :: iodata()
-    defp build_markdown([]) do
+    # With short names, domains are named within the application, and
+    # resources and terms within what the table or heading beside them shows
+    # holds them; names with nothing beside them stay in full.
+    @spec build_markdown([entity()], Vertex.Name.style()) :: iodata()
+    defp build_markdown([], _name_style) do
       "Clarity hasn't found any Ash resources, so there is no ontology to report.\n\n"
     end
 
-    defp build_markdown(entities) do
+    defp build_markdown(entities, name_style) do
       [
         intro(),
-        entities_section(entities),
-        terms_section(entities),
+        entities_section(entities, name_style),
+        terms_section(entities, name_style),
         coverage_section(entities)
       ]
     end
@@ -331,25 +336,25 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ]
     end
 
-    @spec entities_section([entity()]) :: iodata()
-    defp entities_section(entities) do
+    @spec entities_section([entity()], Vertex.Name.style()) :: iodata()
+    defp entities_section(entities, name_style) do
       [
         "### Entities\n\n",
         "Each resource is an entity in the ontology, owned by its domain.\n\n",
         "| Domain | Entity | Description | Data layer |\n",
         "| --- | --- | --- | --- |\n",
-        Enum.map(entities, &entity_row/1),
+        Enum.map(entities, &entity_row(&1, name_style)),
         "\n"
       ]
     end
 
-    @spec entity_row(entity()) :: iodata()
-    defp entity_row(entity) do
+    @spec entity_row(entity(), Vertex.Name.style()) :: iodata()
+    defp entity_row(entity, name_style) do
       [
         "| ",
-        entity.domain,
+        domain_cell(entity.domain, name_style),
         " | ",
-        ["[", entity.name, "](vertex://", entity.id, ")"],
+        ["[", entity_name(entity, name_style), "](vertex://", entity.id, ")"],
         " | ",
         cell(entity.moduledoc),
         " | ",
@@ -358,8 +363,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ]
     end
 
-    @spec terms_section([entity()]) :: iodata()
-    defp terms_section(entities) do
+    @spec terms_section([entity()], Vertex.Name.style()) :: iodata()
+    defp terms_section(entities, name_style) do
       [
         "### Terms\n\n",
         "The vocabulary each entity defines. A term's *Type* is the value it holds — for ",
@@ -374,18 +379,18 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             "`\n\n",
             "| Term | Kind | Type | Description | Notes |\n",
             "| --- | --- | --- | --- | --- |\n",
-            Enum.map(entity.terms, &term_row/1),
+            Enum.map(entity.terms, &term_row(&1, name_style)),
             "\n"
           ]
         end)
       ]
     end
 
-    @spec term_row(term_entry()) :: iodata()
-    defp term_row(term) do
+    @spec term_row(term_entry(), Vertex.Name.style()) :: iodata()
+    defp term_row(term, name_style) do
       [
         "| ",
-        term_link(term),
+        term_link(term, name_style),
         " | ",
         Atom.to_string(term.kind),
         " | ",
@@ -398,9 +403,24 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ]
     end
 
-    @spec term_link(term_entry()) :: iodata()
-    defp term_link(%{linked?: true} = term), do: ["[", term.fqn, "](vertex://", term.id, ")"]
-    defp term_link(term), do: term.fqn
+    # Under its entity's heading, a short term name needs no resource.
+    @spec term_link(term_entry(), Vertex.Name.style()) :: iodata()
+    defp term_link(term, name_style) do
+      name = if name_style == :short, do: term.name, else: term.fqn
+      if term.linked?, do: ["[", name, "](vertex://", term.id, ")"], else: name
+    end
+
+    @spec domain_cell(module() | nil, Vertex.Name.style()) :: String.t()
+    defp domain_cell(nil, _name_style), do: "—"
+    defp domain_cell(domain, :short), do: Vertex.Name.in_app(domain)
+    defp domain_cell(domain, :qualified), do: inspect(domain)
+
+    # Beside its domain, a short entity name needs no domain.
+    @spec entity_name(entity(), Vertex.Name.style()) :: String.t()
+    defp entity_name(%{domain: domain, module: module}, :short) when domain != nil,
+      do: Vertex.Name.within(module, domain)
+
+    defp entity_name(entity, _name_style), do: entity.name
 
     @spec description_cell(String.t() | nil) :: iodata()
     defp description_cell(nil), do: ["⚠ ", cell(nil), " *(undocumented)*"]
@@ -635,14 +655,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     defp format_type(type, _linked_ids), do: ["`", inspect(type), "`"]
-
-    @spec domain_name(Ash.Resource.t()) :: String.t()
-    defp domain_name(resource) do
-      case Info.domain(resource) do
-        nil -> "—"
-        domain -> inspect(domain)
-      end
-    end
 
     # The first paragraph of the resource's moduledoc, as a one-line summary.
     @spec moduledoc(module()) :: String.t() | nil

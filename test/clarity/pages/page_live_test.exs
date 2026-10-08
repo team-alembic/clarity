@@ -557,6 +557,17 @@ defmodule Clarity.Pages.PageLiveTest do
       assert user_links.() > first_mentions
     end
 
+    test "tables name what they hold briefly until the viewer asks for names in full", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/architect/ash-domain:demo-accounts/ash-domain-overview")
+      render_async(view)
+
+      assert has_element?(view, ".prose td a", ~r/^User$/)
+
+      render_hook(view, "set-name-style", %{"style" => "qualified"})
+
+      assert has_element?(view, ".prose td a", ~r/^Demo\.Accounts\.User$/)
+    end
+
     test "a viewer who turned lowercase linking off joins with it off", %{conn: conn} do
       conn = put_connect_params(conn, %{"linking" => %{"lowercase" => false}})
       {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")

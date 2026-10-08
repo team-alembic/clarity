@@ -37,6 +37,26 @@ pressing Escape closes it; the hook places it under the gear as it opens. --%>
 
     <fieldset class="mt-4">
       <legend class="text-xs font-semibold uppercase tracking-wide text-base-light-600 dark:text-base-dark-400 mb-2">
+        Names
+      </legend>
+      <label class="flex items-start gap-2.5 cursor-pointer">
+        <input
+          type="checkbox"
+          name="short_names"
+          data-name-style
+          class="mt-0.5 size-4 shrink-0 accent-primary-light dark:accent-primary-dark"
+        />
+        <span>
+          <span class="block text-sm font-medium">Short where contained</span>
+          <span class="block mt-0.5 text-xs text-base-light-600 dark:text-base-dark-400">
+            Accounts and ApiKey, not Demo.Accounts and Demo.Accounts.ApiKey, where a table shows what holds them.
+          </span>
+        </span>
+      </label>
+    </fieldset>
+
+    <fieldset class="mt-4">
+      <legend class="text-xs font-semibold uppercase tracking-wide text-base-light-600 dark:text-base-dark-400 mb-2">
         Text linking
       </legend>
       <div class="space-y-3">

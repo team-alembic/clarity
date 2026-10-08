@@ -9,6 +9,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @behaviour Clarity.Content
 
     alias Clarity.Vertex.Application
+    alias Clarity.Vertex.Name
     alias Clarity.Vertex.Util
 
     @impl Clarity.Content
@@ -29,11 +30,11 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @impl Clarity.Content
     def render_static(%Application{app: app}, _lens) do
-      {:markdown, fn _props -> generate_markdown(app) end}
+      {:markdown, fn props -> generate_markdown(app, Map.get(props, :name_style, :qualified)) end}
     end
 
-    @spec generate_markdown(atom()) :: iodata()
-    defp generate_markdown(app) do
+    @spec generate_markdown(atom(), Name.style()) :: iodata()
+    defp generate_markdown(app, name_style) do
       domains_and_resources = Ash.Info.domains_and_resources(app)
 
       if Enum.empty?(domains_and_resources) do
@@ -41,16 +42,18 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       else
         [
           "## Ash Domains\n\n",
-          Enum.map(domains_and_resources, &domain_section/1)
+          Enum.map(domains_and_resources, &domain_section(&1, name_style))
         ]
       end
     end
 
-    @spec domain_section({Ash.Domain.t(), [Ash.Resource.t()]}) :: iodata()
-    defp domain_section({domain, resources}) do
+    # With short names, each domain is named within the application, and its
+    # resources within it.
+    @spec domain_section({Ash.Domain.t(), [Ash.Resource.t()]}, Name.style()) :: iodata()
+    defp domain_section({domain, resources}, name_style) do
       [
         "### [",
-        inspect(domain),
+        if(name_style == :short, do: Name.in_app(domain), else: inspect(domain)),
         "](vertex://",
         Util.id(Clarity.Vertex.Ash.Domain, [domain]),
         ")\n\n",
@@ -64,20 +67,20 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           [
             "| Resource | Description |\n",
             "| --- | --- |\n",
-            Enum.map(resources, &resource_row/1),
+            Enum.map(resources, &resource_row(&1, domain, name_style)),
             "\n"
           ]
         end
       ]
     end
 
-    @spec resource_row(Ash.Resource.t()) :: iodata()
-    defp resource_row(resource) do
+    @spec resource_row(Ash.Resource.t(), Ash.Domain.t(), Name.style()) :: iodata()
+    defp resource_row(resource, domain, name_style) do
       description = get_description(resource)
 
       [
         "| [",
-        inspect(resource),
+        if(name_style == :short, do: Name.within(resource, domain), else: inspect(resource)),
         "](vertex://",
         Util.id(Clarity.Vertex.Ash.Resource, [resource]),
         ") | ",

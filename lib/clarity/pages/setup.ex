@@ -29,6 +29,8 @@ defmodule Clarity.Pages.Setup do
         prefix: prefix,
         theme: theme,
         linking: linking(params["linking"]),
+        # Short unless the viewer chose names in full.
+        name_style: if(params["name_style"] == "qualified", do: :qualified, else: :short),
         clarity_pid: Map.get(session, "clarity_pid", Clarity.Server)
       )
       |> attach_hook(:settings_handler, :handle_event, &handle_settings_event/3)
@@ -42,6 +44,11 @@ defmodule Clarity.Pages.Setup do
        when theme_string in ["dark", "light"] do
     theme = String.to_existing_atom(theme_string)
     {:halt, assign(socket, theme: theme)}
+  end
+
+  defp handle_settings_event("set-name-style", %{"style" => style}, socket)
+       when style in ["short", "qualified"] do
+    {:halt, assign(socket, name_style: String.to_existing_atom(style))}
   end
 
   defp handle_settings_event("set-linking", %{} = changes, socket) do

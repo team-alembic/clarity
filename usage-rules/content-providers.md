@@ -203,6 +203,9 @@ end
 **Props available:**
 - `theme`: `:light` or `:dark`
 - `zoom_subgraph`: The filtered subgraph for the current lens
+- `name_style`: the viewer's choice from the settings menu, `:short` to name a
+  module within what holds it where the content shows that (a resource beside
+  its domain as `ApiKey`, a domain as `Accounts`), or `:qualified` in full
 
 ## Vertex Links
 

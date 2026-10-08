@@ -130,6 +130,7 @@
                 zoom_graph={data.zoom_graph}
                 graph={@clarity.graph}
                 linking={@linking}
+                name_style={@name_style}
                 zoom_level={@zoom_level}
                 shown_vertex_types={@shown_vertex_types}
                 available_vertex_types={@available_vertex_types}
@@ -143,7 +144,8 @@
                   zoom_subgraph: data.zoom_graph,
                   zoom_level: @zoom_level,
                   shown_vertex_types: @shown_vertex_types,
-                  available_vertex_types: @available_vertex_types
+                  available_vertex_types: @available_vertex_types,
+                  name_style: @name_style
                 }
 
                 {"mermaid", IO.iodata_to_binary(content_fn.(props))}
@@ -154,7 +156,8 @@
                   zoom_subgraph: data.zoom_graph,
                   zoom_level: @zoom_level,
                   shown_vertex_types: @shown_vertex_types,
-                  available_vertex_types: @available_vertex_types
+                  available_vertex_types: @available_vertex_types,
+                  name_style: @name_style
                 }
 
                 {"graphviz", IO.iodata_to_binary(content_fn.(props))}
@@ -165,7 +168,8 @@
                   zoom_subgraph: data.zoom_graph,
                   zoom_level: @zoom_level,
                   shown_vertex_types: @shown_vertex_types,
-                  available_vertex_types: @available_vertex_types
+                  available_vertex_types: @available_vertex_types,
+                  name_style: @name_style
                 }
 
                 {"markdown", IO.iodata_to_binary(content_fn.(props))}

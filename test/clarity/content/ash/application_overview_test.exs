@@ -70,6 +70,17 @@ defmodule Clarity.Content.Ash.ApplicationOverviewTest do
       assert markdown =~ "Demo.Accounts"
     end
 
+    test "names domains within the application, and resources within them, when short" do
+      vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
+      {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, nil)
+
+      markdown = IO.iodata_to_binary(markdown_fn.(%{theme: :light, zoom_subgraph: nil, name_style: :short}))
+
+      assert markdown =~ "### [Accounts](vertex://"
+      assert markdown =~ "| [User](vertex://"
+      refute markdown =~ "Demo.Accounts"
+    end
+
     test "generated markdown includes resource tables" do
       vertex = %Application{app: :clarity, description: nil, version: "0.2.0"}
       {:markdown, markdown_fn} = ApplicationOverview.render_static(vertex, nil)

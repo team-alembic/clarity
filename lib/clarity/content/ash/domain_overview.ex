@@ -10,6 +10,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     alias Ash.Domain.Info
     alias Clarity.Vertex.Ash.Domain
+    alias Clarity.Vertex.Name
     alias Clarity.Vertex.Util
 
     @impl Clarity.Content
@@ -27,25 +28,28 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @impl Clarity.Content
     def render_static(%Domain{domain: domain}, _lens) do
-      {:markdown, fn _props -> generate_markdown(domain) end}
+      {:markdown,
+       fn props -> generate_markdown(domain, Map.get(props, :name_style, :qualified)) end}
     end
 
-    @spec generate_markdown(Ash.Domain.t()) :: iodata()
-    defp generate_markdown(domain) do
+    @spec generate_markdown(Ash.Domain.t(), Name.style()) :: iodata()
+    defp generate_markdown(domain, name_style) do
       [
-        domain_info_section(domain),
-        resources_section(domain)
+        domain_info_section(domain, name_style),
+        resources_section(domain, name_style)
       ]
     end
 
-    @spec domain_info_section(Ash.Domain.t()) :: iodata()
-    defp domain_info_section(domain) do
+    # With short names, the domain is named within its application, and its
+    # resources within it.
+    @spec domain_info_section(Ash.Domain.t(), Name.style()) :: iodata()
+    defp domain_info_section(domain, name_style) do
       [
         "## Domain Information\n\n",
         "| Property | Value |\n",
         "| --- | --- |\n",
         "| **Domain** | [",
-        inspect(domain),
+        if(name_style == :short, do: Name.in_app(domain), else: inspect(domain)),
         "](vertex://",
         Util.id(Domain, [domain]),
         ") |\n",
@@ -57,8 +61,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       ]
     end
 
-    @spec resources_section(Ash.Domain.t()) :: iodata()
-    defp resources_section(domain) do
+    @spec resources_section(Ash.Domain.t(), Name.style()) :: iodata()
+    defp resources_section(domain, name_style) do
       resources = Info.resources(domain)
 
       if Enum.empty?(resources) do
@@ -68,19 +72,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "## Resources\n\n",
           "| Resource | Description |\n",
           "| --- | --- |\n",
-          Enum.map_intersperse(resources, "", &resource_row/1),
+          Enum.map_intersperse(resources, "", &resource_row(&1, domain, name_style)),
           "\n\n"
         ]
       end
     end
 
-    @spec resource_row(Ash.Resource.t()) :: iodata()
-    defp resource_row(resource) do
+    @spec resource_row(Ash.Resource.t(), Ash.Domain.t(), Name.style()) :: iodata()
+    defp resource_row(resource, domain, name_style) do
       description = get_resource_description(resource)
 
       [
         "| [",
-        inspect(resource),
+        if(name_style == :short, do: Name.within(resource, domain), else: inspect(resource)),
         "](vertex://",
         Util.id(Clarity.Vertex.Ash.Resource, [resource]),
         ") | ",

@@ -23,12 +23,19 @@ export const getLinking = () =>
     }),
   );
 
+const NAME_STYLE_KEY = "clarity-name-style";
+
+// How content names modules: "short" within what holds them, unless the
+// viewer chose "qualified" names in full.
+export const getNameStyle = () => (read(NAME_STYLE_KEY) === "qualified" ? "qualified" : "short");
+
 // The gap between the gear and the menu below it, in pixels.
 export const MENU_GAP = 4;
 
 // The settings menu in the header. The viewer's choices live in the browser:
 // the hook shows them, applies the theme, and tells the LiveView what it
-// renders with, the theme a preference resolves to and how text links names.
+// renders with: the theme a preference resolves to, the name style, and how
+// text links names.
 export default {
   mounted() {
     this.button = this.el.querySelector("button[popovertarget]");
@@ -39,6 +46,7 @@ export default {
       const input = event.target;
       if (input.name === "theme") this.setTheme(input.value);
       if ("linking" in input.dataset) this.setLinking(input.name, input.checked);
+      if ("nameStyle" in input.dataset) this.setNameStyle(input.checked ? "short" : "qualified");
     });
 
     // The gear moves with the header's layout, so the menu is placed under it
@@ -76,6 +84,9 @@ export default {
       radio.checked = radio.value === preference;
     }
 
+    const shortNames = this.el.querySelector("input[data-name-style]");
+    if (shortNames) shortNames.checked = getNameStyle() === "short";
+
     const linking = getLinking();
 
     for (const checkbox of this.el.querySelectorAll("input[data-linking]")) {
@@ -92,6 +103,11 @@ export default {
     const theme = resolveTheme(preference);
     applyTheme(theme);
     this.pushEvent("set-theme", { theme });
+  },
+
+  setNameStyle(style) {
+    write(NAME_STYLE_KEY, style);
+    this.pushEvent("set-name-style", { style });
   },
 
   setLinking(option, enabled) {

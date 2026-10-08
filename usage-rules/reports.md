@@ -37,6 +37,9 @@ vertices. If you're adding a view for a *single* vertex, use a
     changes the graph; `update/2` then runs again, so the report stays current
   - `linking` - the viewer's text linking options from the settings menu (every
     mention, lowercase names); pass them on to `<.markdown>` along with `graph`
+  - `name_style` - `:short` to name modules within what holds them where the
+    report shows that (a resource beside its domain as `ApiKey`, a domain as
+    `Accounts`), or `:qualified` in full
 - In practice a report builds a markdown string and renders it with
   `<.markdown>`, so it reads as prose.
 - The report queries the graph itself, typically with
@@ -78,7 +81,7 @@ def category, do: "Compliance"
 
 ### 3. Implement the LiveComponent
 
-`update/2` receives `graph`, `lens`, `prefix`, `version` and `linking`. Build the narrative
+`update/2` receives `graph`, `lens`, `prefix`, `version`, `linking` and `name_style`. Build the narrative
 markdown there and render it with `<.markdown>` (wrapped in a single root
 element, as a stateful LiveComponent requires):
 

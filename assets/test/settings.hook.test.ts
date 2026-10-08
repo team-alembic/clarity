@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import Settings, { getLinking, MENU_GAP } from "../js/settings.hook.js";
+import Settings, { getLinking, getNameStyle, MENU_GAP } from "../js/settings.hook.js";
 
 // A system theme whose changes the test can fire.
 function stubSystem(dark: boolean) {
@@ -26,6 +26,7 @@ function mount() {
       <input type="radio" name="theme" value="light" />
       <input type="radio" name="theme" value="dark" />
       <input type="radio" name="theme" value="system" />
+      <input type="checkbox" name="short_names" data-name-style />
       <input type="checkbox" name="lowercase" data-linking />
       <input type="checkbox" name="every" data-linking />
     </div>
@@ -62,10 +63,11 @@ describe("Settings", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the defaults: the system theme, lowercase names linked, each first mention", () => {
+  it("shows the defaults: the system theme, short names, lowercase names linked, each first mention", () => {
     hook = mount();
 
     expect(checked(hook, 'input[value="system"]')).toBe(true);
+    expect(checked(hook, "input[data-name-style]")).toBe(true);
     expect(checked(hook, 'input[name="lowercase"]')).toBe(true);
     expect(checked(hook, 'input[name="every"]')).toBe(false);
   });
@@ -120,6 +122,19 @@ describe("Settings", () => {
 
     changeSystem(true);
     expect(hook.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("stores and reports the name style", () => {
+    hook = mount();
+    choose(hook, "input[data-name-style]", false);
+
+    expect(getNameStyle()).toBe("qualified");
+    expect(hook.pushEvent).toHaveBeenCalledWith("set-name-style", { style: "qualified" });
+
+    hook.destroyed();
+    hook.el.remove();
+    hook = mount();
+    expect(checked(hook, "input[data-name-style]")).toBe(false);
   });
 
   it("stores and reports each text linking option", () => {

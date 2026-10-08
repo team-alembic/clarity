@@ -66,6 +66,29 @@ defmodule Clarity.Vertex.Name do
   end
 
   @doc """
+  Returns a module's name within `container`, a module it's nested under:
+  `"ApiKey"` for `Demo.Accounts.ApiKey` in `Demo.Accounts`. A module not
+  nested under `container` is named within its application (`in_app/1`).
+
+  ## Examples
+
+      iex> Clarity.Vertex.Name.within(Demo.Accounts.ApiKey, Demo.Accounts)
+      "ApiKey"
+
+      iex> Clarity.Vertex.Name.within(Demo.Billing.Invoice, Demo.Accounts)
+      "Billing.Invoice"
+  """
+  @spec within(module(), module()) :: String.t()
+  def within(module, container) do
+    container_parts = Module.split(container)
+
+    case Enum.split(Module.split(module), length(container_parts)) do
+      {^container_parts, [_ | _] = rest} -> Enum.join(rest, ".")
+      _not_nested -> in_app(module)
+    end
+  end
+
+  @doc """
   Render sibling `vertices` using the requested `style`, in order.
 
   As `display/2`, except that in the `:short` style module names that would

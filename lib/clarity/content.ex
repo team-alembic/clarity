@@ -75,6 +75,7 @@ defmodule Clarity.Content do
   @type static_content_type() :: :markdown | :mermaid | :viz
   @type theme() :: :light | :dark
   @type static_content_props() :: %{
+          optional(:name_style) => Vertex.Name.style(),
           theme: theme(),
           zoom_subgraph: Clarity.Graph.t()
         }

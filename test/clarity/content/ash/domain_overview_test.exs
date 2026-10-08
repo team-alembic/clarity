@@ -67,6 +67,16 @@ defmodule Clarity.Content.Ash.DomainOverviewTest do
       assert markdown =~ "Demo.Accounts.User"
     end
 
+    test "names the domain within its application, and its resources within it, when short" do
+      {:markdown, markdown_fn} = DomainOverview.render_static(%Domain{domain: TestDomain}, nil)
+
+      markdown = IO.iodata_to_binary(markdown_fn.(%{theme: :light, zoom_subgraph: nil, name_style: :short}))
+
+      assert markdown =~ "| **Domain** | [Accounts](vertex://"
+      assert markdown =~ "| [User](vertex://"
+      refute markdown =~ "Demo.Accounts.User"
+    end
+
     test "generated markdown extracts first paragraph from moduledoc" do
       vertex = %Domain{domain: TestDomain}
       {:markdown, markdown_fn} = DomainOverview.render_static(vertex, nil)
