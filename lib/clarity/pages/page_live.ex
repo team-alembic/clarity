@@ -36,6 +36,7 @@ defmodule Clarity.PageLive do
         # Short module names in the tree only; a candidate user preference.
         tree_name_style: :short,
         data: AsyncResult.loading(),
+        content: nil,
         page_title: "Loading...",
         shown_vertex_types: [],
         available_vertex_types: [],
@@ -126,7 +127,7 @@ defmodule Clarity.PageLive do
                 socket.assigns.prefix,
                 lens.id,
                 vertex_id,
-                get_first_content_id(contents)
+                kept_content_id(contents, socket.assigns.content)
               ])
           )
       end
@@ -453,21 +454,18 @@ defmodule Clarity.PageLive do
     assign(socket, page_title: page_title)
   end
 
-  @spec get_first_content_id([Content.t()]) :: String.t()
-  defp get_first_content_id(contents) do
-    [%{id: id} | _] = contents
-    id
+  # The tab open before, if the vertex has it too, or else its first: moving
+  # to another vertex, or lens, keeps the tab where it can.
+  @spec kept_content_id([Content.t(), ...], Content.t() | nil) :: String.t()
+  defp kept_content_id([%{id: first_id} | _] = contents, content) do
+    if content && Enum.any?(contents, &(&1.id == content.id)), do: content.id, else: first_id
   end
 
+  # The vertex route then keeps the open tab if the lens has it for the target.
   @spec lens_switch_path(Socket.t(), Lens.t(), Vertex.t()) :: String.t()
   defp lens_switch_path(socket, lens, vertex) do
-    %{prefix: prefix, content: content, clarity: clarity} = socket.assigns
-    target = nearest_shown(clarity.graph, lens, vertex)
-    path = Path.join([prefix, lens.id, Vertex.id(target)])
-
-    if content && Enum.any?(Content.get_contents_for_vertex(target, lens), &(&1.id == content.id)),
-      do: Path.join(path, content.id),
-      else: path
+    %{prefix: prefix, clarity: clarity} = socket.assigns
+    Path.join([prefix, lens.id, Vertex.id(nearest_shown(clarity.graph, lens, vertex))])
   end
 
   # The vertex itself if the lens's tree shows it, or else its nearest ancestor

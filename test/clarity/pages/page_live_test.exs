@@ -282,6 +282,36 @@ defmodule Clarity.Pages.PageLiveTest do
     end
   end
 
+  describe "PageLive moving to another vertex in the tree" do
+    @describetag test_graph: [modules: true]
+
+    setup do
+      {:ok, module_id: Clarity.Vertex.id(%Clarity.Vertex.Module{module: Demo.Accounts})}
+    end
+
+    test "keeps the open tab when the vertex has it", %{conn: conn, module_id: module_id} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/moduledoc")
+      render_async(view)
+
+      view |> element("#navigation-tree a[data-tooltip-type='Module']") |> render_click()
+
+      assert_patch(view, "/debug/#{module_id}/moduledoc")
+    end
+
+    test "opens the vertex's first tab when it hasn't the open one", %{
+      conn: conn,
+      module_id: module_id
+    } do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/ash-domain-overview")
+      render_async(view)
+
+      view |> element("#navigation-tree a[data-tooltip-type='Module']") |> render_click()
+
+      # Debug puts the graph first.
+      assert_patch(view, "/debug/#{module_id}/graph")
+    end
+  end
+
   describe "PageLive switching lens" do
     test "keeps the selected vertex", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
