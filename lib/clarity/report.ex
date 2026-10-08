@@ -1,13 +1,26 @@
 defmodule Clarity.Report do
   @moduledoc """
-  Behaviour for reports — lens-scoped roll-ups of the graph rendered as a single
-  interactive view, an alternative to navigating the graph vertex by vertex.
+  Behaviour for reports: written documents that sum up part of the graph in one
+  place, an alternative to navigating it vertex by vertex.
 
-  A report declares its `name/0`, an optional `description/0`, and which lens it
-  `applies?/1` to. The module is also a LiveComponent (`use Clarity.Web,
-  :live_component`) — `Clarity.ReportLive` embeds the selected report and passes
-  it `graph` and `lens` assigns, so a report can query
-  `Clarity.Graph.vertices(graph, lens.filter)` and reuse the per-vertex analysis.
+  Reports are a top-level section beside Explore, in the header under every
+  lens, so no report is hidden behind a lens choice. `Clarity.ReportLive` renders
+  them at `prefix/:lens/reports`, every registered report as a tab. A report
+  declares its `name/0` and an optional `description/0`.
+
+  The module is also a LiveComponent (`use Clarity.Web, :live_component`).
+  `Clarity.ReportLive` embeds the selected report with these assigns:
+
+    * `graph` - the whole `Clarity.Graph`, not filtered by the lens; query it with
+      `Clarity.Graph.vertices/2`, e.g.
+      `Clarity.Graph.vertices(graph, {:==, :vertex_type, Clarity.Vertex.Application})`
+    * `lens` - the current lens, for `Clarity.Components.MarkdownComponent`'s links
+    * `prefix` - the URL prefix Clarity is mounted at
+    * `version` - the graph's update count; it changes whenever introspection
+      changes the graph, so `update/2` runs again and the report stays current
+
+  Reports are prose: they explain what's going on and why it matters, typically
+  as generated markdown rendered with `Clarity.Components.MarkdownComponent`.
 
   Reports are registered per-application under `:clarity_reports` and discovered
   via `Clarity.Config.list_reports/0`:
@@ -23,10 +36,6 @@ defmodule Clarity.Report do
         @impl Clarity.Report
         def name, do: "Compliance"
 
-        @impl Clarity.Report
-        def applies?(%Clarity.Perspective.Lens{id: "security"}), do: true
-        def applies?(_lens), do: false
-
         @impl Phoenix.LiveComponent
         def update(assigns, socket), do: {:ok, assign(socket, assigns)}
 
@@ -35,30 +44,27 @@ defmodule Clarity.Report do
       end
   """
 
-  alias Clarity.Perspective.Lens
-
   @callback name() :: String.t()
   @callback description() :: String.t() | nil
-  @callback applies?(lens :: Lens.t()) :: boolean()
 
   @optional_callbacks [description: 0]
 
   @doc """
-  Reports applicable to `lens`, sorted by name.
+  All registered reports, sorted by name.
   """
-  @spec applicable(Lens.t()) :: [module()]
-  def applicable(lens) do
+  @spec all() :: [module()]
+  def all do
     Clarity.Config.list_reports()
-    |> Enum.filter(&applies?(&1, lens))
+    |> Enum.filter(&Code.ensure_loaded?/1)
     |> Enum.sort_by(& &1.name())
   end
 
   @doc """
-  Finds an applicable report by its URL id, or `:error`.
+  Finds a registered report by its URL id, or `:error`.
   """
-  @spec fetch(Lens.t(), String.t()) :: {:ok, module()} | :error
-  def fetch(lens, id) do
-    case Enum.find(applicable(lens), &(report_id(&1) == id)) do
+  @spec fetch(String.t()) :: {:ok, module()} | :error
+  def fetch(id) do
+    case Enum.find(all(), &(report_id(&1) == id)) do
       nil -> :error
       report -> {:ok, report}
     end
@@ -85,12 +91,7 @@ defmodule Clarity.Report do
   """
   @spec description(module()) :: String.t() | nil
   def description(report) do
-    if function_exported?(report, :description, 0), do: report.description()
-  end
-
-  @spec applies?(module(), Lens.t()) :: boolean()
-  defp applies?(report, lens) do
-    Code.ensure_loaded?(report) and function_exported?(report, :applies?, 1) and
-      report.applies?(lens)
+    if Code.ensure_loaded?(report) and function_exported?(report, :description, 0),
+      do: report.description()
   end
 end

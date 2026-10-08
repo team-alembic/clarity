@@ -26,9 +26,19 @@ defmodule Clarity.CoreComponents do
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
 
-  attr :mode, :atom,
+  attr :navigation, :boolean,
+    default: true,
+    doc: "Whether the page has a navigation sidebar, and so the buttons that toggle it"
+
+  attr :section, :atom,
     default: :explore,
-    doc: "Which view is active (:explore or :report), for the Explore/Reports toggle"
+    values: [:explore, :reports],
+    doc: "The top-level section shown, marked current in the header's menu"
+
+  attr :lens_path, :any,
+    default: nil,
+    doc:
+      "Function from a lens id to the path the lens switcher goes to; defaults to the lens's root"
 
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"

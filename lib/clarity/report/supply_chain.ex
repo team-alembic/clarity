@@ -2,7 +2,7 @@ defmodule Clarity.Report.SupplyChain do
   @moduledoc """
   Supply-chain security report: a written review of the dependencies flagged by
   `Clarity.Status.SupplyChain` — known security advisories, and outdated or
-  retired versions — under the security lens.
+  retired versions.
 
   The report is prose: it explains, in sentences, which dependencies carry a
   concern and why it matters, rather than presenting a table to operate.
@@ -18,10 +18,12 @@ defmodule Clarity.Report.SupplyChain do
   alias Clarity.Advisory.Source
   alias Clarity.Dependency.Registry
   alias Clarity.Graph
-  alias Clarity.Perspective.Lens
   alias Clarity.Report.Charts
   alias Clarity.Status
   alias Clarity.Vertex
+
+  # Vulnerabilities, and outdated or retired versions.
+  @status_classes [:security, :hygiene]
 
   @typep finding() :: %{
            app: String.t(),
@@ -40,13 +42,9 @@ defmodule Clarity.Report.SupplyChain do
   @impl Clarity.Report
   def description, do: "Dependencies with advisories or outdated/retired versions"
 
-  @impl Clarity.Report
-  def applies?(%Lens{id: "security"}), do: true
-  def applies?(_lens), do: false
-
   @impl Phoenix.LiveComponent
   def update(assigns, socket) do
-    findings = findings(assigns.graph, assigns.lens)
+    findings = findings(assigns.graph)
     total = assigns.graph |> Graph.vertices({:==, :vertex_type, Vertex.Application}) |> length()
 
     {:ok,
@@ -259,14 +257,15 @@ defmodule Clarity.Report.SupplyChain do
   defp via_label([]), do: "direct"
   defp via_label(via), do: Enum.join(via, ", ")
 
-  @spec findings(Graph.t(), Lens.t()) :: [finding()]
-  defp findings(graph, lens) do
+  @spec findings(Graph.t()) :: [finding()]
+  defp findings(graph) do
     apps = Graph.vertices(graph, {:==, :vertex_type, Vertex.Application})
     roots = apps |> Enum.filter(&(dependents(graph, &1) == [])) |> MapSet.new(& &1.app)
 
     apps
     |> Enum.map(fn vertex ->
-      {vertex, Enum.filter(Status.SupplyChain.statuses(vertex, graph), lens.status_filter)}
+      {vertex,
+       Enum.filter(Status.SupplyChain.statuses(vertex, graph), &(&1.class in @status_classes))}
     end)
     |> Enum.reject(fn {_vertex, statuses} -> statuses == [] end)
     |> Enum.map(fn {vertex, statuses} -> finding(vertex, statuses, via(graph, vertex, roots)) end)

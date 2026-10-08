@@ -2,44 +2,32 @@ defmodule Clarity.ReportTest do
   # async: false — registers reports in the global :clarity_reports env.
   use ExUnit.Case, async: false
 
-  alias Clarity.Perspective.Lens
   alias Clarity.Report
 
   doctest Report
 
-  defmodule SecurityReport do
+  defmodule ZebraReport do
     @moduledoc false
     @behaviour Report
 
     @impl Report
-    def name, do: "Security Report"
+    def name, do: "Zebra Report"
 
     @impl Report
-    def description, do: "A security report"
-
-    @impl Report
-    def applies?(%Lens{id: "security"}), do: true
-    def applies?(_lens), do: false
+    def description, do: "A described report"
   end
 
-  defmodule ArchitectReport do
+  defmodule AardvarkReport do
     @moduledoc false
     @behaviour Report
 
     @impl Report
-    def name, do: "Architect Report"
-
-    @impl Report
-    def applies?(%Lens{id: "architect"}), do: true
-    def applies?(_lens), do: false
+    def name, do: "Aardvark Report"
   end
 
   setup do
     on_exit(fn -> Application.delete_env(:clarity, :clarity_reports) end)
   end
-
-  @spec lens(String.t()) :: Lens.t()
-  defp lens(id), do: %Lens{id: id, name: id, icon: fn -> nil end, filter: true}
 
   describe "report_id/1" do
     test "slugs the module, stripping the clarity-report prefix" do
@@ -47,31 +35,33 @@ defmodule Clarity.ReportTest do
     end
   end
 
-  describe "applicable/1" do
-    test "returns only reports that apply to the lens, sorted by name" do
-      Application.put_env(:clarity, :clarity_reports, [SecurityReport, ArchitectReport])
+  describe "all/0" do
+    test "returns every registered report, sorted by name" do
+      Application.put_env(:clarity, :clarity_reports, [ZebraReport, AardvarkReport])
 
-      assert Report.applicable(lens("security")) == [SecurityReport]
-      assert Report.applicable(lens("architect")) == [ArchitectReport]
-      assert Report.applicable(lens("debug")) == []
+      assert Report.all() == [AardvarkReport, ZebraReport]
+    end
+
+    test "skips reports whose module isn't available" do
+      Application.put_env(:clarity, :clarity_reports, [ZebraReport, Clarity.Report.Missing])
+
+      assert Report.all() == [ZebraReport]
     end
   end
 
-  describe "fetch/2" do
-    test "finds an applicable report by id" do
-      Application.put_env(:clarity, :clarity_reports, [SecurityReport])
+  describe "fetch/1" do
+    test "finds a registered report by id" do
+      Application.put_env(:clarity, :clarity_reports, [ZebraReport])
 
-      assert {:ok, SecurityReport} = Report.fetch(lens("security"), Report.report_id(SecurityReport))
-      assert :error = Report.fetch(lens("security"), "nope")
-      # not applicable to this lens
-      assert :error = Report.fetch(lens("architect"), Report.report_id(SecurityReport))
+      assert {:ok, ZebraReport} = Report.fetch(Report.report_id(ZebraReport))
+      assert :error = Report.fetch("nope")
     end
   end
 
   describe "description/1" do
     test "returns the description or nil when undefined" do
-      assert Report.description(SecurityReport) == "A security report"
-      assert Report.description(ArchitectReport) == nil
+      assert Report.description(ZebraReport) == "A described report"
+      assert Report.description(AardvarkReport) == nil
     end
   end
 end

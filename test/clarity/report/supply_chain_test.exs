@@ -7,32 +7,19 @@ defmodule Clarity.Report.SupplyChainTest do
   alias Clarity.Advisory.Source
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
-  alias Clarity.Perspective.Lensmaker.Security
+  alias Clarity.Perspective.Lensmaker.Architect
   alias Clarity.Report.SupplyChain
   alias Clarity.Vertex
   alias Clarity.Vertex.Root
 
   setup do
     :ets.new(Clarity.Dependency.Registry, [:named_table, :set, :public])
-    {:ok, graph: Graph.new(), lens: Security.make_lens()}
+    {:ok, graph: Graph.new(), lens: Architect.make_lens()}
   end
 
   @spec render_report(Graph.t(), Lens.t()) :: String.t()
   defp render_report(graph, lens) do
     render_component(SupplyChain, id: "report", graph: graph, lens: lens, prefix: "/c")
-  end
-
-  describe "applies?/1" do
-    test "only under the security lens" do
-      assert SupplyChain.applies?(Security.make_lens())
-
-      refute SupplyChain.applies?(%Lens{
-               id: "architect",
-               name: "A",
-               icon: fn -> nil end,
-               filter: true
-             })
-    end
   end
 
   describe "render" do

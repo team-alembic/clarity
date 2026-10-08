@@ -173,6 +173,18 @@
   @apply text-base-light-900 border-primary-light dark:text-base-dark-50 dark:border-primary-dark;
 }
 
+/* The header's top-level sections (Explore, Reports). */
+.header-section {
+  @apply flex h-8 items-center rounded-md px-2.5 text-sm font-medium;
+  @apply text-base-light-600 hover:text-base-light-900 hover:bg-base-light-200;
+  @apply dark:text-base-dark-400 dark:hover:text-base-dark-100 dark:hover:bg-base-dark-700;
+  @apply transition-colors;
+}
+
+.header-section[aria-current="page"] {
+  @apply text-base-light-900 bg-base-light-200 dark:text-base-dark-50 dark:bg-base-dark-700;
+}
+
 /* The sidebar's own heading row, which holds the button that hides it. */
 .nav-heading {
   @apply sticky top-0 z-10 -mx-2 mb-1 flex h-8 items-center justify-between px-3;

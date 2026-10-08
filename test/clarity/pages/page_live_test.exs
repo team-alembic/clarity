@@ -19,6 +19,13 @@ defmodule Clarity.Pages.PageLiveTest do
                live_redirect(view, to: "/architect")
     end
 
+    test "the header offers Explore, marked current, and Reports for the lens", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+
+      assert has_element?(view, "#header-sections a[aria-current=page]", "Explore")
+      assert has_element?(view, "#header-sections a[href='/debug/reports']", "Reports")
+    end
+
     test "loads root vertex with graph content", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
       html = render_async(view)

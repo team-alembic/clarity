@@ -5,47 +5,51 @@
     lens={@lens}
     theme={@theme}
     clarity_pid={@clarity_pid}
-    mode={:report}
-    class="shadow-md"
+    section={:reports}
+    navigation={false}
+    lens_path={&report_lens_path(@prefix, &1, @selected)}
   />
 
-  <%= if @lens do %>
-    <div class="max-w-[100ch] mx-auto p-6">
-      <%= if @reports == [] do %>
-        <p class="italic opacity-70">
-          No reports are available for the {@lens.name} lens.
-        </p>
-      <% else %>
-        <nav class="flex gap-1 border-b border-base-light-300 dark:border-base-dark-700 mb-6">
-          <.link
-            :for={report <- @reports}
-            patch={Path.join([@prefix, @lens.id, "report", Clarity.Report.report_id(report)])}
-            title={Clarity.Report.description(report)}
-            class={[
-              "inline-block px-4 py-2 rounded-t-md font-medium transition-colors",
-              if(report == @selected,
-                do:
-                  "bg-base-light-200 dark:bg-base-dark-800 text-primary-light dark:text-primary-dark border-b-2 border-primary-light dark:border-primary-dark",
-                else:
-                  "text-base-light-600 dark:text-base-dark-400 hover:text-primary-light dark:hover:text-primary-dark hover:bg-base-light-200 dark:hover:bg-base-dark-800"
-              )
-            ]}
-          >
-            {report.name()}
-          </.link>
-        </nav>
+  <div class="max-w-[100ch] mx-auto p-6">
+    <%= if @reports == [] do %>
+      <p id="no-reports" class="italic opacity-70">No reports are registered.</p>
+    <% else %>
+      <nav
+        id="report-tabs"
+        class="border-b border-base-light-300 dark:border-base-dark-700 mb-6"
+      >
+        <ul class="content-tabs flex min-w-0 overflow-x-auto">
+          <li :for={report <- @reports} class="flex shrink-0">
+            <.link
+              patch={Path.join([@prefix, @lens.id, "reports", Clarity.Report.report_id(report)])}
+              class="content-tab"
+              aria-current={report == @selected && "page"}
+              title={Clarity.Report.description(report)}
+            >
+              {report.name()}
+            </.link>
+          </li>
+        </ul>
+      </nav>
 
-        <.live_component
-          :if={@selected}
-          module={@selected}
-          id="report"
-          graph={@graph}
-          lens={@lens}
-          prefix={@prefix}
-        />
-      <% end %>
-    </div>
-  <% else %>
-    <.lens_not_found_error prefix={@prefix} />
-  <% end %>
+      <p
+        :if={@working?}
+        id="report-working"
+        class="mb-6 text-sm text-base-light-600 dark:text-base-dark-400"
+      >
+        Clarity is still introspecting, so this report may be incomplete. It updates
+        when introspection finishes.
+      </p>
+
+      <.live_component
+        :if={@selected}
+        module={@selected}
+        id="report"
+        graph={@graph}
+        version={@version}
+        lens={@lens}
+        prefix={@prefix}
+      />
+    <% end %>
+  </div>
 </div>

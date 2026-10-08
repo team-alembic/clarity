@@ -1,33 +1,41 @@
 # Creating Reports
 
-Reports are **lens-scoped roll-ups** of the graph, rendered as a single written
-document — an alternative to navigating the graph vertex by vertex. A report is
-*prose*: it explains, in sentences, what's going on and why it matters, rather
-than presenting a dashboard to operate. For users who want the relevant
-information in one place (e.g. a "Supply chain security" or "Security posture"
-report), a report gathers the relevant vertices and narrates them.
+Reports are **written roll-ups** of the graph: a single document that sums up
+part of the graph in one place, an alternative to navigating it vertex by
+vertex. A report is *prose*: it explains, in sentences, what's going on and why
+it matters, rather than presenting a dashboard to operate. For users who want
+the relevant information in one place (e.g. a "Supply chain security" or
+"Security posture" report), a report gathers the relevant vertices and narrates
+them.
 
-The navigation header shows an **Explore | Reports** toggle whenever the active
-lens has at least one report; `Clarity.ReportLive` renders the lens's reports as
-a picker and embeds the selected one.
+Reports are a top-level section: the header shows **Explore** and **Reports**
+under every lens, so no report is hidden behind a lens choice. Reports opens
+`Clarity.ReportLive` at `prefix/:lens/reports`, which shows every registered
+report as a tab and embeds the selected one at `prefix/:lens/reports/:report_id`.
+The lens stays in the URL so Explore returns to it; it doesn't change which
+reports are listed.
 
 ## When to Create a Report
 
-Create a report when a lens's story is best told as one document rather than by
+Create a report when a story is best told as one document rather than by
 drilling into individual vertices — a cross-cutting summary that rolls up many
 vertices. If you're adding a view for a *single* vertex, use a
 [content provider](content-providers.md) instead.
 
 ## How Reports Work
 
-- A report declares its `name/0`, an optional `description/0`, and which lens it
-  `applies?/1` to.
+- A report declares its `name/0` and an optional `description/0`.
 - The module is also a **LiveComponent** (`use Clarity.Web, :live_component`);
-  `ReportLive` embeds it and passes `graph`, `lens`, and `prefix` assigns. In
-  practice a report builds a markdown string and renders it with `<.markdown>` —
-  it reads as prose.
-- The report queries the graph itself — typically
-  `Clarity.Graph.vertices(graph, {:==, :vertex_type, SomeVertex})` — and reuses
+  `ReportLive` embeds it with these assigns:
+  - `graph` - the whole graph, not filtered by any lens
+  - `lens` - the current lens, for `<.markdown>`'s links
+  - `prefix` - the URL prefix Clarity is mounted at
+  - `version` - the graph's update count, which changes whenever introspection
+    changes the graph; `update/2` then runs again, so the report stays current
+- In practice a report builds a markdown string and renders it with
+  `<.markdown>`, so it reads as prose.
+- The report queries the graph itself, typically with
+  `Clarity.Graph.vertices(graph, {:==, :vertex_type, SomeVertex})`, and reuses
   the per-vertex analysis (status providers, `Clarity.Ash.PolicyAnalysis`, etc.)
   to compose its narrative.
 
@@ -46,7 +54,6 @@ defmodule MyApp.Report.Compliance do
   use Clarity.Web, :live_component
 
   alias Clarity.Graph
-  alias Clarity.Perspective.Lens
   alias Clarity.Vertex
 end
 ```
@@ -59,17 +66,13 @@ def name, do: "Compliance"
 
 @impl Clarity.Report
 def description, do: "Licence and policy compliance across resources"
-
-@impl Clarity.Report
-def applies?(%Lens{id: "security"}), do: true
-def applies?(_lens), do: false
 ```
 
 ### 3. Implement the LiveComponent
 
-`update/2` receives `graph`, `lens`, and `prefix`. Build the narrative markdown
-there and render it with `<.markdown>` (wrapped in a single root element, as a
-stateful LiveComponent requires):
+`update/2` receives `graph`, `lens`, `prefix` and `version`. Build the narrative
+markdown there and render it with `<.markdown>` (wrapped in a single root
+element, as a stateful LiveComponent requires):
 
 ```elixir
 import Clarity.Components.MarkdownComponent
@@ -80,7 +83,7 @@ def update(assigns, socket) do
    assign(socket,
      prefix: assigns.prefix,
      lens: assigns.lens,
-     markdown: build_markdown(assigns.graph, assigns.lens)
+     markdown: build_markdown(assigns.graph)
    )}
 end
 
@@ -93,7 +96,7 @@ def render(assigns) do
   """
 end
 
-defp build_markdown(graph, _lens) do
+defp build_markdown(graph) do
   resources = Graph.vertices(graph, {:==, :vertex_type, Vertex.Ash.Resource})
 
   [
@@ -106,9 +109,10 @@ end
 
 Prefer prose — sentences and short sections that explain what's going on and why
 it matters — over tables of raw data. `Clarity.Report.SupplyChain` and
-`Clarity.Report.SecurityPosture` are worked examples. (The module is a
-LiveComponent, so a report *can* be interactive if a case genuinely needs it, but
-the default and intent is a written report.)
+`Clarity.Report.SecurityPosture` are worked examples.
+
+Text from outside the codebase, such as an advisory's summary, goes into the
+markdown as-is, so escape markdown in it before interpolating it.
 
 ### 4. Register the Report
 
@@ -123,12 +127,6 @@ config :my_app, :clarity_reports, [
 > `application/0` environment instead, guarded with
 > `Code.ensure_loaded?(Clarity.Report)`. See
 > [Integrating a Library with Clarity](../documentation/how_to/integrate-from-a-library.md).
-
-## Lens Scoping
-
-`applies?/1` decides which lenses offer the report. The Explore | Reports toggle
-only appears when `Clarity.Report.applicable(lens)` is non-empty, so a report
-that applies to no active lens is simply never shown.
 
 ## Reusing Existing Analysis
 
@@ -150,15 +148,15 @@ html =
   render_component(MyApp.Report.Compliance,
     id: "report",
     graph: graph,
-    lens: Clarity.Perspective.Lensmaker.Security.make_lens(),
+    lens: Clarity.Perspective.Lensmaker.Architect.make_lens(),
     prefix: "/clarity"
   )
 
 assert html =~ "Compliance"
 ```
 
-For the end-to-end route + toggle, drive `Clarity.ReportLive` with
-`Phoenix.LiveViewTest.live/2` against the report path (see
+For the end-to-end routes, drive `Clarity.ReportLive` with
+`Phoenix.LiveViewTest.live/2` against `/:lens/reports/:report_id` (see
 `test/clarity/pages/report_live_test.exs`).
 
 ## Real-World Examples
@@ -170,6 +168,5 @@ For the end-to-end route + toggle, drive `Clarity.ReportLive` with
 
 ## Next Steps
 
-1. Test the report renders the right roll-up for a lens.
-2. Confirm `applies?/1` scopes it to the intended lens(es).
-3. Verify the Explore | Reports toggle appears and rows link into the graph.
+1. Test the report renders the right roll-up for a hand-built graph.
+2. Register it, then check it appears as a tab under Reports.

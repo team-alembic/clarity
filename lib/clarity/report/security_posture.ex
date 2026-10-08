@@ -1,8 +1,8 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Report.SecurityPosture do
     @moduledoc """
-    Security posture report: a written review of how each Ash resource under the
-    security lens is protected — the domain authorisation mode, which actor can
+    Security posture report: a written review of how each Ash resource is
+    protected — the domain authorisation mode, which actor can
     reach which action (solved by Ash's policies), policy enforcement, bypass
     policies, and sensitive-field exposure.
 
@@ -20,7 +20,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Resource.Info
     alias Clarity.Ash.PolicyAnalysis
     alias Clarity.Graph
-    alias Clarity.Perspective.Lens
     alias Clarity.Report.Charts
     alias Clarity.Vertex
     alias Clarity.Vertex.Ash.Domain
@@ -45,10 +44,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Clarity.Report
     def description,
       do: "Authorisation posture, action reachability, and sensitive-field exposure"
-
-    @impl Clarity.Report
-    def applies?(%Lens{id: "security"}), do: true
-    def applies?(_lens), do: false
 
     @impl Phoenix.LiveComponent
     def update(assigns, socket) do
@@ -115,7 +110,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec build_markdown([finding()], [{String.t(), atom()}]) :: iodata()
     defp build_markdown([], _modes) do
-      "No Ash resources are visible under this lens, so there is no authorisation posture to report.\n\n"
+      "Clarity hasn't found any Ash resources, so there is no authorisation posture to report.\n\n"
     end
 
     defp build_markdown(findings, modes) do

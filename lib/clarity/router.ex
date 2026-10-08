@@ -113,17 +113,18 @@ defmodule Clarity.Router do
           private: private
         )
 
-        # Report routes use the literal "report" segment, so they must precede
-        # the `:lens/:vertex` routes for the literal to win over the param.
+        # Reports, reached from the header's Reports menu item under any lens.
+        # The literal "reports" segment must precede `:lens/:vertex` to win over
+        # the param.
         live(
-          "#{path}/:lens/report",
+          "#{path}/:lens/reports",
           Clarity.ReportLive,
           :index,
           private: private
         )
 
         live(
-          "#{path}/:lens/report/:report_id",
+          "#{path}/:lens/reports/:report_id",
           Clarity.ReportLive,
           :show,
           private: private

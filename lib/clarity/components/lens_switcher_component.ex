@@ -30,13 +30,20 @@ defmodule Clarity.LensSwitcherComponent do
     {:noreply, assign(socket, show_dropdown: false)}
   end
 
+  # Switching lens stays on the current page's LiveView, so it patches. A page
+  # can say where a lens leads with `lens_path` (the reports page keeps the
+  # report shown); otherwise it's the lens's root.
   @impl Phoenix.LiveComponent
   def handle_event("switch_lens", %{"lens-id" => lens_id}, socket) do
-    path = Path.join([socket.assigns.prefix, lens_id])
+    path =
+      case socket.assigns[:lens_path] do
+        nil -> Path.join([socket.assigns.prefix, lens_id])
+        lens_path -> lens_path.(lens_id)
+      end
 
     {:noreply,
      socket
      |> assign(show_dropdown: false)
-     |> push_navigate(to: path)}
+     |> push_patch(to: path)}
   end
 end

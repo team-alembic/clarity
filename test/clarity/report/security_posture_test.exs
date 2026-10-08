@@ -5,7 +5,7 @@ defmodule Clarity.Report.SecurityPostureTest do
 
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
-  alias Clarity.Perspective.Lensmaker.Security
+  alias Clarity.Perspective.Lensmaker.Architect
   alias Clarity.Report.SecurityPosture
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
@@ -16,19 +16,12 @@ defmodule Clarity.Report.SecurityPostureTest do
     render_component(SecurityPosture, id: "report", graph: graph, lens: lens, prefix: "/c")
   end
 
-  describe "applies?/1" do
-    test "only under the security lens" do
-      assert SecurityPosture.applies?(Security.make_lens())
-      refute SecurityPosture.applies?(%Lens{id: "architect", name: "A", icon: fn -> nil end, filter: true})
-    end
-  end
-
   describe "render" do
     test "reviews a resource's posture in prose" do
       graph = Graph.new()
       Graph.add_vertex(graph, %Resource{resource: User}, %Root{})
 
-      html = render_report(graph, Security.make_lens())
+      html = render_report(graph, Architect.make_lens())
 
       assert html =~ "Security posture"
       assert html =~ "User"
@@ -44,9 +37,9 @@ defmodule Clarity.Report.SecurityPostureTest do
     end
 
     test "says there is nothing to report with no resources" do
-      html = render_report(Graph.new(), Security.make_lens())
+      html = render_report(Graph.new(), Architect.make_lens())
 
-      assert html =~ "No Ash resources are visible under this lens"
+      assert html =~ "found any Ash resources"
     end
   end
 end

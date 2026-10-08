@@ -1,14 +1,13 @@
 # Design: Report UI (spike)
 
-Status: Draft · 2026-07-02 · branch `spike/report-ui`
+Status: Draft · 2026-07-02 · revised 2026-10-08 (reports became a top-level section)
 
 ## Goal
 
-Offer an alternative to graph navigation: **lens-scoped reports** that roll up
-the relevant vertices into a single, top-to-bottom document. For some users,
-navigating down a graph is arbitrary and confusing when they just want all the
-relevant information in one place. First two reports, both under the **security
-lens**:
+Offer an alternative to graph navigation: **reports** that roll up the relevant
+vertices into a single, top-to-bottom document. For some users, navigating down
+a graph is arbitrary and confusing when they just want all the relevant
+information in one place. The first two reports:
 
 - **Supply-chain security report** — every dependency with an advisory, an
   outdated version, or a retired version, rolled up with totals.
@@ -21,13 +20,14 @@ lens**:
   `Clarity.Advisory.Source.advisories_for/2`, `Clarity.Dependency.Registry.summary/1`.
 - **Posture analysis**: `Clarity.Ash.PolicyAnalysis` (`coverage/2`,
   `actor_profiles/1`, `action_verdict/3`) — all public.
-- **Graph query**: `Graph.vertices(clarity.graph, lens.filter)` returns exactly
-  the vertices a lens exposes — no `compute_subgraph`/zoom machinery needed.
+- **Graph query**: `Graph.vertices(graph, query)` returns the vertices a report
+  needs — no `compute_subgraph`/zoom machinery needed. (A lens's `filter` can be
+  a function of the graph, so it isn't always a query `Graph.vertices/2` takes.)
 - **Rendering**: the `<.markdown>` component supports `vertex://` links, so a
-  report row can link back into the graph/tree.
+  report could link back into the graph/tree; the prose reports don't.
 
-A report is: **query the lens's vertices → reuse the per-vertex analysis →
-compose one document + a roll-up summary.**
+A report is: **query the graph → reuse the per-vertex analysis → compose one
+document + a roll-up summary.**
 
 ## The UI seam (from the routing map)
 
@@ -39,11 +39,13 @@ lens switcher, theme toggle), the `Setup` `on_mount` (prefix/theme/clarity_pid),
 and `LensSwitcherComponent`.
 
 The clean insertion point is a **new `live_action`** under the same `clarity`
-router macro — e.g. `prefix/:lens/report` and `prefix/:lens/report/:report_id` —
-because a report is lens-scoped but vertex-independent (it skips the
-vertex/content redirect chain).
+router macro, because a report is vertex-independent (it skips the
+vertex/content redirect chain). The routes are now `prefix/:lens/reports` and
+`prefix/:lens/reports/:report_id` (see decision 4).
 
-## Proposed approach
+## Original proposal
+
+Superseded in part by the decisions below.
 
 - **Route**: add `:report` action(s) in the `clarity` macro. `prefix/:lens/report`
   lists the lens's reports (or opens the first); `prefix/:lens/report/:id` shows
@@ -62,8 +64,8 @@ vertex/content redirect chain).
    `live_session`, reusing `Setup` (on_mount), `<.header>`, and the lens
    switcher. Keeps report code clear of PageLive's graph/zoom/tree state.
 2. **`Clarity.Report` extension point now** — a registered behaviour, consistent
-   with content/status providers. A report declares its name, which lens(es) it
-   applies to, and renders interactive content.
+   with content/status providers. A report declares its name and an optional
+   description, and renders its content.
 3. **Reports are prose** (revised). They were first built interactive
    (filter/sort/expand) and cross-linked to vertices, but a report reads better as
    *prose that explains what's going on*: narrative markdown with the data woven
@@ -76,26 +78,37 @@ vertex/content redirect chain).
    cards and stacked bars of proportions, both plain HTML and Tailwind (no
    JavaScript). Shared components live in `Clarity.Report.Charts` (`stat/1`,
    `stacked_bar/1`).
-4. **Header toggle (Explore | Reports)** — a segmented control in `<.header>`,
-   shown only when the active lens has ≥1 applicable report. Switches the whole
-   view via `push_patch`, reusing the lens-switcher navigation pattern.
+4. **Reports are a top-level section** (revised). The spike first scoped each
+   report to a lens with `applies?/1` and switched views with an Explore |
+   Reports toggle shown only when the lens had reports, so the supply-chain and
+   posture reports existed only under the Security lens, where nobody would
+   think to look. A lens is a role's named, filtered view of the graph; a report
+   is something else, and key reports must not be hidden behind a lens choice.
+   (Making Reports a lens of its own was tried and dropped for the same reason:
+   it isn't a filter.) The header now has **Explore** and **Reports** as
+   top-level menu items under every lens, and Reports lists every registered
+   report whatever the lens. The lens stays in the URL, so Explore returns to it;
+   a lens may later order or filter a report's contents for its role, but never
+   hide a report.
 
 ## Architecture
 
-- **`Clarity.Report`** (behaviour): `name/0`, `description/0` (optional),
-  `applies?/1` (given a `Lens`, is this report offered?). The module also
-  `use`s the LiveComponent macro and implements `update/2` + `render/1`
-  (+ `handle_event/3`), receiving `graph` and `lens` assigns. Registered via
-  `:clarity_reports`; discovered by `Clarity.Config.list_reports/0`.
-- **Router**: new actions in the `clarity` macro — `prefix/:lens/report`
-  (report index / first report) and `prefix/:lens/report/:report_id` (one
-  report).
-- **`Clarity.ReportLive`**: resolves the lens, lists reports where
-  `applies?(lens)`, renders a picker + the selected report LiveComponent. Fetches
-  `clarity.graph` via `Clarity.get/2` and queries `Graph.vertices(graph,
-  lens.filter)`.
-- **Header toggle**: Explore links to the current lens's vertex view; Reports
-  links to `prefix/:lens/report`. Only shown when the lens has reports.
+- **`Clarity.Report`** (behaviour): `name/0`, `description/0` (optional). The
+  module also `use`s the LiveComponent macro and implements `update/2` +
+  `render/1`, receiving `graph` (unfiltered), `lens` (the current lens),
+  `prefix` and `version` assigns. Registered via `:clarity_reports`; discovered
+  by `Clarity.Config.list_reports/0`.
+- **Router**: `prefix/:lens/reports` (opens the first report) and
+  `prefix/:lens/reports/:report_id`, with the literal `reports` segment ahead of
+  `prefix/:lens/:vertex`.
+- **`Clarity.ReportLive`**: lists every report as a tab and embeds the selected
+  one; an unknown lens moves to the default lens's reports. Fetches
+  `clarity.graph` via `Clarity.get/2`, and fetches it again when introspection
+  starts or finishes, passing the graph's update count as `version` so the
+  report re-renders.
+- **Header**: Explore and Reports as top-level menu items (`section` attr marks
+  the current one). The lens switcher patches within the current section; on
+  the reports page it keeps the report shown.
 
 ## Phasing
 
@@ -103,7 +116,7 @@ All phases implemented.
 
 1. **(done)** `Clarity.Report` behaviour + `Config.list_reports/0` + registration.
 2. **(done)** `ReportLive` + `:report` routes + report picker + header
-   Explore/Reports toggle.
+   Explore/Reports toggle (since replaced by top-level menu items).
 3. **(done)** Supply-chain security report — prose: an overview sentence, then
    narrative sections for security advisories (per affected dep, with fix
    availability and summaries) and dependency hygiene (retired/outdated).
@@ -113,10 +126,9 @@ All phases implemented.
 5. **(done)** Component + `ReportLive` integration tests + `usage-rules/reports.md`.
 
 Deviation from the sketch: the posture report is a per-resource table (not
-grouped by domain) with a concern filter, and the full who-can matrix stays in
-the per-resource `SecurityOverview` content (reachable via a row's vertex link)
-rather than being duplicated into the report. Grouping by domain and embedding
-the matrix are natural follow-ups.
+grouped by domain), and the full who-can matrix stays in the per-resource
+`SecurityOverview` content rather than being duplicated into the report.
+Grouping by domain and embedding the matrix are natural follow-ups.
 
 ## The two reports (content sketch)
 
@@ -137,7 +149,5 @@ sensitive-field exposure — each resource linking to its vertex.
 - **Performance**: a report iterates all lens vertices and runs analysis per
   vertex. Bounded (apps ~dozens; resources ~dozens) and off the async graph
   path; measure if it grows.
-- **Report ↔ graph coherence**: `vertex://` links must resolve under the same
-  lens; the report is a view over the same graph, so this should hold.
-- **Scope creep**: keep the spike to two static reports + the mode switch; defer
-  export (PDF/print), scheduling, and interactivity.
+- **Scope creep**: keep the spike to two static reports + the Reports section;
+  defer export (PDF/print), scheduling, and interactivity.
