@@ -35,11 +35,12 @@ defmodule Clarity.ReportLiveTest do
       assert has_element?(view, "#report-tabs a[aria-current=page]", "Supply chain security")
     end
 
-    test "renders the security posture report", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/security/reports/security-posture")
+    test "renders the security posture report once its analysis finishes", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/security/reports/security-posture")
 
+      assert html =~ "Analysing"
       # The test graph has no Ash resources.
-      assert html =~ "found any Ash resources"
+      assert render_async(view) =~ "found any Ash resources"
     end
 
     test "switching report tabs patches to the other report", %{conn: conn} do

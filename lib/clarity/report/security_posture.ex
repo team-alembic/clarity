@@ -45,41 +45,62 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def description,
       do: "Authorisation posture, action reachability, and sensitive-field exposure"
 
+    # Solving every action's policies for each actor grows with the app, so it
+    # runs asynchronously: the page shows at once, and the analysis follows.
+    # (Async work only starts once the socket connects, so the first, static
+    # render doesn't pay for it.)
     @impl Phoenix.LiveComponent
     def update(assigns, socket) do
-      findings = findings(assigns.graph)
-      modes = domain_modes(assigns.graph)
+      graph = assigns.graph
 
       {:ok,
-       assign(socket,
-         prefix: assigns.prefix,
-         lens: assigns.lens,
-         markdown: build_markdown(findings, modes),
-         dashboard: dashboard(findings)
-       )}
+       socket
+       |> assign(prefix: assigns.prefix, lens: assigns.lens)
+       |> assign_async(:posture, fn -> {:ok, %{posture: analyse(graph)}} end)}
     end
 
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
       <section class="space-y-6">
-        <div class="space-y-4">
-          <h2 class="text-2xl font-bold">Security posture</h2>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Charts.stat label="Resources" value={@dashboard.resources} />
-            <Charts.stat label="Open" value={@dashboard.open} tone={:warning} />
-            <Charts.stat label="Bypass" value={@dashboard.bypass} tone={:info} />
-            <Charts.stat label="Exposed fields" value={@dashboard.exposed} tone={:error} />
-          </div>
-          <div class="grid gap-6 sm:grid-cols-2">
-            <Charts.stacked_bar title="Policy coverage" segments={@dashboard.coverage} />
-            <Charts.stacked_bar title="Anonymous reach" segments={@dashboard.reach} />
-          </div>
-        </div>
+        <h2 class="text-2xl font-bold">Security posture</h2>
 
-        <.markdown content={@markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
+        <.async_result :let={posture} assign={@posture}>
+          <:loading>
+            <p class="text-sm text-base-light-600 dark:text-base-dark-400">
+              Analysing each resource's policies…
+            </p>
+          </:loading>
+          <:failed>
+            <p class="text-sm text-base-light-600 dark:text-base-dark-400">
+              Clarity could not analyse the policies.
+            </p>
+          </:failed>
+
+          <div class="space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Charts.stat label="Resources" value={posture.dashboard.resources} />
+              <Charts.stat label="Open" value={posture.dashboard.open} tone={:warning} />
+              <Charts.stat label="Bypass" value={posture.dashboard.bypass} tone={:info} />
+              <Charts.stat label="Exposed fields" value={posture.dashboard.exposed} tone={:error} />
+            </div>
+            <div class="grid gap-6 sm:grid-cols-2">
+              <Charts.stacked_bar title="Policy coverage" segments={posture.dashboard.coverage} />
+              <Charts.stacked_bar title="Anonymous reach" segments={posture.dashboard.reach} />
+            </div>
+          </div>
+
+          <.markdown content={posture.markdown} prefix={@prefix} lens={@lens} class="max-w-[75ch]" />
+        </.async_result>
       </section>
       """
+    end
+
+    @doc false
+    @spec analyse(Graph.t()) :: %{markdown: iodata(), dashboard: map()}
+    def analyse(graph) do
+      findings = findings(graph)
+      %{markdown: build_markdown(findings, domain_modes(graph)), dashboard: dashboard(findings)}
     end
 
     @spec dashboard([finding()]) :: map()
@@ -280,8 +301,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @spec finding(Resource.t()) :: finding()
     defp finding(%Resource{resource: resource} = vertex) do
       actions = Info.actions(resource)
+      profiles = PolicyAnalysis.actor_profiles(resource)
+      verdicts = verdicts(resource, actions, profiles)
       sensitive = Enum.filter(Info.attributes(resource), & &1.sensitive?)
-      anon_verdicts = Enum.map(actions, &PolicyAnalysis.action_verdict(resource, &1, nil))
+      anon_verdicts = Enum.map(actions, &Map.fetch!(verdicts, {&1.name, nil}))
 
       %{
         name: Vertex.name(vertex),
@@ -290,31 +313,42 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         bypass?: Enum.any?(PolicyInfo.policies(resource), & &1.bypass?),
         exposed:
           sensitive |> Enum.filter(&exposed?(resource, &1)) |> Enum.map(&to_string(&1.name)),
-        reach: reach(resource, actions),
-        anon_read?: anon_read?(resource, actions),
+        reach: reach(actions, profiles, verdicts),
+        anon_read?: anon_read?(actions, verdicts),
         anon_verdicts: anon_verdicts
       }
     end
 
-    @spec reach(Ash.Resource.t(), [term()]) :: %{String.t() => [String.t()]}
-    defp reach(resource, actions) do
-      resource
-      |> PolicyAnalysis.actor_profiles()
-      |> Map.new(fn {label, actor} ->
+    # Each action's verdict for each distinct actor (the anonymous one, `nil`,
+    # always included), solved once and shared by every view of the resource.
+    @spec verdicts(Ash.Resource.t(), [term()], [{String.t(), PolicyAnalysis.actor()}]) ::
+            %{{atom(), PolicyAnalysis.actor()} => PolicyAnalysis.verdict()}
+    defp verdicts(resource, actions, profiles) do
+      actors = Enum.uniq([nil | Enum.map(profiles, &elem(&1, 1))])
+
+      for action <- actions, actor <- actors, into: %{} do
+        {{action.name, actor}, PolicyAnalysis.action_verdict(resource, action, actor)}
+      end
+    end
+
+    @spec reach([term()], [{String.t(), PolicyAnalysis.actor()}], map()) ::
+            %{String.t() => [String.t()]}
+    defp reach(actions, profiles, verdicts) do
+      Map.new(profiles, fn {label, actor} ->
         reachable =
           actions
-          |> Enum.filter(&(PolicyAnalysis.action_verdict(resource, &1, actor) != :never))
+          |> Enum.filter(&(Map.fetch!(verdicts, {&1.name, actor}) != :never))
           |> Enum.map(&to_string(&1.name))
 
         {label, reachable}
       end)
     end
 
-    @spec anon_read?(Ash.Resource.t(), [term()]) :: boolean()
-    defp anon_read?(resource, actions) do
+    @spec anon_read?([term()], map()) :: boolean()
+    defp anon_read?(actions, verdicts) do
       actions
       |> Enum.filter(&(&1.type == :read))
-      |> Enum.any?(&(PolicyAnalysis.action_verdict(resource, &1, nil) != :never))
+      |> Enum.any?(&(Map.fetch!(verdicts, {&1.name, nil}) != :never))
     end
 
     @spec domain_modes(Graph.t()) :: [{String.t(), atom()}]

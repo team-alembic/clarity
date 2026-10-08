@@ -16,30 +16,38 @@ defmodule Clarity.Report.SecurityPostureTest do
     render_component(SecurityPosture, id: "report", graph: graph, lens: lens, prefix: "/c")
   end
 
-  describe "render" do
+  describe "analyse/1" do
     test "reviews a resource's posture in prose" do
       graph = Graph.new()
       Graph.add_vertex(graph, %Resource{resource: User}, %Root{})
 
-      html = render_report(graph, Architect.make_lens())
+      %{markdown: markdown, dashboard: dashboard} = SecurityPosture.analyse(graph)
+      markdown = IO.iodata_to_binary(markdown)
 
-      assert html =~ "Security posture"
-      assert html =~ "User"
+      assert markdown =~ "User"
       # narrative + tables: reachability and a resources roll-up
-      assert html =~ "Action reachability"
-      assert html =~ "Resources"
-      assert html =~ "date_of_birth"
-      refute html =~ ~s(phx-click)
+      assert markdown =~ "Action reachability"
+      assert markdown =~ "Resources"
+      assert markdown =~ "date_of_birth"
       # executive dashboard: KPI cards + two stacked bars
-      assert html =~ "Policy coverage"
-      assert html =~ "Anonymous reach"
-      assert html =~ "data-segment"
+      assert dashboard.resources == 1
+      assert [_ | _] = dashboard.coverage
+      assert [_ | _] = dashboard.reach
     end
 
     test "says there is nothing to report with no resources" do
+      %{markdown: markdown} = SecurityPosture.analyse(Graph.new())
+
+      assert IO.iodata_to_binary(markdown) =~ "found any Ash resources"
+    end
+  end
+
+  describe "render" do
+    test "shows the analysis is under way until it finishes" do
       html = render_report(Graph.new(), Architect.make_lens())
 
-      assert html =~ "found any Ash resources"
+      assert html =~ "Security posture"
+      assert html =~ "Analysing"
     end
   end
 end
