@@ -454,6 +454,12 @@ defmodule Clarity.PageLive do
     assign(socket, page_title: page_title)
   end
 
+  # The breadcrumbs leading to the current vertex, leaving out the root, which
+  # every path starts from.
+  @spec breadcrumb_trail([Vertex.t()]) :: [Vertex.t()]
+  defp breadcrumb_trail(breadcrumbs),
+    do: breadcrumbs |> Enum.drop(-1) |> Enum.reject(&match?(%Root{}, &1))
+
   # The tab open before, if the vertex has it too, or else its first: moving
   # to another vertex, or lens, keeps the tab where it can.
   @spec kept_content_id([Content.t(), ...], Content.t() | nil) :: String.t()

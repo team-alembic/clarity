@@ -115,6 +115,21 @@ defmodule Clarity.Pages.PageLiveTest do
       assert html =~ "Graph Navigation"
     end
 
+    test "leave out the root", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      render_async(view)
+
+      assert has_element?(view, ".breadcrumbs a[href='/debug/application:clarity']")
+      refute has_element?(view, ".breadcrumbs a[href='/debug/root']")
+    end
+
+    test "a vertex just under the root has none", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      render_async(view)
+
+      refute has_element?(view, ".breadcrumbs li")
+    end
+
     test "displays breadcrumbs for nested vertices", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       html = render_async(view)
