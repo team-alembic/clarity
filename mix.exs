@@ -170,7 +170,6 @@ defmodule Clarity.MixProject do
       "assets.deploy": ["tailwind default --minify", "esbuild default --minify"],
       "hex.build": [&build_assets_for_publish/1, "hex.build"],
       "hex.publish": [&build_assets_for_publish/1, "hex.publish"],
-      dev: "cmd --cd demo mix phx.server",
       "usage_rules.update": [
         String.trim("""
         usage_rules.sync CLAUDE.md --all \

@@ -15,7 +15,7 @@ cd demo && mix deps.get
 Then start it from the repository root:
 
 ```bash
-mix dev
+bin/dev
 ```
 
 or from inside `demo/` with `mix phx.server`. This runs the demo at
@@ -27,7 +27,7 @@ http://localhost:4000 with:
 To use a different port:
 
 ```bash
-PORT=4001 mix dev
+PORT=4001 bin/dev
 ```
 
 ## Project Structure

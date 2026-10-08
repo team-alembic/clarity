@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# Starts the demo app at http://localhost:4000 (PORT overrides), with live
+# reload and asset watchers. The server replaces this script's process, so
+# Ctrl-C stops it; `mix cmd` ran it in a session of its own, where Ctrl-C
+# left it running.
+set -e
+
+cd "$(dirname "$0")/../demo"
+exec mix phx.server "$@"

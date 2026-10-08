@@ -99,7 +99,7 @@ like any host app. To run it:
 
 ```bash
 (cd demo && mix deps.get)
-mix dev
+bin/dev
 ```
 
 This starts the demo's Phoenix server at http://localhost:4000 with live reload
