@@ -19,6 +19,8 @@
   </head>
   <body>
     {@inner_content}
+    <%!-- Inside <body>: the bundled JS contains "</body>" in strings, and a
+         host's Phoenix.LiveReloader injects its iframe before the last one. --%>
+    <Clarity.Resources.js />
   </body>
-  <Clarity.Resources.js />
 </html>
