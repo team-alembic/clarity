@@ -20,9 +20,23 @@ defmodule Clarity.Introspector.Application do
 
     purge_entries = Enum.flat_map(cached_apps, &purge_app_if_changed(&1, current_apps_map))
     vertex_entries = Enum.flat_map(current_apps, &vertex_entry(&1, cached_apps_map))
-    edge_entries = structural_edges(root_vertex, current_apps)
+    emitted = MapSet.new(vertex_entries, fn {:vertex, vertex} -> vertex end)
+
+    edge_entries =
+      root_vertex
+      |> structural_edges(current_apps)
+      |> Enum.filter(&new_edge?(&1, root_vertex, emitted))
 
     {:ok, purge_entries ++ vertex_entries ++ edge_entries}
+  end
+
+  # An edge between two applications cached at their current version is
+  # already in the graph, and the server would discard it anyway: it only
+  # accepts edges that touch the causing vertex or a vertex emitted with them.
+  @spec new_edge?(Clarity.Introspector.entry(), Vertex.Root.t(), MapSet.t(Vertex.Application.t())) ::
+          boolean()
+  defp new_edge?({:edge, from, to, _label}, root_vertex, emitted) do
+    from == root_vertex or MapSet.member?(emitted, from) or MapSet.member?(emitted, to)
   end
 
   @spec get_cached_applications(Graph.t()) :: [Vertex.Application.t()]

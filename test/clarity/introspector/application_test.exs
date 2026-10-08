@@ -193,6 +193,34 @@ defmodule Clarity.Introspector.ApplicationTest do
       assert clarity_adds == []
     end
 
+    test "emits only edges that touch the root or an application it emits" do
+      graph = Clarity.Graph.new()
+      root_vertex = %Vertex.Root{}
+
+      Clarity.Graph.add_vertex(graph, root_vertex, root_vertex)
+
+      # Every application is cached at its current version, except Clarity.
+      for {app, _, _} = app_tuple <- Config.filtered_applications(), app != :clarity do
+        Clarity.Graph.add_vertex(graph, Vertex.Application.from_app_tuple(app_tuple), root_vertex)
+      end
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(root_vertex, graph)
+
+      emitted = for {:vertex, vertex} <- result, do: vertex
+      assert [%Vertex.Application{app: :clarity}] = emitted
+
+      edges = for {:edge, from, to, _label} <- result, do: {from, to}
+      assert Enum.any?(edges, fn {from, _to} -> from in emitted end)
+
+      # The server discards any other edge, as it can't trace where it came from.
+      between_cached =
+        for {from, to} <- edges,
+            from != root_vertex and from not in emitted and to not in emitted,
+            do: {from.app, to.app}
+
+      assert between_cached == []
+    end
+
     test "adds new applications" do
       graph = Clarity.Graph.new()
       root_vertex = %Vertex.Root{}
