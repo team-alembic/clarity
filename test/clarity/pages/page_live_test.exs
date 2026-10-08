@@ -297,13 +297,34 @@ defmodule Clarity.Pages.PageLiveTest do
       assert Enum.map(tabs, &(&1 |> LazyHTML.text() |> String.trim())) == ["Module Documentation"]
     end
 
-    test "a vertex with none of the lens's tabs says so, rather than showing others",
+    test "a vertex with none of the lens's tabs opens in the first lens down the activity bar with one",
          %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/documentation/application:clarity")
+      assert {:error, {:live_redirect, %{to: "/architect/application:clarity/" <> _tab}}} =
+               live(conn, "/documentation/application:clarity")
+    end
+
+    @tag test_graph: [resources: true]
+    test "a tab the lens hasn't opens in the first lens down the activity bar with it", %{
+      conn: conn
+    } do
+      docs = "/ash-resource:demo-accounts-user/moduledoc"
+
+      assert {:error, {:live_redirect, %{to: "/documentation" <> ^docs}}} =
+               live(conn, "/security" <> docs)
+
+      assert {:error, {:live_redirect, %{to: "/graph/ash-domain:demo-accounts/graph"}}} =
+               live(conn, "/security/ash-domain:demo-accounts/graph")
+    end
+
+    @tag test_graph: [resources: true]
+    test "a patch to a tab the lens hasn't moves to the first lens with it", %{conn: conn} do
+      docs = "/ash-resource:demo-accounts-user/moduledoc"
+      {:ok, view, _html} = live(conn, "/security/ash-resource:demo-accounts-user/ash-security-overview")
       render_async(view)
 
-      refute has_element?(view, ".content-tab")
-      assert has_element?(view, "#no-lens-content", "Documentation")
+      render_patch(view, "/security" <> docs)
+
+      assert_patch(view, "/documentation" <> docs)
     end
   end
 
@@ -396,6 +417,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "switches between different content tabs", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/graph/root/graph")
+      render_async(view)
 
       # Should have at least the Graph Navigation tab
       assert has_element?(view, "nav.tabs")
@@ -620,7 +642,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "stay reachable: navigating to one shows it, even where they are hidden", %{conn: conn} do
       {:ok, view, _html} =
-        live(conn, "/architect/ash-domain:ash-embeddable-type-shadow-domain/graph")
+        live(conn, "/architect/ash-domain:ash-embeddable-type-shadow-domain/ash-domain-overview")
 
       render_async(view)
 

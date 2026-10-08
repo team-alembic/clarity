@@ -83,7 +83,7 @@ defmodule Clarity.PageLive do
         handle_vertex_route(lens_id, vertex_id, params["status"], socket, navigate_fn)
 
       {%{"lens" => lens_id, "vertex" => vertex_id, "content" => content_id}, :page} ->
-        handle_page_route(lens_id, vertex_id, content_id, socket)
+        handle_page_route(lens_id, vertex_id, content_id, socket, navigate_fn)
     end
   end
 
@@ -117,20 +117,8 @@ defmodule Clarity.PageLive do
     with {:ok, lens} <- Lensmaker.get_lens_by_id(lens_id),
          vertex when not is_nil(vertex) <- Graph.get_vertex(clarity.graph, vertex_id) do
       case Content.get_contents_for_vertex(vertex, lens) do
-        # The lens shows no tab for this vertex: show the vertex, saying so.
-        [] ->
-          handle_page_route(lens_id, vertex_id, nil, socket)
-
-        contents ->
-          navigate_fn.(socket,
-            to:
-              Path.join([
-                socket.assigns.prefix,
-                lens.id,
-                vertex_id,
-                chosen_content_id(contents, socket.assigns.content, status)
-              ])
-          )
+        [] -> handle_tabless_vertex(lens_id, vertex, status, socket, navigate_fn)
+        contents -> navigate_fn.(socket, to: page_path(socket, lens, vertex_id, contents, status))
       end
     else
       _ ->
@@ -138,8 +126,41 @@ defmodule Clarity.PageLive do
     end
   end
 
-  @spec handle_page_route(String.t(), String.t(), String.t() | nil, Socket.t()) :: Socket.t()
-  defp handle_page_route(lens_id, vertex_id, content_id, socket) do
+  # This lens has no tab for the vertex, so open it in the first lens that
+  # has one; when none has, show it here, saying so.
+  @spec handle_tabless_vertex(String.t(), Vertex.t(), String.t() | nil, Socket.t(), navigation_fn) ::
+          Socket.t()
+        when navigation_fn: (Socket.t(), keyword() -> Socket.t())
+  defp handle_tabless_vertex(lens_id, vertex, status, socket, navigate_fn) do
+    vertex_id = Vertex.id(vertex)
+
+    case lens_with_tab(socket, vertex, nil) do
+      {lens, contents} ->
+        navigate_fn.(socket,
+          to: page_path(socket, lens, vertex_id, contents, status),
+          replace: true
+        )
+
+      nil ->
+        handle_page_route(lens_id, vertex_id, nil, socket, navigate_fn)
+    end
+  end
+
+  @spec page_path(Socket.t(), Lens.t(), String.t(), [Content.t()], String.t() | nil) ::
+          String.t()
+  defp page_path(socket, lens, vertex_id, contents, status) do
+    content_id = chosen_content_id(contents, socket.assigns.content, status)
+    Path.join([socket.assigns.prefix, lens.id, vertex_id, content_id])
+  end
+
+  @spec handle_page_route(
+          String.t(),
+          String.t(),
+          String.t() | nil,
+          Socket.t(),
+          (Socket.t(), keyword() -> Socket.t())
+        ) :: Socket.t()
+  defp handle_page_route(lens_id, vertex_id, content_id, socket, navigate_fn) do
     socket = fetch_clarity(socket)
 
     socket =
@@ -151,9 +172,39 @@ defmodule Clarity.PageLive do
           data_error(socket, reason)
       end
 
-    socket
-    |> load_data_async()
-    |> update_page_title()
+    case missing_tab(socket, content_id) do
+      nil -> socket |> load_data_async() |> update_page_title()
+      path -> navigate_fn.(socket, to: path, replace: true)
+    end
+  end
+
+  # Where to go when this lens hasn't the tab asked for: the first lens, in
+  # the activity bar's order, that has it. A tab no lens has stays put, so
+  # the page says it wasn't found.
+  @spec missing_tab(Socket.t(), String.t() | nil) :: String.t() | nil
+  defp missing_tab(%{assigns: %{vertex: vertex, content: nil}} = socket, content_id)
+       when vertex != nil and content_id != nil do
+    case lens_with_tab(socket, vertex, content_id) do
+      {lens, _contents} ->
+        Path.join([socket.assigns.prefix, lens.id, Vertex.id(vertex), content_id])
+
+      nil ->
+        nil
+    end
+  end
+
+  defp missing_tab(_socket, _content_id), do: nil
+
+  # The first lens, in the activity bar's order, with a tab for the vertex
+  # (the one with `content_id`, if given), and its tabs.
+  @spec lens_with_tab(Socket.t(), Vertex.t(), String.t() | nil) :: {Lens.t(), [Content.t()]} | nil
+  defp lens_with_tab(socket, vertex, content_id) do
+    Enum.find_value(socket.assigns.lenses, fn lens ->
+      contents = Content.get_contents_for_vertex(vertex, lens)
+
+      if contents != [] and (content_id == nil or Enum.any?(contents, &(&1.id == content_id))),
+        do: {lens, contents}
+    end)
   end
 
   @spec fetch_clarity(Socket.t()) :: Socket.t()
@@ -492,10 +543,17 @@ defmodule Clarity.PageLive do
     do: Enum.any?(content.status_classes, &(Atom.to_string(&1) == status))
 
   # The vertex route then keeps the open tab if the lens has it for the target.
+  # When the lens has no tab for it, the lens opens at its start page instead,
+  # as the vertex route would move a vertex without tabs to another lens, back
+  # where the switch began.
   @spec lens_switch_path(Socket.t(), Lens.t(), Vertex.t()) :: String.t()
   defp lens_switch_path(socket, lens, vertex) do
     %{prefix: prefix, clarity: clarity} = socket.assigns
-    Path.join([prefix, lens.id, Vertex.id(nearest_shown(clarity.graph, lens, vertex))])
+    shown = nearest_shown(clarity.graph, lens, vertex)
+
+    if Content.get_contents_for_vertex(shown, lens) == [],
+      do: Path.join([prefix, lens.id]),
+      else: Path.join([prefix, lens.id, Vertex.id(shown)])
   end
 
   # The vertex itself if the lens's tree shows it, or else its nearest ancestor
