@@ -3,20 +3,20 @@ defmodule Clarity.Report do
   Behaviour for reports: written documents that sum up part of the graph in one
   place, an alternative to navigating it vertex by vertex.
 
-  Reports are a top-level section beside Explore in the activity bar, under
-  every lens, so no report is hidden behind a lens choice. `Clarity.ReportLive`
-  renders them at `prefix/:lens/reports`: the sidebar lists every registered
-  report as a tree, grouped by category, and the selected one fills the main
-  pane under its name. A report declares its `name/0`, and optionally a
-  `description/0` and the `category/0` it is grouped under.
+  Reports have their own icon in the activity bar, below the lenses, so no
+  report is hidden behind a lens choice. `Clarity.ReportLive` renders them at
+  `prefix/reports`: the sidebar lists every registered report as a tree,
+  grouped by category, and the selected one fills the main pane under its
+  name. A report declares its `name/0`, and optionally a `description/0` and
+  the `category/0` it is grouped under.
 
   The module is also a LiveComponent (`use Clarity.Web, :live_component`).
   `Clarity.ReportLive` embeds the selected report with these assigns:
 
-    * `graph` - the whole `Clarity.Graph`, not filtered by the lens; query it with
+    * `graph` - the whole `Clarity.Graph`, not filtered by any lens; query it with
       `Clarity.Graph.vertices/2`, e.g.
       `Clarity.Graph.vertices(graph, {:==, :vertex_type, Clarity.Vertex.Application})`
-    * `lens` - the current lens, for `Clarity.Components.MarkdownComponent`'s links
+    * `lens` - the default lens, for `Clarity.Components.MarkdownComponent`'s links
     * `prefix` - the URL prefix Clarity is mounted at
     * `version` - the graph's update count; it changes whenever introspection
       changes the graph, so `update/2` runs again and the report stays current

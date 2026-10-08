@@ -9,6 +9,7 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
 
   @behaviour Clarity.Perspective.Lensmaker
 
+  import Clarity.IconComponents
   import Phoenix.Component
 
   alias Clarity.Content
@@ -25,7 +26,10 @@ defmodule Clarity.Perspective.Lensmaker.Debug do
       description: "Shows graph structure with noise filtering for debugging and development",
       icon: fn ->
         assigns = %{}
-        ~H"🐛"
+
+        ~H"""
+        <.icon_bug class="size-full" />
+        """
       end,
       filter: &filter/1,
       show_internals?: true,

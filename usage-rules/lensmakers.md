@@ -186,7 +186,10 @@ end
 
 ## Icon Functions
 
-Icons must be functions returning HEEx:
+Each lens is an icon in the activity bar down the left edge, in a 24px box.
+Icons must be functions returning HEEx. A line-drawn SVG that fills its box
+(`class="size-full"`, stroked with `currentColor`) matches the built-in lenses'
+icons; an emoji works too:
 
 ```elixir
 # Simple emoji icon

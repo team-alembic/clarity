@@ -139,15 +139,6 @@ defmodule Clarity.IconComponents do
   def icon_sidebar(assigns)
 
   @doc """
-  Renders the Explore icon (a branching list).
-  """
-  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
-  attr :rest, :global, doc: "Additional HTML attributes"
-
-  @spec icon_explore(assigns :: Socket.assigns()) :: Rendered.t()
-  def icon_explore(assigns)
-
-  @doc """
   Renders a report icon (a page of text).
   """
   attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
@@ -173,6 +164,33 @@ defmodule Clarity.IconComponents do
 
   @spec icon_share(assigns :: Socket.assigns()) :: Rendered.t()
   def icon_share(assigns)
+
+  @doc """
+  Renders a cube icon, for the Architect lens.
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_cube(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_cube(assigns)
+
+  @doc """
+  Renders a shield icon (with a check), for the Security lens.
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_shield(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_shield(assigns)
+
+  @doc """
+  Renders a bug icon, for the Debug lens.
+  """
+  attr :class, :any, default: "", doc: "CSS classes to apply to the icon"
+  attr :rest, :global, doc: "Additional HTML attributes"
+
+  @spec icon_bug(assigns :: Socket.assigns()) :: Rendered.t()
+  def icon_bug(assigns)
 
   @doc """
   Renders a check icon (checkmark).

@@ -9,6 +9,7 @@ defmodule Clarity.Perspective.Lensmaker.Security do
 
   @behaviour Clarity.Perspective.Lensmaker
 
+  import Clarity.IconComponents
   import Phoenix.Component
 
   alias Clarity.Dependency
@@ -26,7 +27,10 @@ defmodule Clarity.Perspective.Lensmaker.Security do
       description: "Shows security-related components and authentication flows",
       icon: fn ->
         assigns = %{}
-        ~H"🛡️"
+
+        ~H"""
+        <.icon_shield class="size-full" />
+        """
       end,
       filter: &filter/1,
       show_vertex_types: &show_vertex_types/1,

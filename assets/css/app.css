@@ -204,6 +204,11 @@
   display: none;
 }
 
+/* Separates the lenses from Reports. */
+.activity-divider {
+  @apply my-1 w-6 border-base-light-300 dark:border-base-dark-600;
+}
+
 /* The sidebar's heading row, naming what it shows. */
 .nav-heading {
   @apply sticky top-0 z-10 -mx-2 mb-1 flex h-8 items-center justify-between px-3;

@@ -40,8 +40,8 @@ and `LensSwitcherComponent`.
 
 The clean insertion point is a **new `live_action`** under the same `clarity`
 router macro, because a report is vertex-independent (it skips the
-vertex/content redirect chain). The routes are now `prefix/:lens/reports` and
-`prefix/:lens/reports/:report_id` (see decision 4).
+vertex/content redirect chain). The routes are now `prefix/reports` and
+`prefix/reports/:report_id` (see decisions 4 and 6).
 
 ## Original proposal
 
@@ -86,38 +86,40 @@ Superseded in part by the decisions below.
    is something else, and key reports must not be hidden behind a lens choice.
    (Making Reports a lens of its own was tried and dropped for the same reason:
    it isn't a filter.) An activity bar down the left edge, as in VS Code, now
-   has **Explore** and **Reports** under every lens, and Reports lists every
-   registered report whatever the lens. The lens stays in the URL, so Explore
-   returns to it; a lens may later order or filter a report's contents for its
-   role, but never hide a report.
+   always has **Reports**, which lists every registered report whatever the
+   lens; a lens may later order or filter a report's contents for its role, but
+   never hide a report.
 5. **Reports live in a sidebar tree** (revised). There will be many reports, so
    instead of tabs they share Explore's layout: the sidebar lists them as a tree
    grouped by an optional `category/0`, and the selected one fills the main pane
    under its name. The current section's activity bar icon shows or hides the
    sidebar, replacing the sidebar's own toggle buttons.
+6. **Lenses live in the activity bar** (revised). A lens drives both the tree
+   (by its filters) and which tabs a vertex shows (its new `contents`), so each
+   lens is an activity bar icon in place of the single Explore icon and the
+   header's lens dropdown: e.g. Documentation shows only Domain Overview and
+   Module Documentation, and Graph only the graph. Reports keeps its own icon
+   below a divider; since no lens is current there and reports ignore the
+   lens, their URLs no longer carry one.
 
 ## Architecture
 
 - **`Clarity.Report`** (behaviour): `name/0`, `description/0` and `category/0`
-  (both optional). The
-  module also `use`s the LiveComponent macro and implements `update/2` +
-  `render/1`, receiving `graph` (unfiltered), `lens` (the current lens),
-  `prefix` and `version` assigns. Registered via `:clarity_reports`; discovered
-  by `Clarity.Config.list_reports/0`.
-- **Router**: `prefix/:lens/reports` (opens the first report) and
-  `prefix/:lens/reports/:report_id`, with the literal `reports` segment ahead of
-  `prefix/:lens/:vertex`.
+  (both optional). The module also `use`s the LiveComponent macro and
+  implements `update/2` + `render/1`, receiving `graph` (unfiltered), `lens`
+  (the default lens, for markdown links), `prefix` and `version` assigns.
+  Registered via `:clarity_reports`; discovered by
+  `Clarity.Config.list_reports/0`.
+- **Router**: `prefix/reports` (opens the first report) and
+  `prefix/reports/:report_id`, ahead of the `prefix/:lens` routes.
 - **`Clarity.ReportLive`**: lists every report in a sidebar tree grouped by
   category (`Clarity.Report.grouped/0`), and shows the selected one under its
-  name and description; an unknown lens moves to the default lens's reports.
-  Fetches
-  `clarity.graph` via `Clarity.get/2`, and fetches it again when introspection
-  starts or finishes, passing the graph's update count as `version` so the
-  report re-renders.
-- **Activity bar** (`activity_bar/1`): Explore and Reports icons; the current
-  section's icon toggles the shared sidebar (as ⌘B does), the other navigates
-  to its section. The lens switcher patches within the current section; on the
-  reports page it keeps the report shown.
+  name and description. Fetches `clarity.graph` via `Clarity.get/2`, and
+  fetches it again when introspection starts or finishes, passing the graph's
+  update count as `version` so the report re-renders.
+- **Activity bar** (`activity_bar/1`): an icon per lens, then Reports. The
+  current icon toggles the shared sidebar (as ⌘B does); another lens's icon
+  patches to that lens while exploring and navigates from the reports.
 
 ## Phasing
 

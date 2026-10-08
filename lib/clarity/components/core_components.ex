@@ -18,19 +18,8 @@ defmodule Clarity.CoreComponents do
 
   attr :socket, Socket, required: true, doc: "The LiveView socket"
   attr :prefix, :string, default: "/", doc: "The URL prefix for links"
-
-  attr :lens, Lens,
-    required: true,
-    doc: "Current lens for perspective switching"
-
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :clarity_pid, :any, required: true, doc: "PID of the Clarity server process"
-
-  attr :lens_path, :any,
-    default: nil,
-    doc:
-      "Function from a lens id to the path the lens switcher goes to; defaults to the lens's root"
-
   attr :class, :string, default: "", doc: "CSS classes to apply to the header container"
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the header container"
 
@@ -38,32 +27,40 @@ defmodule Clarity.CoreComponents do
   def header(assigns)
 
   @doc """
-  Renders the activity bar: the strip of section icons down the left edge, as
-  in VS Code. Every section is always there, under every lens, so none (and no
-  report) is hidden behind a lens choice. The current section's icon shows or
-  hides the sidebar; another section's icon goes to that section.
+  Renders the activity bar: icons down the left edge, as in VS Code. There is
+  one per lens, each a role's filtered view of the graph, then Reports, which
+  is always there too, so no report is hidden behind a lens choice. The current
+  icon shows or hides the sidebar; another lens's icon explores through that
+  lens, and Reports goes to the reports.
   """
   attr :prefix, :string, required: true, doc: "The URL prefix for links"
-  attr :lens, Lens, required: true, doc: "Current lens, kept when changing section"
+  attr :lenses, :list, required: true, doc: "Every lens, in the order shown"
+  attr :lens, Lens, default: nil, doc: "The lens explored through; nil on the reports"
   attr :section, :atom, required: true, values: [:explore, :reports], doc: "The section shown"
 
   @spec activity_bar(assigns :: Socket.assigns()) :: Rendered.t()
   def activity_bar(assigns) do
     ~H"""
-    <nav id="activity-bar" class="activity-bar" aria-label="Sections">
+    <nav id="activity-bar" class="activity-bar" aria-label="Lenses and reports">
       <.activity_item
-        id="activity-explore"
-        label="Explore"
-        current={@section == :explore}
-        to={Path.join([@prefix, @lens.id])}
+        :for={lens <- @lenses}
+        id={"activity-lens-#{lens.id}"}
+        label={lens.name}
+        current={@section == :explore and @lens != nil and lens.id == @lens.id}
+        patch={@section == :explore}
+        to={Path.join([@prefix, lens.id])}
       >
-        <.icon_explore class="size-6" />
+        <span class="flex size-6 items-center justify-center text-xl leading-none">
+          {lens.icon.()}
+        </span>
       </.activity_item>
+      <hr class="activity-divider" />
       <.activity_item
         id="activity-reports"
         label="Reports"
         current={@section == :reports}
-        to={Path.join([@prefix, @lens.id, "reports"])}
+        patch={@section == :reports}
+        to={Path.join([@prefix, "reports"])}
       >
         <.icon_report class="size-6" />
       </.activity_item>
@@ -74,12 +71,14 @@ defmodule Clarity.CoreComponents do
   attr :id, :string, required: true
   attr :label, :string, required: true
   attr :current, :boolean, required: true
+  attr :patch, :boolean, required: true, doc: "Whether `to` is in the same LiveView"
   attr :to, :string, required: true
   slot :inner_block, required: true
 
-  # The current section's item toggles the sidebar (the NavPanel hook listens
-  # for clarity:toggle-nav, as for ⌘B); another section's item navigates to it,
-  # since each section is its own LiveView.
+  # The current item toggles the sidebar (the NavPanel hook listens for
+  # clarity:toggle-nav, as for ⌘B). Another item patches when it stays in the
+  # same LiveView (switching lens while exploring keeps the page's state), and
+  # navigates when it crosses between exploring and the reports.
   @spec activity_item(map()) :: Rendered.t()
   defp activity_item(%{current: true} = assigns) do
     ~H"""
@@ -94,6 +93,14 @@ defmodule Clarity.CoreComponents do
     >
       {render_slot(@inner_block)}
     </button>
+    """
+  end
+
+  defp activity_item(%{patch: true} = assigns) do
+    ~H"""
+    <.link id={@id} patch={@to} class="activity-item" aria-label={@label} {Tooltip.attrs(@label)}>
+      {render_slot(@inner_block)}
+    </.link>
     """
   end
 

@@ -39,11 +39,12 @@ defmodule Clarity.PageLive do
         page_title: "Loading...",
         shown_vertex_types: [],
         available_vertex_types: [],
-        initial_vertex: initial_vertex
+        initial_vertex: initial_vertex,
+        lenses: Lensmaker.get_all_lenses()
       )
       |> fetch_clarity()
       # LiveView forbids live patches during mount, which a live navigation to a
-      # bare lens URL (e.g. from the lens switcher) would otherwise trigger.
+      # bare lens URL (e.g. from the reports to a lens) would otherwise trigger.
       |> handle_routing(params, &push_navigate/2)
 
     {:ok, socket}

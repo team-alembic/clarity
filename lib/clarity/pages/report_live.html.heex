@@ -2,10 +2,8 @@
   <.header
     socket={@socket}
     prefix={@prefix}
-    lens={@lens}
     theme={@theme}
     clarity_pid={@clarity_pid}
-    lens_path={&report_lens_path(@prefix, &1, @selected)}
     class="header z-10"
   />
 
@@ -21,7 +19,7 @@
   >
   </div>
 
-  <.activity_bar prefix={@prefix} lens={@lens} section={:reports} />
+  <.activity_bar prefix={@prefix} lenses={@lenses} section={:reports} />
 
   <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 px-2 pb-3 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
     <div class="nav-heading">
@@ -49,19 +47,14 @@
               </summary>
               <ul class="tree-children">
                 <li :for={report <- reports}>
-                  <.report_link
-                    report={report}
-                    selected={@selected}
-                    prefix={@prefix}
-                    lens={@lens}
-                  />
+                  <.report_link report={report} selected={@selected} prefix={@prefix} />
                 </li>
               </ul>
             </details>
           </li>
         <% else %>
           <li :for={report <- reports}>
-            <.report_link report={report} selected={@selected} prefix={@prefix} lens={@lens} />
+            <.report_link report={report} selected={@selected} prefix={@prefix} />
           </li>
         <% end %>
       <% end %>

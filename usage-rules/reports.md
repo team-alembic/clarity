@@ -8,13 +8,12 @@ the relevant information in one place (e.g. a "Supply chain security" or
 "Security posture" report), a report gathers the relevant vertices and narrates
 them.
 
-Reports are a top-level section: the activity bar down the left edge shows
-**Explore** and **Reports** under every lens, so no report is hidden behind a
-lens choice. Reports opens `Clarity.ReportLive` at `prefix/:lens/reports`,
-whose sidebar lists every registered report as a tree, grouped by category, and
-which shows the selected one at `prefix/:lens/reports/:report_id` under its
-name and description. The lens stays in the URL so Explore returns to it; it
-doesn't change which reports are listed.
+Reports are a top-level section, not part of any lens: the activity bar down
+the left edge shows an icon per lens and, below them, **Reports**, so no report
+is hidden behind a lens choice. Reports opens `Clarity.ReportLive` at
+`prefix/reports`, whose sidebar lists every registered report as a tree,
+grouped by category, and which shows the selected one at
+`prefix/reports/:report_id` under its name and description.
 
 ## When to Create a Report
 
@@ -32,7 +31,7 @@ vertices. If you're adding a view for a *single* vertex, use a
 - The module is also a **LiveComponent** (`use Clarity.Web, :live_component`);
   `ReportLive` embeds it with these assigns:
   - `graph` - the whole graph, not filtered by any lens
-  - `lens` - the current lens, for `<.markdown>`'s links
+  - `lens` - the default lens, for `<.markdown>`'s links
   - `prefix` - the URL prefix Clarity is mounted at
   - `version` - the graph's update count, which changes whenever introspection
     changes the graph; `update/2` then runs again, so the report stays current
@@ -166,7 +165,7 @@ assert html =~ "Compliance"
 ```
 
 For the end-to-end routes, drive `Clarity.ReportLive` with
-`Phoenix.LiveViewTest.live/2` against `/:lens/reports/:report_id` (see
+`Phoenix.LiveViewTest.live/2` against `/reports/:report_id` (see
 `test/clarity/pages/report_live_test.exs`).
 
 ## Real-World Examples

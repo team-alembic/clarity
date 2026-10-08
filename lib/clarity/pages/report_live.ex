@@ -17,26 +17,21 @@ defmodule Clarity.ReportLive do
 
     {:ok,
      socket
-     |> assign(reports: Report.all(), report_groups: Report.grouped(), show_navigation: false)
+     |> assign(
+       reports: Report.all(),
+       report_groups: Report.grouped(),
+       show_navigation: false,
+       lenses: Lensmaker.get_all_lenses(),
+       lens: default_lens()
+     )
      |> fetch_clarity()}
   end
 
-  # Every report is listed whatever the lens; the lens stays in the URL so the
-  # header's Explore item returns to the same lens. An unknown lens moves to the
-  # default one, and the bare index or an unknown report id patches to the first
-  # report, so the URL always names the lens and report shown.
+  # The bare index, and an unknown report id, patch to the first report so the
+  # URL always names the report shown.
   @impl Phoenix.LiveView
   def handle_params(params, _uri, socket) do
-    case Lensmaker.get_lens_by_id(params["lens"]) do
-      {:ok, lens} ->
-        {:noreply, socket |> assign(lens: lens) |> select_report(params["report_id"])}
-
-      {:error, :lens_not_found} ->
-        default = Clarity.Config.fetch_default_perspective_lens!()
-
-        {:noreply,
-         push_navigate(socket, to: Path.join([socket.assigns.prefix, default, "reports"]))}
-    end
+    {:noreply, select_report(socket, params["report_id"])}
   end
 
   # The header's menu button, which shows the sidebar on narrow screens.
@@ -64,21 +59,20 @@ defmodule Clarity.ReportLive do
         assign(socket, selected: report)
 
       {[first | _], _missing} ->
-        push_patch(socket, to: report_path(socket.assigns.prefix, socket.assigns.lens, first))
+        push_patch(socket, to: report_path(socket.assigns.prefix, first))
     end
   end
 
   attr :report, :atom, required: true
   attr :selected, :atom, required: true
   attr :prefix, :string, required: true
-  attr :lens, Lens, required: true
 
   # A report's row in the sidebar tree, styled like a row of the Explore tree.
   @spec report_link(map()) :: Phoenix.LiveView.Rendered.t()
   defp report_link(assigns) do
     ~H"""
     <.link
-      patch={report_path(@prefix, @lens, @report)}
+      patch={report_path(@prefix, @report)}
       aria-current={@report == @selected && "page"}
       title={Report.description(@report)}
       class={[
@@ -108,15 +102,14 @@ defmodule Clarity.ReportLive do
     )
   end
 
-  # Where the lens switcher goes from here: the same report under another lens.
-  @spec report_lens_path(String.t(), String.t(), module() | nil) :: String.t()
-  defp report_lens_path(prefix, lens_id, nil), do: Path.join([prefix, lens_id, "reports"])
-
-  defp report_lens_path(prefix, lens_id, report),
-    do: Path.join([prefix, lens_id, "reports", Report.report_id(report)])
-
-  @spec report_path(String.t(), Lens.t(), module()) :: String.t()
-  defp report_path(prefix, lens, report) do
-    Path.join([prefix, lens.id, "reports", Report.report_id(report)])
+  # Reports aren't seen through a lens, but their markdown links into the graph
+  # need one: the default lens, where Clarity starts.
+  @spec default_lens() :: Lens.t()
+  defp default_lens do
+    {:ok, lens} = Lensmaker.get_lens_by_id(Clarity.Config.fetch_default_perspective_lens!())
+    lens
   end
+
+  @spec report_path(String.t(), module()) :: String.t()
+  defp report_path(prefix, report), do: Path.join([prefix, "reports", Report.report_id(report)])
 end

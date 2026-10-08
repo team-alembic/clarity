@@ -6,13 +6,12 @@
       <.header
         socket={@socket}
         prefix={@prefix}
-        lens={@lens}
         theme={@theme}
         clarity_pid={@clarity_pid}
         class="header z-10"
       />
 
-      <.activity_bar prefix={@prefix} lens={lens} section={:explore} />
+      <.activity_bar prefix={@prefix} lenses={@lenses} lens={lens} section={:explore} />
 
       <%!-- One shared element for every hover hint; the Tooltip hook owns its content. --%>
       <div
@@ -44,7 +43,7 @@
         <%= if @vertex do %>
           <nav class={"navigation bg-base-light-100 dark:bg-base-dark-800 border-r border-base-light-300 dark:border-base-dark-700 px-2 pb-3 md:block #{if @show_navigation, do: "block", else: "hidden"}"}>
             <div class="nav-heading">
-              <span>Explore</span>
+              <span>{lens.name}</span>
             </div>
             <.live_component
               module={Clarity.TreeComponent}

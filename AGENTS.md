@@ -54,7 +54,7 @@ Display information about vertices in the UI. Implement `Clarity.Content` behavi
 
 ### 4. Lensmakers (`lib/clarity/perspective/lensmaker/`)
 
-Create filtered views of the graph for different audiences (architect, security, documentation, graph, debug); a lens filters the tree and chooses which tabs a vertex shows (`contents`). Implement `Clarity.Perspective.Lensmaker` behaviour with `make_lens/0` and `update_lens/1`.
+Create filtered views of the graph for different audiences (architect, security, documentation, graph, debug); a lens filters the tree and chooses which tabs a vertex shows (`contents`). Each lens is an icon in the activity bar down the left edge. Implement `Clarity.Perspective.Lensmaker` behaviour with `make_lens/0` and `update_lens/1`.
 
 ### 5. Status Providers (`lib/clarity/status/`)
 
@@ -62,7 +62,7 @@ Flag vertices with `info`/`warning`/`error` indicators that roll up the navigati
 
 ### 6. Reports (`lib/clarity/report/`)
 
-Written roll-ups of the graph, in prose — an alternative to graph navigation. Implement the `Clarity.Report` behaviour with `name/0` and optional `description/0` and `category/0`; the module is also a LiveComponent, embedded by `Clarity.ReportLive` with `graph`/`lens`/`prefix`/`version`. Reports are a top-level section beside Explore in the activity bar, shown under every lens; `prefix/:lens/reports` lists every registered report in a sidebar tree grouped by category, whatever the lens.
+Written roll-ups of the graph, in prose — an alternative to graph navigation. Implement the `Clarity.Report` behaviour with `name/0` and optional `description/0` and `category/0`; the module is also a LiveComponent, embedded by `Clarity.ReportLive` with `graph`/`lens`/`prefix`/`version`. Reports have their own icon in the activity bar, below the lenses; `prefix/reports` lists every registered report in a sidebar tree grouped by category.
 
 ### Core Modules
 

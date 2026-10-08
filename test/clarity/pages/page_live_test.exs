@@ -19,19 +19,30 @@ defmodule Clarity.Pages.PageLiveTest do
                live_redirect(view, to: "/architect")
     end
 
-    test "the activity bar's current Explore item toggles the sidebar", %{conn: conn} do
+    test "the activity bar's current lens toggles the sidebar; other lenses patch to theirs",
+         %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
       assert has_element?(
                view,
-               "button#activity-explore[aria-current=page][phx-click*='clarity:toggle-nav']"
+               "button#activity-lens-debug[aria-current=page][phx-click*='clarity:toggle-nav']"
              )
+
+      assert has_element?(view, "a#activity-lens-architect[href='/architect'][data-phx-link=patch]")
+      refute has_element?(view, "#lens-switcher")
     end
 
-    test "the activity bar's Reports item goes to the lens's reports", %{conn: conn} do
+    test "the activity bar's Reports item goes to the reports", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
 
-      assert has_element?(view, "a#activity-reports[href='/debug/reports'][data-phx-link=redirect]")
+      assert has_element?(view, "a#activity-reports[href='/reports'][data-phx-link=redirect]")
+    end
+
+    test "the sidebar is headed with the lens's name", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      render_async(view)
+
+      assert has_element?(view, ".nav-heading", "Debug")
     end
 
     test "switching lens keeps the page on screen while the lens's start page loads", %{
@@ -40,8 +51,7 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, _html} = live(conn, "/debug/root/graph")
       render_async(view)
 
-      view |> element("button[aria-label='Switch lens perspective']") |> render_click()
-      html = view |> element("button[phx-value-lens-id='architect']") |> render_click()
+      html = view |> element("#activity-lens-architect") |> render_click()
 
       assert html =~ ~s(class="navigation)
     end
@@ -537,7 +547,7 @@ defmodule Clarity.Pages.PageLiveTest do
       {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
       render_async(view)
 
-      assert has_element?(view, "#activity-bar button#activity-explore")
+      assert has_element?(view, "#activity-bar button#activity-lens-debug")
       refute has_element?(view, "#hide-nav")
       refute has_element?(view, "#show-nav")
       refute has_element?(view, "header #toggle-sidebar")

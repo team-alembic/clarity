@@ -9,6 +9,7 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
 
   @behaviour Clarity.Perspective.Lensmaker
 
+  import Clarity.IconComponents
   import Phoenix.Component
 
   alias Clarity.Graph
@@ -24,7 +25,10 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       description: "Shows architectural structure and major components",
       icon: fn ->
         assigns = %{}
-        ~H"🏗️"
+
+        ~H"""
+        <.icon_cube class="size-full" />
+        """
       end,
       filter: &filter/1,
       show_vertex_types: &show_vertex_types/1
