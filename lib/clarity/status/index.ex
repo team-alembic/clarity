@@ -28,8 +28,14 @@ defmodule Clarity.Status.Index do
 
   require Logger
 
-  @typedoc "One status of one vertex, named for a hint."
-  @type issue() :: %{name: String.t(), severity: Status.severity(), message: String.t()}
+  @typedoc "One status of one vertex, named for a hint and linked to its vertex."
+  @type issue() :: %{
+          vertex_id: String.t(),
+          name: String.t(),
+          severity: Status.severity(),
+          class: atom(),
+          message: String.t()
+        }
 
   @type entry() :: %{
           severity: Status.severity(),
@@ -117,7 +123,13 @@ defmodule Clarity.Status.Index do
     for provider <- providers,
         status <- safe_statuses(provider, vertex, graph),
         lens.status_filter.(status) do
-      %{name: Vertex.name(vertex), severity: status.severity, message: status.message}
+      %{
+        vertex_id: Vertex.id(vertex),
+        name: Vertex.name(vertex),
+        severity: status.severity,
+        class: status.class,
+        message: status.message
+      }
     end
   end
 

@@ -62,8 +62,20 @@ defmodule Clarity.Status.IndexTest do
     %Lens{id: "t", name: "T", icon: fn -> nil end, filter: true, status_filter: status_filter}
   end
 
-  @err_issue %{name: "err", severity: :error, message: "e"}
-  @info_issue %{name: "info", severity: :info, message: "i"}
+  @err_issue %{
+    vertex_id: "application:err",
+    name: "err",
+    severity: :error,
+    class: :security,
+    message: "e"
+  }
+  @info_issue %{
+    vertex_id: "application:info",
+    name: "info",
+    severity: :info,
+    class: :hygiene,
+    message: "i"
+  }
 
   describe "build/2" do
     test "rolls up worst severity and a count of flagged descendants", %{graph: graph, vertices: v} do

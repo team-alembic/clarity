@@ -79,8 +79,8 @@ defmodule Clarity.PageLive do
       {%{"lens" => lens_id}, :lens} ->
         handle_lens_route(lens_id, socket, navigate_fn)
 
-      {%{"lens" => lens_id, "vertex" => vertex_id}, :vertex} ->
-        handle_vertex_route(lens_id, vertex_id, socket, navigate_fn)
+      {%{"lens" => lens_id, "vertex" => vertex_id} = params, :vertex} ->
+        handle_vertex_route(lens_id, vertex_id, params["status"], socket, navigate_fn)
 
       {%{"lens" => lens_id, "vertex" => vertex_id, "content" => content_id}, :page} ->
         handle_page_route(lens_id, vertex_id, content_id, socket)
@@ -108,9 +108,10 @@ defmodule Clarity.PageLive do
     )
   end
 
-  @spec handle_vertex_route(String.t(), String.t(), Socket.t(), navigation_fn) :: Socket.t()
+  @spec handle_vertex_route(String.t(), String.t(), String.t() | nil, Socket.t(), navigation_fn) ::
+          Socket.t()
         when navigation_fn: (Socket.t(), keyword() -> Socket.t())
-  defp handle_vertex_route(lens_id, vertex_id, socket, navigate_fn) do
+  defp handle_vertex_route(lens_id, vertex_id, status, socket, navigate_fn) do
     clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
 
     with {:ok, lens} <- Lensmaker.get_lens_by_id(lens_id),
@@ -127,7 +128,7 @@ defmodule Clarity.PageLive do
                 socket.assigns.prefix,
                 lens.id,
                 vertex_id,
-                kept_content_id(contents, socket.assigns.content)
+                chosen_content_id(contents, socket.assigns.content, status)
               ])
           )
       end
@@ -460,12 +461,22 @@ defmodule Clarity.PageLive do
   defp breadcrumb_trail(breadcrumbs),
     do: breadcrumbs |> Enum.drop(-1) |> Enum.reject(&match?(%Root{}, &1))
 
-  # The tab open before, if the vertex has it too, or else its first: moving
-  # to another vertex, or lens, keeps the tab where it can.
-  @spec kept_content_id([Content.t(), ...], Content.t() | nil) :: String.t()
-  defp kept_content_id([%{id: first_id} | _] = contents, content) do
-    if content && Enum.any?(contents, &(&1.id == content.id)), do: content.id, else: first_id
+  # The tab that explains `status`, a status class from a status badge's link,
+  # if the vertex has one. Otherwise the tab open before, if the vertex has it
+  # too, or else its first: moving to another vertex, or lens, keeps the tab
+  # where it can.
+  @spec chosen_content_id([Content.t(), ...], Content.t() | nil, String.t() | nil) :: String.t()
+  defp chosen_content_id([%{id: first_id} | _] = contents, content, status) do
+    cond do
+      explaining = status && Enum.find(contents, &explains?(&1, status)) -> explaining.id
+      content && Enum.any?(contents, &(&1.id == content.id)) -> content.id
+      true -> first_id
+    end
   end
+
+  @spec explains?(Content.t(), String.t()) :: boolean()
+  defp explains?(content, status),
+    do: Enum.any?(content.status_classes, &(Atom.to_string(&1) == status))
 
   # The vertex route then keeps the open tab if the lens has it for the target.
   @spec lens_switch_path(Socket.t(), Lens.t(), Vertex.t()) :: String.t()

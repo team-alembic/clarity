@@ -295,21 +295,33 @@ defmodule Clarity.TreeComponentTest do
   defp badge_entry(severity, count, severities \\ [error: 1]) do
     issues =
       for {severity, n} <- severities, i <- 1..n do
-        %{name: "dep_#{i}", severity: severity, message: "#{severity} #{i}"}
+        %{
+          vertex_id: "application:dep_#{i}",
+          name: "dep_#{i}",
+          severity: severity,
+          class: if(severity == :error, do: :security, else: :hygiene),
+          message: "#{severity} #{i}"
+        }
       end
 
     %{severity: severity, count: count, issues: Enum.take(issues, 8), severities: Map.new(severities)}
   end
 
+  @spec render_badge(map() | nil) :: String.t()
+  defp render_badge(entry) do
+    {:ok, lens} = Lensmaker.get_lens_by_id("security")
+    render_component(&TreeComponent.status_badge/1, entry: entry, prefix: "/", lens: lens)
+  end
+
   describe "status_badge/1" do
     test "renders nothing without an entry" do
-      html = render_component(&TreeComponent.status_badge/1, entry: nil)
+      html = render_badge(nil)
 
       refute html =~ "svg"
     end
 
     test "renders a pill with no count for a flagged leaf (no nested issues)" do
-      html = render_component(&TreeComponent.status_badge/1, entry: badge_entry(:error, 0))
+      html = render_badge(badge_entry(:error, 0))
 
       assert html =~ "rounded-full"
       assert html =~ "bg-red-100"
@@ -318,7 +330,7 @@ defmodule Clarity.TreeComponentTest do
     end
 
     test "shows the count of nested issues" do
-      html = render_component(&TreeComponent.status_badge/1, entry: badge_entry(:error, 3))
+      html = render_badge(badge_entry(:error, 3))
 
       assert html =~ "bg-red-100"
       assert html =~ "tabular-nums"
@@ -327,21 +339,34 @@ defmodule Clarity.TreeComponentTest do
 
     test "renders warning and info severities" do
       warning =
-        render_component(&TreeComponent.status_badge/1, entry: badge_entry(:warning, 1, warning: 1))
+        render_badge(badge_entry(:warning, 1, warning: 1))
 
       assert warning =~ "bg-yellow-100"
 
-      info = render_component(&TreeComponent.status_badge/1, entry: badge_entry(:info, 1, info: 1))
+      info = render_badge(badge_entry(:info, 1, info: 1))
 
       assert info =~ "bg-blue-100"
+    end
+  end
+
+  describe "status_badge/1 link" do
+    test "opens the worst issue's vertex, on the tab explaining its status class" do
+      [href] =
+        :error
+        |> badge_entry(2, error: 1, info: 1)
+        |> render_badge()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("a")
+        |> LazyHTML.attribute("href")
+
+      assert href == "/security/application:dep_1?status=security"
     end
   end
 
   describe "status_badge/1 hint" do
     @spec badge(map()) :: LazyHTML.t()
     defp badge(entry) do
-      html = render_component(&TreeComponent.status_badge/1, entry: entry)
-      html |> LazyHTML.from_fragment() |> LazyHTML.query("[role=img]")
+      entry |> render_badge() |> LazyHTML.from_fragment() |> LazyHTML.query("a[aria-label]")
     end
 
     test "says how many issues of each severity, and lists each one" do
@@ -373,7 +398,7 @@ defmodule Clarity.TreeComponentTest do
       badge = badge(badge_entry(:error, 1, error: 1, warning: 1))
 
       assert LazyHTML.attribute(badge, "aria-label") == [
-               "2 issues (1 error, 1 warning). dep_1: Error: error 1; dep_1: Warning: warning 1"
+               "2 issues (1 error, 1 warning). dep_1: Error: error 1; dep_1: Warning: warning 1. Opens dep_1"
              ]
     end
   end

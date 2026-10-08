@@ -327,6 +327,21 @@ defmodule Clarity.Pages.PageLiveTest do
     end
   end
 
+  describe "PageLive opening a status badge's link" do
+    test "opens the tab that explains the status class", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/security/application:clarity/dependency"}}} =
+               live(conn, "/security/application:clarity?status=hygiene")
+
+      assert {:error, {:live_redirect, %{to: "/security/application:clarity/advisory"}}} =
+               live(conn, "/security/application:clarity?status=security")
+    end
+
+    test "falls back to the first tab when none explains the class", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/security/application:clarity/advisory"}}} =
+               live(conn, "/security/application:clarity?status=nope")
+    end
+  end
+
   describe "PageLive switching lens" do
     test "keeps the selected vertex", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")

@@ -243,19 +243,23 @@ defmodule Clarity.TreeComponent do
   end
 
   attr :entry, :any, default: nil
+  attr :prefix, :string, required: true
+  attr :lens, Lens, required: true
 
+  # A badge links to its worst issue: that issue's vertex, on the tab that
+  # explains its status class (see PageLive's vertex route).
   @doc false
   @spec status_badge(map()) :: Rendered.t()
   def status_badge(assigns) do
     ~H"""
     <%= if @entry do %>
-      <span
+      <.link
+        patch={badge_path(@prefix, @lens, hd(@entry.issues))}
         class={[
           "inline-flex shrink-0 items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-full align-middle",
-          "text-xs font-medium leading-none ring-1 ring-inset",
+          "text-xs font-medium leading-none ring-1 ring-inset hover:ring-2",
           badge_classes(@entry.severity)
         ]}
-        role="img"
         aria-label={badge_label(@entry)}
         {badge_hint(@entry)}
       >
@@ -268,10 +272,16 @@ defmodule Clarity.TreeComponent do
             <.icon_info class="w-3 h-3" />
         <% end %>
         <span :if={@entry.count > 0} class="tabular-nums">{@entry.count}</span>
-      </span>
+      </.link>
     <% end %>
     """
   end
+
+  @spec badge_path(String.t(), Lens.t(), Index.issue()) :: String.t()
+  defp badge_path(prefix, lens, issue),
+    do:
+      Path.join([prefix, lens.id, issue.vertex_id]) <>
+        "?" <> URI.encode_query(status: issue.class)
 
   @spec badge_classes(Clarity.Status.severity()) :: String.t()
   defp badge_classes(:error),
@@ -305,7 +315,9 @@ defmodule Clarity.TreeComponent do
 
     issues = Enum.map_join(entry.issues, "; ", &"#{&1.name}: #{issue_line(&1)}")
 
-    Enum.join([summary | issues_left_out(entry)] ++ [issues], ". ")
+    opens = "Opens #{hd(entry.issues).name}"
+
+    Enum.join([summary | issues_left_out(entry)] ++ [issues, opens], ". ")
   end
 
   @spec issue_line(Index.issue()) :: String.t()

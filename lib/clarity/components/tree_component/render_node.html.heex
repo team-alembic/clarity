@@ -18,7 +18,7 @@
         name={@name}
         providers={@providers}
       />
-      <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
+      <.status_badge entry={@status_index[Vertex.id(@vertex)]} prefix={@prefix} lens={@lens} />
     </summary>
     <div :if={open?(@vertex, @visible_ids)}>
       <.render_vertex
@@ -47,6 +47,6 @@
       name={@name}
       providers={@providers}
     />
-    <.status_badge entry={@status_index[Vertex.id(@vertex)]} />
+    <.status_badge entry={@status_index[Vertex.id(@vertex)]} prefix={@prefix} lens={@lens} />
   </div>
 <% end %>
