@@ -110,14 +110,10 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       """
     end
 
-    # The application's vertex, from the graph, which knows its description
-    # and version.
     @spec app_vertex(map(), atom() | nil) :: Vertex.Application.t() | nil
-    defp app_vertex(%{graph: graph}, app) when graph != nil and app != nil do
-      id = Vertex.id(%Vertex.Application{app: app, description: nil, version: nil})
-      Clarity.Graph.get_vertex(graph, id)
-    end
+    defp app_vertex(_links, nil), do: nil
 
-    defp app_vertex(_links, _app), do: nil
+    defp app_vertex(links, app),
+      do: in_graph(links, %Vertex.Application{app: app, description: nil, version: nil})
   end
 end

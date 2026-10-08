@@ -66,6 +66,15 @@ defmodule Clarity.Components.OverviewComponents do
   def links_about(links, vertex),
     do: %{links | vertex: vertex, names: Autolink.names_in(links.index, vertex)}
 
+  @doc """
+  Returns the graph's own copy of `vertex`, which may know more than one
+  built from scratch (an application's description and version), or `nil`
+  when the graph doesn't hold it or there's no graph.
+  """
+  @spec in_graph(links(), Vertex.t()) :: Vertex.t() | nil
+  def in_graph(%{graph: nil}, _vertex), do: nil
+  def in_graph(%{graph: graph}, vertex), do: Clarity.Graph.get_vertex(graph, Vertex.id(vertex))
+
   @doc "Returns the path to `vertex` in the overview's lens."
   @spec path(links(), Vertex.t()) :: String.t()
   def path(links, vertex), do: Path.join([links.prefix, links.lens.id, Vertex.id(vertex)])
@@ -266,6 +275,7 @@ defmodule Clarity.Components.OverviewComponents do
   """
   attr :id, :string, required: true
   attr :rows, :list, required: true
+  attr :class, :any, default: nil
 
   slot :col, required: true do
     attr :label, :string
@@ -276,7 +286,7 @@ defmodule Clarity.Components.OverviewComponents do
   def overview_table(assigns) do
     ~H"""
     <div class="ov-table-wrap">
-      <table id={@id} class="ov-table">
+      <table id={@id} class={["ov-table", @class]}>
         <thead>
           <tr>
             <th :for={col <- @col} class={col[:class]}>{col[:label]}</th>

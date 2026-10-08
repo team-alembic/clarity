@@ -1258,6 +1258,145 @@ a.report-chip {
   content: counter(step);
 }
 
+/* A request pipeline's steps: each plug's name and options, and under them
+   what it does. */
+.ov-pipeline > li {
+  @apply items-start py-1.5;
+}
+
+.ov-pipeline > li::before {
+  @apply leading-6;
+}
+
+.ov-step-body {
+  @apply min-w-0 flex-1;
+}
+
+.ov-step-body > .ov-phrase {
+  @apply min-h-6;
+}
+
+.ov-step-name {
+  @apply font-medium text-base-light-900 dark:text-base-dark-50;
+}
+
+.ov-step-about {
+  @apply m-0 text-xs leading-snug text-base-light-500 dark:text-base-dark-400;
+}
+
+.ov-pipeline-card {
+  @apply flex flex-col;
+}
+
+.ov-chain {
+  @apply m-0 mt-2 list-none space-y-1 p-0;
+  counter-reset: chain;
+}
+
+.ov-chain > li {
+  @apply flex flex-wrap items-center gap-1.5;
+  counter-increment: chain;
+}
+
+.ov-chain > li::before {
+  @apply w-3 shrink-0 text-right text-[11px] tabular-nums text-base-light-400 dark:text-base-dark-500;
+  content: counter(chain);
+}
+
+.ov-plug-fn {
+  @apply text-base-light-900 dark:text-base-dark-50;
+}
+
+/* Try a request: a method and path, and where the request goes. */
+.ov-try {
+  @apply mb-2 flex gap-2;
+}
+
+.ov-try select,
+.ov-try input {
+  @apply rounded-md border border-base-light-300 bg-white px-2 py-1 font-mono text-[13px] text-base-light-900;
+  @apply focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200;
+  @apply dark:border-base-dark-600 dark:bg-base-dark-900 dark:text-base-dark-50 dark:focus:border-orange-500 dark:focus:ring-orange-900/60;
+}
+
+.ov-try input {
+  @apply min-w-0 flex-1;
+}
+
+.ov-journey {
+  @apply m-0 list-none overflow-hidden rounded-lg border border-base-light-200 bg-white p-0 dark:border-base-dark-700 dark:bg-base-dark-900;
+}
+
+.ov-journey > li {
+  @apply flex items-start gap-3 px-3 py-2;
+}
+
+.ov-journey > li + li {
+  @apply border-t border-base-light-200/80 dark:border-base-dark-700/70;
+}
+
+.ov-journey-stage {
+  @apply w-24 shrink-0 text-[11px] font-medium uppercase leading-6 tracking-wide text-base-light-500 dark:text-base-dark-400;
+}
+
+.ov-journey-stage .ov-pill {
+  @apply normal-case tracking-normal;
+}
+
+.ov-journey > li > .ov-phrase {
+  @apply min-h-6;
+}
+
+/* Where the request ends up, in the tone of the web. */
+.ov-journey > li.ov-journey-end {
+  @apply bg-orange-50/60 dark:bg-orange-950/20;
+}
+
+.ov-param-value {
+  @apply inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 text-xs leading-5 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200;
+}
+
+.ov-param-value code {
+  @apply font-mono;
+}
+
+.ov-route-group + .ov-route-group {
+  @apply mt-4;
+}
+
+.ov-route-group-head {
+  @apply mb-1.5 flex items-center gap-2;
+}
+
+/* Every group's routes line up, column for column. */
+.ov-routes {
+  @apply table-fixed;
+}
+
+.ov-routes .ov-routes-method {
+  @apply w-24;
+}
+
+.ov-routes .ov-routes-path {
+  @apply w-[42%];
+}
+
+.ov-method {
+  @apply min-w-14 justify-center font-mono;
+}
+
+.ov-try-path {
+  @apply rounded decoration-base-light-400 underline-offset-2 hover:underline dark:decoration-base-dark-500;
+}
+
+.ov-route-path {
+  @apply text-base-light-900 dark:text-base-dark-50;
+}
+
+.ov-param {
+  @apply text-indigo-700 dark:text-indigo-300;
+}
+
 .ov-meter {
   @apply mt-2 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-base-light-200 dark:bg-base-dark-700;
 }

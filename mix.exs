@@ -87,6 +87,7 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.StateMachinesOverview,
           Clarity.Content.Reactor.FlowDiagram,
           Clarity.Content.Reactor.Overview,
+          Clarity.Content.Phoenix.EndpointPipeline,
           Clarity.Content.Phoenix.RouterRoutes,
           Clarity.Content.Advisory,
           Clarity.Content.Dependency
