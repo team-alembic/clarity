@@ -54,14 +54,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         <div class="ov-head">
           <.hero vertex={@vertex} kind="Calculation">
             <:badge :if={@calculation.sensitive?}>
-              <.flag kind={:danger}>sensitive</.flag>
+              <.flag text="sensitive" />
             </:badge>
             <:badge>
-              <.flag :if={@calculation.public?} kind={:good}>public</.flag>
-              <.flag :if={not @calculation.public?} kind={:muted}>private</.flag>
+              <.flag :if={@calculation.public?} text="public" />
+              <.flag :if={not @calculation.public?} text="private" />
             </:badge>
             <:badge :if={Map.get(@calculation, :async?)}>
-              <.flag>async</.flag>
+              <.flag text="async" />
             </:badge>
             <:headline>
               <span class="ov-phrase">
@@ -119,7 +119,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </:col>
             <:col :let={argument} label="About">
               <div class="ov-flags">
-                <.flag :if={not argument.allow_nil?} kind={:warn}>required</.flag>
+                <.flag :if={not argument.allow_nil?} text="required" />
                 <.flag :if={default(argument)}>default <code>{default(argument)}</code></.flag>
               </div>
               <.description links={@links} text={description_of(argument)} class="mt-0.5" />

@@ -686,6 +686,15 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   @apply inline-flex items-center gap-1 rounded-full px-2 py-px text-xs leading-5 whitespace-nowrap;
 }
 
+/* A pill that links: it names another vertex, in that vertex's tone. */
+.ov-pill-link {
+  @apply font-medium transition-[filter] hover:brightness-95 dark:hover:brightness-125;
+}
+
+.ov-pill-link .ov-icon > svg {
+  @apply size-3.5;
+}
+
 .ov-headline {
   @apply mt-1.5 text-[15px] leading-6 text-base-light-900 dark:text-base-dark-50;
 }
@@ -818,23 +827,28 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   @apply border-base-light-200 text-base-light-600 dark:border-base-dark-600 dark:text-base-dark-300;
 }
 
-.ov-flag[data-kind="key"] {
+.ov-flag[data-kind="key"],
+.clarity-tooltip-badge[data-kind="key"] {
   @apply border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200;
 }
 
-.ov-flag[data-kind="good"] {
+.ov-flag[data-kind="good"],
+.clarity-tooltip-badge[data-kind="good"] {
   @apply border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200;
 }
 
-.ov-flag[data-kind="warn"] {
+.ov-flag[data-kind="warn"],
+.clarity-tooltip-badge[data-kind="warn"] {
   @apply border-transparent bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200;
 }
 
-.ov-flag[data-kind="danger"] {
+.ov-flag[data-kind="danger"],
+.clarity-tooltip-badge[data-kind="danger"] {
   @apply border-transparent bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-200;
 }
 
-.ov-flag[data-kind="muted"] {
+.ov-flag[data-kind="muted"],
+.clarity-tooltip-badge[data-kind="muted"] {
   @apply border-dashed text-base-light-500 dark:text-base-dark-400;
 }
 

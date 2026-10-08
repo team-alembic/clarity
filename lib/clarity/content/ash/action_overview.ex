@@ -60,19 +60,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         <div class="ov-head">
           <.hero vertex={@vertex} kind={kind(@action)}>
             <:badge :if={@action.primary?}>
-              <.flag kind={:key}>primary</.flag>
+              <.flag text="primary" />
             </:badge>
             <:badge :if={Map.get(@action, :manual)}>
-              <.flag kind={:warn}>manual</.flag>
+              <.flag text="manual" />
             </:badge>
             <:badge :if={Map.get(@action, :upsert?)}>
-              <.flag kind={:warn}>upsert</.flag>
+              <.flag text="upsert" />
             </:badge>
             <:badge :if={Map.get(@action, :soft?)}>
-              <.flag kind={:warn}>soft</.flag>
+              <.flag text="soft" />
             </:badge>
             <:badge :if={Map.get(@action, :get?)}>
-              <.flag>gets one</.flag>
+              <.flag text="gets one" />
             </:badge>
             <:headline>
               <span class="ov-phrase">
@@ -158,9 +158,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </:col>
             <:col :let={input} label="About">
               <div class="ov-flags">
-                <.flag :if={input.required?} kind={:warn}>required</.flag>
-                <.flag :if={input.kind == :argument}>argument</.flag>
-                <.flag :if={input.sensitive?} kind={:danger}>sensitive</.flag>
+                <.flag :if={input.required?} text="required" />
+                <.flag :if={input.kind == :argument} text="argument" />
+                <.flag :if={input.sensitive?} text="sensitive" />
                 <.flag :if={input.default}>default <code>{input.default}</code></.flag>
                 <span :if={input.one_of} class="ov-phrase">
                   <span class="ov-muted text-xs">one of</span>

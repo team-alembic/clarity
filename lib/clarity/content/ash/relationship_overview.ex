@@ -53,14 +53,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               <.flag>{@relationship.type}</.flag>
             </:badge>
             <:badge :if={@relationship.type == :belongs_to and not @relationship.allow_nil?}>
-              <.flag kind={:warn}>required</.flag>
+              <.flag text="required" />
             </:badge>
             <:badge :if={Map.get(@relationship, :primary_key?)}>
-              <.flag kind={:key}>primary key</.flag>
+              <.flag text="primary key" />
             </:badge>
             <:badge>
-              <.flag :if={@relationship.public?} kind={:good}>public</.flag>
-              <.flag :if={not @relationship.public?} kind={:muted}>private</.flag>
+              <.flag :if={@relationship.public?} text="public" />
+              <.flag :if={not @relationship.public?} text="private" />
             </:badge>
             <:headline>
               <span class="ov-phrase">

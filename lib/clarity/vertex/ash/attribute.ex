@@ -69,6 +69,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     defimpl Clarity.Vertex.HintProvider do
+      alias Clarity.Vertex.Ash.Type
+
       @impl HintProvider
       def icon(_vertex), do: :attribute
 
@@ -87,7 +89,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       def facts(%@for{attribute: attribute, resource: resource}) do
         [
           {"Resource", inspect(resource)},
-          {"Type", inspect(attribute.type)}
+          {"Type", Type.short_name(attribute.type)}
           | if(is_nil(attribute.default), do: [], else: [{"Default", inspect(attribute.default)}])
         ]
       end

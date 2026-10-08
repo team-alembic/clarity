@@ -51,13 +51,40 @@ defmodule Clarity.Tooltip do
     type: "data"
   }
 
+  # What badges say, wherever they're shown: on hover hints and as overview
+  # flags. Each has a kind, which colours it the same everywhere, and a line
+  # that explains it.
+  @badges %{
+    "argument" => {:plain, "An input of the action's own, not an attribute of its resource"},
+    "async" => {:plain, "Computed in a process of its own"},
+    "embedded" => {:plain, "Stored inside other resources' attributes, not on its own"},
+    "generated" => {:muted, "Given its value by the data layer"},
+    "gets one" => {:plain, "Returns one record, not a list"},
+    "includes nil" => {:plain, "Counts nil values too"},
+    "manual" => {:warn, "Carried out by a module of its own"},
+    "multitenant" => {:warn, "Keeps each tenant's records apart"},
+    "primary" => {:key, "The action of its type that Ash uses unless told otherwise"},
+    "primary key" => {:key, "Part of the resource's primary key"},
+    "private" => {:muted, "Hidden from public interfaces, such as APIs"},
+    "public" => {:good, "Shown to public interfaces, such as APIs"},
+    "read-only" => {:muted, "No action writes it"},
+    "required" => {:warn, "Must have a value: it doesn't allow nil"},
+    "sensitive" => {:danger, "Holds sensitive data, kept out of logs and inspection"},
+    "soft" => {:warn, "Marks records destroyed instead of deleting them"},
+    "unique values" => {:plain, "Counts each distinct value once"},
+    "upsert" => {:warn, "Updates the record with the same identity, when there is one"}
+  }
+
+  @typedoc "How a badge is coloured, the same on hover hints and overview flags."
+  @type badge_kind() :: :plain | :key | :good | :warn | :danger | :muted
+
   @typedoc "A hint for one vertex, as consumed by the `Tooltip` hook."
   @type hint() :: %{
           required(:title) => String.t(),
           required(:type) => String.t(),
           required(:icon) => String.t(),
           required(:tone) => String.t(),
-          optional(:badges) => [String.t()],
+          optional(:badges) => [String.t() | [String.t()]],
           optional(:text) => String.t(),
           optional(:facts) => [[String.t() | [String.t()]]]
         }
@@ -122,8 +149,8 @@ defmodule Clarity.Tooltip do
   def hint(vertex) do
     vertex
     |> type_icon()
-    |> Map.merge(%{title: Vertex.name(vertex), type: Vertex.type_label(vertex)})
-    |> put_present(:badges, HintProvider.badges(vertex))
+    |> Map.merge(%{title: Vertex.name(vertex), type: type_name(vertex)})
+    |> put_present(:badges, vertex |> HintProvider.badges() |> Enum.map(&coloured/1))
     |> put_present(:text, vertex |> TooltipProvider.tooltip() |> summarise())
     |> put_present(
       :facts,
@@ -168,6 +195,36 @@ defmodule Clarity.Tooltip do
   """
   @spec icons() :: [HintProvider.icon()]
   def icons, do: Map.keys(@tones)
+
+  @doc """
+  Returns how a badge is coloured and what explains it, the same wherever
+  it's shown. Badges Clarity doesn't know are plain, with no explanation.
+
+  ## Examples
+
+      iex> Clarity.Tooltip.badge("required")
+      %{kind: :warn, hint: "Must have a value: it doesn't allow nil"}
+
+      iex> Clarity.Tooltip.badge("beta")
+      %{kind: :plain, hint: nil}
+
+  """
+  @spec badge(String.t()) :: %{kind: badge_kind(), hint: String.t() | nil}
+  def badge(text) do
+    case Map.fetch(@badges, text) do
+      {:ok, {kind, hint}} -> %{kind: kind, hint: hint}
+      :error -> %{kind: :plain, hint: nil}
+    end
+  end
+
+  # A badge for the Tooltip hook: its text, with its kind when it has one.
+  @spec coloured(String.t()) :: String.t() | [String.t()]
+  defp coloured(text) do
+    case badge(text) do
+      %{kind: :plain} -> text
+      %{kind: kind} -> [text, Atom.to_string(kind)]
+    end
+  end
 
   @spec known_icon(atom()) :: HintProvider.icon()
   defp known_icon(icon) when is_map_key(@tones, icon), do: icon

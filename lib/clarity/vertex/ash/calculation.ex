@@ -64,6 +64,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     defimpl Clarity.Vertex.HintProvider do
+      alias Clarity.Vertex.Ash.Type
+
       @impl HintProvider
       def icon(_vertex), do: :calculation
 
@@ -75,7 +77,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       def facts(%@for{calculation: calculation, resource: resource}) do
         [
           {"Resource", inspect(resource)},
-          {"Type", inspect(calculation.type)}
+          {"Type", Type.short_name(calculation.type)}
           | case calculation.arguments do
               [] -> []
               arguments -> [{"Arguments", Enum.map(arguments, &Atom.to_string(&1.name))}]

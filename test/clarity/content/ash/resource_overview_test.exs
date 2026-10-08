@@ -38,14 +38,14 @@ defmodule Clarity.Content.Ash.ResourceOverviewTest do
   end
 
   describe "render" do
-    test "leads with the resource's description, domain, data layer and primary key" do
+    test "leads with the resource's description, data layer, domain and primary key" do
       html = render_overview(ResourceOverview, %Resource{resource: User})
 
       assert text(html, ".ov-hero .ov-prose") =~ "Identity record"
       assert text(html, ".ov-hero .ov-flag") =~ "multitenant"
-      assert html |> texts(".ov-fact dt") |> Enum.take(3) == ["Domain", "Data layer", "Primary key"]
+      assert html |> texts(".ov-fact dt") |> Enum.take(2) == ["Domain", "Primary key"]
       assert text(html, ".ov-fact dd") =~ "Accounts"
-      assert text(html, ".ov-fact dd") =~ "Ets"
+      assert "Ets" in texts(html, ".ov-hero a.ov-pill-link")
     end
 
     test "lists actions first, by type, flagging the primary ones" do

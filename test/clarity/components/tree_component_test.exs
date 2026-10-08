@@ -180,7 +180,7 @@ defmodule Clarity.TreeComponentTest do
         |> LazyHTML.query(".tree-guide-active")
 
       assert Enum.count(active) == 1
-      assert active |> LazyHTML.query("a[data-tooltip-type='Ash.Resource']") |> Enum.count() == 1
+      assert active |> LazyHTML.query("a[data-tooltip-type='Resource']") |> Enum.count() == 1
       assert active |> LazyHTML.query("a[data-tooltip-type='Ash.Domain']") |> Enum.count() == 0
     end
 

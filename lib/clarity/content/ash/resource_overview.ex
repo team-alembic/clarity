@@ -19,7 +19,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     alias Ash.Resource.Info
     alias Clarity.Content.Ash.Overview
-    alias Clarity.Vertex.Ash.DataLayer
     alias Clarity.Vertex.Ash.Domain
     alias Clarity.Vertex.Ash.Resource
 
@@ -51,15 +50,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          resource: resource,
          description: Overview.module_description(resource, Info.description(resource)),
          domain: Info.domain(resource),
-         data_layer: Info.data_layer(resource),
          primary_key: Info.primary_key(resource),
          identities: Info.identities(resource),
          extensions: extensions(resource),
-         embedded?: Info.embedded?(resource),
-         multitenancy: Info.multitenancy_strategy(resource),
          attributes: Info.attributes(resource),
          relationships: Info.relationships(resource),
          attribute_visibility: resource |> Info.attributes() |> Overview.unusual_visibility(),
+         keys_of:
+           for(
+             relationship <- Info.relationships(resource),
+             relationship.type == :belongs_to,
+             into: %{},
+             do: {relationship.source_attribute, relationship(resource, relationship)}
+           ),
          relationship_visibility:
            resource |> Info.relationships() |> Overview.unusual_visibility(),
          action_groups:
@@ -81,11 +84,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       <div class="ov-page" id={@id}>
         <div class="ov-head">
           <.hero vertex={@vertex} kind="Resource">
-            <:badge :if={@embedded?}>
-              <.flag>embedded</.flag>
-            </:badge>
-            <:badge :if={@multitenancy}>
-              <.flag kind={:warn}>multitenant</.flag>
+            <:badge>
+              <.resource_badges links={@links} resource={@resource} />
             </:badge>
             <:badge :for={extension <- @extensions}>
               <.flag>{extension}</.flag>
@@ -97,13 +97,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             <:fact :if={@domain} label="Domain">
               <.vertex_link links={@links} vertex={%Domain{domain: @domain}} />
             </:fact>
-            <:fact :if={@data_layer} label="Data layer">
-              <.vertex_link
-                links={@links}
-                vertex={%DataLayer{data_layer: @data_layer}}
-                label={@data_layer |> Module.split() |> List.last()}
-              />
-            </:fact>
             <:fact :if={@primary_key != []} label="Primary key">
               <.code_list names={Enum.map(@primary_key, &Atom.to_string/1)} />
             </:fact>
@@ -112,7 +105,6 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                 <.code_list names={Enum.map(identity.keys, &to_string/1)} />
               </span>
             </:fact>
-            <:fact :if={@multitenancy} label="Multitenancy">{@multitenancy}</:fact>
           </.facts>
 
           <.stats>
@@ -179,9 +171,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                       label={Atom.to_string(action.name)}
                       code
                     />
-                    <.flag :if={action.primary?} kind={:key}>primary</.flag>
+                    <.flag :if={action.primary?} text="primary" />
                   </div>
-                  <.description links={@links} text={description_of(action)} class="line-clamp-2" small />
+                  <.description links={@links} text={description_of(action)} small sentence />
                 </li>
               </ul>
             </div>
@@ -209,7 +201,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               <.ash_type links={@links} type={attribute.type} />
             </:col>
             <:col :let={attribute} label="About">
-              <.attribute_flags attribute={attribute} unusual={@attribute_visibility} />
+              <.attribute_flags
+                attribute={attribute}
+                unusual={@attribute_visibility}
+                links={@links}
+                key_of={@keys_of[attribute.name]}
+              />
               <.description links={@links} text={description_of(attribute)} class="mt-0.5" />
             </:col>
           </.overview_table>
@@ -245,13 +242,20 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
                   links={@links}
                   vertex={%Resource{resource: relationship.through}}
                 />
+                <.joined_by links={@links} relationship={relationship} resource={@resource} />
               </span>
             </:col>
-            <:col :let={relationship} label="About">
+            <:col
+              :let={relationship}
+              :if={
+                Enum.any?(
+                  @relationships,
+                  &(description_of(&1) || visibility_flagged?(&1, @relationship_visibility))
+                )
+              }
+              label="About"
+            >
               <div class="ov-flags">
-                <.flag :if={relationship.type == :belongs_to}>
-                  <code>{relationship.source_attribute}</code>
-                </.flag>
                 <.visibility_flag field={relationship} unusual={@relationship_visibility} />
               </div>
               <.description links={@links} text={description_of(relationship)} class="mt-0.5" />
@@ -333,20 +337,51 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     # The resource's extensions worth a mention: not Ash's own resource DSL,
-    # nor its data layer, which has a fact of its own.
+    # nor those with pills of their own: its data layer, policies and state
+    # machine.
     @spec extensions(module()) :: [String.t()]
     defp extensions(resource) do
-      data_layer = Info.data_layer(resource)
+      shown = [
+        Ash.Resource.Dsl,
+        Info.data_layer(resource),
+        Ash.Policy.Authorizer,
+        AshStateMachine
+      ]
 
       resource
       |> Spark.extensions()
-      |> Enum.reject(&(&1 in [Ash.Resource.Dsl, data_layer]))
-      |> Enum.map(&extension_name/1)
+      |> Enum.reject(&(&1 in shown))
+      |> Enum.map(&(&1 |> Module.split() |> List.last()))
     end
 
-    @spec extension_name(module()) :: String.t()
-    defp extension_name(Ash.Policy.Authorizer), do: "policies"
-    defp extension_name(AshStateMachine), do: "state machine"
-    defp extension_name(extension), do: extension |> Module.split() |> List.last()
+    # The attribute that joins a relationship's resources, on whichever side
+    # it is: "by organization_id" on a belongs_to, the other resource's key
+    # on a has_many or has_one.
+    attr :links, :map, required: true
+    attr :relationship, :any, required: true
+    attr :resource, :atom, required: true
+
+    @spec joined_by(map()) :: Phoenix.LiveView.Rendered.t()
+    defp joined_by(assigns) do
+      key =
+        case assigns.relationship do
+          %{type: :belongs_to, source_attribute: name} ->
+            attribute_named(assigns.resource, name)
+
+          %{type: type, destination: destination, destination_attribute: name}
+          when type in [:has_many, :has_one] ->
+            attribute_named(destination, name)
+
+          _many_to_many ->
+            nil
+        end
+
+      assigns = assign(assigns, :key, key)
+
+      ~H"""
+      <span :if={@key} class="ov-muted">by</span>
+      <.vertex_link :if={@key} links={@links} vertex={@key} label={to_string(@key.attribute.name)} code />
+      """
+    end
   end
 end

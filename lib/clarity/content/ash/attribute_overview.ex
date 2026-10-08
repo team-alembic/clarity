@@ -68,23 +68,23 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         <div class="ov-head">
           <.hero vertex={@vertex} kind="Attribute">
             <:badge :if={@attribute.primary_key?}>
-              <.flag kind={:key}>primary key</.flag>
+              <.flag text="primary key" />
             </:badge>
             <:badge :if={not @attribute.allow_nil? and not @attribute.primary_key?}>
-              <.flag kind={:warn}>required</.flag>
+              <.flag text="required" />
             </:badge>
             <:badge :if={@attribute.sensitive?}>
-              <.flag kind={:danger}>sensitive</.flag>
+              <.flag text="sensitive" />
             </:badge>
             <:badge>
-              <.flag :if={@attribute.public?} kind={:good}>public</.flag>
-              <.flag :if={not @attribute.public?} kind={:muted}>private</.flag>
+              <.flag :if={@attribute.public?} text="public" />
+              <.flag :if={not @attribute.public?} text="private" />
             </:badge>
             <:badge :if={@attribute.generated?}>
-              <.flag kind={:muted}>generated</.flag>
+              <.flag text="generated" />
             </:badge>
             <:badge :if={not @attribute.writable?}>
-              <.flag kind={:muted}>read-only</.flag>
+              <.flag text="read-only" />
             </:badge>
             <:headline>
               <span class="ov-phrase">

@@ -49,6 +49,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          description: module_description(domain, Info.description(domain)),
          app: app_vertex(links, Application.get_application(domain)),
          resources: resources,
+         common_data_layer: common_data_layer(resources),
          action_count:
            resources |> Enum.map(&length(Ash.Resource.Info.actions(&1))) |> Enum.sum(),
          short?: Map.get(assigns, :name_style, :qualified) == :short
@@ -76,6 +77,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               <.vertex_link links={@links} vertex={@app} />
             </:fact>
             <:fact label="Resources">{length(@resources)}</:fact>
+            <:fact :if={@common_data_layer} label="Data layer">
+              <.vertex_link
+                links={@links}
+                vertex={%Clarity.Vertex.Ash.DataLayer{data_layer: @common_data_layer}}
+                label={@common_data_layer |> Module.split() |> List.last()}
+              />
+            </:fact>
             <:fact label="Actions">{@action_count}</:fact>
           </.facts>
         </div>
@@ -93,6 +101,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               :for={resource <- @resources}
               links={links_about(@links, %Vertex.Ash.Resource{resource: resource})}
               resource={resource}
+              common_data_layer={@common_data_layer}
               label={if @short?, do: Vertex.Name.within(resource, @domain), else: inspect(resource)}
             />
           </div>

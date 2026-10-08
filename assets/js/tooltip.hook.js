@@ -138,6 +138,14 @@ export function createTooltipController(tip) {
   let pressedAt = null; // where the last press was, until the pointer moves away
   let pressing = false; // between pointerdown and pointerup
 
+  // A badge is its text, or its text and the kind that colours it.
+  function badgeElement(badge) {
+    const [text, kind] = Array.isArray(badge) ? badge : [badge];
+    const element = textElement("span", "clarity-tooltip-badge", String(text));
+    if (kind) element.dataset.kind = String(kind);
+    return element;
+  }
+
   function render(trigger) {
     const { tooltipTitle, tooltipType, tooltipIcon, tooltipTone, tooltipText } = trigger.dataset;
     const parts = [];
@@ -153,7 +161,7 @@ export function createTooltipController(tip) {
     if (badges.length) {
       const row = document.createElement("div");
       row.className = "clarity-tooltip-badges";
-      row.append(...badges.map((badge) => textElement("span", "clarity-tooltip-badge", String(badge))));
+      row.append(...badges.map(badgeElement));
       parts.push(row);
     }
     if (tooltipText) parts.push(textElement("p", "clarity-tooltip-text", tooltipText));

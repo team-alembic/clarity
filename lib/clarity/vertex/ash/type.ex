@@ -13,6 +13,29 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @enforce_keys [:type]
     defstruct [:type]
 
+    @short_names Map.new(Ash.Type.short_names(), fn {short, module} -> {module, short} end)
+
+    @doc """
+    Returns a type's name as Ash's DSL writes it: `string` for
+    `Ash.Type.String`, `list of uuid` for an array of `Ash.Type.UUID`.
+
+    ## Examples
+
+        iex> Clarity.Vertex.Ash.Type.short_name({:array, Ash.Type.UUID})
+        "list of uuid"
+
+    """
+    @spec short_name(term()) :: String.t()
+    def short_name({:array, inner}), do: "list of " <> short_name(inner)
+
+    def short_name(type) when is_map_key(@short_names, type),
+      do: Atom.to_string(Map.fetch!(@short_names, type))
+
+    def short_name(type) when is_atom(type),
+      do: type |> inspect() |> String.replace_prefix("Ash.Type.", "")
+
+    def short_name(type), do: inspect(type)
+
     defimpl Clarity.Vertex do
       alias Clarity.Vertex.Util
 

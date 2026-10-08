@@ -112,7 +112,7 @@ defmodule Clarity.Vertex.Ash.CalculationTest do
 
       assert Vertex.HintProvider.facts(vertex) == [
                {"Resource", "Demo.Accounts.User"},
-               {"Type", "Ash.Type.String"},
+               {"Type", "string"},
                {"Arguments", ["arg1", "arg2", "arg3"]}
              ]
     end

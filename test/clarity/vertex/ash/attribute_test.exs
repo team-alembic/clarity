@@ -112,7 +112,7 @@ defmodule Clarity.Vertex.Ash.AttributeTest do
 
       assert Vertex.HintProvider.facts(vertex) == [
                {"Resource", "Demo.Accounts.User"},
-               {"Type", "Ash.Type.Boolean"},
+               {"Type", "boolean"},
                {"Default", "false"}
              ]
     end

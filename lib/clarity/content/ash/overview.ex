@@ -11,16 +11,16 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     alias Ash.Resource.Info
     alias Ash.Resource.Relationships
+    alias Clarity.Content.Ash.StateMachineDiagram
     alias Clarity.Graph
     alias Clarity.Vertex.Ash.Action
     alias Clarity.Vertex.Ash.Aggregate
     alias Clarity.Vertex.Ash.Attribute
     alias Clarity.Vertex.Ash.Calculation
     alias Clarity.Vertex.Ash.Relationship
+    alias Clarity.Vertex.Ash.Resource
     alias Clarity.Vertex.Ash.Type
     alias Phoenix.LiveView.Rendered
-
-    @short_names Map.new(Ash.Type.short_names(), fn {short, module} -> {module, short} end)
 
     @doc """
     Renders an Ash type by its short name (`string`, `list of uuid`), linked
@@ -62,15 +62,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @doc "Returns a type's short name: `string` for `Ash.Type.String`."
     @spec type_name(term()) :: String.t()
-    def type_name({:array, inner}), do: "list of " <> type_name(inner)
-
-    def type_name(type) when is_map_key(@short_names, type),
-      do: Atom.to_string(Map.fetch!(@short_names, type))
-
-    def type_name(type) when is_atom(type),
-      do: type |> inspect() |> String.replace_prefix("Ash.Type.", "")
-
-    def type_name(type), do: inspect(type)
+    defdelegate type_name(type), to: Type, as: :short_name
 
     @doc "Returns a description, or `nil` when it's blank."
     @spec description_of(map() | nil) :: String.t() | nil
@@ -151,9 +143,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       if Enum.count(fields, & &1.public?) * 2 >= length(fields), do: :private, else: :public
     end
 
-    @doc "Renders what's notable about an attribute, most important first."
+    @doc """
+    Renders what's notable about an attribute, most important first, and the
+    relationship it's the key of, if any.
+    """
     attr :attribute, :any, required: true
     attr :unusual, :atom, required: true, doc: "The visibility to flag, see unusual_visibility/1"
+    attr :links, :map, default: nil
+    attr :key_of, :any, default: nil, doc: "The relationship vertex it's the key of, if any"
 
     @spec attribute_flags(map()) :: Rendered.t()
     def attribute_flags(assigns) do
@@ -161,14 +158,21 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       ~H"""
       <div class="ov-flags">
-        <.flag :if={@attribute.primary_key?} kind={:key}>primary key</.flag>
-        <.flag :if={not @attribute.allow_nil? and not @attribute.primary_key?} kind={:warn}>
-          required
-        </.flag>
-        <.flag :if={@attribute.sensitive?} kind={:danger}>sensitive</.flag>
+        <span :if={@key_of} class="ov-phrase ov-key-of">
+          <span class="ov-muted text-xs">key of</span>
+          <.vertex_link
+            links={@links}
+            vertex={@key_of}
+            label={Atom.to_string(@key_of.relationship.name)}
+            code
+          />
+        </span>
+        <.flag :if={@attribute.primary_key?} text="primary key" />
+        <.flag :if={not @attribute.allow_nil? and not @attribute.primary_key?} text="required" />
+        <.flag :if={@attribute.sensitive?} text="sensitive" />
         <.visibility_flag field={@attribute} unusual={@unusual} />
-        <.flag :if={@attribute.generated?} kind={:muted}>generated</.flag>
-        <.flag :if={not @attribute.writable?} kind={:muted}>read-only</.flag>
+        <.flag :if={@attribute.generated?} text="generated" />
+        <.flag :if={not @attribute.writable?} text="read-only" />
         <.flag :if={default(@attribute)}>default <code>{default(@attribute)}</code></.flag>
         <span :if={@one_of} class="ov-phrase">
           <span class="ov-muted text-xs">one of</span>
@@ -178,6 +182,11 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       """
     end
 
+    @doc "Returns whether `visibility_flag/1` shows a flag for the field."
+    @spec visibility_flagged?(%{public?: boolean()}, :private | :public) :: boolean()
+    def visibility_flagged?(field, :private), do: not field.public?
+    def visibility_flagged?(field, :public), do: field.public?
+
     @doc "Renders a field's visibility, when it's the exception among its kind."
     attr :field, :any, required: true
     attr :unusual, :atom, required: true
@@ -185,8 +194,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @spec visibility_flag(map()) :: Rendered.t()
     def visibility_flag(assigns) do
       ~H"""
-      <.flag :if={@unusual == :private and not @field.public?} kind={:muted}>private</.flag>
-      <.flag :if={@unusual == :public and @field.public?} kind={:good}>public</.flag>
+      <.flag :if={@unusual == :private and not @field.public?} text="private" />
+      <.flag :if={@unusual == :public and @field.public?} text="public" />
       """
     end
 
@@ -216,16 +225,17 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     attr :resource, :atom, required: true
     attr :label, :string, required: true
 
+    attr :common_data_layer, :atom,
+      default: nil,
+      doc: "The data layer most of its siblings use, which the card leaves unsaid"
+
     @spec resource_card(map()) :: Rendered.t()
     def resource_card(assigns) do
       resource = assigns.resource
 
       assigns =
         assign(assigns,
-          vertex: %Clarity.Vertex.Ash.Resource{resource: resource},
-          data_layer: Info.data_layer(resource),
-          state_machine?: AshStateMachine in Spark.extensions(resource),
-          policies?: Ash.Policy.Authorizer in Info.authorizers(resource),
+          vertex: %Resource{resource: resource},
           description: module_description(resource, Info.description(resource)),
           counts: [
             {"action", "behaviour", length(Info.actions(resource)), "actions"},
@@ -238,15 +248,15 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       <article class="ov-card ov-resource-card">
         <div class="flex items-start gap-1.5">
           <.vertex_link links={@links} vertex={@vertex} label={@label} class="min-w-0" />
-          <div class="ov-flags ml-auto shrink-0 justify-end">
-            <.flag :if={@state_machine?} kind={:good}>state machine</.flag>
-            <.flag :if={@policies?}>policies</.flag>
-            <.flag :if={@data_layer} kind={:muted}>
-              {@data_layer |> Module.split() |> List.last()}
-            </.flag>
+          <div class="ov-flags ml-auto justify-end">
+            <.resource_badges
+              links={@links}
+              resource={@resource}
+              data_layer?={Info.data_layer(@resource) != @common_data_layer}
+            />
           </div>
         </div>
-        <.description links={@links} text={@description} small class="mt-1 line-clamp-2" />
+        <.description links={@links} text={@description} small sentence class="mt-1" />
         <div class="ov-card-counts">
           <span
             :for={{icon, tone, count, label} <- @counts}
@@ -259,6 +269,116 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         </div>
       </article>
       """
+    end
+
+    @doc """
+    Renders what's notable about a resource: pills for its state machine,
+    policies and data layer, each linking to where it's shown, and flags for
+    whether it's multitenant or embedded.
+    """
+    attr :links, :map, required: true
+    attr :resource, :atom, required: true
+    attr :data_layer?, :boolean, default: true, doc: "Whether to show its data layer"
+
+    @spec resource_badges(map()) :: Rendered.t()
+    def resource_badges(assigns) do
+      resource = assigns.resource
+      vertex = %Resource{resource: resource}
+      policies = policy_count(resource)
+
+      assigns =
+        assign(assigns,
+          vertex: vertex,
+          data_layer: Info.data_layer(resource),
+          policies: policies,
+          policies_hint:
+            "Authorised by #{policies} #{if policies == 1, do: "policy", else: "policies"}: " <>
+              "see the Security lens",
+          security_path: Path.join([assigns.links.prefix, "security", Clarity.Vertex.id(vertex)]),
+          state_machine_path: state_machine_path(assigns.links, vertex),
+          multitenancy: multitenancy_hint(resource),
+          embedded?: Info.embedded?(resource)
+        )
+
+      ~H"""
+      <.vertex_pill
+        :if={@state_machine_path}
+        links={@links}
+        vertex={@vertex}
+        label="state machine"
+        icon="reactor"
+        tone="behaviour"
+        to={@state_machine_path}
+        hint="Moves between states: see its State Machine tab"
+      />
+      <.vertex_pill
+        :if={@policies > 0}
+        links={@links}
+        vertex={@vertex}
+        label="policies"
+        icon="policy"
+        tone="rule"
+        to={@security_path}
+        hint={@policies_hint}
+      />
+      <.vertex_pill
+        :if={@data_layer && @data_layer?}
+        links={@links}
+        vertex={%Clarity.Vertex.Ash.DataLayer{data_layer: @data_layer}}
+        label={@data_layer |> Module.split() |> List.last()}
+      />
+      <.flag :if={@multitenancy} text="multitenant" hint={@multitenancy} />
+      <.flag :if={@embedded?} text="embedded" />
+      """
+    end
+
+    @doc "Returns the data layer most of `resources` use."
+    @spec common_data_layer([module()]) :: module() | nil
+    def common_data_layer([]), do: nil
+
+    def common_data_layer(resources) do
+      resources
+      |> Enum.frequencies_by(&Info.data_layer/1)
+      |> Enum.max_by(&elem(&1, 1))
+      |> elem(0)
+    end
+
+    @spec policy_count(module()) :: non_neg_integer()
+    defp policy_count(resource) do
+      if Ash.Policy.Authorizer in Info.authorizers(resource),
+        do: length(Ash.Policy.Info.policies(resource)),
+        else: 0
+    end
+
+    # The resource's State Machine tab, when it has a state machine.
+    @spec state_machine_path(map(), Clarity.Vertex.t()) :: String.t() | nil
+    defp state_machine_path(links, %{resource: resource} = vertex) do
+      with true <- AshStateMachine in Spark.extensions(resource),
+           true <- Code.ensure_loaded?(StateMachineDiagram) do
+        Path.join([
+          links.prefix,
+          links.lens.id,
+          Clarity.Vertex.id(vertex),
+          Clarity.Content.content_id(StateMachineDiagram)
+        ])
+      else
+        _no_state_machine -> nil
+      end
+    end
+
+    @spec multitenancy_hint(module()) :: String.t() | nil
+    defp multitenancy_hint(resource) do
+      case Info.multitenancy_strategy(resource) do
+        nil ->
+          nil
+
+        :attribute ->
+          "Keeps each tenant's records apart, by its " <>
+            "#{Info.multitenancy_attribute(resource)} attribute"
+
+        :context ->
+          "Keeps each tenant's records apart, in the data layer"
+      end
     end
 
     @doc """

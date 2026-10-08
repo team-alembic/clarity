@@ -143,10 +143,14 @@ defmodule Clarity.Components.OverviewComponents do
   attr :text, :any, required: true
   attr :lead, :boolean, default: false, doc: "Whether it leads the overview, a little larger"
   attr :small, :boolean, default: false, doc: "Whether it's a row's aside, a little smaller"
+  attr :sentence, :boolean, default: false, doc: "Whether to show only its first sentence"
   attr :class, :string, default: ""
 
   @spec description(map()) :: Rendered.t()
   def description(assigns) do
+    assigns =
+      if assigns.sentence, do: assign(assigns, :text, first_sentence(assigns.text)), else: assigns
+
     ~H"""
     <.markdown
       :if={present?(@text)}
@@ -290,16 +294,56 @@ defmodule Clarity.Components.OverviewComponents do
 
   @doc """
   Renders a short flag calling something out, such as `primary key` or
-  `sensitive`, in a colour for its kind, with an optional hover hint.
+  `sensitive`, coloured for its kind and explained on hover.
+
+  A flag with one of the badges `Clarity.Tooltip.badge/1` knows, as its
+  `text`, takes that badge's colour and explanation, so it reads the same
+  as on hover hints; `kind` and `hint` override them.
   """
-  attr :kind, :atom, default: :plain, values: [:plain, :key, :good, :warn, :danger, :muted]
+  attr :text, :string, default: nil, doc: "The flag's text, if a badge Clarity knows"
+  attr :kind, :atom, default: nil, values: [nil, :plain, :key, :good, :warn, :danger, :muted]
   attr :hint, :string, default: nil
-  slot :inner_block, required: true
+  slot :inner_block
 
   @spec flag(map()) :: Rendered.t()
   def flag(assigns) do
+    badge = if assigns.text, do: Tooltip.badge(assigns.text), else: %{kind: :plain, hint: nil}
+    assigns = assign(assigns, kind: assigns.kind || badge.kind, hint: assigns.hint || badge.hint)
+
     ~H"""
-    <span class="ov-flag" data-kind={@kind} {Tooltip.attrs(@hint)}>{render_slot(@inner_block)}</span>
+    <span class="ov-flag" data-kind={@kind} {Tooltip.attrs(@hint)}>{@text}{render_slot(@inner_block)}</span>
+    """
+  end
+
+  @doc """
+  Renders a pill that names another vertex, such as a resource's data
+  layer, in that vertex's icon and tone, linking to it (or to `to`) with
+  its hover hint (or `hint`).
+  """
+  attr :links, :map, required: true
+  attr :vertex, :any, required: true
+  attr :label, :string, required: true
+  attr :to, :string, default: nil, doc: "Where it links, if not to the vertex's page"
+  attr :hint, :string, default: nil, doc: "Its hover hint, if not the vertex's"
+  attr :icon, :string, default: nil, doc: "Its icon, if not the vertex type's"
+  attr :tone, :string, default: nil, doc: "Its tone, if not the vertex type's"
+
+  @spec vertex_pill(map()) :: Rendered.t()
+  def vertex_pill(assigns) do
+    type = Tooltip.type_icon(assigns.vertex)
+
+    assigns =
+      assign(assigns,
+        icon: assigns.icon || type.icon,
+        tone: assigns.tone || type.tone,
+        to: assigns.to || path(assigns.links, assigns.vertex),
+        hint_attrs: Tooltip.attrs(assigns.hint || assigns.vertex)
+      )
+
+    ~H"""
+    <.link patch={@to} class="ov-pill ov-pill-link" data-tone={@tone} {@hint_attrs}>
+      <.type_icon icon={@icon} tone={@tone} />{@label}
+    </.link>
     """
   end
 
@@ -322,6 +366,31 @@ defmodule Clarity.Components.OverviewComponents do
       <span :if={@hidden > 0} class="ov-muted">+{@hidden} more</span>
     </span>
     """
+  end
+
+  @doc """
+  Returns the first sentence of a text's first paragraph, or the paragraph
+  when it has no sentence's end.
+
+  ## Examples
+
+      iex> Clarity.Components.OverviewComponents.first_sentence("A Ticket. Carries `id`, e.g. 1.")
+      "A Ticket."
+
+      iex> Clarity.Components.OverviewComponents.first_sentence("Tenant root\\n\\nMore.")
+      "Tenant root"
+
+  """
+  @spec first_sentence(String.t() | nil) :: String.t() | nil
+  def first_sentence(nil), do: nil
+
+  def first_sentence(text) do
+    [paragraph | _rest] = text |> String.trim() |> String.split(~r/\n\s*\n/, parts: 2)
+
+    case Regex.run(~r/^.+?[.!?](?=\s+[A-Z(`*\[]|\s*$)/s, paragraph) do
+      [sentence] -> sentence
+      nil -> paragraph
+    end
   end
 
   @spec label(Vertex.t()) :: String.t()

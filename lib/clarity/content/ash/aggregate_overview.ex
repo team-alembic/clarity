@@ -58,17 +58,17 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         <div class="ov-head">
           <.hero vertex={@vertex} kind="Aggregate">
             <:badge :if={@aggregate.sensitive?}>
-              <.flag kind={:danger}>sensitive</.flag>
+              <.flag text="sensitive" />
             </:badge>
             <:badge>
-              <.flag :if={@aggregate.public?} kind={:good}>public</.flag>
-              <.flag :if={not @aggregate.public?} kind={:muted}>private</.flag>
+              <.flag :if={@aggregate.public?} text="public" />
+              <.flag :if={not @aggregate.public?} text="private" />
             </:badge>
             <:badge :if={Map.get(@aggregate, :uniq?)}>
-              <.flag>unique values</.flag>
+              <.flag text="unique values" />
             </:badge>
             <:badge :if={Map.get(@aggregate, :include_nil?)}>
-              <.flag>includes nil</.flag>
+              <.flag text="includes nil" />
             </:badge>
             <:headline>
               <span class="ov-phrase">

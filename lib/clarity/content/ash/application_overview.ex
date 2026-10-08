@@ -50,6 +50,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          links: links(assigns),
          domains: domains,
          resource_count: domains |> Enum.map(&length(elem(&1, 1))) |> Enum.sum(),
+         common_data_layer: domains |> Enum.flat_map(&elem(&1, 1)) |> common_data_layer(),
          short?: Map.get(assigns, :name_style, :qualified) == :short
        )}
     end
@@ -72,6 +73,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             <:fact :if={@vertex.version} label="Version">{to_string(@vertex.version)}</:fact>
             <:fact label="Domains">{length(@domains)}</:fact>
             <:fact label="Resources">{@resource_count}</:fact>
+            <:fact :if={@common_data_layer} label="Data layer">
+              <.vertex_link
+                links={@links}
+                vertex={%Vertex.Ash.DataLayer{data_layer: @common_data_layer}}
+                label={@common_data_layer |> Module.split() |> List.last()}
+              />
+            </:fact>
           </.facts>
 
           <.stats>
@@ -91,6 +99,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           links={links_about(@links, %Domain{domain: domain})}
           domain={domain}
           resources={resources}
+          common_data_layer={@common_data_layer}
           short?={@short?}
         />
       </div>
@@ -100,6 +109,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     attr :links, :map, required: true
     attr :domain, :atom, required: true
     attr :resources, :list, required: true
+    attr :common_data_layer, :atom, required: true
     attr :short?, :boolean, required: true
 
     @spec domain_section(map()) :: Phoenix.LiveView.Rendered.t()
@@ -129,6 +139,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             :for={resource <- @resources}
             links={links_about(@links, %Vertex.Ash.Resource{resource: resource})}
             resource={resource}
+            common_data_layer={@common_data_layer}
             label={if @short?, do: Vertex.Name.within(resource, @domain), else: inspect(resource)}
           />
         </div>
