@@ -24,10 +24,12 @@ import Details from "./details.hook";
 import ResizableDrawer from "./resizable-drawer.hook";
 import LocalTime from "./local_time.hook";
 import NavPanel, { applyNavState } from "./nav-panel.hook";
+import { scrollNewPagesToTop } from "./scroll";
 import Tabs from "./tabs.hook";
 import Tree from "./tree.hook";
 
 applyNavState();
+scrollNewPagesToTop();
 applyTheme(getInitialTheme());
 
 let socketPath =
