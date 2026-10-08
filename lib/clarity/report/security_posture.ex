@@ -1,42 +1,54 @@
 with {:module, Ash} <- Code.ensure_loaded(Ash) do
   defmodule Clarity.Report.SecurityPosture do
     @moduledoc """
-    Security posture report: a written review of how each Ash resource is
-    protected — the domain authorisation mode, which actor can
-    reach which action (solved by Ash's policies), policy enforcement, bypass
-    policies, and sensitive-field exposure.
-
-    Prose and tables explain what's going on and why it matters; these are
-    findings, not verdicts.
+    Security posture report: what to do about how the Ash resources are
+    protected, most urgent first — sensitive fields anyone can read, domains
+    that check policies only when asked, resources with no policies, actions
+    anonymous callers can reach, sensitive fields without field policies, and
+    bypasses to review — solved by Ash's own policies. Below, in closed
+    sections: which actor can reach which action, and every resource's
+    posture.
     """
 
     @behaviour Clarity.Report
 
     use Clarity.Web, :live_component
 
-    import Clarity.Components.MarkdownComponent
-
     alias Ash.Policy.Info, as: PolicyInfo
     alias Ash.Resource.Info
     alias Clarity.Ash.PolicyAnalysis
     alias Clarity.Graph
     alias Clarity.Report.Charts
+    alias Clarity.Report.Components
     alias Clarity.Vertex
     alias Clarity.Vertex.Ash.Domain
     alias Clarity.Vertex.Ash.Resource
+    alias Phoenix.LiveView.Rendered
 
     @authorizer Ash.Policy.Authorizer
 
     @typep finding() :: %{
              name: String.t(),
+             short_name: String.t(),
+             id: String.t(),
              domain: String.t(),
              governed?: boolean(),
              bypass?: boolean(),
              exposed: [String.t()],
+             actions: [String.t()],
              reach: %{String.t() => [String.t()]},
              anon_read?: boolean(),
+             anon_open: [String.t()],
+             anon_conditional: [String.t()],
              anon_verdicts: [PolicyAnalysis.verdict()]
            }
+
+    @typedoc "What the report shows, from `analyse/1`."
+    @type analysis() :: %{
+            resources: [finding()],
+            lax_domains: [%{name: String.t(), id: String.t()}],
+            actors: [String.t()]
+          }
 
     @impl Clarity.Report
     def name, do: "Security posture"
@@ -58,24 +70,17 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       {:ok,
        socket
-       |> assign(
-         prefix: assigns.prefix,
-         lens: assigns.lens,
-         graph: graph,
-         linking: Map.get(assigns, :linking, [])
-       )
-       |> assign_async(:posture, fn -> {:ok, %{posture: analyse(graph)}} end)}
+       |> assign(prefix: assigns.prefix, lens: assigns.lens)
+       |> assign_async(:analysis, fn -> {:ok, %{analysis: analyse(graph)}} end)}
     end
 
     @impl Phoenix.LiveComponent
     def render(assigns) do
       ~H"""
-      <section class="space-y-6">
-        <.async_result :let={posture} assign={@posture}>
+      <section>
+        <.async_result :let={analysis} assign={@analysis}>
           <:loading>
-            <p class="text-sm text-base-light-600 dark:text-base-dark-400">
-              Analysing each resource's policies…
-            </p>
+            <Components.status count={0} pending="Analysing each resource's policies…" />
           </:loading>
           <:failed>
             <p class="text-sm text-base-light-600 dark:text-base-dark-400">
@@ -83,224 +88,303 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </p>
           </:failed>
 
-          <div class="space-y-4">
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Charts.stat label="Resources" value={posture.dashboard.resources} />
-              <Charts.stat label="Open" value={posture.dashboard.open} tone={:warning} />
-              <Charts.stat label="Bypass" value={posture.dashboard.bypass} tone={:info} />
-              <Charts.stat label="Exposed fields" value={posture.dashboard.exposed} tone={:error} />
-            </div>
-            <div class="grid gap-6 sm:grid-cols-2">
-              <Charts.stacked_bar title="Policy coverage" segments={posture.dashboard.coverage} />
-              <Charts.stacked_bar title="Anonymous reach" segments={posture.dashboard.reach} />
-            </div>
-          </div>
-
-          <.markdown
-            content={posture.markdown}
-            prefix={@prefix}
-            lens={@lens}
-            graph={@graph}
-            linking={@linking}
-            class="max-w-[75ch]"
-          />
+          <.posture analysis={analysis} prefix={@prefix} lens={@lens} />
         </.async_result>
       </section>
       """
     end
 
-    @doc false
-    @spec analyse(Graph.t()) :: %{markdown: iodata(), dashboard: map()}
-    def analyse(graph) do
-      findings = findings(graph)
-      %{markdown: build_markdown(findings, domain_modes(graph)), dashboard: dashboard(findings)}
+    attr :analysis, :map, required: true, doc: "From `analyse/1`"
+    attr :prefix, :string, required: true
+    attr :lens, :any, required: true
+
+    @doc "The report, from its `analyse/1`."
+    @spec posture(map()) :: Rendered.t()
+    def posture(assigns) do
+      resources = assigns.analysis.resources
+
+      groups = %{
+        anyone_reads: Enum.filter(resources, &(&1.exposed != [] and &1.anon_read?)),
+        lax_domains: assigns.analysis.lax_domains,
+        ungoverned: Enum.reject(resources, & &1.governed?),
+        anon_reachable:
+          Enum.filter(
+            resources,
+            &(&1.governed? and (&1.anon_open != [] or &1.anon_conditional != []))
+          ),
+        signed_in_reads: Enum.filter(resources, &(&1.exposed != [] and not &1.anon_read?)),
+        bypassed: Enum.filter(resources, & &1.bypass?)
+      }
+
+      assigns =
+        assigns
+        |> assign(groups)
+        |> assign(
+          resources: resources,
+          actors: assigns.analysis.actors,
+          todos: groups |> Map.values() |> Enum.count(&(&1 != []))
+        )
+
+      ~H"""
+      <div class="space-y-6">
+        <Components.status count={@todos}>
+          <:meta :if={@resources == []}>No Ash resources found.</:meta>
+        </Components.status>
+
+        <div :if={@resources != []} class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Charts.stat label="Resources" value={length(@resources)} />
+          <Charts.stat
+            label="Without policies"
+            value={length(@ungoverned)}
+            tone={if(@ungoverned != [], do: :warning, else: :ok)}
+          />
+          <Charts.stat
+            label="Actions open to anyone"
+            value={anon_open_count(@resources)}
+            tone={if(anon_open_count(@resources) > 0, do: :warning, else: :ok)}
+          />
+          <Charts.stat
+            label="Sensitive fields exposed"
+            value={exposed_count(@anyone_reads) + exposed_count(@signed_in_reads)}
+            tone={if(@anyone_reads != [], do: :error, else: :neutral)}
+          />
+        </div>
+
+        <Components.todo_list :if={@todos > 0}>
+          <Components.todo
+            :if={@anyone_reads != []}
+            severity={:high}
+            title="Sensitive fields anyone can read"
+            count={exposed_count(@anyone_reads)}
+            hint="Sensitive and public, with no field policy, on a resource anyone can read without signing in."
+          >
+            <div :for={finding <- @anyone_reads} class="report-todo-group">
+              <.resource finding={finding} prefix={@prefix} lens={@lens} />
+              <Components.chip :for={field <- finding.exposed}>{field}</Components.chip>
+            </div>
+            <:fix>
+              Add a field policy for each, or make it private with <code>public? false</code>.
+            </:fix>
+          </Components.todo>
+
+          <Components.todo
+            :if={@lax_domains != []}
+            severity={:high}
+            title="Domains that check policies only when asked"
+            count={length(@lax_domains)}
+            hint="With authorize :when_requested, a call that doesn't pass authorize?: true runs unchecked."
+          >
+            <Components.chip
+              :for={domain <- @lax_domains}
+              patch={Components.path(@prefix, @lens, domain.id)}
+            >
+              {domain.name}
+            </Components.chip>
+            <:fix>
+              Set <code>authorize :by_default</code>
+              in each domain's <code>authorization</code>
+              block, so every call is checked unless it opts out.
+            </:fix>
+          </Components.todo>
+
+          <Components.todo
+            :if={@ungoverned != []}
+            severity={:medium}
+            title="Resources with no policies"
+            count={length(@ungoverned)}
+            hint="Without the policy authorizer, any caller can run every action."
+          >
+            <div :for={{domain, findings} <- by_domain(@ungoverned)} class="report-todo-group">
+              <span class="report-todo-group-label">{domain}</span>
+              <Components.chip
+                :for={finding <- findings}
+                patch={Components.path(@prefix, @lens, finding.id)}
+              >
+                {finding.short_name}
+              </Components.chip>
+            </div>
+            <:fix>
+              Add <code>authorizers: [Ash.Policy.Authorizer]</code>
+              to each and write policies for its actions.
+            </:fix>
+          </Components.todo>
+
+          <Components.todo
+            :if={@anon_reachable != []}
+            severity={:medium}
+            title="Actions anonymous callers can reach"
+            count={Enum.sum_by(@anon_reachable, &(length(&1.anon_open) + length(&1.anon_conditional)))}
+            hint="Callers who haven't signed in can run these; faded ones depend on a runtime check."
+          >
+            <div :for={finding <- @anon_reachable} class="report-todo-group">
+              <.resource finding={finding} prefix={@prefix} lens={@lens} />
+              <Components.chip :for={action <- finding.anon_open}>{action}</Components.chip>
+              <Components.chip
+                :for={action <- finding.anon_conditional}
+                muted
+                hint="Depends on a runtime check"
+              >
+                {action}
+              </Components.chip>
+            </div>
+            <:fix>
+              Check each is meant to be public; if not, require an actor, e.g. <code>authorize_if actor_present()</code>.
+            </:fix>
+          </Components.todo>
+
+          <Components.todo
+            :if={@signed_in_reads != []}
+            severity={:low}
+            title="Sensitive fields without field policies"
+            count={exposed_count(@signed_in_reads)}
+            hint="Any actor who can read the resource can read these fields."
+          >
+            <div :for={finding <- @signed_in_reads} class="report-todo-group">
+              <.resource finding={finding} prefix={@prefix} lens={@lens} />
+              <Components.chip :for={field <- finding.exposed}>{field}</Components.chip>
+            </div>
+            <:fix>Add field policies if not every reader should see them.</:fix>
+          </Components.todo>
+
+          <Components.todo
+            :if={@bypassed != []}
+            severity={:low}
+            title="Bypass policies to review"
+            count={length(@bypassed)}
+            hint="A bypass that passes skips every other policy."
+          >
+            <Components.chip
+              :for={finding <- @bypassed}
+              patch={Components.path(@prefix, @lens, finding.id)}
+            >
+              {finding.name}
+            </Components.chip>
+            <:fix>Check each bypass lets through only who it should.</:fix>
+          </Components.todo>
+        </Components.todo_list>
+
+        <Components.section
+          :if={@resources != []}
+          id="reach"
+          title="Who can reach what"
+          count={length(@resources)}
+        >
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Resource</th>
+                <th :for={actor <- @actors}>{actor}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={finding <- @resources}>
+                <td><.resource finding={finding} prefix={@prefix} lens={@lens} /></td>
+                <td :for={actor <- @actors}>
+                  <.reach actions={Map.get(finding.reach, actor, [])} all={finding.actions} />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </Components.section>
+
+        <Components.section
+          :if={@resources != []}
+          id="resources"
+          title="Resources"
+          count={length(@resources)}
+        >
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Resource</th>
+                <th>Domain</th>
+                <th>Policies</th>
+                <th>Bypass</th>
+                <th>Sensitive fields exposed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr :for={finding <- @resources}>
+                <td><.resource finding={finding} prefix={@prefix} lens={@lens} /></td>
+                <td>{finding.domain}</td>
+                <td>
+                  <span :if={finding.governed?} class="report-tag" data-tone="ok">Yes</span>
+                  <span :if={!finding.governed?} class="report-tag" data-tone="warning">None</span>
+                </td>
+                <td>
+                  <span :if={finding.bypass?} class="report-tag">Bypass</span>
+                  <span :if={!finding.bypass?} class="report-muted">—</span>
+                </td>
+                <td>
+                  <span :if={finding.exposed == []} class="report-muted">—</span>
+                  <span :if={finding.exposed != []} class="flex flex-wrap gap-1">
+                    <Components.chip :for={field <- finding.exposed}>{field}</Components.chip>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </Components.section>
+      </div>
+      """
     end
 
-    @spec dashboard([finding()]) :: map()
-    defp dashboard(findings) do
-      total = length(findings)
-      governed = Enum.count(findings, & &1.governed?)
-      verdicts = Enum.flat_map(findings, & &1.anon_verdicts)
-      open = Enum.count(verdicts, &(&1 in [:always, :unrestricted]))
-      conditional = Enum.count(verdicts, &(&1 == :conditional))
+    attr :finding, :map, required: true
+    attr :prefix, :string, required: true
+    attr :lens, :any, required: true
+
+    @spec resource(map()) :: Rendered.t()
+    defp resource(assigns) do
+      ~H"""
+      <.link patch={Components.path(@prefix, @lens, @finding.id)} class="report-link">
+        {@finding.name}
+      </.link>
+      """
+    end
+
+    attr :actions, :list, required: true
+    attr :all, :list, required: true
+
+    # The actions an actor can reach: "all" or "none" rather than a full list.
+    @spec reach(map()) :: Rendered.t()
+    defp reach(%{actions: []} = assigns), do: ~H|<span class="report-muted">none</span>|
+
+    defp reach(%{actions: actions, all: actions} = assigns),
+      do: ~H|<span class="report-tag">all {length(@all)}</span>|
+
+    defp reach(assigns) do
+      ~H"""
+      <span class="flex flex-wrap gap-1">
+        <Components.chip :for={action <- @actions}>{action}</Components.chip>
+      </span>
+      """
+    end
+
+    @spec anon_open_count([finding()]) :: non_neg_integer()
+    defp anon_open_count(resources) do
+      resources
+      |> Enum.flat_map(& &1.anon_verdicts)
+      |> Enum.count(&(&1 in [:always, :unrestricted]))
+    end
+
+    @spec exposed_count([finding()]) :: non_neg_integer()
+    defp exposed_count(findings), do: Enum.sum_by(findings, &length(&1.exposed))
+
+    @spec by_domain([finding()]) :: [{String.t(), [finding()]}]
+    defp by_domain(findings) do
+      findings |> Enum.group_by(& &1.domain) |> Enum.sort_by(&elem(&1, 0))
+    end
+
+    @doc false
+    @spec analyse(Graph.t()) :: analysis()
+    def analyse(graph) do
+      resources = findings(graph)
 
       %{
-        resources: total,
-        open: total - governed,
-        bypass: Enum.count(findings, & &1.bypass?),
-        exposed: Enum.count(findings, &(&1.exposed != [])),
-        coverage: [
-          %{label: "Governed", value: governed, tone: :ok},
-          %{label: "Open", value: total - governed, tone: :warning}
-        ],
-        reach: [
-          %{label: "Open to anyone", value: open, tone: :error},
-          %{label: "Conditional", value: conditional, tone: :warning},
-          %{label: "Restricted", value: Enum.count(verdicts, &(&1 == :never)), tone: :ok},
-          %{label: "Not analysed", value: Enum.count(verdicts, &(&1 == :unknown)), tone: :neutral}
-        ]
+        resources: resources,
+        lax_domains: lax_domains(graph),
+        actors: resources |> Enum.flat_map(&Map.keys(&1.reach)) |> Enum.uniq() |> Enum.sort()
       }
-    end
-
-    @spec build_markdown([finding()], [{String.t(), atom()}]) :: iodata()
-    defp build_markdown([], _modes) do
-      "Clarity hasn't found any Ash resources, so there is no authorisation posture to report.\n\n"
-    end
-
-    defp build_markdown(findings, modes) do
-      [
-        "This report reviews how each Ash resource is protected. It surfaces facts that ",
-        "aren't obvious from any single file: the domain authorisation mode, which actor can ",
-        "reach which action, whether a bypass can skip policies, and whether sensitive fields ",
-        "are exposed. These are *findings, not verdicts* — you decide what warrants attention.\n\n",
-        overview(findings),
-        authorisation_mode_section(modes),
-        highest_risk_section(findings),
-        reachability_section(findings),
-        resources_section(findings)
-      ]
-    end
-
-    @spec overview([finding()]) :: iodata()
-    defp overview(findings) do
-      total = length(findings)
-      governed = Enum.count(findings, & &1.governed?)
-      bypass = Enum.count(findings, & &1.bypass?)
-      exposed = Enum.count(findings, &(&1.exposed != []))
-
-      [
-        "Clarity can see ",
-        Integer.to_string(total),
-        pluralize(total, " resource", " resources"),
-        ". ",
-        Integer.to_string(governed),
-        " of them ",
-        pluralize(governed, "enforces", "enforce"),
-        " policies; the rest are open. ",
-        Integer.to_string(bypass),
-        pluralize(bypass, " carries a bypass", " carry a bypass"),
-        ", and ",
-        Integer.to_string(exposed),
-        pluralize(exposed, " exposes sensitive fields", " expose sensitive fields"),
-        ".\n\n"
-      ]
-    end
-
-    @spec authorisation_mode_section([{String.t(), atom()}]) :: iodata()
-    defp authorisation_mode_section(modes) do
-      lax = for {name, :when_requested} <- modes, do: name
-
-      [
-        "### Authorisation mode\n\n",
-        case lax do
-          [] ->
-            "Every domain enforces policies by default.\n\n"
-
-          names ->
-            [
-              "⚠ ",
-              to_sentence(Enum.map(names, &"**#{&1}**")),
-              " ",
-              pluralize(length(names), "runs", "run"),
-              " policies **only** when a caller passes `authorize?: true` — any call that ",
-              "doesn't is unrestricted. This is the single biggest posture lever; confirm it ",
-              "is intended.\n\n"
-            ]
-        end
-      ]
-    end
-
-    @spec highest_risk_section([finding()]) :: iodata()
-    defp highest_risk_section(findings) do
-      at_risk = Enum.filter(findings, &(&1.exposed != [] and &1.anon_read?))
-
-      case at_risk do
-        [] ->
-          []
-
-        rows ->
-          [
-            "### Highest risk\n\n",
-            "These resources expose sensitive fields **and** their read is reachable without ",
-            "authentication — sensitive data may be readable by anyone:\n\n",
-            Enum.map(rows, fn f ->
-              ["- **", f.name, "** exposes ", Enum.map_join(f.exposed, ", ", &"`#{&1}`"), "\n"]
-            end),
-            "\n"
-          ]
-      end
-    end
-
-    @spec reachability_section([finding()]) :: iodata()
-    defp reachability_section(findings) do
-      labels = findings |> Enum.flat_map(&Map.keys(&1.reach)) |> Enum.uniq() |> Enum.sort()
-
-      [
-        "### Action reachability\n\n",
-        "Which actions each actor can reach, solved by Ash's policies. *Conditional* checks ",
-        "(runtime or row-level) are treated as reachable. An empty cell means the actor cannot ",
-        "reach any action.\n\n",
-        "| Resource | ",
-        Enum.join(labels, " | "),
-        " |\n| --- | ",
-        Enum.map_intersperse(labels, " | ", fn _ -> "---" end),
-        " |\n",
-        Enum.map(findings, &reachability_row(&1, labels)),
-        "\n"
-      ]
-    end
-
-    @spec reachability_row(finding(), [String.t()]) :: iodata()
-    defp reachability_row(finding, labels) do
-      cells =
-        Enum.map_intersperse(labels, " | ", fn label ->
-          case Map.get(finding.reach, label, []) do
-            [] -> "—"
-            actions -> Enum.join(actions, ", ")
-          end
-        end)
-
-      ["| **", finding.name, "** | ", cells, " |\n"]
-    end
-
-    @spec resources_section([finding()]) :: iodata()
-    defp resources_section(findings) do
-      [
-        "### Resources\n\n",
-        "| Resource | Domain | Enforcement | Bypass | Sensitive exposed |\n",
-        "| --- | --- | --- | --- | --- |\n",
-        Enum.map(findings, &resource_row/1),
-        "\n"
-      ]
-    end
-
-    @spec resource_row(finding()) :: iodata()
-    defp resource_row(finding) do
-      [
-        "| **",
-        finding.name,
-        "** | ",
-        finding.domain,
-        " | ",
-        if(finding.governed?, do: "Governed", else: "⚠ Open"),
-        " | ",
-        if(finding.bypass?, do: "⚠ Bypass", else: "—"),
-        " | ",
-        case finding.exposed do
-          [] -> "—"
-          attrs -> Enum.map_join(attrs, ", ", &"`#{&1}`")
-        end,
-        " |\n"
-      ]
-    end
-
-    @spec to_sentence([String.t()]) :: String.t()
-    defp to_sentence([one]), do: one
-    defp to_sentence([first, second]), do: "#{first} and #{second}"
-
-    defp to_sentence(list) do
-      {rest, [last]} = Enum.split(list, -1)
-      "#{Enum.join(rest, ", ")}, and #{last}"
     end
 
     @spec findings(Graph.t()) :: [finding()]
@@ -320,14 +404,19 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       anon_verdicts = Enum.map(actions, &Map.fetch!(verdicts, {&1.name, nil}))
 
       %{
-        name: Vertex.name(vertex),
+        name: Vertex.Name.in_app(resource),
+        short_name: short_name(resource),
+        id: Vertex.id(vertex),
         domain: domain_name(resource),
         governed?: @authorizer in Info.authorizers(resource),
         bypass?: Enum.any?(PolicyInfo.policies(resource), & &1.bypass?),
         exposed:
           sensitive |> Enum.filter(&exposed?(resource, &1)) |> Enum.map(&to_string(&1.name)),
+        actions: Enum.map(actions, &to_string(&1.name)),
         reach: reach(actions, profiles, verdicts),
         anon_read?: anon_read?(actions, verdicts),
+        anon_open: anon_actions(actions, verdicts, :always),
+        anon_conditional: anon_actions(actions, verdicts, :conditional),
         anon_verdicts: anon_verdicts
       }
     end
@@ -357,6 +446,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       end)
     end
 
+    # The actions an anonymous caller gets the given verdict for.
+    @spec anon_actions([term()], map(), PolicyAnalysis.verdict()) :: [String.t()]
+    defp anon_actions(actions, verdicts, verdict) do
+      for action <- actions,
+          Map.fetch!(verdicts, {action.name, nil}) == verdict,
+          do: to_string(action.name)
+    end
+
     @spec anon_read?([term()], map()) :: boolean()
     defp anon_read?(actions, verdicts) do
       actions
@@ -364,21 +461,30 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       |> Enum.any?(&(Map.fetch!(verdicts, {&1.name, nil}) != :never))
     end
 
-    @spec domain_modes(Graph.t()) :: [{String.t(), atom()}]
-    defp domain_modes(graph) do
+    # Domains that run policies only when a call passes `authorize?: true`.
+    @spec lax_domains(Graph.t()) :: [%{name: String.t(), id: String.t()}]
+    defp lax_domains(graph) do
       graph
       |> Graph.vertices({:==, :vertex_type, Domain})
-      |> Enum.map(fn %Domain{domain: domain} ->
-        {inspect(domain), Ash.Domain.Info.authorize(domain)}
-      end)
-      |> Enum.sort()
+      |> Enum.filter(&(Ash.Domain.Info.authorize(&1.domain) == :when_requested))
+      |> Enum.map(&%{name: Vertex.Name.in_app(&1.domain), id: Vertex.id(&1)})
+      |> Enum.sort_by(& &1.name)
+    end
+
+    # Within its domain, for when its domain is shown beside it.
+    @spec short_name(Ash.Resource.t()) :: String.t()
+    defp short_name(resource) do
+      case Info.domain(resource) do
+        nil -> Vertex.Name.in_app(resource)
+        domain -> Vertex.Name.within(resource, domain)
+      end
     end
 
     @spec domain_name(Ash.Resource.t()) :: String.t()
     defp domain_name(resource) do
       case Info.domain(resource) do
         nil -> "—"
-        domain -> inspect(domain)
+        domain -> Vertex.Name.in_app(domain)
       end
     end
 
@@ -387,9 +493,5 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       attribute.public? and
         PolicyInfo.field_policies_for_field(resource, attribute.name) in [nil, []]
     end
-
-    @spec pluralize(non_neg_integer(), String.t(), String.t()) :: String.t()
-    defp pluralize(1, singular, _plural), do: singular
-    defp pluralize(_count, _singular, plural), do: plural
   end
 end

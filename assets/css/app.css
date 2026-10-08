@@ -455,6 +455,12 @@ pre:is([phx-hook="Mermaid"], [phx-hook="Viz"]) {
   @apply mr-1 text-sm font-medium text-base-light-800 dark:text-base-dark-100;
 }
 
+/* A resource or other vertex named in a report, ahead of its chips. */
+.report-link {
+  @apply mr-1 text-sm font-medium text-base-light-900 transition-colors dark:text-base-dark-50;
+  @apply hover:text-primary-light hover:underline dark:hover:text-primary-dark;
+}
+
 .report-todo-fix {
   @apply mt-2.5 text-sm text-base-light-600 dark:text-base-dark-300;
 }
