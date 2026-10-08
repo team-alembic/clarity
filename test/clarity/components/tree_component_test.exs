@@ -202,6 +202,17 @@ defmodule Clarity.TreeComponentTest do
 
       assert tree |> group_labels() |> Enum.sort() == ["domain", "module"]
     end
+
+    test "groups go in alphabetical order, with modules last" do
+      tree =
+        render_app_tree([
+          {%Vertex.Module{module: Demo.Accounts}, :module},
+          {%Vertex.Phoenix.Router{router: DemoWeb.Router}, :router},
+          {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain}
+        ])
+
+      assert group_labels(tree) == ["domain", "router", "module"]
+    end
   end
 
   describe "row details" do

@@ -311,7 +311,9 @@ defmodule Clarity.TreeComponent do
     # An open current vertex has its own guide active instead (see current?/2).
     active_is_open? = open?(active_vertex, visible_ids) and has_children?(graph, active_vertex)
 
-    for {label, children} <- Graph.navigation_children(graph, vertex), label != :content do
+    groups = graph |> Graph.navigation_children(vertex) |> Enum.sort_by(&group_order/1)
+
+    for {label, children} <- groups, label != :content do
       id = group_id(vertex, label)
 
       %{
@@ -324,6 +326,11 @@ defmodule Clarity.TreeComponent do
       }
     end
   end
+
+  # Groups go in alphabetical order, but modules last: there are many, and
+  # they repeat the domains, resources and the like in the groups above.
+  @spec group_order({term(), [Vertex.t()]}) :: {boolean(), String.t()}
+  defp group_order({label, _children}), do: {label == :module, to_string(label)}
 
   # The active guide stays visible; see render_vertex.html.heex.
   @spec guide_class(boolean()) :: [String.t() | false]
