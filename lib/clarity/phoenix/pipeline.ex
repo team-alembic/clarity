@@ -71,7 +71,7 @@ defmodule Clarity.Phoenix.Pipeline do
   order.
 
   An endpoint's first is its `socket_dispatch` function, which hands socket
-  connections to their handlers (see `c:Phoenix.Endpoint.__sockets__/0`).
+  connections to the handlers declared with `Phoenix.Endpoint.socket/3`.
 
   ## Examples
 
