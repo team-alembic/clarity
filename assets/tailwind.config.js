@@ -18,6 +18,13 @@ module.exports = {
           css: {
             'code::before': { content: 'none' },
             'code::after': { content: 'none' },
+            // Text links many names, so an underline on each would crowd it;
+            // a link shows its underline only on hover or keyboard focus.
+            a: {
+              textDecorationLine: 'none',
+              textUnderlineOffset: '2px',
+              '&:hover, &:focus-visible': { textDecorationLine: 'underline' },
+            },
           }
         }
       },
