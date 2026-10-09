@@ -50,8 +50,7 @@ defmodule Clarity.Content do
 
         @impl Phoenix.LiveView
         def mount(_params, session, socket) do
-          vertex = session["vertex"]
-          lens = session["lens"]
+          {:ok, %{vertex: vertex, lens: lens}} = Clarity.Content.fetch_session(session)
           {:ok, assign(socket, vertex: vertex, lens: lens)}
         end
 
@@ -63,6 +62,11 @@ defmodule Clarity.Content do
         end
       end
 
+  The session holds only plain values: the `"clarity_pid"` of the Clarity server, the
+  `"lens_id"` and the `"vertex_id"`. `fetch_session/1` turns them back into the lens and
+  vertex. Providers that want to read the graph or `Clarity.subscribe/2` can use
+  `"clarity_pid"` directly.
+
   ## Configuration
 
   Content provider configuration is managed by `Clarity.Config`. See the documentation
@@ -70,6 +74,7 @@ defmodule Clarity.Content do
   """
 
   alias Clarity.Perspective.Lens
+  alias Clarity.Perspective.Lensmaker
   alias Clarity.Vertex
 
   @type static_content_type() :: :markdown | :mermaid | :viz
@@ -252,6 +257,45 @@ defmodule Clarity.Content do
 
   defp normalize_static_content({type, content}) when is_function(content, 1) do
     {type, content}
+  end
+
+  @doc """
+  Resolves a LiveView content provider's session into its vertex and lens.
+
+  Call this from the provider's `c:Phoenix.LiveView.mount/3`. The session holds ids,
+  not structs, because a LiveView session is signed and can't hold functions, and
+  lenses and some vertices do.
+
+  ## Examples
+
+      @impl Phoenix.LiveView
+      def mount(_params, session, socket) do
+        {:ok, %{vertex: vertex, lens: lens}} = Clarity.Content.fetch_session(session)
+        {:ok, assign(socket, vertex: vertex, lens: lens)}
+      end
+  """
+  @spec fetch_session(map()) ::
+          {:ok, %{vertex: Vertex.t(), lens: Lens.t()}}
+          | {:error, :lens_not_found | :vertex_not_found}
+  def fetch_session(%{
+        "clarity_pid" => clarity_pid,
+        "lens_id" => lens_id,
+        "vertex_id" => vertex_id
+      }) do
+    with {:ok, lens} <- Lensmaker.get_lens_by_id(lens_id),
+         vertex when not is_nil(vertex) <-
+           Clarity.Graph.get_vertex(Clarity.get(clarity_pid, :partial).graph, vertex_id) do
+      {:ok, %{vertex: vertex, lens: lens}}
+    else
+      nil -> {:error, :vertex_not_found}
+      {:error, :lens_not_found} = error -> error
+    end
+  end
+
+  @doc false
+  @spec session(GenServer.server(), Vertex.t(), Lens.t()) :: %{String.t() => term()}
+  def session(clarity_pid, vertex, lens) do
+    %{"clarity_pid" => clarity_pid, "lens_id" => lens.id, "vertex_id" => Vertex.id(vertex)}
   end
 
   @doc false

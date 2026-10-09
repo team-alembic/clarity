@@ -3,9 +3,11 @@ defmodule Clarity.Test.Helper do
 
   import ExUnit.Callbacks
 
+  alias Ash.Resource.Info
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Ash.Resource
+  alias Demo.Accounts.User
 
   @doc """
   Creates a simple test Clarity struct with predictable vertices and edges.
@@ -18,6 +20,8 @@ defmodule Clarity.Test.Helper do
       children fall into two groups (a lone group gets no row in the tree)
     * `:resources` - also give the Accounts domain its `Demo.Accounts.User`
       resource
+    * `:attributes` - also give that resource its attributes (implies
+      `:resources`); some hold functions, such as a default
   """
   @spec build_test_clarity(keyword()) :: Clarity.t()
   def build_test_clarity(opts \\ []) do
@@ -44,10 +48,12 @@ defmodule Clarity.Test.Helper do
       Clarity.Graph.add_edge(clarity_graph, app_vertex, module_vertex, :module)
     end
 
-    if opts[:resources] do
-      resource_vertex = %Resource{resource: Demo.Accounts.User}
+    if opts[:resources] || opts[:attributes] do
+      resource_vertex = %Resource{resource: User}
       Clarity.Graph.add_vertex(clarity_graph, resource_vertex, domain_vertex)
       Clarity.Graph.add_edge(clarity_graph, domain_vertex, resource_vertex, :resource)
+
+      if opts[:attributes], do: add_attributes(clarity_graph, resource_vertex)
     end
 
     if opts[:internals] do
@@ -75,6 +81,15 @@ defmodule Clarity.Test.Helper do
         total_vertices: Clarity.Graph.vertex_count(clarity_graph)
       }
     }
+  end
+
+  @spec add_attributes(Clarity.Graph.t(), Resource.t()) :: :ok
+  defp add_attributes(clarity_graph, %Resource{resource: resource} = resource_vertex) do
+    Enum.each(Info.attributes(resource), fn attribute ->
+      attribute_vertex = %Vertex.Ash.Attribute{attribute: attribute, resource: resource}
+      Clarity.Graph.add_vertex(clarity_graph, attribute_vertex, resource_vertex)
+      Clarity.Graph.add_edge(clarity_graph, resource_vertex, attribute_vertex, :attribute)
+    end)
   end
 
   @doc """

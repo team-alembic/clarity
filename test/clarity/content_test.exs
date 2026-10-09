@@ -5,6 +5,8 @@ defmodule Clarity.ContentTest do
 
   alias Clarity.Content
   alias Clarity.Perspective.Lens
+  alias Clarity.Perspective.Lensmaker
+  alias Clarity.Test.Helper
   alias Clarity.Vertex.Root
 
   defmodule TestContentProvider do
@@ -388,6 +390,38 @@ defmodule Clarity.ContentTest do
 
       [content] = Content.get_contents_for_vertex(vertex, lens)
       assert content.description == nil
+    end
+  end
+
+  describe "fetch_session/1" do
+    setup do
+      [clarity_pid: Helper.setup_test_clarity(Helper.build_test_clarity())]
+    end
+
+    test "resolves a session into its vertex and lens", %{clarity_pid: clarity_pid} do
+      session = %{"clarity_pid" => clarity_pid, "lens_id" => "debug", "vertex_id" => "root"}
+
+      assert {:ok, %{vertex: %Root{}, lens: %Lens{id: "debug"}}} = Content.fetch_session(session)
+    end
+
+    test "resolves what session/3 builds, which holds only plain values", %{clarity_pid: clarity_pid} do
+      {:ok, lens} = Lensmaker.get_lens_by_id("architect")
+      session = Content.session(clarity_pid, %Root{}, lens)
+
+      assert session == %{"clarity_pid" => clarity_pid, "lens_id" => "architect", "vertex_id" => "root"}
+      assert {:ok, %{vertex: %Root{}, lens: %Lens{id: "architect"}}} = Content.fetch_session(session)
+    end
+
+    test "returns an error for an unknown lens id", %{clarity_pid: clarity_pid} do
+      session = %{"clarity_pid" => clarity_pid, "lens_id" => "nope", "vertex_id" => "root"}
+
+      assert {:error, :lens_not_found} = Content.fetch_session(session)
+    end
+
+    test "returns an error for an unknown vertex id", %{clarity_pid: clarity_pid} do
+      session = %{"clarity_pid" => clarity_pid, "lens_id" => "debug", "vertex_id" => "nope"}
+
+      assert {:error, :vertex_not_found} = Content.fetch_session(session)
     end
   end
 end
