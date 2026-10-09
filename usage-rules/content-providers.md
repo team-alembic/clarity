@@ -263,8 +263,7 @@ def applies?(_vertex, _lens), do: false
 ```elixir
 @impl Phoenix.LiveView
 def mount(_params, session, socket) do
-  vertex = session["vertex"]
-  lens = session["lens"]
+  {:ok, %{vertex: vertex, lens: lens}} = Clarity.Content.fetch_session(session)
 
   {:ok, assign(socket,
     vertex: vertex,
@@ -307,8 +306,14 @@ end
 ```
 
 **Session data provided:**
-- `"vertex"` - The current vertex struct
-- `"lens"` - The current lens struct
+- `"clarity_pid"` - The Clarity server, for reading the graph or `Clarity.subscribe/2`
+- `"lens_id"` - The id of the current lens
+- `"vertex_id"` - The id of the current vertex
+
+`Clarity.Content.fetch_session/1` resolves them into `%{vertex: vertex, lens: lens}`,
+or returns `{:error, :lens_not_found | :vertex_not_found}`. The session holds ids, not
+structs, because a LiveView session can't hold functions, and lenses and some vertices
+do.
 
 ## Complete Examples
 
@@ -398,7 +403,7 @@ defmodule MyApp.Content.EntityExplorer do
 
   @impl Phoenix.LiveView
   def mount(_params, session, socket) do
-    vertex = session["vertex"]
+    {:ok, %{vertex: vertex}} = Clarity.Content.fetch_session(session)
 
     {:ok, assign(socket,
       vertex: vertex,
