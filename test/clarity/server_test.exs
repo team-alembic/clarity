@@ -627,38 +627,99 @@ defmodule Clarity.ServerTest do
   end
 
   describe "Waiting tasks" do
-    test "run again, counting their attempts", %{test: test} do
-      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
+    setup %{test: test} do
+      server =
+        start_supervised!(
+          {Server,
+           name: Module.concat(__MODULE__, test),
+           introspectors: [Clarity.Introspector.Application, Clarity.Introspector.Module]}
+        )
 
-      assert {:ok, task} = Server.pull_task(server)
-      assert task.requeue_count == 0
+      {:ok, root_task} = Server.pull_task(server)
 
-      Server.requeue_task(server, task.id)
+      # Clarity is the project here, the others its dependencies.
+      entries =
+        Enum.flat_map([:stdlib, :kernel, :clarity], fn app ->
+          app_vertex = %Vertex.Application{app: app, description: "", version: "1.0.0"}
+          [{:vertex, app_vertex}, {:edge, root_task.vertex, app_vertex, :application}]
+        end)
 
-      assert {:ok, requeued_task} = Server.pull_task(server)
-      assert requeued_task.requeue_count == 1
-      assert requeued_task.id == task.id
+      Server.ack_task(server, root_task.id, entries)
+
+      {:ok, clarity} = Server.pull_task(server)
+      {:ok, stdlib} = Server.pull_task(server)
+      {:ok, kernel} = Server.pull_task(server)
+
+      %{server: server, clarity: clarity, stdlib: stdlib, kernel: kernel}
     end
 
-    test "are dropped once nothing more can change", %{test: test} do
-      server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
+    test "run again once the graph has changed, counting their attempts", %{
+      server: server,
+      clarity: clarity,
+      stdlib: stdlib
+    } do
+      Server.requeue_task(server, clarity.id)
+      Server.ack_task(server, stdlib.id, [{:edge, stdlib.vertex, clarity.vertex, :uses}])
 
-      assert {:ok, task} = Server.pull_task(server)
-      Server.requeue_task(server, task.id)
-      assert {:ok, task} = Server.pull_task(server)
+      assert {:ok, requeued} = Server.pull_task(server)
+      assert requeued.id == clarity.id
+      assert requeued.requeue_count == 1
+    end
 
+    test "wait while the graph is as it was when they last ran", %{
+      server: server,
+      clarity: clarity,
+      stdlib: stdlib
+    } do
+      Server.requeue_task(server, clarity.id)
+      Server.ack_task(server, stdlib.id, [])
+
+      assert :empty = Server.pull_task(server)
+      assert %Clarity{status: :working} = Clarity.get(server, :partial)
+    end
+
+    test "are dropped once nothing more can change", %{
+      server: server,
+      clarity: clarity,
+      stdlib: stdlib,
+      kernel: kernel
+    } do
       log =
         capture_log(fn ->
-          Server.requeue_task(server, task.id)
+          Server.requeue_task(server, clarity.id)
+          Server.ack_task(server, stdlib.id, [])
+          Server.ack_task(server, kernel.id, [])
 
           # Nothing else is left to run, and the graph is as it was when the
           # task last ran.
           assert :empty = Server.pull_task(server)
         end)
 
-      assert log =~ "Dropping task after 2 attempts"
-      assert log =~ "Introspect Root with Application"
+      assert log =~ "Dropping task after 1 attempt,"
+      assert log =~ "Introspect clarity with Module"
       assert %Clarity{status: :done} = Clarity.get(server, :partial)
+    end
+
+    test "run again if the graph changed while they ran, though others were retried since", %{
+      server: server,
+      clarity: clarity,
+      stdlib: stdlib,
+      kernel: kernel
+    } do
+      Server.requeue_task(server, clarity.id)
+      Server.ack_task(server, kernel.id, [{:edge, kernel.vertex, clarity.vertex, :uses}])
+
+      # The clarity task runs again, while the stdlib one, started before the
+      # graph changed, is still running.
+      assert {:ok, %{id: id}} = Server.pull_task(server)
+      assert id == clarity.id
+
+      Server.requeue_task(server, stdlib.id)
+      Server.requeue_task(server, clarity.id)
+
+      # The stdlib task may have missed what arrived while it ran.
+      assert {:ok, %{id: id}} = Server.pull_task(server)
+      assert id == stdlib.id
     end
   end
 

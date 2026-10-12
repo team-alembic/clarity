@@ -9,7 +9,8 @@ defmodule Clarity.Server.Task do
           introspector: module(),
           graph: Clarity.Graph.t(),
           lane: Queue.lane(),
-          requeue_count: non_neg_integer()
+          requeue_count: non_neg_integer(),
+          ran_at: non_neg_integer() | nil
         }
 
   defstruct [
@@ -18,7 +19,10 @@ defmodule Clarity.Server.Task do
     :introspector,
     :graph,
     lane: :model,
-    requeue_count: 0
+    requeue_count: 0,
+    # The graph's update count when the task last started: waiting, it runs
+    # again once the graph has changed since.
+    ran_at: nil
   ]
 
   @doc """

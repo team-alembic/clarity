@@ -22,7 +22,6 @@ defmodule Clarity.Server do
       :introspectors,
       :name,
       :cache,
-      :retried_at,
       :retried_ms,
       :queue,
       waiting: [],
@@ -49,7 +48,6 @@ defmodule Clarity.Server do
             queue: Queue.t(),
             waiting: [Clarity.Server.Task.t()],
             waiting_count: non_neg_integer(),
-            retried_at: pos_integer() | nil,
             retried_ms: integer() | nil,
             in_progress: %{reference() => Clarity.Server.Task.t()},
             graph: Graph.t(),
@@ -323,6 +321,7 @@ defmodule Clarity.Server do
 
     case Queue.pop(state.queue) do
       {:ok, task, queue} ->
+        task = %{task | ran_at: Graph.get_update_count(state.graph)}
         new_in_progress = Map.put(state.in_progress, task.id, task)
         {:reply, {:ok, task}, %{state | queue: queue, in_progress: new_in_progress}}
 
@@ -466,9 +465,11 @@ defmodule Clarity.Server do
   end
 
   # Waiting tasks run again once nothing they could need from the project is
-  # still to come, if the graph has changed since they last ran. While the
-  # dependencies are introspected, which they may need too, that's at most
-  # every @retry_interval ms.
+  # still to come, if the graph has changed since they last started: each
+  # against its own start, as a task that ran while others were retried may
+  # have missed what arrived meanwhile. While the dependencies are
+  # introspected, which they may need too, that's at most every
+  # @retry_interval ms.
   @spec maybe_retry_waiting(State.t()) :: State.t()
   defp maybe_retry_waiting(%State{waiting: []} = state), do: state
 
@@ -483,33 +484,36 @@ defmodule Clarity.Server do
     idle? = Queue.size(state.queue) == 0 and state.in_progress == %{}
     due? = idle? or state.retried_ms == nil or now - state.retried_ms >= @retry_interval
 
-    if not project_busy? and due? and update_count != state.retried_at do
-      queue = state.waiting |> Enum.reverse() |> Enum.reduce(state.queue, &Queue.push(&2, &1))
+    with true <- not project_busy? and due?,
+         {[_ | _] = changed, unchanged} <-
+           Enum.split_with(state.waiting, &(&1.ran_at != update_count)) do
+      queue = changed |> Enum.reverse() |> Enum.reduce(state.queue, &Queue.push(&2, &1))
       broadcast_event(state, :__restart_pulling__)
 
       %{
         state
         | queue: queue,
-          waiting: [],
-          waiting_count: 0,
-          retried_at: update_count,
+          waiting: unchanged,
+          waiting_count: length(unchanged),
           retried_ms: now
       }
     else
-      state
+      _wait -> state
     end
   end
 
-  # Once nothing is left to run, and the graph hasn't changed since the
-  # waiting tasks last ran, what they wait for will never come.
+  # Once nothing is left to run, and the graph hasn't changed since any of the
+  # waiting tasks last started, what they wait for will never come.
   @spec maybe_drop_waiting(State.t()) :: State.t()
   defp maybe_drop_waiting(%State{waiting: []} = state), do: state
 
   defp maybe_drop_waiting(state) do
-    if state.in_progress == %{} and Graph.get_update_count(state.graph) == state.retried_at do
+    update_count = Graph.get_update_count(state.graph)
+
+    if state.in_progress == %{} and Enum.all?(state.waiting, &(&1.ran_at == update_count)) do
       for task <- state.waiting do
         Logger.warning(
-          "Dropping task after #{task.requeue_count} attempts, as what it needs never came: " <>
+          "Dropping task after #{attempts(task.requeue_count)}, as what it needs never came: " <>
             Clarity.Server.Task.describe(task)
         )
       end
@@ -519,6 +523,10 @@ defmodule Clarity.Server do
       state
     end
   end
+
+  @spec attempts(pos_integer()) :: String.t()
+  defp attempts(1), do: "1 attempt"
+  defp attempts(count), do: "#{count} attempts"
 
   @spec process_task_results(Clarity.Server.Task.t(), [Clarity.Introspector.entry()], State.t()) ::
           State.t()
@@ -646,7 +654,6 @@ defmodule Clarity.Server do
         project_apps: Config.project_applications(),
         waiting: [],
         waiting_count: 0,
-        retried_at: nil,
         retried_ms: nil,
         wanted: %{},
         promoted: MapSet.new(),
