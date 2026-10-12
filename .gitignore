@@ -40,3 +40,6 @@ clarity-*.tar
 
 # Playwright MCP session logs and snapshots
 /.playwright-mcp/
+
+# macOS Finder metadata
+.DS_Store
