@@ -3,9 +3,10 @@ defmodule Clarity.Content.Advisory do
   Security-lens content for dependency advisories.
 
   On an `Application` vertex it lists the advisories affecting the installed
-  version (with the version that fixes each), then those affecting its
-  dependencies, direct and transitive, so a project's page sums up what's
-  beneath it; on an `Advisory` vertex it shows the advisory detail. When a released fix is installable, it offers the shared
+  version (with the version that fixes each), then what its dependencies,
+  direct and transitive, need updating for: known advisories, retired
+  versions and newer releases, together, so a project's page sums up what's
+  beneath it. On an `Advisory` vertex it shows the advisory detail. When a released fix is installable, it offers the shared
   `Clarity.Content.DependencyUpdate` button to update the dependency.
   """
 
@@ -20,6 +21,7 @@ defmodule Clarity.Content.Advisory do
   alias Clarity.Content.DependencyUpdate
   alias Clarity.Dependency
   alias Clarity.Dependency.Constraints
+  alias Clarity.Dependency.Lock
   alias Clarity.Dependency.Registry
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
@@ -120,7 +122,9 @@ defmodule Clarity.Content.Advisory do
       "## Security Advisories\n\n",
       case advisories do
         [] ->
-          "No known advisories for `#{app}` #{installed}.\n\n"
+          if Lock.hex_package(app),
+            do: "No known advisories for `#{app}` #{installed}.\n\n",
+            else: "`#{app}` isn't installed from Hex, so it has no advisories of its own.\n\n"
 
         _present ->
           [
@@ -160,58 +164,141 @@ defmodule Clarity.Content.Advisory do
     dependency_closure(graph, new ++ rest, seen, new ++ found)
   end
 
+  # Its dependencies' advisories and version status together: what needs
+  # updating beneath it, worst first.
   @spec dependencies_markdown([Vertex.Application.t()]) :: iodata()
   defp dependencies_markdown([]), do: []
 
   defp dependencies_markdown(dependencies) do
-    affected =
-      for dependency <- dependencies,
-          installed = to_string(dependency.version),
-          advisory <- Source.advisories_for(dependency.app, installed),
-          do: {dependency, installed, advisory}
+    flagged =
+      dependencies
+      |> Enum.map(&standing/1)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.sort_by(&{standing_rank(&1.standing), to_string(&1.dependency.app)})
 
     [
-      "## In Its Dependencies\n\n",
-      case affected do
+      "## Its Dependencies\n\n",
+      summary_line(length(dependencies), Enum.frequencies_by(flagged, & &1.standing)),
+      case flagged do
         [] ->
-          "No known advisories in its #{count_noun(length(dependencies), "dependency", "dependencies")}.\n\n"
+          []
 
         _present ->
-          affected_count =
-            affected |> Enum.uniq_by(fn {dependency, _, _} -> dependency.app end) |> length()
-
           [
-            count_noun(length(affected), "advisory", "advisories"),
-            " in ",
-            "#{affected_count} of its #{count_noun(length(dependencies), "dependency", "dependencies")}.\n\n",
-            "| Dependency | Installed | Advisory | CVE | Severity | Fixed in |\n| --- | --- | --- | --- | --- | --- |\n",
-            Enum.map(affected, &dependency_row/1),
+            "| Dependency | Installed | Latest | Standing | Advisories |\n| --- | --- | --- | --- | --- |\n",
+            Enum.map(flagged, &dependency_row/1),
             "\n"
           ]
       end
     ]
   end
 
-  @spec dependency_row({Vertex.Application.t(), String.t(), Advisory.t()}) :: iodata()
-  defp dependency_row({dependency, installed, advisory}) do
+  @typep standing() :: %{
+           dependency: Vertex.Application.t(),
+           installed: String.t(),
+           latest: String.t() | nil,
+           advisories: [Advisory.t()],
+           standing: :vulnerable | :retired | :outdated
+         }
+
+  # Where a dependency stands, or nil when it has nothing to update for (or
+  # isn't a Hex package, which can't be checked).
+  @spec standing(Vertex.Application.t()) :: standing() | nil
+  defp standing(dependency) do
+    installed = to_string(dependency.version)
+    advisories = Source.advisories_for(dependency.app, installed)
+    summary = Registry.summary(dependency.app)
+    latest = summary && summary.latest
+
+    standing =
+      cond do
+        advisories != [] -> :vulnerable
+        summary && installed in summary.retired -> :retired
+        Dependency.outdated?(installed, latest) -> :outdated
+        true -> nil
+      end
+
+    if standing do
+      %{
+        dependency: dependency,
+        installed: installed,
+        latest: latest,
+        advisories: advisories,
+        standing: standing
+      }
+    end
+  end
+
+  @spec standing_rank(atom()) :: non_neg_integer()
+  defp standing_rank(:vulnerable), do: 0
+  defp standing_rank(:retired), do: 1
+  defp standing_rank(:outdated), do: 2
+
+  @spec summary_line(pos_integer(), %{atom() => pos_integer()}) :: String.t()
+  defp summary_line(1, counts) when map_size(counts) == 0,
+    do: "Its 1 dependency has no known advisory and is on its latest release.\n\n"
+
+  defp summary_line(total, counts) when map_size(counts) == 0,
+    do: "Its #{total} dependencies have no known advisories and are on their latest releases.\n\n"
+
+  defp summary_line(total, counts) do
+    parts =
+      for {standing, phrase} <- [
+            vulnerable: {"has a known advisory", "have known advisories"},
+            retired: {"is on a retired version", "are on retired versions"},
+            outdated: {"is behind its latest release", "are behind their latest release"}
+          ],
+          count = counts[standing] do
+        {one, many} = phrase
+        "#{count} #{if count == 1, do: one, else: many}"
+      end
+
+    "Of its #{count_noun(total, "dependency", "dependencies")}, #{join_and(parts)}.\n\n"
+  end
+
+  @spec join_and([String.t()]) :: String.t()
+  defp join_and([one]), do: one
+  defp join_and(parts), do: Enum.join(Enum.drop(parts, -1), ", ") <> " and " <> List.last(parts)
+
+  @spec dependency_row(standing()) :: iodata()
+  defp dependency_row(row) do
     [
       "| [",
-      to_string(dependency.app),
+      to_string(row.dependency.app),
       "](vertex://",
-      Vertex.id(dependency),
+      Vertex.id(row.dependency),
       ") | ",
-      installed,
-      " | [",
+      row.installed,
+      " | ",
+      row.latest || "—",
+      " | ",
+      row.standing |> Atom.to_string() |> String.capitalize(),
+      " | ",
+      case row.advisories do
+        [] -> "—"
+        advisories -> Enum.map_intersperse(advisories, "; ", &advisory_cell(&1, row.installed))
+      end,
+      " |\n"
+    ]
+  end
+
+  # The advisory, its CVE, and what fixes it.
+  @spec advisory_cell(Advisory.t(), String.t()) :: iodata()
+  defp advisory_cell(advisory, installed) do
+    [
+      "[",
       advisory.id,
       "](vertex://",
       Util.id(Vertex.Advisory, [advisory.id]),
-      ") | ",
-      cve_link(advisory),
-      " | ",
-      advisory.severity || "—",
-      " | ",
-      Advisory.fixed_version(advisory, installed) || "—",
-      " |\n"
+      ")",
+      case Advisory.cve(advisory) do
+        nil -> []
+        _cve -> [" · ", cve_link(advisory)]
+      end,
+      case Advisory.fixed_version(advisory, installed) do
+        nil -> " · no fix yet"
+        fixed -> [" · fixed in ", fixed]
+      end
     ]
   end
 

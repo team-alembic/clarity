@@ -52,7 +52,12 @@ defmodule Clarity.Content.AdvisoryTest do
   defp text(html), do: html |> LazyHTML.text() |> String.split() |> Enum.join(" ")
 
   describe "an application's advisories" do
-    test "sums up those of its dependencies, through the ones that pull them in", %{
+    setup do
+      :ets.new(Clarity.Dependency.Registry, [:named_table, :set, :public])
+      :ok
+    end
+
+    test "sum up its dependencies', through the ones that pull them in, with their versions", %{
       graph: graph,
       project: project,
       plug: plug
@@ -70,27 +75,42 @@ defmodule Clarity.Content.AdvisoryTest do
          ]}
       )
 
+      :ets.insert(Clarity.Dependency.Registry, [
+        {{:package, "plug"}, %{latest: "1.16.0", retired: []}},
+        {{:package, "jason"}, %{latest: "1.5.0", retired: []}},
+        {{:package, "phoenix"}, %{latest: "1.7.0", retired: []}}
+      ])
+
       html = render_advisories(graph, project)
 
-      assert text(html) =~ "No known advisories for project 0.1.0."
-      assert text(html) =~ "1 advisory in 1 of its 3 dependencies."
+      assert text(html) =~ "project isn't installed from Hex, so it has no advisories of its own."
 
-      assert [row] = html |> LazyHTML.query("tbody tr") |> Enum.to_list()
-      assert text(row) == "plug 1.14.0 EEF-CVE-2026-0001 CVE-2026-0001 HIGH 1.15.0"
+      assert text(html) =~
+               "Of its 3 dependencies, 1 has a known advisory and 1 is behind its latest release."
 
-      assert row |> LazyHTML.query("a") |> LazyHTML.attribute("href") == [
+      # Worst first: the vulnerable dependency, then the outdated one; phoenix
+      # is up to date, so isn't listed.
+      assert [vulnerable, outdated] = html |> LazyHTML.query("tbody tr") |> Enum.to_list()
+
+      assert text(vulnerable) ==
+               "plug 1.14.0 1.16.0 Vulnerable EEF-CVE-2026-0001 · CVE-2026-0001 · fixed in 1.15.0"
+
+      assert text(outdated) == "jason 1.4.0 1.5.0 Outdated —"
+
+      assert vulnerable |> LazyHTML.query("a") |> LazyHTML.attribute("href") == [
                "/c/security/#{Vertex.id(plug)}",
                "/c/security/advisory:EEF-CVE-2026-0001",
                "https://cna.erlef.org/cves/CVE-2026-0001.html"
              ]
     end
 
-    test "says when none of its dependencies has one", %{graph: graph, phoenix: phoenix} do
-      assert text(render_advisories(graph, phoenix)) =~ "No known advisories in its 1 dependency."
+    test "say when its dependencies have nothing to update for", %{graph: graph, phoenix: phoenix} do
+      assert text(render_advisories(graph, phoenix)) =~
+               "Its 1 dependency has no known advisory and is on its latest release."
     end
 
-    test "says nothing of dependencies for an application without any", %{graph: graph, plug: plug} do
-      refute text(render_advisories(graph, plug)) =~ "In Its Dependencies"
+    test "say nothing of dependencies for an application without any", %{graph: graph, plug: plug} do
+      refute text(render_advisories(graph, plug)) =~ "Its Dependencies"
     end
   end
 
