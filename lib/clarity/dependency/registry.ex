@@ -42,6 +42,17 @@ defmodule Clarity.Dependency.Registry do
     end
   end
 
+  @doc """
+  When the version status was last refreshed, or `nil` if it hasn't been.
+  """
+  @spec version() :: DateTime.t() | nil
+  def version do
+    case lookup(@refreshed_key) do
+      [{_key, %DateTime{} = at}] -> at
+      _missing -> nil
+    end
+  end
+
   @doc "Whether registry results are settled enough to render (see `Clarity.Advisory.Source`)."
   @spec ready?() :: boolean()
   def ready? do

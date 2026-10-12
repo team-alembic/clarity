@@ -38,4 +38,16 @@ defmodule Clarity.Status.Provider do
 
   @callback statuses(vertex :: Clarity.Vertex.t(), graph :: Clarity.Graph.t()) ::
               [Clarity.Status.t()]
+
+  @doc """
+  What the provider's statuses depend on besides the graph, such as data it
+  fetches in the background: any term that changes when that does.
+
+  Statuses are worked out again when the graph changes. A provider whose
+  statuses can change while the graph doesn't implements this, so they're
+  worked out again when it changes too.
+  """
+  @callback version() :: term()
+
+  @optional_callbacks version: 0
 end

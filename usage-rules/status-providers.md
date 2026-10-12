@@ -79,6 +79,18 @@ def statuses(_vertex, _graph), do: []
 A vertex may carry more than one status (e.g. a security *and* a hygiene
 finding) — return them all.
 
+### 2a. Data From Outside the Graph: `version/0`
+
+The tree keeps its statuses until the graph changes. If yours also depend on
+data that changes without the graph, such as something fetched in the
+background, implement the optional `version/0` callback: return any term that
+changes when that data does, and the statuses are worked out again.
+
+```elixir
+@impl Clarity.Status.Provider
+def version, do: MyApp.LicenceCache.last_refreshed_at()
+```
+
 ### 3. Register the Status Provider
 
 ```elixir
@@ -218,8 +230,8 @@ don't handle rather than letting a `case` blow up.
 
 ### Expensive work per vertex
 
-`statuses/2` runs for every vertex in the tree on each tree update. Keep it cheap
-— read from already-computed data (graph edges, a cache/ETS table) rather than
+`statuses/2` runs for every vertex in the tree whenever the graph, the lens or a
+provider's `version/0` changes. Keep it cheap — read from already-computed data (graph edges, a cache/ETS table) rather than
 doing I/O or heavy computation per call.
 
 ## Real-World Example
@@ -227,7 +239,8 @@ doing I/O or heavy computation per call.
 See `lib/clarity/status/supply_chain.ex` — `Clarity.Status.SupplyChain` flags
 applications with `:security`/`:error` for advisories, `:hygiene`/`:warning` for
 retired versions, and `:hygiene`/`:info` for outdated ones, reading advisory
-edges from the graph and version data from the Hex registry.
+edges from the graph and version data from the Hex registry, whose last refresh
+is its `version/0`.
 
 ## Next Steps
 

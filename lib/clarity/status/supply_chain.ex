@@ -17,14 +17,20 @@ defmodule Clarity.Status.SupplyChain do
   alias Clarity.Dependency.Registry
   alias Clarity.Graph
   alias Clarity.Status
+  alias Clarity.Status.Provider
   alias Clarity.Vertex
 
-  @impl Clarity.Status.Provider
+  @impl Provider
   def statuses(%Vertex.Application{app: app, version: version} = vertex, graph) do
     advisory_statuses(graph, vertex) ++ version_statuses(app, to_string(version))
   end
 
   def statuses(_vertex, _graph), do: []
+
+  # Version status arrives from Hex in the background, without changing the
+  # graph.
+  @impl Provider
+  def version, do: Registry.version()
 
   @spec advisory_statuses(Graph.t(), Vertex.Application.t()) :: [Status.t()]
   defp advisory_statuses(graph, vertex) do

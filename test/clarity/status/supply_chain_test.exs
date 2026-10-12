@@ -82,4 +82,15 @@ defmodule Clarity.Status.SupplyChainTest do
       assert SupplyChain.statuses(%Root{}, graph) == []
     end
   end
+
+  describe "version/0" do
+    test "is when the registry last refreshed, so statuses are worked out again after" do
+      assert SupplyChain.version() == nil
+
+      at = ~U[2026-10-12 09:00:00Z]
+      :ets.insert(Clarity.Dependency.Registry, {:__last_refreshed__, at})
+
+      assert SupplyChain.version() == at
+    end
+  end
 end

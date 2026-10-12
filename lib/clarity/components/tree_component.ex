@@ -61,10 +61,11 @@ defmodule Clarity.TreeComponent do
   end
 
   # The index covers the whole tree, so is built again only when the graph
-  # shows something else, or the lens changes.
+  # shows something else, the lens changes, or a status provider has news (a
+  # dependency's version status, fetched in the background).
   @spec status_index(map()) :: {term(), Index.t()}
   defp status_index(assigns) do
-    key = {Graph.version(assigns.graph), assigns.lens.id}
+    key = {Graph.version(assigns.graph), assigns.lens.id, Index.version()}
 
     case assigns do
       %{status_index_key: ^key, status_index: index} -> {key, index}

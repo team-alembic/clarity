@@ -65,6 +65,18 @@ defmodule Clarity.Status.Index do
   end
 
   @doc """
+  What the status providers' statuses depend on besides the graph (see
+  `c:Clarity.Status.Provider.version/0`): an index built when this was the
+  same, for the same graph, is still current.
+  """
+  @spec version() :: term()
+  def version do
+    for provider <- Config.list_status_providers(),
+        Code.ensure_loaded?(provider) and function_exported?(provider, :version, 0),
+        do: {provider, provider.version()}
+  end
+
+  @doc """
   The worst severity per status class for a single vertex, under `lens`.
 
   Unlike `build/2` this does not roll up the tree — it returns only the vertex's
