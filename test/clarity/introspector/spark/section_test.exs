@@ -120,7 +120,7 @@ defmodule Clarity.Introspector.Spark.SectionTest do
         behaviour?: false
       }
 
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [Ash.Domain]}} =
                SectionIntrospector.introspect_vertex(module_vertex, graph)
     end
 

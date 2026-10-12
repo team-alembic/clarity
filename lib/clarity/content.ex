@@ -169,13 +169,27 @@ defmodule Clarity.Content do
   @optional_callbacks [render_static: 2, sort_priority: 0, status_classes: 0]
 
   @doc false
+  # The vertex's tabs, without their static content: only the tab shown needs
+  # it (see with_static/3), and some take a while to render it.
   @spec get_contents_for_vertex(Vertex.t(), Lens.t()) :: [t()]
   def get_contents_for_vertex(vertex, lens) do
     lens
     |> providers_for_lens()
     |> Enum.filter(&applies?(&1, vertex, lens))
-    |> Enum.map(&build_content_struct(&1, vertex, lens))
+    |> Enum.map(&build_content_struct/1)
     |> Enum.sort(lens.content_sorter)
+  end
+
+  @doc false
+  # Renders the tab's static content (`render_static`), if its provider has any.
+  @spec with_static(t(), Vertex.t(), Lens.t()) :: t()
+  def with_static(%__MODULE__{provider: provider} = content, vertex, lens) do
+    if function_exported?(provider, :render_static, 2),
+      do: %{
+        content
+        | render_static: normalize_static_content(provider.render_static(vertex, lens))
+      },
+      else: content
   end
 
   @doc false
@@ -212,15 +226,10 @@ defmodule Clarity.Content do
     end
   end
 
-  @spec build_content_struct(module(), Vertex.t(), Lens.t()) :: t()
-  defp build_content_struct(provider, vertex, lens) do
+  @spec build_content_struct(module()) :: t()
+  defp build_content_struct(provider) do
     live_view? = implements_behaviour?(provider, Phoenix.LiveView)
     live_component? = implements_behaviour?(provider, Phoenix.LiveComponent)
-
-    render_static =
-      if function_exported?(provider, :render_static, 2) do
-        normalize_static_content(provider.render_static(vertex, lens))
-      end
 
     sort_priority =
       if function_exported?(provider, :sort_priority, 0),
@@ -239,7 +248,6 @@ defmodule Clarity.Content do
       provider: provider,
       live_view?: live_view?,
       live_component?: live_component?,
-      render_static: render_static,
       sort_priority: sort_priority,
       status_classes: status_classes
     }

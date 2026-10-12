@@ -45,14 +45,14 @@ case Code.ensure_loaded(Ash) do
 
       @spec get_domain_vertex(Graph.t(), nil) :: {:ok, nil}
       @spec get_domain_vertex(Graph.t(), module()) ::
-              {:ok, Domain.t()} | {:error, :unmet_dependencies}
+              {:ok, Domain.t()} | {:error, {:unmet_dependencies, [module()]}}
       defp get_domain_vertex(graph, domain)
       defp get_domain_vertex(_graph, nil), do: {:ok, nil}
 
       defp get_domain_vertex(graph, domain) do
         case Graph.get_vertex(graph, Util.id(Domain, [domain])) do
           %Domain{} = vertex -> {:ok, vertex}
-          nil -> {:error, :unmet_dependencies}
+          nil -> {:error, {:unmet_dependencies, [domain]}}
         end
       end
     end

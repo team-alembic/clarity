@@ -14,14 +14,15 @@ defmodule Clarity.Perspective.Internals do
 
   alias Clarity.Graph
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Domain
 
   @doc """
   Returns whether `vertex` is a framework internal.
   """
   @spec internal?(Vertex.t()) :: boolean()
   # Matched by name: the vertex module only exists when Ash is loaded.
-  def internal?(%{__struct__: Vertex.Ash.Domain, domain: domain}),
-    do: Application.get_application(domain) == :ash
+  def internal?(%{__struct__: Domain, domain: domain}),
+    do: Clarity.Config.application_of(domain) == :ash
 
   def internal?(_vertex), do: false
 
@@ -30,6 +31,8 @@ defmodule Clarity.Perspective.Internals do
   """
   @spec ids(Graph.t()) :: [String.t()]
   def ids(graph) do
-    for vertex <- Graph.vertices(graph), internal?(vertex), do: Vertex.id(vertex)
+    for vertex <- Graph.vertices(graph, {:==, :vertex_type, Domain}),
+        internal?(vertex),
+        do: Vertex.id(vertex)
   end
 end

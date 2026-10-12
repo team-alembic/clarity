@@ -253,6 +253,36 @@ defmodule Clarity.AutolinkTest do
     end
   end
 
+  describe inspect(&Autolink.lookup/2) do
+    test "links text as the names names_in/2 settles do", %{graph: graph} do
+      Graph.add_vertex(graph, %Domain{domain: Demo.Helpdesk}, %Root{})
+      Graph.add_vertex(graph, %Resource{resource: Project}, %Root{})
+
+      for %{name: name} <- Info.attributes(Ticket),
+          do: Graph.add_vertex(graph, %Attribute{attribute: Info.attribute(Ticket, name), resource: Ticket}, %Root{})
+
+      index = Autolink.index(graph, lowercase: true)
+
+      markdown = """
+      A Ticket, raised in a Conversation by a User, about Invoices and Projects; see
+      `Ticket.status`, `status`, the Ticket's status, Helpdesk Ticket and IssueInvoice.
+      """
+
+      for vertex <- [nil, %Resource{resource: Ticket}, %Resource{resource: Message}, %Vertex.Module{module: Ticket}] do
+        link = fn names ->
+          markdown
+          |> MDEx.parse_document!()
+          |> Autolink.link(names, &field_path/1, index: index, vertex: vertex, lowercase: true)
+          |> MDEx.to_html!()
+        end
+
+        html = link.(Autolink.lookup(index, vertex))
+        assert html == link.(Autolink.names_in(index, vertex))
+        assert html =~ ~s(href="/to/)
+      end
+    end
+  end
+
   describe "fields" do
     setup do
       graph = Graph.new()

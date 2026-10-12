@@ -16,6 +16,8 @@ defmodule Clarity.PageLive do
   alias Phoenix.LiveView.AsyncResult
   alias Phoenix.LiveView.Socket
 
+  @working_refresh 1_000
+
   @impl Phoenix.LiveView
   def mount(params, session, socket) do
     if connected?(socket) do
@@ -41,7 +43,8 @@ defmodule Clarity.PageLive do
         shown_vertex_types: [],
         available_vertex_types: [],
         initial_vertex: initial_vertex,
-        lenses: Lensmaker.get_all_lenses()
+        lenses: Lensmaker.get_all_lenses(),
+        loaded_at: System.monotonic_time(:millisecond)
       )
       |> fetch_clarity()
       # LiveView forbids live patches during mount, which a live navigation to a
@@ -261,8 +264,17 @@ defmodule Clarity.PageLive do
          ), :vertex_not_found}
 
       vertex ->
+        # A dependency whose introspection is still to come comes sooner.
+        if socket.assigns.clarity.status == :working,
+          do: Clarity.Server.prioritize(socket.assigns.clarity_pid, vertex)
+
         contents = Content.get_contents_for_vertex(vertex, socket.assigns.lens)
-        content = Enum.find(contents, &(&1.id == content_id))
+
+        content =
+          case Enum.find(contents, &(&1.id == content_id)) do
+            nil -> nil
+            content -> Content.with_static(content, vertex, socket.assigns.lens)
+          end
 
         breadcrumbs = Graph.breadcrumbs(socket.assigns.clarity.graph, vertex) || [vertex]
 
@@ -329,8 +341,9 @@ defmodule Clarity.PageLive do
 
     liveview_pid = self()
 
-    assign_async(
-      socket,
+    socket
+    |> assign(loaded_at: System.monotonic_time(:millisecond))
+    |> assign_async(
       :data,
       fn ->
         # Framework internals are hidden unless the lens shows them.
@@ -450,6 +463,9 @@ defmodule Clarity.PageLive do
     {:noreply, put_flash(socket, kind, message)}
   end
 
+  # While introspection goes on, the graph changes all the time: the page
+  # catches up with it at most every @working_refresh ms, and as soon as it's
+  # done (handle_info/2 for :work_completed).
   def handle_info(:refresh, socket) do
     clarity = Clarity.get(socket.assigns.clarity_pid, :partial)
     new_update_count = Graph.get_update_count(clarity.graph)
@@ -462,6 +478,10 @@ defmodule Clarity.PageLive do
 
         new_update_count == socket.assigns.update_count ->
           assign(socket, clarity: clarity)
+
+        socket.assigns.data.ok? and clarity.status == :working and
+            System.monotonic_time(:millisecond) - socket.assigns.loaded_at < @working_refresh ->
+          socket
 
         socket.assigns.data.ok? ->
           socket

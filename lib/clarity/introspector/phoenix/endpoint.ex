@@ -16,7 +16,7 @@ case Code.ensure_loaded(Phoenix.Endpoint) do
       def introspect_vertex(%Vertex.Module{module: module} = module_vertex, graph) do
         if endpoint?(module) do
           endpoint_vertex = %EndpointVertex{endpoint: module}
-          app = Application.get_application(module)
+          app = Clarity.Config.application_of(module)
 
           app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 

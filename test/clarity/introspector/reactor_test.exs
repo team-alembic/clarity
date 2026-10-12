@@ -28,7 +28,7 @@ defmodule Clarity.Introspector.ReactorTest do
     end
 
     test "waits for the reactor's domain before creating its vertex" do
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [Demo.Billing]}} =
                ReactorIntrospector.introspect_vertex(
                  %Vertex.Module{module: IssueInvoice},
                  Clarity.Graph.new()
@@ -81,7 +81,7 @@ defmodule Clarity.Introspector.ReactorTest do
     end
 
     test "waits for the reactor's vertex before linking an action to it" do
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [IssueInvoice]}} =
                ReactorIntrospector.introspect_vertex(action_vertex(:issue_invoice), Clarity.Graph.new())
     end
 

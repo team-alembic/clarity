@@ -72,7 +72,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
           links: links(assigns),
           within:
             if(Map.get(assigns, :name_style, :qualified) == :short,
-              do: Application.get_application(subject(assigns.vertex))
+              do: Clarity.Config.application_of(subject(assigns.vertex))
             )
         )
 
@@ -638,7 +638,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
             endpoint: nil,
             doc: moduledoc(router),
             url: nil,
-            app_name: Application.get_application(router),
+            app_name: Clarity.Config.application_of(router),
             app: app(router, links),
             host: nil,
             code_reloading?: false,
@@ -664,7 +664,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
     # plugs can't be read, which may.
     @spec endpoint_of(module()) :: module() | nil
     defp endpoint_of(router) do
-      case :application.get_key(Application.get_application(router), :modules) do
+      case :application.get_key(Clarity.Config.application_of(router), :modules) do
         {:ok, modules} -> Enum.find(modules, &plugs_in?(&1, router))
         :undefined -> nil
       end
@@ -699,7 +699,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
         endpoint: endpoint,
         doc: moduledoc(endpoint),
         url: endpoint.url(),
-        app_name: Application.get_application(endpoint),
+        app_name: Clarity.Config.application_of(endpoint),
         app: app(endpoint, links),
         host: host,
         code_reloading?: endpoint.config(:code_reloader) == true,
@@ -732,7 +732,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
       do: for(%{kind: :module, module: module} <- plugs, router?(module), do: module)
 
     defp routers(endpoint, :error) do
-      case :application.get_key(Application.get_application(endpoint), :modules) do
+      case :application.get_key(Clarity.Config.application_of(endpoint), :modules) do
         {:ok, modules} -> Enum.filter(modules, &router?/1)
         :undefined -> []
       end
@@ -958,7 +958,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
     defp module_label(module, nil), do: inspect(module)
 
     defp module_label(module, app) do
-      if Application.get_application(module) == app,
+      if Clarity.Config.application_of(module) == app,
         do: Vertex.Name.in_app(module),
         else: inspect(module)
     end
@@ -967,7 +967,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
     # description and version.
     @spec app(module(), map()) :: Vertex.Application.t() | nil
     defp app(module, links) do
-      case Application.get_application(module) do
+      case Clarity.Config.application_of(module) do
         nil -> nil
         app -> in_graph(links, %Vertex.Application{app: app, description: nil, version: nil})
       end
@@ -975,7 +975,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
 
     @spec moduledoc(module()) :: String.t() | nil
     defp moduledoc(module) do
-      case Code.fetch_docs(module) do
+      case Clarity.Docs.fetch(module) do
         {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} -> doc
         _none -> nil
       end

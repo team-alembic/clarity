@@ -18,24 +18,23 @@ case Code.ensure_loaded(Ash) do
       def introspect_vertex(%Resource{resource: resource} = resource_vertex, graph) do
         data_layer = Info.data_layer(resource)
         data_layer_vertex = %DataLayer{data_layer: data_layer}
-        app = Application.get_application(data_layer)
+        app = Clarity.Config.application_of(data_layer)
 
         app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
-        module_vertex =
-          graph
-          |> Clarity.Graph.vertices(
-            {:and, {:==, :vertex_type, Vertex.Module}, {:==, {:field, :module}, data_layer}}
-          )
-          |> List.first()
+        module_vertex = Vertex.Module.lookup(graph, data_layer)
 
-        {:ok,
-         [
-           {:vertex, data_layer_vertex},
-           {:edge, app_vertex, data_layer_vertex, :data_layer},
-           {:edge, resource_vertex, data_layer_vertex, :data_layer},
-           {:edge, module_vertex, data_layer_vertex, :module}
-         ]}
+        if module_vertex == nil and Clarity.Config.should_process_module?(data_layer) do
+          {:error, {:unmet_dependencies, [data_layer]}}
+        else
+          {:ok,
+           [
+             {:vertex, data_layer_vertex},
+             {:edge, app_vertex, data_layer_vertex, :data_layer},
+             {:edge, resource_vertex, data_layer_vertex, :data_layer},
+             {:edge, module_vertex, data_layer_vertex, :module}
+           ]}
+        end
       end
     end
 

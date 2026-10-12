@@ -85,8 +85,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           String.trim(text)
 
         _none ->
-          with {:docs_v1, _, _, "text/markdown", %{"en" => moduledoc}, _, _} <-
-                 Code.fetch_docs(module),
+          with moduledoc when is_binary(moduledoc) <- Clarity.Docs.moduledoc(module),
                [paragraph | _] <- String.split(String.trim(moduledoc), ~r/\n\s*\n/) do
             paragraph
           else

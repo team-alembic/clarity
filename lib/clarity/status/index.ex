@@ -60,7 +60,7 @@ defmodule Clarity.Status.Index do
   def build(graph, lens) do
     case Graph.get_vertex(graph, "root") do
       nil -> %{}
-      root -> graph |> rollup(root, Config.list_status_providers(), lens, %{}) |> elem(0)
+      _root -> graph |> rollup("root", Config.list_status_providers(), lens, %{}) |> elem(0)
     end
   end
 
@@ -84,17 +84,23 @@ defmodule Clarity.Status.Index do
   # Returns the subtree's summary for the recursion, while the stored entry's
   # `count` is descendants only (excludes the vertex itself), since a node's
   # badge counts what's flagged *beneath* it.
-  @spec rollup(Graph.t(), Vertex.t(), [module()], Lens.t(), t()) :: {t(), summary() | nil}
-  defp rollup(graph, vertex, providers, lens, index) do
-    children = graph |> Graph.navigation_children(vertex) |> Map.values() |> List.flatten()
+  #
+  # It walks the tree by vertex id, as working ids out takes a while.
+  @spec rollup(Graph.t(), String.t(), [module()], Lens.t(), t()) :: {t(), summary() | nil}
+  defp rollup(graph, vertex_id, providers, lens, index) do
+    children = Graph.tree_child_ids(graph, vertex_id)
 
     {index, child_summaries} =
-      Enum.reduce(children, {index, []}, fn child, {idx, summaries} ->
-        {idx, summary} = rollup(graph, child, providers, lens, idx)
+      Enum.reduce(children, {index, []}, fn child_id, {idx, summaries} ->
+        {idx, summary} = rollup(graph, child_id, providers, lens, idx)
         {idx, [summary | summaries]}
       end)
 
-    own = own_issues(graph, vertex, providers, lens)
+    own =
+      case Graph.get_vertex(graph, vertex_id) do
+        nil -> []
+        vertex -> own_issues(graph, vertex, vertex_id, providers, lens)
+      end
 
     case {own, Enum.reject(child_summaries, &is_nil/1)} do
       {[], []} ->
@@ -114,17 +120,17 @@ defmodule Clarity.Status.Index do
         }
 
         flagged = if(own == [], do: 0, else: 1) + descendants
-        {Map.put(index, Vertex.id(vertex), entry), {flagged, issues, severities}}
+        {Map.put(index, vertex_id, entry), {flagged, issues, severities}}
     end
   end
 
-  @spec own_issues(Graph.t(), Vertex.t(), [module()], Lens.t()) :: [issue()]
-  defp own_issues(graph, vertex, providers, lens) do
+  @spec own_issues(Graph.t(), Vertex.t(), String.t(), [module()], Lens.t()) :: [issue()]
+  defp own_issues(graph, vertex, vertex_id, providers, lens) do
     for provider <- providers,
         status <- safe_statuses(provider, vertex, graph),
         lens.status_filter.(status) do
       %{
-        vertex_id: Vertex.id(vertex),
+        vertex_id: vertex_id,
         name: Vertex.name(vertex),
         severity: status.severity,
         class: status.class,

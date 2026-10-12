@@ -11,12 +11,7 @@ defmodule Clarity.Introspector.Module do
 
   @impl Clarity.Introspector
   def introspect_vertex(%Vertex.Application{app: app} = app_vertex, graph) do
-    current_modules =
-      app
-      |> modules()
-      |> Task.async_stream(&Code.ensure_loaded/1, ordered: false)
-      |> Enum.filter(&match?({:ok, {:module, _}}, &1))
-      |> Enum.map(fn {:ok, {:module, module}} -> module end)
+    current_modules = app |> modules() |> load_modules()
 
     cached_modules = get_cached_modules(graph, app_vertex)
 
@@ -57,9 +52,14 @@ defmodule Clarity.Introspector.Module do
 
     lookup = build_module_lookup(graph, needed_modules)
 
-    with {:ok, behaviour_edges} <- create_behaviour_edges(module_vertex, behaviours, lookup),
-         {:ok, protocol_edges} <- create_protocol_edges(module_vertex, protocol_modules, lookup) do
-      {:ok, behaviour_edges ++ protocol_edges}
+    case needed_modules |> Enum.reject(&Map.has_key?(lookup, &1)) |> Enum.uniq() do
+      [] ->
+        {:ok,
+         behaviour_edges(module_vertex, behaviours, lookup) ++
+           protocol_edges(module_vertex, protocol_modules, lookup)}
+
+      missing ->
+        {:error, {:unmet_dependencies, missing}}
     end
   end
 
@@ -74,11 +74,22 @@ defmodule Clarity.Introspector.Module do
           [Clarity.Introspector.entry()]
   def introspect_modules(%Vertex.Application{} = app_vertex, modules, _graph) do
     modules
-    |> Task.async_stream(&Code.ensure_loaded/1, ordered: false)
-    |> Enum.filter(&match?({:ok, {:module, _}}, &1))
-    |> Enum.flat_map(fn {:ok, {:module, module}} ->
-      create_module_vertex_entries(module, app_vertex)
-    end)
+    |> load_modules()
+    |> Enum.flat_map(&create_module_vertex_entries(&1, app_vertex))
+  end
+
+  # Loads the modules, returning those that loaded. The code server loads one
+  # module at a time, but this reads them in parallel first.
+  @spec load_modules([module()]) :: [module()]
+  defp load_modules(modules) do
+    case :code.ensure_modules_loaded(modules) do
+      :ok ->
+        modules
+
+      {:error, failures} ->
+        failed = MapSet.new(failures, &elem(&1, 0))
+        Enum.reject(modules, &MapSet.member?(failed, &1))
+    end
   end
 
   @spec get_cached_modules(Clarity.Graph.t(), Vertex.Application.t()) :: [ModuleVertex.t()]
@@ -171,50 +182,27 @@ defmodule Clarity.Introspector.Module do
     end
   end
 
-  @spec create_behaviour_edges(ModuleVertex.t(), [module()], %{module() => ModuleVertex.t()}) ::
-          Clarity.Introspector.result()
-  defp create_behaviour_edges(_module_vertex, [], _lookup), do: {:ok, []}
-
-  defp create_behaviour_edges(module_vertex, behaviours, lookup) do
-    Enum.reduce_while(behaviours, {:ok, []}, fn behaviour, {:ok, edges} ->
-      case Map.fetch(lookup, behaviour) do
-        {:ok, behaviour_vertex} ->
-          {:cont, {:ok, [{:edge, module_vertex, behaviour_vertex, :behaviour} | edges]}}
-
-        :error ->
-          {:halt, {:error, :unmet_dependencies}}
-      end
-    end)
+  @spec behaviour_edges(ModuleVertex.t(), [module()], %{module() => ModuleVertex.t()}) ::
+          [Clarity.Introspector.entry()]
+  defp behaviour_edges(module_vertex, behaviours, lookup) do
+    for behaviour <- Enum.reverse(behaviours),
+        do: {:edge, module_vertex, Map.fetch!(lookup, behaviour), :behaviour}
   end
 
-  @spec create_protocol_edges(
-          ModuleVertex.t(),
-          {module(), module()} | nil,
-          %{module() => ModuleVertex.t()}
-        ) ::
-          Clarity.Introspector.result()
-  defp create_protocol_edges(_module_vertex, nil, _lookup), do: {:ok, []}
+  @spec protocol_edges(ModuleVertex.t(), {module(), module()} | nil, %{
+          module() => ModuleVertex.t()
+        }) :: [Clarity.Introspector.entry()]
+  defp protocol_edges(_module_vertex, nil, _lookup), do: []
 
-  defp create_protocol_edges(module_vertex, {protocol, for_module}, lookup) do
-    with {:ok, protocol_vertex} <- Map.fetch(lookup, protocol),
-         {:ok, for_vertex} <- Map.fetch(lookup, for_module) do
-      {:ok,
-       [
-         {:edge, protocol_vertex, module_vertex, :protocol_implementation},
-         {:edge, module_vertex, for_vertex, :protocol_subject}
-       ]}
-    else
-      :error -> {:error, :unmet_dependencies}
-    end
+  defp protocol_edges(module_vertex, {protocol, for_module}, lookup) do
+    [
+      {:edge, Map.fetch!(lookup, protocol), module_vertex, :protocol_implementation},
+      {:edge, module_vertex, Map.fetch!(lookup, for_module), :protocol_subject}
+    ]
   end
 
-  @spec get_module_version(module :: module()) :: :unknown | String.t()
-  defp get_module_version(module) do
-    case module.module_info(:attributes)[:vsn] do
-      nil -> :unknown
-      [version] -> version
-    end
-  end
+  @spec get_module_version(module :: module()) :: :unknown | integer()
+  defp get_module_version(module), do: ModuleVertex.version(module)
 
   @spec behaviour?(module :: module()) :: boolean()
   defp behaviour?(module) do
@@ -229,11 +217,10 @@ defmodule Clarity.Introspector.Module do
 
   @spec build_module_lookup(Clarity.Graph.t(), [module()]) :: %{module() => ModuleVertex.t()}
   defp build_module_lookup(graph, needed_modules) do
-    graph
-    |> Clarity.Graph.vertices(
-      {:and, {:==, :vertex_type, ModuleVertex}, {:in, {:field, :module}, needed_modules}}
-    )
-    |> Map.new(&{&1.module, &1})
+    for module <- needed_modules,
+        vertex = ModuleVertex.lookup(graph, module),
+        into: %{},
+        do: {module, vertex}
   end
 
   @spec get_protocol_info(module :: module()) :: {module(), module()} | nil

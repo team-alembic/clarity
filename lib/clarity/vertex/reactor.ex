@@ -50,7 +50,8 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
 
     if Code.ensure_loaded?(Ash) do
       @spec domains_of(module()) :: [module()]
-      defp domains_of(reactor), do: reactor |> Application.get_application() |> Ash.Info.domains()
+      defp domains_of(reactor),
+        do: reactor |> Clarity.Config.application_of() |> Ash.Info.domains()
 
       @spec runs?(module(), module()) :: boolean()
       defp runs?(domain, reactor) do
@@ -104,14 +105,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
           "`",
           inspect(reactor),
           "`\n\n",
-          case Code.fetch_docs(reactor) do
-            {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
-             _metadata, _docs} ->
-              moduledoc
-
-            _ ->
-              []
-          end
+          Clarity.Docs.moduledoc(reactor) || []
         ]
       end
     end

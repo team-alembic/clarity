@@ -446,7 +446,7 @@ defmodule Clarity.Phoenix.Pipeline do
 
   @spec module_doc(module()) :: String.t() | nil
   defp module_doc(module) do
-    case Code.fetch_docs(module) do
+    case Clarity.Docs.fetch(module) do
       {:docs_v1, _anno, _language, _format, %{"en" => doc}, _meta, _docs} -> first_line(doc)
       _none -> nil
     end
@@ -454,7 +454,8 @@ defmodule Clarity.Phoenix.Pipeline do
 
   @spec function_doc(module(), atom()) :: String.t() | nil
   defp function_doc(module, function) do
-    with {:docs_v1, _anno, _language, _format, _moduledoc, _meta, docs} <- Code.fetch_docs(module),
+    with {:docs_v1, _anno, _language, _format, _moduledoc, _meta, docs} <-
+           Clarity.Docs.fetch(module),
          {_key, _anno, _signature, %{"en" => doc}, _doc_meta} <-
            List.keyfind(docs, {:function, function, 2}, 0) do
       first_line(doc)

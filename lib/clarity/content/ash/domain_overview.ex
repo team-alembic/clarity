@@ -47,7 +47,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
          links: links,
          domain: domain,
          description: module_description(domain, Info.description(domain)),
-         app: app_vertex(links, Application.get_application(domain)),
+         app: app_vertex(links, Clarity.Config.application_of(domain)),
          resources: resources,
          common_data_layer: common_data_layer(resources),
          action_count:

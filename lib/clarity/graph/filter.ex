@@ -37,13 +37,13 @@ defmodule Clarity.Graph.Filter do
       center_vertex_id = Vertex.id(center_vertex)
 
       allowed_vertex_ids =
-        graph.main_graph
-        |> Util.vertices_within_steps(
-          center_vertex_id,
-          max_outgoing_steps,
-          max_incoming_steps
-        )
-        |> MapSet.to_list()
+        if Clarity.Graph.vertex_id?(graph, center_vertex_id) do
+          graph
+          |> Util.vertices_within_steps(center_vertex_id, max_outgoing_steps, max_incoming_steps)
+          |> MapSet.to_list()
+        else
+          []
+        end
 
       {:in, :vertex_id, allowed_vertex_ids}
     end
@@ -55,25 +55,28 @@ defmodule Clarity.Graph.Filter do
   @spec reachable_from([Vertex.t()]) :: filter()
   def reachable_from(source_vertices) do
     fn graph ->
-      source_vertex_ids = MapSet.new(source_vertices, &Vertex.id/1)
+      source_vertex_ids =
+        source_vertices
+        |> Enum.map(&Vertex.id/1)
+        |> Enum.filter(&Clarity.Graph.vertex_id?(graph, &1))
 
-      reachable_vertex_ids =
-        Enum.filter(
-          :digraph.vertices(graph.main_graph),
-          &reachable_from_any?(graph.main_graph, source_vertex_ids, &1)
-        )
+      reachable_vertex_ids = reachable(graph, source_vertex_ids, MapSet.new(source_vertex_ids))
 
-      {:in, :vertex_id, reachable_vertex_ids}
+      {:in, :vertex_id, MapSet.to_list(reachable_vertex_ids)}
     end
   end
 
-  @spec reachable_from_any?(:digraph.graph(), MapSet.t(String.t()), String.t()) :: boolean()
-  defp reachable_from_any?(main_graph, source_vertex_ids, vertex_id) do
-    MapSet.member?(source_vertex_ids, vertex_id) or
-      Enum.any?(
-        source_vertex_ids,
-        &(:digraph.get_path(main_graph, &1, vertex_id) != false)
-      )
+  # Every vertex reachable from the frontier, depth first.
+  @spec reachable(Clarity.Graph.t(), [String.t()], MapSet.t(String.t())) :: MapSet.t(String.t())
+  defp reachable(_graph, [], seen), do: seen
+
+  defp reachable(graph, [vertex_id | frontier], seen) do
+    new =
+      graph
+      |> Clarity.Graph.neighbour_ids(vertex_id, :out)
+      |> Enum.reject(&MapSet.member?(seen, &1))
+
+    reachable(graph, new ++ frontier, Enum.into(new, seen))
   end
 
   @doc """

@@ -37,7 +37,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
       with reactor when reactor != nil <- Vertex.Reactor.run_by(action),
            true <- Config.should_process_module?(reactor) do
         case Clarity.Graph.get_vertex(graph, Util.id(Vertex.Reactor, [reactor])) do
-          nil -> {:error, :unmet_dependencies}
+          nil -> {:error, {:unmet_dependencies, [reactor]}}
           reactor_vertex -> {:ok, [{:edge, action_vertex, reactor_vertex, :reactor}]}
         end
       else
@@ -62,16 +62,16 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
     # A reactor hangs off its domain, once that's in the graph, or else off
     # its application.
     @spec parent(module(), Clarity.Graph.t()) ::
-            {:ok, Vertex.t() | nil} | {:error, :unmet_dependencies}
+            {:ok, Vertex.t() | nil} | {:error, {:unmet_dependencies, [module()]}}
     defp parent(reactor, graph) do
       case Vertex.Reactor.domain(reactor) do
         nil ->
-          app = Application.get_application(reactor)
+          app = Config.application_of(reactor)
           {:ok, Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))}
 
         domain ->
           case Clarity.Graph.get_vertex(graph, Util.id(Domain, [domain])) do
-            nil -> {:error, :unmet_dependencies}
+            nil -> {:error, {:unmet_dependencies, [domain]}}
             domain_vertex -> {:ok, domain_vertex}
           end
       end

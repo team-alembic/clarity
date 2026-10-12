@@ -33,6 +33,7 @@ defmodule Clarity.Autolink do
   """
 
   alias Ash.Resource.Info
+  alias Clarity.Autolink.Lookup
   alias Clarity.Graph
   alias Clarity.Tooltip
   alias Clarity.Vertex
@@ -45,14 +46,30 @@ defmodule Clarity.Autolink do
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.ModuleProvider
 
-  @typedoc "Names that link, each to the vertex it names."
-  @type names() :: %{String.t() => Vertex.t()}
+  @typedoc """
+  Names that link, each to the vertex it names: every one of them
+  (`names_in/2`), or each looked up as text mentions it (`lookup/2`).
+  """
+  @type names() :: %{String.t() => Vertex.t()} | Lookup.t()
 
   @typedoc "Every name the vertices of a graph go by, from `index/2`."
   @type index() :: %{
           graph: Graph.t(),
-          spellings: [{String.t(), [{Vertex.t(), :name | :plural}]}],
+          spellings: %{String.t() => [{candidate(), :name | :plural}]},
           neighbours: %{optional(module()) => [module()]}
+        }
+
+  @typedoc """
+  A vertex a name may stand for, with what settling between them needs: the
+  index holds no vertices, some of which are large (an action's), and names
+  only the one that links.
+  """
+  @type candidate() :: %{
+          id: String.t(),
+          type: module(),
+          home: module() | nil,
+          domain: module() | nil,
+          module: module() | nil
         }
 
   @typedoc """
@@ -105,19 +122,26 @@ defmodule Clarity.Autolink do
   Gathers every name the vertices in `graph` go by, once, so that
   `names_in/2` can settle them for text about one vertex after another.
   Takes `lowercase:` as `names/3` does.
+
+  Every overview works it out, so it's kept until the graph changes.
   """
   @spec index(Graph.t(), keyword()) :: index()
   def index(graph, opts \\ []) do
     lowercase? = Keyword.get(opts, :lowercase, false)
+    Graph.Memo.fetch(graph, {__MODULE__, lowercase?}, fn -> build_index(graph, lowercase?) end)
+  end
 
+  @spec build_index(Graph.t(), boolean()) :: index()
+  defp build_index(graph, lowercase?) do
     spellings =
       graph
       |> Graph.vertices({:in, :vertex_type, @linkable})
       |> Enum.flat_map(fn named ->
-        Enum.map(forms(named, lowercase?), fn {name, form} -> {name, {named, form}} end)
+        candidate = candidate(named)
+        Enum.map(forms(named, lowercase?), fn {name, form} -> {name, {candidate, form}} end)
       end)
       |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-      |> Enum.map(fn {name, candidates} -> {name, Enum.uniq(candidates)} end)
+      |> Map.new(fn {name, candidates} -> {name, Enum.uniq(candidates)} end)
 
     %{graph: graph, spellings: spellings, neighbours: neighbours(graph)}
   end
@@ -126,21 +150,86 @@ defmodule Clarity.Autolink do
   Returns the names to link in text about `vertex`, as `names/3` does, from
   an `index/2`.
   """
-  @spec names_in(index(), Vertex.t() | nil) :: names()
-  def names_in(%{spellings: spellings, neighbours: neighbours}, vertex) do
-    context = vertex |> context() |> with_distances(neighbours)
+  @spec names_in(index(), Vertex.t() | nil) :: %{String.t() => Vertex.t()}
+  def names_in(%{graph: graph, spellings: spellings} = index, vertex) do
+    lookup = lookup(index, vertex)
 
-    spellings
-    |> Enum.flat_map(fn {name, candidates} ->
-      candidates
-      |> Enum.reject(fn {named, _form} -> described?(named, vertex) end)
-      |> pick(context)
-      |> case do
-        nil -> []
-        named -> [{name, named}]
-      end
-    end)
-    |> Map.new()
+    {names, _vertices} =
+      Enum.reduce(spellings, {%{}, %{}}, fn {name, candidates}, {names, vertices} ->
+        with %{id: id} <- settle(candidates, lookup),
+             {%{} = named, vertices} <- resolve(graph, id, vertices) do
+          {Map.put(names, name, named), vertices}
+        else
+          _none -> {names, vertices}
+        end
+      end)
+
+    names
+  end
+
+  @doc """
+  Returns the names to link in text about `vertex`, as `names_in/2` does, but
+  settles each only when the text mentions it: far less work for linking a
+  text than settling every name a graph has.
+  """
+  @spec lookup(index(), Vertex.t() | nil) :: Lookup.t()
+  def lookup(%{neighbours: neighbours} = index, vertex) do
+    %Lookup{
+      index: index,
+      context: vertex |> context() |> with_distances(neighbours),
+      vertex: vertex
+    }
+  end
+
+  # The vertex `name` names, if any.
+  @spec named(names(), String.t()) :: Vertex.t() | nil
+  defp named(%Lookup{index: index} = lookup, name) do
+    with [_ | _] = candidates <- Map.get(index.spellings, name),
+         %{id: id} <- settle(candidates, lookup) do
+      Graph.get_vertex(index.graph, id)
+    else
+      _none -> nil
+    end
+  end
+
+  defp named(names, name), do: Map.get(names, name)
+
+  @spec named?(names(), String.t()) :: boolean()
+  defp named?(%Lookup{index: index} = lookup, name),
+    do: settle(Map.get(index.spellings, name, []), lookup) != nil
+
+  defp named?(names, name), do: Map.has_key?(names, name)
+
+  # The candidate a name stands for in the text, if it settles on one.
+  @spec settle([{candidate(), :name | :plural}], Lookup.t()) :: candidate() | nil
+  defp settle(candidates, %Lookup{context: context, vertex: vertex}) do
+    candidates
+    |> Enum.reject(fn {candidate, _form} -> described?(candidate, vertex) end)
+    |> pick(context)
+  end
+
+  @spec resolve(Graph.t(), String.t(), %{String.t() => Vertex.t()}) ::
+          {Vertex.t() | nil, %{String.t() => Vertex.t()}}
+  defp resolve(graph, id, vertices) do
+    case Map.fetch(vertices, id) do
+      {:ok, vertex} ->
+        {vertex, vertices}
+
+      :error ->
+        vertex = Graph.get_vertex(graph, id)
+        {vertex, Map.put(vertices, id, vertex)}
+    end
+  end
+
+  @spec candidate(Vertex.t()) :: candidate()
+  defp candidate(%{__struct__: type} = vertex) do
+    %{
+      id: Vertex.id(vertex),
+      type: type,
+      home: home(vertex),
+      domain: domain_of(vertex),
+      module: if(type in @named_by_module, do: ModuleProvider.module(vertex))
+    }
   end
 
   @doc """
@@ -207,16 +296,18 @@ defmodule Clarity.Autolink do
     [open | children] ++ [%MDEx.Raw{literal: "</a>"}]
   end
 
-  # Whether `named` is what the text describes: its own vertex, or for text
-  # about a module, the domain, resource or Reactor the module defines.
-  @spec described?(Vertex.t(), Vertex.t() | nil) :: boolean()
-  defp described?(named, named), do: true
+  # Whether `candidate` is what the text describes: its own vertex, or for
+  # text about a module, the domain, resource or Reactor the module defines.
+  @spec described?(candidate(), Vertex.t() | nil) :: boolean()
+  defp described?(_candidate, nil), do: false
 
-  defp described?(%{__struct__: struct} = named, %Vertex.Module{module: module})
-       when struct in @named_by_module,
-       do: ModuleProvider.module(named) == module
+  defp described?(%{type: type, module: module}, %Vertex.Module{module: module})
+       when type in @named_by_module, do: true
 
-  defp described?(_named, _vertex), do: false
+  defp described?(%{type: type, id: id}, %{__struct__: type} = vertex),
+    do: id == Vertex.id(vertex)
+
+  defp described?(_candidate, _vertex), do: false
 
   @spec walk(node, map(), MapSet.t()) :: {node, MapSet.t()}
         when node: MDEx.Document.t() | MDEx.Document.md_node()
@@ -277,7 +368,7 @@ defmodule Clarity.Autolink do
            Graph.get_vertex(context.index.graph, id) do
       %{
         context
-        | names: names_in(context.index, vertex),
+        | names: lookup(context.index, vertex),
           resource: resource_of(vertex, context.lowercase?)
       }
     else
@@ -375,7 +466,7 @@ defmodule Clarity.Autolink do
       phrase = Enum.join([token | Enum.take_every(tl(run), 2)], " ")
 
       if length(run) == 2 * more and Enum.all?(Enum.take_every(run, 2), &(&1 == " ")) and
-           Map.has_key?(names, phrase),
+           named?(names, phrase),
          do: {phrase, after_run}
     end)
   end
@@ -387,9 +478,9 @@ defmodule Clarity.Autolink do
   defp owned(nil, _field, _context), do: nil
 
   defp owned(owner, field, context) do
-    case Map.get(context.names, owner) do
+    case named(context.names, owner) do
       %{__struct__: Resource, resource: resource} ->
-        Map.get(context.names, inspect(resource) <> "." <> String.trim_leading(field, ":"))
+        named(context.names, inspect(resource) <> "." <> String.trim_leading(field, ":"))
 
       _not_a_resource ->
         nil
@@ -422,7 +513,7 @@ defmodule Clarity.Autolink do
   # The vertex a mention in running text names, and how to write its link.
   @spec in_text(String.t(), map()) :: {Vertex.t(), String.t()} | nil
   defp in_text(text, context) do
-    with vertex when vertex != nil <- Map.get(context.names, text) do
+    with vertex when vertex != nil <- named(context.names, text) do
       cond do
         prose?(text) -> {vertex, text}
         context.lowercase? -> lowercase_mention(vertex, text, context)
@@ -464,9 +555,9 @@ defmodule Clarity.Autolink do
   @spec mention(String.t(), [MDEx.Document.md_node()], map(), MapSet.t()) ::
           {[MDEx.Document.md_node()], MapSet.t()}
   defp mention(text, nodes, context, linked) do
-    case Map.fetch(context.names, text) do
-      {:ok, vertex} -> link_vertex(vertex, nodes, context, linked)
-      :error -> {nodes, linked}
+    case named(context.names, text) do
+      nil -> {nodes, linked}
+      vertex -> link_vertex(vertex, nodes, context, linked)
     end
   end
 
@@ -477,14 +568,14 @@ defmodule Clarity.Autolink do
       do: {nodes, linked},
       else:
         {patch_link(context.path.(vertex), nodes, nil, Tooltip.attrs(vertex)),
-         MapSet.put(linked, vertex)}
+         MapSet.put(linked, Vertex.id(vertex))}
   end
 
   # Whether `vertex` is already linked, so its mention stays plain text,
   # unless every mention links.
   @spec linked?(Vertex.t(), map(), MapSet.t()) :: boolean()
   defp linked?(_vertex, %{every?: true}, _linked), do: false
-  defp linked?(vertex, _context, linked), do: MapSet.member?(linked, vertex)
+  defp linked?(vertex, _context, linked), do: MapSet.member?(linked, Vertex.id(vertex))
 
   # Names that read as names in running text: module-like ones, and field
   # names that look like code. Plain words, such as `status`, link only in
@@ -598,22 +689,22 @@ defmodule Clarity.Autolink do
   # relationship of the same name); then the nearest (see rank/2); then the
   # one the name names rather than pluralises (the Projects domain, not the
   # Project resource's plural).
-  @spec pick([{Vertex.t(), :name | :plural}], context()) :: Vertex.t() | nil
+  @spec pick([{candidate(), :name | :plural}], context()) :: candidate() | nil
   defp pick([], _context), do: nil
-  defp pick([{vertex, _form}], _context), do: vertex
+  defp pick([{candidate, _form}], _context), do: candidate
 
   defp pick(candidates, context) do
     candidates
     |> Enum.group_by(
-      fn {vertex, form} ->
-        rank = rank(vertex, context)
-        {rank != {0, 0}, Map.has_key?(@fields, vertex.__struct__), rank, form}
+      fn {candidate, form} ->
+        rank = rank(candidate, context)
+        {rank != {0, 0}, Map.has_key?(@fields, candidate.type), rank, form}
       end,
       &elem(&1, 0)
     )
     |> Enum.min_by(&elem(&1, 0))
     |> case do
-      {_rank, [vertex]} -> vertex
+      {_rank, [candidate]} -> candidate
       _tied -> nil
     end
   end
@@ -621,14 +712,13 @@ defmodule Clarity.Autolink do
   # How near a vertex is to the text: the text's own resource, or one of its
   # fields; then, in the text's domain and after that outside it, the fewest
   # relationships away from the text's resource (or its domain's nearest).
-  @spec rank(Vertex.t(), context()) :: {0 | 1 | 2, non_neg_integer() | :infinity}
-  defp rank(vertex, context) do
-    home = home(vertex)
+  @spec rank(candidate(), context()) :: {0 | 1 | 2, non_neg_integer() | :infinity}
+  defp rank(%{home: home, domain: domain}, context) do
     distance = if home == nil, do: :infinity, else: Map.get(context.distances, home, :infinity)
 
     cond do
       home != nil and home == context.resource -> {0, 0}
-      context.domain != nil and domain_of(vertex) == context.domain -> {1, distance}
+      context.domain != nil and domain == context.domain -> {1, distance}
       true -> {2, distance}
     end
   end

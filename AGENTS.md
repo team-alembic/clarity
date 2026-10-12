@@ -67,8 +67,8 @@ Written roll-ups of the graph, in prose — an alternative to graph navigation. 
 
 ### Core Modules
 
-- `Clarity.Server` - GenServer orchestrating introspection via PartitionSupervisor workers
-- `Clarity.Graph` - Graph structure using `:digraph`, ETS tables, and tree graphs
+- `Clarity.Server` - GenServer orchestrating introspection via PartitionSupervisor workers, in lanes (`Clarity.Server.Queue`): the project's applications first, their dependencies in the background, brought forward when an introspector names a module it waits for (`{:error, {:unmet_dependencies, modules}}`)
+- `Clarity.Graph` - Graph structure using `:digraph`, ETS tables, and tree graphs; `Graph.filter/2` returns a view sharing the graph's tables, not a copy
 - `Clarity.Graph.Filter` - Tuple-based query syntax for filtering vertices
 - `Clarity.Router` - Phoenix router macros (`import Clarity.Router`, then `clarity "/clarity"`)
 

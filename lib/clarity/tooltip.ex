@@ -19,6 +19,7 @@ defmodule Clarity.Tooltip do
 
   alias Clarity.Vertex
   alias Clarity.Vertex.HintProvider
+  alias Clarity.Vertex.ModuleProvider
   alias Clarity.Vertex.TooltipProvider
 
   @max_length 160
@@ -155,6 +156,8 @@ defmodule Clarity.Tooltip do
     end
   end
 
+  @hints Module.concat(__MODULE__, Hints)
+
   @doc """
   Returns the hint for one vertex.
 
@@ -164,6 +167,43 @@ defmodule Clarity.Tooltip do
   """
   @spec hint(Vertex.t()) :: hint()
   def hint(vertex) do
+    case :ets.whereis(@hints) do
+      :undefined -> build_hint(vertex)
+      table -> cached_hint(table, vertex)
+    end
+  end
+
+  @doc false
+  # Every link to a vertex has its hint, so a page has many, and each takes a
+  # while: they're kept, one per vertex, until the vertex or its module changes.
+  @spec create_cache() :: :ets.table()
+  def create_cache, do: :ets.new(@hints, [:named_table, :public, :set, read_concurrency: true])
+
+  @spec cached_hint(:ets.table(), Vertex.t()) :: hint()
+  defp cached_hint(table, vertex) do
+    vertex_id = Vertex.id(vertex)
+    stamp = {:erlang.phash2(vertex), module_md5(ModuleProvider.module(vertex))}
+
+    case :ets.lookup(table, vertex_id) do
+      [{^vertex_id, ^stamp, hint}] ->
+        hint
+
+      _stale ->
+        hint = build_hint(vertex)
+        :ets.insert(table, {vertex_id, stamp, hint})
+        hint
+    end
+  end
+
+  @spec module_md5(module() | nil) :: binary() | nil
+  defp module_md5(module) when is_atom(module) and module != nil do
+    if :erlang.module_loaded(module), do: module.module_info(:md5)
+  end
+
+  defp module_md5(_module), do: nil
+
+  @spec build_hint(Vertex.t()) :: hint()
+  defp build_hint(vertex) do
     vertex
     |> type_icon()
     |> Map.merge(%{title: Vertex.name(vertex), type: type_name(vertex)})

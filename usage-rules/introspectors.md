@@ -113,6 +113,9 @@ The `introspect_vertex/2` callback must return one of:
 # Dependency not yet available, retry later
 {:error, :unmet_dependencies}
 
+# The same, naming the modules whose introspection would provide it
+{:error, {:unmet_dependencies, [module, ...]}}
+
 # Other error
 {:error, term()}
 ```
@@ -221,6 +224,31 @@ end
 
 Clarity will automatically retry introspectors that return
 `:unmet_dependencies` once more vertices are available.
+
+### Naming What You Wait For
+
+Clarity introspects the project's own applications first, and their
+dependencies afterwards, in the background. So a vertex that comes
+from a dependency (an Ash type, a Spark DSL, a behaviour) may be a
+while arriving. When you know which module's introspection provides
+what you need, name it, and Clarity introspects that module (and
+lists its application's modules, if it hasn't yet) straight away:
+
+```elixir
+case Graph.get_vertex(graph, Util.id(Vertex.Ash.Type, [type])) do
+  nil -> {:error, {:unmet_dependencies, [type]}}
+  type_vertex -> {:ok, [{:edge, attribute_vertex, type_vertex, :type}]}
+end
+```
+
+A waiting task runs again once nothing it could need from the
+project is still to come and the graph has changed; if nothing more
+can change, it is dropped with a warning.
+
+To find a module's vertex, use `Clarity.Vertex.Module.lookup/2`: a
+module vertex's id includes the module's version, so it looks the
+vertex up directly, where searching the graph for it would scan
+every vertex.
 
 ## Edge Labels
 
@@ -492,9 +520,9 @@ See existing introspectors in the Clarity codebase:
 # Bad - crashes if dependency not found
 dep_vertex = Graph.get_vertex!(graph, dep_id)
 
-# Good - returns error for retry
+# Good - returns error for retry, naming the module it waits for
 case Graph.get_vertex(graph, dep_id) do
-  nil -> {:error, :unmet_dependencies}
+  nil -> {:error, {:unmet_dependencies, [dep_module]}}
   dep_vertex -> process(dep_vertex)
 end
 ```

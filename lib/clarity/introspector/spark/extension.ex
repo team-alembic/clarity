@@ -16,7 +16,7 @@ case Code.ensure_loaded(Spark) do
       @impl Clarity.Introspector
       def introspect_vertex(%Module{module: module} = module_vertex, graph) do
         if Spark.implements_behaviour?(module, Spark.Dsl.Extension) do
-          app = Application.get_application(module)
+          app = Clarity.Config.application_of(module)
 
           app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 

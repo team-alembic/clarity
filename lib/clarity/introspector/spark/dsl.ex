@@ -17,7 +17,7 @@ case Code.ensure_loaded(Spark) do
       @impl Clarity.Introspector
       def introspect_vertex(%Module{module: module} = module_vertex, graph) do
         if spark_dsl?(module) do
-          app = Application.get_application(module)
+          app = Clarity.Config.application_of(module)
 
           app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
@@ -59,11 +59,10 @@ case Code.ensure_loaded(Spark) do
               module() => Extension.t()
             }
       defp build_extension_lookup(graph, needed_extensions) do
-        graph
-        |> Clarity.Graph.vertices(
-          {:and, {:==, :vertex_type, Extension}, {:in, {:field, :extension}, needed_extensions}}
-        )
-        |> Map.new(&{&1.extension, &1})
+        for extension <- needed_extensions,
+            vertex = Clarity.Graph.get_vertex(graph, Util.id(Extension, [extension])),
+            into: %{},
+            do: {extension, vertex}
       end
 
       @spec create_extension_edges(Dsl.t(), [module()], %{module() => Extension.t()}) ::
@@ -71,15 +70,17 @@ case Code.ensure_loaded(Spark) do
       defp create_extension_edges(_dsl_vertex, [], _lookup), do: {:ok, []}
 
       defp create_extension_edges(dsl_vertex, extensions, lookup) do
-        Enum.reduce_while(extensions, {:ok, []}, fn extension, {:ok, edges} ->
-          case Map.fetch(lookup, extension) do
-            {:ok, extension_vertex} ->
-              {:cont, {:ok, [{:edge, dsl_vertex, extension_vertex, :uses_extension} | edges]}}
+        case Enum.reject(extensions, &Map.has_key?(lookup, &1)) do
+          [] ->
+            edges =
+              for extension <- Enum.reverse(extensions),
+                  do: {:edge, dsl_vertex, Map.fetch!(lookup, extension), :uses_extension}
 
-            :error ->
-              {:halt, {:error, :unmet_dependencies}}
-          end
-        end)
+            {:ok, edges}
+
+          missing ->
+            {:error, {:unmet_dependencies, missing}}
+        end
       end
     end
 

@@ -32,7 +32,7 @@ defmodule Clarity.Content.Moduledoc do
 
   @spec has_moduledoc?(module()) :: boolean()
   defp has_moduledoc?(module) do
-    case Code.fetch_docs(module) do
+    case Clarity.Docs.fetch(module) do
       {:docs_v1, _, _, "text/markdown", %{"en" => _moduledoc}, _, _} -> true
       _ -> false
     end
@@ -40,7 +40,7 @@ defmodule Clarity.Content.Moduledoc do
 
   @spec get_moduledoc(module()) :: String.t()
   defp get_moduledoc(module) do
-    case Code.fetch_docs(module) do
+    case Clarity.Docs.fetch(module) do
       {:docs_v1, _, _, "text/markdown", %{"en" => moduledoc}, _, _} -> moduledoc
       _ -> ""
     end

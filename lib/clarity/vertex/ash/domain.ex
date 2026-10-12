@@ -51,14 +51,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
           "`",
           inspect(vertex.domain),
           "`\n\n",
-          case Code.fetch_docs(vertex.domain) do
-            {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
-             _metadata, _docs} ->
-              moduledoc
-
-            _ ->
-              []
-          end
+          Clarity.Docs.moduledoc(vertex.domain) || []
         ]
       end
     end

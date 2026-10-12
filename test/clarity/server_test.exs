@@ -626,8 +626,8 @@ defmodule Clarity.ServerTest do
     end
   end
 
-  describe "Task requeue count safety" do
-    test "increments requeue count on each requeue", %{test: test} do
+  describe "Waiting tasks" do
+    test "run again, counting their attempts", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
       assert {:ok, task} = Server.pull_task(server)
@@ -640,26 +640,103 @@ defmodule Clarity.ServerTest do
       assert requeued_task.id == task.id
     end
 
-    test "drops task after 100 requeues and logs warning", %{test: test} do
+    test "are dropped once nothing more can change", %{test: test} do
       server = start_supervised!({Server, name: Module.concat(__MODULE__, test)})
 
       assert {:ok, task} = Server.pull_task(server)
-
-      Enum.each(1..100, fn _i ->
-        Server.requeue_task(server, task.id)
-        assert {:ok, _requeued_task} = Server.pull_task(server)
-      end)
+      Server.requeue_task(server, task.id)
+      assert {:ok, task} = Server.pull_task(server)
 
       log =
         capture_log(fn ->
           Server.requeue_task(server, task.id)
-          Clarity.get(server, :partial)
+
+          # Nothing else is left to run, and the graph is as it was when the
+          # task last ran.
+          assert :empty = Server.pull_task(server)
         end)
 
-      assert log =~ "Dropping task after 101 requeue attempts"
+      assert log =~ "Dropping task after 2 attempts"
       assert log =~ "Introspect Root with Application"
+      assert %Clarity{status: :done} = Clarity.get(server, :partial)
+    end
+  end
 
-      assert :empty = Server.pull_task(server)
+  describe "Lanes" do
+    setup %{test: test} do
+      server =
+        start_supervised!(
+          {Server,
+           name: Module.concat(__MODULE__, test),
+           introspectors: [Clarity.Introspector.Application, Clarity.Introspector.Module]}
+        )
+
+      {:ok, root_task} = Server.pull_task(server)
+
+      # Clarity is the project here, the others its dependencies.
+      entries =
+        Enum.flat_map([:stdlib, :kernel, :clarity], fn app ->
+          app_vertex = %Vertex.Application{app: app, description: "", version: "1.0.0"}
+          [{:vertex, app_vertex}, {:edge, root_task.vertex, app_vertex, :application}]
+        end)
+
+      Server.ack_task(server, root_task.id, entries)
+
+      %{server: server}
+    end
+
+    test "introspect the project's applications before their dependencies", %{server: server} do
+      apps = for {:ok, task} <- Enum.map(1..3, fn _ -> Server.pull_task(server) end), do: task.vertex.app
+
+      assert apps == [:clarity, :stdlib, :kernel]
+    end
+
+    test "prioritizing a dependency brings its application forward", %{server: server} do
+      kernel = %Vertex.Application{app: :kernel, description: "", version: "1.0.0"}
+
+      Server.prioritize(server, kernel)
+
+      apps = for {:ok, task} <- Enum.map(1..3, fn _ -> Server.pull_task(server) end), do: task.vertex.app
+
+      assert apps == [:clarity, :kernel, :stdlib]
+    end
+
+    test "prioritizing a project application changes nothing", %{server: server} do
+      clarity = %Vertex.Application{app: :clarity, description: "", version: "1.0.0"}
+
+      Server.prioritize(server, clarity)
+
+      apps = for {:ok, task} <- Enum.map(1..3, fn _ -> Server.pull_task(server) end), do: task.vertex.app
+
+      assert apps == [:clarity, :stdlib, :kernel]
+    end
+
+    test "prioritizing another kind of vertex changes nothing", %{server: server} do
+      Server.prioritize(server, %Vertex.Root{})
+
+      apps = for {:ok, task} <- Enum.map(1..3, fn _ -> Server.pull_task(server) end), do: task.vertex.app
+
+      assert apps == [:clarity, :stdlib, :kernel]
+    end
+
+    test "bring forward what a waiting task needs from the dependencies", %{server: server} do
+      assert {:ok, %{vertex: %{app: :clarity}} = waiting} = Server.pull_task(server)
+      Server.requeue_task(server, waiting.id, [:gen_server])
+
+      assert {:ok, %{vertex: %{app: :stdlib}, lane: :model} = stdlib_task} =
+               Server.pull_task(server)
+
+      # Once that finds the module, the waiting task runs again, ahead of the
+      # rest of the dependencies.
+      module_vertex = %Vertex.Module{module: :gen_server, version: Vertex.Module.version(:gen_server)}
+
+      Server.ack_task(server, stdlib_task.id, [
+        {:vertex, module_vertex},
+        {:edge, stdlib_task.vertex, module_vertex, :module}
+      ])
+
+      assert {:ok, %{id: id}} = Server.pull_task(server)
+      assert id == waiting.id
     end
   end
 end

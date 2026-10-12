@@ -52,4 +52,31 @@ defmodule Clarity.Vertex.ModuleTest do
       assert Vertex.HintProvider.badges(%{vertex | behaviour?: true}) == ["behaviour"]
     end
   end
+
+  describe inspect(&Module.version/1) do
+    test "is the module's vsn attribute" do
+      assert Module.version(Enum) == hd(Enum.module_info(:attributes)[:vsn])
+    end
+  end
+
+  describe inspect(&Module.lookup/2) do
+    test "finds the vertex for the module's current version" do
+      graph = Clarity.Graph.new()
+      vertex = %Module{module: Enum, version: Module.version(Enum)}
+      Clarity.Graph.add_vertex(graph, vertex, %Vertex.Root{})
+
+      assert Module.lookup(graph, Enum) == vertex
+    end
+
+    test "is nil when the graph has another version" do
+      graph = Clarity.Graph.new()
+      Clarity.Graph.add_vertex(graph, %Module{module: Enum, version: :unknown}, %Vertex.Root{})
+
+      assert Module.lookup(graph, Enum) == nil
+    end
+
+    test "is nil for a module that can't be loaded" do
+      assert Module.lookup(Clarity.Graph.new(), DoesNotExist.Anywhere) == nil
+    end
+  end
 end

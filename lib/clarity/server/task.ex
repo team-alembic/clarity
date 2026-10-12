@@ -1,11 +1,14 @@
 defmodule Clarity.Server.Task do
   @moduledoc false
 
+  alias Clarity.Server.Queue
+
   @type t :: %__MODULE__{
           id: reference(),
           vertex: Clarity.Vertex.t(),
           introspector: module(),
           graph: Clarity.Graph.t(),
+          lane: Queue.lane(),
           requeue_count: non_neg_integer()
         }
 
@@ -14,19 +17,23 @@ defmodule Clarity.Server.Task do
     :vertex,
     :introspector,
     :graph,
+    lane: :model,
     requeue_count: 0
   ]
 
   @doc """
-  Creates a new introspection task for a vertex.
+  Creates a new introspection task for a vertex, to run in `lane`.
   """
   @spec new_introspection(Clarity.Vertex.t(), module(), Clarity.Graph.t()) :: t()
-  def new_introspection(vertex, introspector, graph) do
+  @spec new_introspection(Clarity.Vertex.t(), module(), Clarity.Graph.t(), Queue.lane()) ::
+          t()
+  def new_introspection(vertex, introspector, graph, lane \\ :model) do
     %__MODULE__{
       id: make_ref(),
       vertex: vertex,
       introspector: introspector,
-      graph: graph
+      graph: graph,
+      lane: lane
     }
   end
 

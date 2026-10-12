@@ -38,7 +38,7 @@ defmodule Clarity.SourceLocation do
   @doc """
   Creates a SourceLocation from a module and annotation.
 
-  Uses `Application.get_application/1` to determine the application
+  Uses `Clarity.Config.application_of/1` to determine the application
   the module belongs to.
 
   ## Examples
@@ -50,7 +50,7 @@ defmodule Clarity.SourceLocation do
   """
   @spec from_module_anno(module(), :erl_anno.anno()) :: t()
   def from_module_anno(module, anno) do
-    application = Application.get_application(module)
+    application = Clarity.Config.application_of(module)
 
     %__MODULE__{
       application: application,
@@ -96,7 +96,7 @@ defmodule Clarity.SourceLocation do
   """
   @spec from_module(module()) :: t()
   def from_module(module) do
-    application = Application.get_application(module)
+    application = Clarity.Config.application_of(module)
     anno = create_anno_from_module(module)
 
     %__MODULE__{
@@ -149,7 +149,7 @@ defmodule Clarity.SourceLocation do
     """
     @spec from_spark_entity(module(), Entity.entity()) :: t()
     def from_spark_entity(module, %{} = entity) do
-      application = Application.get_application(module)
+      application = Clarity.Config.application_of(module)
       anno = Entity.anno(entity) || create_anno_from_module(module)
 
       %__MODULE__{

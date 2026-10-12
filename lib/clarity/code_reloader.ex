@@ -40,6 +40,10 @@ defmodule Clarity.CodeReloader do
       _pid ->
         {app, modules_diff} = extract_app_and_modules_diff(listener_update)
 
+        Clarity.Protocols.consolidate_again(
+          modules_diff.changed ++ modules_diff.added ++ modules_diff.removed
+        )
+
         if Config.should_process_app?(app) do
           Clarity.introspect(Clarity.Server, {:incremental, app, modules_diff})
         end

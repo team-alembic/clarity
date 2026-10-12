@@ -1356,4 +1356,252 @@ defmodule Clarity.GraphTest do
       assert Root in types
     end
   end
+
+  describe "views" do
+    # root -> a -> b -> c, with a -> d, b -> d (dependency) and the view
+    # holding root, a and b.
+    setup do
+      graph = Graph.new()
+      root = %Root{}
+      a = %Application{app: :a, description: "", version: "1"}
+      b = %Module{module: ViewB}
+      c = %Module{module: ViewC}
+      d = %Module{module: ViewD}
+
+      Graph.add_vertex(graph, a, root)
+      Graph.add_vertex(graph, b, a)
+      Graph.add_vertex(graph, c, b)
+      Graph.add_vertex(graph, d, a)
+
+      Graph.add_edge(graph, root, a, :application)
+      Graph.add_edge(graph, a, b, :module)
+      Graph.add_edge(graph, b, c, :module)
+      Graph.add_edge(graph, a, d, :module)
+      Graph.add_edge(graph, b, d, :dependency)
+
+      view = Graph.filter(graph, {:in, :vertex_id, Enum.map([root, a, b], &Vertex.id/1)})
+
+      %{graph: graph, view: view, root: root, a: a, b: b, c: c, d: d}
+    end
+
+    @spec edge_pairs(Graph.t()) :: MapSet.t({term(), term(), term()})
+    defp edge_pairs(graph) do
+      graph
+      |> Graph.edges()
+      |> Enum.map(&Graph.edge(graph, &1))
+      |> MapSet.new(fn {_id, from, to, label} -> {from, to, label} end)
+    end
+
+    test "is a view of the full graph", %{view: view} do
+      assert %Graph{subgraph: true, view: %MapSet{}} = view
+    end
+
+    test "has only its own vertices", %{view: view, root: root, a: a, b: b} do
+      assert Enum.sort_by(Graph.vertices(view), &Vertex.id/1) == Enum.sort_by([root, a, b], &Vertex.id/1)
+      assert Graph.vertices(view, {:==, :vertex_type, Module}) == [b]
+      assert Graph.vertex_count(view) == 3
+      assert Graph.available_vertex_types(view) == [Application, Module, Root]
+    end
+
+    test "has only the edges between its vertices", %{graph: graph, view: view, root: root, a: a, b: b} do
+      assert edge_pairs(view) == MapSet.new([{root, a, :application}, {a, b, :module}])
+      assert MapSet.size(edge_pairs(graph)) == 5
+    end
+
+    test "out_edges/2 and in_edges/2 leave out edges to vertices outside it", %{
+      graph: graph,
+      view: view,
+      a: a,
+      b: b,
+      c: c
+    } do
+      assert length(Graph.out_edges(graph, b)) == 2
+      assert Graph.out_edges(view, b) == []
+      assert length(Graph.out_edges(view, a)) == 1
+      assert Graph.in_edges(graph, c) != []
+      assert Graph.in_edges(view, c) == []
+      assert length(Graph.in_edges(view, b)) == 1
+    end
+
+    test "edge/2 is false for an edge to a vertex outside it", %{graph: graph, view: view, a: a, b: b} do
+      outside = Graph.out_edges(graph, b)
+      assert length(outside) == 2
+
+      for edge_id <- outside do
+        assert {^edge_id, ^b, _to, _label} = Graph.edge(graph, edge_id)
+        refute Graph.edge(view, edge_id)
+      end
+
+      [inside] = Graph.out_edges(view, a)
+      assert {^inside, ^a, ^b, :module} = Graph.edge(view, inside)
+    end
+
+    test "out_neighbors/2 and in_neighbors/2 are restricted", %{graph: graph, view: view, a: a, b: b, c: c} do
+      assert Enum.sort_by(Graph.out_neighbors(graph, a), &Vertex.id/1) ==
+               Enum.sort_by([b, %Module{module: ViewD}], &Vertex.id/1)
+
+      assert Graph.out_neighbors(view, a) == [b]
+      assert Graph.out_neighbors(view, b) == []
+      assert Graph.in_neighbors(view, b) == [a]
+      assert Graph.in_neighbors(view, c) == []
+    end
+
+    test "degrees count only edges within it", %{graph: graph, view: view, a: a, b: b} do
+      assert Graph.out_degree(graph, a) == 2
+      assert Graph.out_degree(view, a) == 1
+      assert Graph.out_degree(graph, a, :module) == 2
+      assert Graph.out_degree(view, a, :module) == 1
+      assert Graph.out_degree(graph, b) == 2
+      assert Graph.out_degree(view, b) == 0
+      assert Graph.out_degree(view, b, :module) == 0
+      assert Graph.in_degree(view, b) == 1
+      assert Graph.in_degree(view, b, :module) == 1
+      assert Graph.in_degree(view, b, :dependency) == 0
+    end
+
+    test "navigation_children/2 and tree_child_ids/2 leave out children outside it", %{
+      graph: graph,
+      view: view,
+      a: a,
+      b: b
+    } do
+      assert graph |> Graph.navigation_children(a) |> Map.fetch!(:module) |> length() == 2
+      assert Graph.navigation_children(view, a) == %{module: [b]}
+      assert Graph.navigation_children(view, b) == %{}
+
+      assert length(Graph.tree_child_ids(graph, Vertex.id(a))) == 2
+      assert Graph.tree_child_ids(view, Vertex.id(a)) == [Vertex.id(b)]
+      assert Graph.tree_child_ids(view, Vertex.id(b)) == []
+    end
+
+    test "breadcrumbs/2 is the path, or false when an ancestor is outside it", %{
+      graph: graph,
+      root: root,
+      a: a,
+      b: b,
+      c: c
+    } do
+      full_view = Graph.filter(graph, true)
+      assert Graph.breadcrumbs(full_view, c) == [root, a, b, c]
+
+      without_a = Graph.filter(graph, {:in, :vertex_id, Enum.map([root, b, c], &Vertex.id/1)})
+      assert Graph.breadcrumbs(without_a, c) == false
+      assert Graph.breadcrumbs(graph, c) == [root, a, b, c]
+    end
+
+    test "get_short_path/3 only goes through its vertices", %{graph: graph, view: view, root: root, a: a, b: b, c: c} do
+      assert Graph.get_short_path(view, root, b) == [root, a, b]
+      assert Graph.get_short_path(graph, root, c) == [root, a, b, c]
+      refute Graph.get_short_path(view, root, c)
+
+      bypass = Graph.filter(graph, {:in, :vertex_id, Enum.map([root, a, c], &Vertex.id/1)})
+      refute Graph.get_short_path(bypass, root, c)
+    end
+
+    test "filtering a view gives a sub-view", %{view: view, root: root, a: a} do
+      sub = Graph.filter(view, {:in, :vertex_id, Enum.map([root, a], &Vertex.id/1)})
+
+      assert Graph.vertex_count(sub) == 2
+      assert edge_pairs(sub) == MapSet.new([{root, a, :application}])
+    end
+
+    test "delete/1 leaves the full graph intact", %{graph: graph, view: view, a: a} do
+      assert Graph.delete(view) == :ok
+      assert Graph.vertex_count(graph) == 5
+      assert Graph.get_vertex(graph, Vertex.id(a)) == a
+      assert length(Graph.out_edges(graph, a)) == 2
+    end
+
+    test "handover/2 works", %{view: view} do
+      pid = spawn_link(fn -> Process.sleep(:infinity) end)
+
+      assert {:ok, %Graph{owner: ^pid} = handed} = Graph.handover(view, pid)
+      assert Graph.vertex_count(handed) == 3
+    end
+
+    test "does not see vertices added to the full graph afterwards", %{graph: graph, view: view, a: a} do
+      later = %Module{module: ViewLater}
+      Graph.add_vertex(graph, later, a)
+      Graph.add_edge(graph, a, later, :module)
+
+      assert Graph.vertex_count(graph) == 6
+      assert Graph.vertex_count(view) == 3
+      refute later in Graph.vertices(view)
+      refute Graph.vertex_id?(view, Vertex.id(later))
+      assert Graph.out_degree(view, a) == 1
+    end
+
+    test "sees edges added afterwards between its vertices", %{graph: graph, view: view, root: root, b: b} do
+      assert Graph.out_degree(view, root) == 1
+
+      Graph.add_edge(graph, root, b, :shortcut)
+
+      assert Graph.out_degree(view, root) == 2
+      assert Graph.out_degree(view, root, :shortcut) == 1
+      assert Graph.in_degree(view, b, :shortcut) == 1
+    end
+  end
+
+  describe inspect(&Graph.version/1) do
+    test "changes when the graph is updated" do
+      graph = Graph.new()
+      before = Graph.version(graph)
+
+      Graph.add_vertex(graph, %Module{module: VersionA}, %Root{})
+
+      refute Graph.version(graph) == before
+    end
+
+    test "differs between views of different vertex sets" do
+      graph = Graph.new()
+      a = %Module{module: VersionA}
+      b = %Module{module: VersionB}
+      Graph.add_vertex(graph, a, %Root{})
+      Graph.add_vertex(graph, b, %Root{})
+
+      view_a = Graph.filter(graph, {:in, :vertex_id, [Vertex.id(a)]})
+      view_b = Graph.filter(graph, {:in, :vertex_id, [Vertex.id(b)]})
+
+      refute Graph.version(view_a) == Graph.version(view_b)
+      refute Graph.version(view_a) == Graph.version(graph)
+      assert Graph.version(view_a) == Graph.version(Graph.filter(graph, {:in, :vertex_id, [Vertex.id(a)]}))
+    end
+  end
+
+  describe inspect(&Graph.vertex_id?/2) do
+    test "is whether the graph or view has the vertex" do
+      graph = Graph.new()
+      a = %Module{module: IdA}
+      b = %Module{module: IdB}
+      Graph.add_vertex(graph, a, %Root{})
+      Graph.add_vertex(graph, b, %Root{})
+      view = Graph.filter(graph, {:in, :vertex_id, [Vertex.id(a)]})
+
+      assert Graph.vertex_id?(graph, Vertex.id(a))
+      assert Graph.vertex_id?(graph, Vertex.id(b))
+      refute Graph.vertex_id?(graph, "nope")
+      assert Graph.vertex_id?(view, Vertex.id(a))
+      refute Graph.vertex_id?(view, Vertex.id(b))
+    end
+  end
+
+  describe inspect(&Graph.neighbour_ids/3) do
+    test "lists neighbour ids, within the view for a view" do
+      graph = Graph.new()
+      root = %Root{}
+      a = %Module{module: NeighbourA}
+      b = %Module{module: NeighbourB}
+      Graph.add_vertex(graph, a, root)
+      Graph.add_vertex(graph, b, a)
+      Graph.add_edge(graph, root, a, :module)
+      Graph.add_edge(graph, a, b, :module)
+      view = Graph.filter(graph, {:in, :vertex_id, [Vertex.id(root), Vertex.id(a)]})
+
+      assert Graph.neighbour_ids(graph, Vertex.id(a), :out) == [Vertex.id(b)]
+      assert Graph.neighbour_ids(graph, Vertex.id(a), :in) == [Vertex.id(root)]
+      assert Graph.neighbour_ids(view, Vertex.id(a), :out) == []
+      assert Graph.neighbour_ids(view, Vertex.id(a), :in) == [Vertex.id(root)]
+      assert Graph.neighbour_ids(view, Vertex.id(b), :in) == []
+    end
+  end
 end

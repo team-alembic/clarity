@@ -11,14 +11,14 @@ defmodule Clarity.Graph.Util do
 
   ## Parameters
 
-    * `original_graph` – the `:digraph` you want to sample from.
+    * `original_graph` – the `Clarity.Graph` (or view of one) to sample from.
     * `root_vertex` – where traversal starts.
     * `max_outgoing_steps` – how far to follow *outgoing* edges.
     * `max_incoming_steps` – how far to follow *incoming* edges.
 
   """
   @spec vertices_within_steps(
-          original_graph :: :digraph.graph(),
+          original_graph :: Clarity.Graph.t(),
           root_vertex :: :digraph.vertex(),
           max_outgoing_steps :: non_neg_integer(),
           max_incoming_steps :: non_neg_integer()
@@ -31,7 +31,7 @@ defmodule Clarity.Graph.Util do
         MapSet.new([root_vertex]),
         root_vertex,
         max_outgoing_steps,
-        &:digraph.out_neighbours/2
+        &Clarity.Graph.neighbour_ids(&1, &2, :out)
       )
 
     bfs_direction(
@@ -39,16 +39,16 @@ defmodule Clarity.Graph.Util do
       visited_vertices,
       root_vertex,
       max_incoming_steps,
-      &:digraph.in_neighbours/2
+      &Clarity.Graph.neighbour_ids(&1, &2, :in)
     )
   end
 
   @spec bfs_direction(
-          original_graph :: :digraph.graph(),
+          original_graph :: Clarity.Graph.t(),
           visited :: MapSet.t(:digraph.vertex()),
           start_vertex :: :digraph.vertex(),
           max_steps :: non_neg_integer(),
-          neighbours_fun :: (:digraph.graph(), :digraph.vertex() -> [:digraph.vertex()])
+          neighbours_fun :: (Clarity.Graph.t(), :digraph.vertex() -> [:digraph.vertex()])
         ) :: MapSet.t(:digraph.vertex())
   defp bfs_direction(_original_graph, visited, _start_vertex, 0, _), do: visited
 
@@ -59,10 +59,10 @@ defmodule Clarity.Graph.Util do
 
   @spec bfs_loop(
           queue :: :queue.queue(),
-          original_graph :: :digraph.graph(),
+          original_graph :: Clarity.Graph.t(),
           visited :: MapSet.t(:digraph.vertex()),
           max_steps :: non_neg_integer(),
-          neighbours_fun :: (:digraph.graph(), :digraph.vertex() -> [:digraph.vertex()])
+          neighbours_fun :: (Clarity.Graph.t(), :digraph.vertex() -> [:digraph.vertex()])
         ) :: MapSet.t(:digraph.vertex())
   defp bfs_loop(queue, original_graph, visited, max_steps, neighbours_fun) do
     case :queue.out(queue) do
@@ -97,10 +97,10 @@ defmodule Clarity.Graph.Util do
   @spec expand(
           vertex :: :digraph.vertex(),
           depth :: non_neg_integer(),
-          original_graph :: :digraph.graph(),
+          original_graph :: Clarity.Graph.t(),
           visited :: MapSet.t(:digraph.vertex()),
           queue :: :queue.queue(),
-          neighbours_fun :: (:digraph.graph(), :digraph.vertex() -> [:digraph.vertex()])
+          neighbours_fun :: (Clarity.Graph.t(), :digraph.vertex() -> [:digraph.vertex()])
         ) :: {:queue.queue(), MapSet.t(:digraph.vertex())}
   defp expand(vertex, depth, original_graph, visited, queue, neighbours_fun) do
     neighbours = neighbours_fun.(original_graph, vertex)

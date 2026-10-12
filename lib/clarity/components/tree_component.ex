@@ -48,11 +48,28 @@ defmodule Clarity.TreeComponent do
     socket = assign(socket, assigns)
 
     visible_ids = compute_visible_ids(socket.assigns)
-    status_index = Index.build(socket.assigns.graph, socket.assigns.lens)
+    {status_index_key, status_index} = status_index(socket.assigns)
     providers = Content.providers_for_lens(socket.assigns.lens)
 
     {:ok,
-     assign(socket, visible_ids: visible_ids, status_index: status_index, providers: providers)}
+     assign(socket,
+       visible_ids: visible_ids,
+       status_index: status_index,
+       status_index_key: status_index_key,
+       providers: providers
+     )}
+  end
+
+  # The index covers the whole tree, so is built again only when the graph
+  # shows something else, or the lens changes.
+  @spec status_index(map()) :: {term(), Index.t()}
+  defp status_index(assigns) do
+    key = {Graph.version(assigns.graph), assigns.lens.id}
+
+    case assigns do
+      %{status_index_key: ^key, status_index: index} -> {key, index}
+      _assigns -> {key, Index.build(assigns.graph, assigns.lens)}
+    end
   end
 
   @impl Phoenix.LiveComponent
@@ -98,7 +115,7 @@ defmodule Clarity.TreeComponent do
       |> Enum.flat_map(fn [parent, child] ->
         child_id = Vertex.id(child)
 
-        for {label, children} <- Graph.navigation_children(graph, parent),
+        for {label, children} <- Graph.tree_groups(graph, parent),
             Enum.any?(children, &(Vertex.id(&1) == child_id)),
             do: group_id(parent, label)
       end)
@@ -371,21 +388,35 @@ defmodule Clarity.TreeComponent do
     # An open current vertex has its own guide active instead (see current?/2).
     active_is_open? = open?(active_vertex, visible_ids) and has_children?(graph, active_vertex)
 
-    groups = graph |> Graph.navigation_children(vertex) |> Enum.sort_by(&group_order/1)
+    groups =
+      graph
+      |> Graph.tree_groups(vertex)
+      |> Map.delete(:content)
+      |> Enum.sort_by(&group_order/1)
 
-    for {label, children} <- groups, label != :content do
+    lone? = match?([_group], groups)
+
+    for {label, children} <- groups do
       id = group_id(vertex, label)
       long? = long_group?(children)
+      open? = group_open?(id, long?, collapsed, visible_ids)
+      # A closed group's items aren't rendered (a lone short group's always
+      # are; see render_vertex.html.heex), so aren't named or sorted.
+      shown? = open? or (lone? and not long?)
 
       %{
         id: id,
         label: label,
         count: length(children),
         long?: long?,
-        children: sort_by_label(Enum.zip(children, Name.display_all(children, name_style))),
-        open?: group_open?(id, long?, collapsed, visible_ids),
+        children:
+          if(shown?,
+            do: sort_by_label(Enum.zip(children, Name.display_all(children, name_style))),
+            else: []
+          ),
+        open?: open?,
         active?: not active_is_open? and Enum.any?(children, &(Vertex.id(&1) == active_id)),
-        any_has_children?: Enum.any?(children, &has_children?(graph, &1))
+        any_has_children?: shown? and Enum.any?(children, &has_children?(graph, &1))
       }
     end
   end
@@ -431,8 +462,7 @@ defmodule Clarity.TreeComponent do
 
   @spec has_children?(Graph.t(), Vertex.t()) :: boolean()
   defp has_children?(graph, vertex) do
-    children = Graph.navigation_children(graph, vertex)
-    Enum.any?(children, fn {label, vertices} -> label != :content and vertices != [] end)
+    graph |> Graph.tree_labels(vertex) |> Enum.any?(&(&1 != :content))
   end
 
   @spec open?(Vertex.t(), MapSet.t()) :: boolean()

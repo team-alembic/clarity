@@ -64,8 +64,8 @@ defmodule Clarity.Test.MockClarityServer do
     {:noreply, state}
   end
 
-  def handle_cast({:requeue_task, task_id}, state) do
-    send(state.test_pid, {:requeue_task, task_id})
+  def handle_cast({:requeue_task, task_id, needs}, state) do
+    send(state.test_pid, {:requeue_task, task_id, needs})
     {:noreply, state}
   end
 

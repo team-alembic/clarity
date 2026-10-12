@@ -69,7 +69,14 @@ defmodule Clarity.Introspector do
           | {:edge, Vertex.t(), Vertex.t(), term()}
           | {:purge, Vertex.t()}
 
-  @type result() :: {:ok, [entry()]} | {:error, :unmet_dependencies | term()}
+  @typedoc """
+  What `c:introspect_vertex/2` returns: entries to add to the graph, or
+  `{:error, :unmet_dependencies}` (with the modules waited for, if it can say)
+  when something it needs isn't in the graph yet, or another error.
+  """
+  @type result() ::
+          {:ok, [entry()]}
+          | {:error, :unmet_dependencies | {:unmet_dependencies, [module()]} | term()}
 
   @doc """
   Returns the list of vertex types this introspector can process.
@@ -92,9 +99,16 @@ defmodule Clarity.Introspector do
 
   If the introspector cannot run due to missing dependencies in the graph
   (such as an Ash resource referencing a domain that hasn't been introspected
-  yet), it should return `:missing_dependencies`. The worker will re-queue
-  the task to be retried later, allowing other introspectors to run first
-  and potentially satisfy the dependencies.
+  yet), it should return `{:error, :unmet_dependencies}`. The task is retried
+  once the graph has more in it, allowing other introspectors to run first and
+  potentially satisfy the dependencies.
+
+  Better, it can return `{:error, {:unmet_dependencies, modules}}`, naming the
+  modules whose introspection would satisfy them. The project's own
+  applications are introspected before their dependencies, which follow in the
+  background, so a module from a dependency (an Ash type, a Spark DSL, a
+  behaviour) may be a while coming unless something asks for it: naming it
+  has it introspected straight away.
 
   If an unexpected error occurs, return `{:error, reason}`. The worker will
   log the error and acknowledge the task to prevent infinite retries.

@@ -44,7 +44,7 @@ case Code.ensure_loaded(Ash) do
            ]}
         else
           {:ash_vertex, nil} -> {:ok, []}
-          {:error, :unmet_dependencies} -> {:error, :unmet_dependencies}
+          {:error, {:unmet_dependencies, _modules}} = error -> error
         end
       end
 
@@ -98,16 +98,16 @@ case Code.ensure_loaded(Ash) do
       defp create_ash_vertex(_entity, _resource), do: nil
 
       @spec fetch_resource_vertex(Graph.t(), module()) ::
-              {:ok, Resource.t()} | {:error, :unmet_dependencies}
+              {:ok, Resource.t()} | {:error, {:unmet_dependencies, [module()]}}
       defp fetch_resource_vertex(graph, module) do
         case Graph.get_vertex(graph, Util.id(Resource, [module])) do
-          nil -> {:error, :unmet_dependencies}
+          nil -> {:error, {:unmet_dependencies, [module]}}
           vertex -> {:ok, vertex}
         end
       end
 
       @spec add_relationship_edges(struct(), Clarity.Vertex.t(), Graph.t()) ::
-              {:ok, list()} | {:error, :unmet_dependencies}
+              {:ok, list()} | {:error, {:unmet_dependencies, [module()]}}
       defp add_relationship_edges(%HasOne{} = entity, ash_vertex, graph),
         do: add_destination_edge(entity, ash_vertex, graph)
 
@@ -123,14 +123,10 @@ case Code.ensure_loaded(Ash) do
       defp add_relationship_edges(_entity, _ash_vertex, _graph), do: {:ok, []}
 
       @spec add_destination_edge(struct(), Relationship.t(), Graph.t()) ::
-              {:ok, list()} | {:error, :unmet_dependencies}
+              {:ok, list()} | {:error, {:unmet_dependencies, [module()]}}
       defp add_destination_edge(entity, ash_vertex, graph) do
-        case fetch_resource_vertex(graph, entity.destination) do
-          {:ok, destination_vertex} ->
-            {:ok, [{:edge, ash_vertex, destination_vertex, :destination}]}
-
-          {:error, :unmet_dependencies} ->
-            {:error, :unmet_dependencies}
+        with {:ok, destination_vertex} <- fetch_resource_vertex(graph, entity.destination) do
+          {:ok, [{:edge, ash_vertex, destination_vertex, :destination}]}
         end
       end
 

@@ -106,6 +106,11 @@ defmodule Clarity.Server.Worker do
 
         Clarity.Server.requeue_task(clarity_server, task.id)
 
+      {:error, {:unmet_dependencies, needs}} when is_list(needs) ->
+        report_result.(:unmet_dependencies)
+
+        Clarity.Server.requeue_task(clarity_server, task.id, needs)
+
       {:error, reason} = error ->
         {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
         report_exception.(:error, reason, stacktrace)

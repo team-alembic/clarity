@@ -24,6 +24,14 @@ defmodule Clarity.Config do
 
   This affects which application vertices are created and which code reload events are processed.
 
+  ### Introspection Order
+
+  Clarity introspects the project's own applications first (see
+  `project_applications/0`), so their Ash domains, resources and the like
+  appear soon after it starts, and then their dependencies, in the
+  background. A dependency comes sooner when an introspector needs one of its
+  modules (say, an Ash type or a Spark DSL), or when someone navigates to it.
+
   ### Editor Configuration (`:editor`)
 
   Controls how files are opened from Clarity. Supports both local editor commands and URL mode:
@@ -181,9 +189,90 @@ defmodule Clarity.Config do
   """
   @spec should_process_module?(module()) :: boolean()
   def should_process_module?(module) do
-    case Application.get_application(module) do
+    case application_of(module) do
       nil -> false
       app -> should_process_app?(app)
+    end
+  end
+
+  @doc """
+  Returns the applications of the project Clarity runs in, which it
+  introspects before their dependencies, or `:all` when it can't tell (in a
+  release, say, without Mix).
+
+  They are the project's own (each of an umbrella's) and those of its path
+  dependencies: the code being worked on, rather than packages fetched into
+  `deps`.
+  """
+  @spec project_applications() :: MapSet.t(Application.app()) | :all
+  def project_applications do
+    if Code.ensure_loaded?(Mix.Project) and Mix.Project.get() != nil do
+      deps_path = Path.expand(Mix.Project.deps_path())
+
+      path_deps =
+        for {app, path} <- Mix.Project.deps_paths(),
+            not String.starts_with?(Path.expand(path), deps_path <> "/"),
+            do: app
+
+      own = Mix.Project.config()[:app] |> List.wrap() |> Enum.reject(&is_nil/1)
+      umbrella = Map.keys(Mix.Project.apps_paths() || %{})
+
+      MapSet.new(own ++ umbrella ++ path_deps)
+    else
+      :all
+    end
+  end
+
+  @module_applications Module.concat(__MODULE__, ModuleApplications)
+
+  @doc """
+  Returns the application `module` belongs to, like `Application.get_application/1`.
+
+  That searches every loaded application's modules each time, which adds up
+  over thousands of modules, so the answers are kept: the first module it
+  hasn't seen has it note the application of every loaded module.
+  `forget_module_applications/0` starts over, for when modules are compiled.
+  """
+  @spec application_of(module()) :: Application.app() | nil
+  def application_of(module) do
+    case :ets.whereis(@module_applications) do
+      :undefined -> Application.get_application(module)
+      table -> cached_application_of(table, module)
+    end
+  end
+
+  @doc false
+  @spec create_module_application_cache() :: :ets.table()
+  def create_module_application_cache do
+    :ets.new(@module_applications, [:named_table, :public, :set, read_concurrency: true])
+  end
+
+  @doc false
+  @spec forget_module_applications() :: :ok
+  def forget_module_applications do
+    if :ets.whereis(@module_applications) != :undefined,
+      do: :ets.delete_all_objects(@module_applications)
+
+    :ok
+  end
+
+  @spec cached_application_of(:ets.table(), module()) :: Application.app() | nil
+  defp cached_application_of(table, module) do
+    case :ets.lookup(table, module) do
+      [{^module, app}] ->
+        app
+
+      [] ->
+        entries =
+          for {app, _description, _vsn} <- Application.loaded_applications(),
+              app_module <- Application.spec(app, :modules) || [],
+              do: {app_module, app}
+
+        :ets.insert(table, entries)
+        # Nor is it asked again, until modules are compiled.
+        if :ets.insert_new(table, {module, nil}),
+          do: nil,
+          else: :ets.lookup_element(table, module, 2)
     end
   end
 

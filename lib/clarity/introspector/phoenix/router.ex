@@ -16,7 +16,7 @@ case Code.ensure_loaded(Phoenix.Router) do
       def introspect_vertex(%Vertex.Module{module: module} = module_vertex, graph) do
         if router?(module) do
           router_vertex = %RouterVertex{router: module}
-          app = Application.get_application(module)
+          app = Clarity.Config.application_of(module)
 
           app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 

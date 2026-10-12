@@ -22,7 +22,7 @@ case Code.ensure_loaded(Spark) do
           dsl_base ->
             case find_dsl_vertex(graph, dsl_base) do
               nil ->
-                {:error, :unmet_dependencies}
+                {:error, {:unmet_dependencies, [dsl_base]}}
 
               dsl_vertex ->
                 config = module.spark_dsl_config()

@@ -3,8 +3,10 @@ defmodule Clarity.Vertex.Module do
   Vertex implementation for Elixir modules.
   """
 
+  alias Clarity.Graph
   alias Clarity.SourceLocation
   alias Clarity.Vertex.HintProvider
+  alias Clarity.Vertex.Util
 
   @type t() :: %__MODULE__{
           module: module(),
@@ -14,9 +16,30 @@ defmodule Clarity.Vertex.Module do
   @enforce_keys [:module]
   defstruct [:module, version: :unknown, behaviour?: false]
 
-  defimpl Clarity.Vertex do
-    alias Clarity.Vertex.Util
+  @doc """
+  Returns the vertex in `graph` for `module` as it is loaded now, or `nil`.
 
+  A vertex's id includes its module's version, so this looks it up directly
+  rather than searching the graph.
+  """
+  @spec lookup(Graph.t(), module()) :: t() | nil
+  def lookup(graph, module) do
+    if Code.ensure_loaded?(module),
+      do: Graph.get_vertex(graph, Util.id(__MODULE__, [module, version(module)]))
+  end
+
+  @doc """
+  Returns the version of a loaded `module` (its `vsn` attribute).
+  """
+  @spec version(module()) :: :unknown | integer()
+  def version(module) do
+    case module.module_info(:attributes)[:vsn] do
+      [version] -> version
+      _none -> :unknown
+    end
+  end
+
+  defimpl Clarity.Vertex do
     @impl Clarity.Vertex
     def id(%@for{module: module, version: version}) do
       Util.id(@for, [module, version])
@@ -53,13 +76,9 @@ defmodule Clarity.Vertex.Module do
         "`",
         inspect(module),
         "`",
-        case Code.fetch_docs(module) do
-          {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
-           _metadata, _docs} ->
-            ["\n\n", moduledoc]
-
-          _ ->
-            []
+        case Clarity.Docs.moduledoc(module) do
+          nil -> []
+          moduledoc -> ["\n\n", moduledoc]
         end
       ]
     end

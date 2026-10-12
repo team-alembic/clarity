@@ -19,7 +19,7 @@ case Code.ensure_loaded(Ash) do
       @impl Clarity.Introspector
       def introspect_vertex(%Module{module: module} = module_vertex, graph) do
         if Spark.implements_behaviour?(module, Ash.Domain) do
-          app = Application.get_application(module)
+          app = Clarity.Config.application_of(module)
 
           app_vertex = Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 

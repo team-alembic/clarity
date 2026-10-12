@@ -12,7 +12,7 @@ defmodule Clarity.Introspector.Ash.DataLayerTest do
     test "creates data layer vertices for resource vertices" do
       graph = Clarity.Graph.new()
 
-      module_vertex = %Vertex.Module{module: Ets}
+      module_vertex = %Vertex.Module{module: Ets, version: Vertex.Module.version(Ets)}
       resource_vertex = %Vertex.Ash.Resource{resource: User}
 
       Clarity.Graph.add_vertex(graph, module_vertex, %Root{})

@@ -162,7 +162,7 @@ defmodule Clarity.Components.MarkdownComponent do
 
     Autolink.link(
       document,
-      Autolink.names_in(index, vertex),
+      Autolink.lookup(index, vertex),
       path_fn(prefix, lens),
       [vertex: vertex, index: index] ++ linking
     )

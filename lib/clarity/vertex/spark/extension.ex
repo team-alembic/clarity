@@ -50,14 +50,7 @@ with {:module, Spark} <- Code.ensure_loaded(Spark) do
           "`",
           inspect(vertex.extension),
           "`\n\n",
-          case Code.fetch_docs(vertex.extension) do
-            {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => moduledoc},
-             _metadata, _docs} ->
-              moduledoc
-
-            _ ->
-              []
-          end
+          Clarity.Docs.moduledoc(vertex.extension) || []
         ]
       end
     end

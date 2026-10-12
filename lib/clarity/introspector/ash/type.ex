@@ -20,7 +20,7 @@ case Code.ensure_loaded(Ash) do
       @impl Clarity.Introspector
       def introspect_vertex(%Module{module: module} = module_vertex, graph) do
         if Spark.implements_behaviour?(module, Ash.Type) do
-          app = Application.get_application(module)
+          app = Config.application_of(module)
 
           app_vertex = Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))
 
@@ -63,7 +63,7 @@ case Code.ensure_loaded(Ash) do
 
         if Config.should_process_module?(simplified_type) do
           case Clarity.Graph.get_vertex(graph, Util.id(Type, [simplified_type])) do
-            nil -> {:error, :unmet_dependencies}
+            nil -> {:error, {:unmet_dependencies, [simplified_type]}}
             vertex -> {:ok, [{:edge, field_vertex, vertex, :type}]}
           end
         else

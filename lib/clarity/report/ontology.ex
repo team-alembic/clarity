@@ -686,7 +686,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     # The first paragraph of the resource's moduledoc, as a one-line summary.
     @spec moduledoc(module()) :: String.t() | nil
     defp moduledoc(resource) do
-      case Code.fetch_docs(resource) do
+      case Clarity.Docs.fetch(resource) do
         {:docs_v1, _annotation, _beam_language, "text/markdown", %{"en" => doc}, _metadata, _docs} ->
           doc
           |> String.split("\n\n")

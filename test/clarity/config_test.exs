@@ -134,4 +134,44 @@ defmodule Clarity.ConfigTest do
       assert Config.list_reports() == []
     end
   end
+
+  describe inspect(&Config.application_of/1) do
+    test "returns the application of a module" do
+      assert Config.application_of(Enum) == :elixir
+      assert Config.application_of(Clarity.Graph) == :clarity
+      assert Config.application_of(:gen_server) == :stdlib
+    end
+
+    test "matches Application.get_application/1" do
+      for module <- [Enum, Clarity.Graph, :gen_server, __MODULE__, DoesNotExist.Anywhere] do
+        assert Config.application_of(module) == Application.get_application(module)
+      end
+    end
+
+    test "is nil for a module in no application" do
+      assert Config.application_of(__MODULE__) == nil
+      assert Config.application_of(DoesNotExist.Anywhere) == nil
+    end
+  end
+
+  describe inspect(&Config.forget_module_applications/0) do
+    test "returns :ok and lookups still work afterwards" do
+      assert Config.application_of(Enum) == :elixir
+
+      assert Config.forget_module_applications() == :ok
+
+      assert Config.application_of(Enum) == :elixir
+      assert Config.application_of(Clarity.Graph) == :clarity
+    end
+  end
+
+  describe inspect(&Config.project_applications/0) do
+    test "is the project's applications" do
+      apps = Config.project_applications()
+
+      assert %MapSet{} = apps
+      assert :clarity in apps
+      refute :ash in apps
+    end
+  end
 end

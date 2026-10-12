@@ -5,6 +5,7 @@ defmodule Clarity.Introspector.ModuleTest do
   alias Clarity.Server.Worker
   alias Clarity.Vertex
   alias Clarity.Vertex.Module
+  alias Inspect.Clarity.Graph
 
   describe inspect(&ModuleIntrospector.introspect_vertex/2) do
     test "creates module vertices for application vertices" do
@@ -78,14 +79,14 @@ defmodule Clarity.Introspector.ModuleTest do
 
     test "returns empty list for modules with no behaviours" do
       graph = Clarity.Graph.new()
-      module_vertex = %Module{module: Clarity.Config, version: :unknown, behaviour?: false}
+      module_vertex = %Module{module: Clarity.Config, version: Module.version(Clarity.Config), behaviour?: false}
 
       assert {:ok, []} = ModuleIntrospector.introspect_vertex(module_vertex, graph)
     end
 
     test "returns empty list when behaviours are filtered out by config" do
       graph = Clarity.Graph.new()
-      module_vertex = %Module{module: Clarity.Server, version: :unknown, behaviour?: false}
+      module_vertex = %Module{module: Clarity.Server, version: Module.version(Clarity.Server), behaviour?: false}
 
       assert {:ok, []} = ModuleIntrospector.introspect_vertex(module_vertex, graph)
     end
@@ -93,19 +94,24 @@ defmodule Clarity.Introspector.ModuleTest do
     test "returns unmet dependencies when behaviour module not in graph" do
       graph = Clarity.Graph.new()
       root = %Vertex.Root{}
-      module_vertex = %Module{module: ModuleIntrospector, version: :unknown, behaviour?: true}
+      module_vertex = %Module{module: ModuleIntrospector, version: Module.version(ModuleIntrospector), behaviour?: true}
 
       Clarity.Graph.add_vertex(graph, module_vertex, root)
 
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [Clarity.Introspector]}} =
                ModuleIntrospector.introspect_vertex(module_vertex, graph)
     end
 
     test "creates edge when behaviour module is in graph" do
       graph = Clarity.Graph.new()
       root = %Vertex.Root{}
-      module_vertex = %Module{module: ModuleIntrospector, version: :unknown, behaviour?: true}
-      behaviour_vertex = %Module{module: Clarity.Introspector, version: :unknown, behaviour?: true}
+      module_vertex = %Module{module: ModuleIntrospector, version: Module.version(ModuleIntrospector), behaviour?: true}
+
+      behaviour_vertex = %Module{
+        module: Clarity.Introspector,
+        version: Module.version(Clarity.Introspector),
+        behaviour?: true
+      }
 
       Clarity.Graph.add_vertex(graph, module_vertex, root)
       Clarity.Graph.add_vertex(graph, behaviour_vertex, root)
@@ -118,7 +124,7 @@ defmodule Clarity.Introspector.ModuleTest do
   describe "protocol implementation detection" do
     test "returns empty for module with no protocol implementation" do
       graph = Clarity.Graph.new()
-      module_vertex = %Module{module: Clarity.Server, version: :unknown, behaviour?: false}
+      module_vertex = %Module{module: Clarity.Server, version: Module.version(Clarity.Server), behaviour?: false}
 
       assert {:ok, []} = ModuleIntrospector.introspect_vertex(module_vertex, graph)
     end
@@ -127,9 +133,9 @@ defmodule Clarity.Introspector.ModuleTest do
       graph = Clarity.Graph.new()
       root = %Vertex.Root{}
       impl_module = Clarity.Vertex.Clarity.Vertex.Module
-      module_vertex = %Module{module: impl_module, version: :unknown, behaviour?: false}
-      protocol_vertex = %Module{module: Vertex, version: :unknown, behaviour?: true}
-      for_vertex = %Module{module: Module, version: :unknown, behaviour?: false}
+      module_vertex = %Module{module: impl_module, version: Module.version(impl_module), behaviour?: false}
+      protocol_vertex = %Module{module: Vertex, version: Module.version(Vertex), behaviour?: true}
+      for_vertex = %Module{module: Module, version: Module.version(Module), behaviour?: false}
 
       Clarity.Graph.add_vertex(graph, module_vertex, root)
       Clarity.Graph.add_vertex(graph, protocol_vertex, root)
@@ -148,13 +154,13 @@ defmodule Clarity.Introspector.ModuleTest do
       graph = Clarity.Graph.new()
       root = %Vertex.Root{}
       impl_module = Clarity.Vertex.Clarity.Vertex.Module
-      module_vertex = %Module{module: impl_module, version: :unknown, behaviour?: false}
-      for_vertex = %Module{module: Module, version: :unknown, behaviour?: false}
+      module_vertex = %Module{module: impl_module, version: Module.version(impl_module), behaviour?: false}
+      for_vertex = %Module{module: Module, version: Module.version(Module), behaviour?: false}
 
       Clarity.Graph.add_vertex(graph, module_vertex, root)
       Clarity.Graph.add_vertex(graph, for_vertex, root)
 
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [Vertex]}} =
                ModuleIntrospector.introspect_vertex(module_vertex, graph)
     end
 
@@ -162,19 +168,19 @@ defmodule Clarity.Introspector.ModuleTest do
       graph = Clarity.Graph.new()
       root = %Vertex.Root{}
       impl_module = Clarity.Vertex.Clarity.Vertex.Module
-      module_vertex = %Module{module: impl_module, version: :unknown, behaviour?: false}
-      protocol_vertex = %Module{module: Vertex, version: :unknown, behaviour?: true}
+      module_vertex = %Module{module: impl_module, version: Module.version(impl_module), behaviour?: false}
+      protocol_vertex = %Module{module: Vertex, version: Module.version(Vertex), behaviour?: true}
 
       Clarity.Graph.add_vertex(graph, module_vertex, root)
       Clarity.Graph.add_vertex(graph, protocol_vertex, root)
 
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [Module]}} =
                ModuleIntrospector.introspect_vertex(module_vertex, graph)
     end
 
     test "returns empty when protocol is filtered out by config" do
       graph = Clarity.Graph.new()
-      module_vertex = %Module{module: Inspect.Clarity.Graph, version: :unknown, behaviour?: false}
+      module_vertex = %Module{module: Graph, version: Module.version(Graph), behaviour?: false}
 
       assert {:ok, []} = ModuleIntrospector.introspect_vertex(module_vertex, graph)
     end
@@ -183,9 +189,9 @@ defmodule Clarity.Introspector.ModuleTest do
       graph = Clarity.Graph.new()
       root = %Vertex.Root{}
       impl_module = Clarity.Vertex.Clarity.Vertex.Module
-      module_vertex = %Module{module: impl_module, version: :unknown, behaviour?: false}
-      protocol_vertex = %Module{module: Vertex, version: :unknown, behaviour?: true}
-      for_vertex = %Module{module: Module, version: :unknown, behaviour?: false}
+      module_vertex = %Module{module: impl_module, version: Module.version(impl_module), behaviour?: false}
+      protocol_vertex = %Module{module: Vertex, version: Module.version(Vertex), behaviour?: true}
+      for_vertex = %Module{module: Module, version: Module.version(Module), behaviour?: false}
 
       Clarity.Graph.add_vertex(graph, module_vertex, root)
       Clarity.Graph.add_vertex(graph, protocol_vertex, root)

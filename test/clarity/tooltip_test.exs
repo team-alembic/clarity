@@ -165,6 +165,14 @@ defmodule Clarity.TooltipTest do
     test "an icon outside Clarity's set falls back to the generic icon" do
       assert %{icon: "generic", tone: "neutral"} = Tooltip.hint(%HintVertex{icon: :unheard_of})
     end
+
+    test "is worked out again when the vertex changes, though its id doesn't" do
+      vertex = %Vertex.Application{app: :tooltip_test, description: "", version: "1.0.0"}
+
+      assert %{facts: [["Version", "1.0.0"]]} = Tooltip.hint(vertex)
+      assert %{facts: [["Version", "1.0.0"]]} = Tooltip.hint(vertex)
+      assert %{facts: [["Version", "2.0.0"]]} = Tooltip.hint(%{vertex | version: "2.0.0"})
+    end
   end
 
   describe inspect(&Tooltip.type_icon/1) do

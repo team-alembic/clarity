@@ -69,7 +69,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
     @spec reactors(Vertex.t()) :: [module()]
     defp reactors(%{__struct__: Vertex.Ash.Domain, domain: domain}) do
       domain
-      |> Application.get_application()
+      |> Clarity.Config.application_of()
       |> reactors_in()
       |> Enum.filter(&(Vertex.Reactor.domain(&1) == domain))
     end

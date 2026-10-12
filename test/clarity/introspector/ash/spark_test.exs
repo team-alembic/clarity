@@ -138,7 +138,7 @@ defmodule Clarity.Introspector.Ash.SparkTest do
         entity: action
       }
 
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [User]}} =
                SparkIntrospector.introspect_vertex(entity_vertex, graph)
     end
 
@@ -153,7 +153,7 @@ defmodule Clarity.Introspector.Ash.SparkTest do
         entity: relationship
       }
 
-      assert {:error, :unmet_dependencies} =
+      assert {:error, {:unmet_dependencies, [User]}} =
                SparkIntrospector.introspect_vertex(entity_vertex, graph)
     end
 

@@ -78,7 +78,7 @@ defmodule Clarity.Introspector.Spark.DslTest do
       graph = Clarity.Graph.new()
       dsl_vertex = %Dsl{dsl: Ash.Domain}
 
-      assert {:error, :unmet_dependencies} = DslIntrospector.introspect_vertex(dsl_vertex, graph)
+      assert {:error, {:unmet_dependencies, [Ash.Domain.Dsl]}} = DslIntrospector.introspect_vertex(dsl_vertex, graph)
     end
 
     test "returns empty list when DSL has no default extensions" do

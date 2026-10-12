@@ -50,7 +50,7 @@ defmodule Clarity.Components.OverviewComponents do
       graph: graph,
       index: index,
       vertex: assigns.vertex,
-      names: index && Autolink.names_in(index, assigns.vertex),
+      names: index && Autolink.lookup(index, assigns.vertex),
       linking: linking
     }
   end
@@ -64,7 +64,7 @@ defmodule Clarity.Components.OverviewComponents do
   def links_about(%{index: nil} = links, vertex), do: %{links | vertex: vertex}
 
   def links_about(links, vertex),
-    do: %{links | vertex: vertex, names: Autolink.names_in(links.index, vertex)}
+    do: %{links | vertex: vertex, names: Autolink.lookup(links.index, vertex)}
 
   @doc """
   Returns the graph's own copy of `vertex`, which may know more than one

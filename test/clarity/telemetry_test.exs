@@ -209,7 +209,7 @@ defmodule Clarity.TelemetryTest do
       assert %{result_entry_count: nil} = measurements
       assert %{result_type: :unmet_dependencies} = metadata
 
-      assert_receive {:requeue_task, _}
+      assert_receive {:requeue_task, _, []}
     end
 
     test "emits exception event when task processing fails" do

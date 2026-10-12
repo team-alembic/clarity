@@ -3,8 +3,11 @@ defmodule Clarity.Server do
 
   use GenServer
 
+  alias Clarity.Config
   alias Clarity.Graph
   alias Clarity.Graph.Cache
+  alias Clarity.Server.Queue
+  alias Clarity.Vertex
   alias Clarity.Vertex.Root
   alias Clarity.Vertex.Util
 
@@ -18,26 +21,53 @@ defmodule Clarity.Server do
       :graph,
       :introspectors,
       :name,
-      :future_queue,
-      :requeue_queue,
       :cache,
+      :retried_at,
+      :retried_ms,
+      :queue,
+      waiting: [],
+      waiting_count: 0,
       in_progress: %{},
       custom_introspectors: nil,
-      started?: false
+      started?: false,
+      project_apps: :all,
+      wanted: %{},
+      promoted: MapSet.new(),
+      prioritized_apps: MapSet.new()
     ]
 
+    # - `queue`: the tasks to run, in lanes (see Clarity.Server.Queue)
+    # - `waiting`: the tasks that ran before what they need was in the graph,
+    #   to run again (see maybe_retry_waiting/1)
+    # - `project_apps`: the applications of the project, introspected first
+    # - `wanted`: modules of the dependencies some task needs, and the lane
+    #   to introspect them in
+    # - `promoted`: the modules already pulled forward, by lane
+    # - `prioritized_apps`: dependencies someone is looking at, introspected
+    #   with the project's
     @type t() :: %__MODULE__{
-            future_queue: :queue.queue(Clarity.Server.Task.t()),
-            requeue_queue: :queue.queue(Clarity.Server.Task.t()),
+            queue: Queue.t(),
+            waiting: [Clarity.Server.Task.t()],
+            waiting_count: non_neg_integer(),
+            retried_at: pos_integer() | nil,
+            retried_ms: integer() | nil,
             in_progress: %{reference() => Clarity.Server.Task.t()},
             graph: Graph.t(),
             introspectors: [module()],
             custom_introspectors: [module()] | nil,
             name: GenServer.name(),
             cache: GenServer.server() | nil,
-            started?: boolean()
+            started?: boolean(),
+            project_apps: MapSet.t(Application.app()) | :all,
+            wanted: %{module() => Queue.lane()},
+            promoted: MapSet.t({module(), Queue.lane()}),
+            prioritized_apps: MapSet.t(Application.app())
           }
   end
+
+  # How often, at most, tasks waiting on something run again while the
+  # dependencies are being introspected.
+  @retry_interval 500
 
   @doc false
   @spec start_link(opts :: GenServer.options()) :: GenServer.on_start()
@@ -74,12 +104,23 @@ defmodule Clarity.Server do
   end
 
   @doc """
-  Re-queue a task due to unmet dependencies. Task will be pushed to the back of
-  the queue.
+  Re-queue a task due to unmet dependencies, to run again once the graph has
+  more in it. `needs` are the modules whose introspection it waits for, which
+  are introspected sooner for it.
   """
-  @spec requeue_task(GenServer.server(), reference()) :: :ok
-  def requeue_task(server, task_id) do
-    GenServer.cast(server, {:requeue_task, task_id})
+  @spec requeue_task(GenServer.server(), reference(), [module()]) :: :ok
+  def requeue_task(server, task_id, needs \\ []) do
+    GenServer.cast(server, {:requeue_task, task_id, needs})
+  end
+
+  @doc """
+  Introspects the application of `vertex` (an application or module vertex)
+  with the project's, if it's a dependency still to come: someone is looking
+  at it.
+  """
+  @spec prioritize(GenServer.server(), Vertex.t()) :: :ok
+  def prioritize(server, vertex) do
+    GenServer.cast(server, {:prioritize, vertex})
   end
 
   @impl GenServer
@@ -95,8 +136,7 @@ defmodule Clarity.Server do
       introspectors: custom_introspectors || [],
       name: name,
       cache: cache,
-      future_queue: :queue.new(),
-      requeue_queue: :queue.new(),
+      queue: Queue.new(),
       started?: false
     }
 
@@ -114,20 +154,12 @@ defmodule Clarity.Server do
 
   @impl GenServer
   def handle_cast({:introspect, :full}, state) do
+    :ok = Config.forget_module_applications()
     state = ensure_started(state)
 
     :ok = Graph.clear(state.graph)
 
-    {future_queue, introspectors} =
-      reset_queue_and_introspectors(state.graph, state.custom_introspectors)
-
-    state = %{
-      state
-      | future_queue: future_queue,
-        introspectors: introspectors
-    }
-
-    {:noreply, state}
+    {:noreply, reset(state)}
   end
 
   def handle_cast(
@@ -138,6 +170,8 @@ defmodule Clarity.Server do
   end
 
   def handle_cast({:introspect, {:incremental, app, modules_diff}}, state) do
+    :ok = Config.forget_module_applications()
+
     if contains_introspector_modules?(modules_diff, state.introspectors) do
       Logger.info("Introspector modules changed, falling back to full introspection")
       # Fall back to full introspection - introspector logic may have changed
@@ -168,12 +202,12 @@ defmodule Clarity.Server do
           )
 
         # 3. Process the results directly by creating a task
-        task = %Clarity.Server.Task{
-          id: make_ref(),
-          vertex: app_vertex,
-          introspector: Clarity.Introspector.Module,
-          graph: state.graph
-        }
+        task =
+          Clarity.Server.Task.new_introspection(
+            app_vertex,
+            Clarity.Introspector.Module,
+            state.graph
+          )
 
         state = process_task_results(task, introspection_results, state)
 
@@ -185,6 +219,29 @@ defmodule Clarity.Server do
 
         {:noreply, state}
       end
+    end
+  end
+
+  def handle_cast({:prioritize, vertex}, state) do
+    app =
+      case vertex do
+        %Vertex.Application{app: app} -> app
+        %Vertex.Module{module: module} -> Config.application_of(module)
+        _vertex -> nil
+      end
+
+    if app == nil or project_app?(state, app) or MapSet.member?(state.prioritized_apps, app) do
+      {:noreply, state}
+    else
+      queue =
+        Queue.promote(state.queue, :model, fn
+          %{vertex: %Vertex.Application{app: ^app}} -> true
+          %{vertex: %Vertex.Module{module: module}} -> Config.application_of(module) == app
+          _task -> false
+        end)
+
+      {:noreply,
+       %{state | queue: queue, prioritized_apps: MapSet.put(state.prioritized_apps, app)}}
     end
   end
 
@@ -223,7 +280,7 @@ defmodule Clarity.Server do
     end
   end
 
-  def handle_cast({:requeue_task, task_id}, state) do
+  def handle_cast({:requeue_task, task_id, needs}, state) do
     case Map.pop(state.in_progress, task_id) do
       {nil, _} ->
         Logger.warning(
@@ -232,22 +289,17 @@ defmodule Clarity.Server do
 
         {:noreply, state}
 
-      {%{requeue_count: count} = task, remaining_in_progress} when count >= 100 ->
-        Logger.warning(
-          "Dropping task after #{count + 1} requeue attempts: #{Clarity.Server.Task.describe(task)}"
-        )
-
-        {:noreply, %{state | in_progress: remaining_in_progress}}
-
       {task, remaining_in_progress} ->
         task = %{task | requeue_count: task.requeue_count + 1}
 
-        {:noreply,
-         %{
-           state
-           | in_progress: remaining_in_progress,
-             requeue_queue: :queue.in(task, state.requeue_queue)
-         }}
+        state = %{
+          state
+          | in_progress: remaining_in_progress,
+            waiting: [task | state.waiting],
+            waiting_count: state.waiting_count + 1
+        }
+
+        {:noreply, promote_needs(state, needs, task.lane)}
     end
   end
 
@@ -266,34 +318,16 @@ defmodule Clarity.Server do
     {:reply, clarity, state}
   end
 
-  def handle_call(:pull_task, from, state) do
-    case :queue.out(state.future_queue) do
-      {{:value, task}, remaining_queue} ->
+  def handle_call(:pull_task, _from, state) do
+    state = maybe_retry_waiting(state)
+
+    case Queue.pop(state.queue) do
+      {:ok, task, queue} ->
         new_in_progress = Map.put(state.in_progress, task.id, task)
-        new_state = %{state | future_queue: remaining_queue, in_progress: new_in_progress}
-        {:reply, {:ok, task}, new_state}
+        {:reply, {:ok, task}, %{state | queue: queue, in_progress: new_in_progress}}
 
-      {:empty, _queue} ->
-        cond do
-          # Still have in-progress tasks - wait for them to complete
-          # If we didn't do this, we could end up in a busy loop
-          # if all tasks kept failing with unmet dependencies
-          # while a longer running task is still in progress producing those
-          # dependencies
-          state.in_progress != %{} ->
-            {:reply, :empty, state}
-
-          # No in-progress tasks and have requeued tasks - swap queues
-          not :queue.is_empty(state.requeue_queue) ->
-            state = %{state | future_queue: state.requeue_queue, requeue_queue: :queue.new()}
-
-            broadcast_event(state, :__restart_pulling__)
-
-            handle_call(:pull_task, from, state)
-
-          true ->
-            {:reply, :empty, state}
-        end
+      :empty ->
+        {:reply, :empty, maybe_drop_waiting(state)}
     end
   end
 
@@ -333,17 +367,157 @@ defmodule Clarity.Server do
     end
   end
 
-  @spec create_tasks_for_vertex(Clarity.Vertex.t(), [module()], Graph.t()) :: [
+  @spec create_tasks_for_vertex(Vertex.t(), Queue.lane(), State.t()) :: [
           Clarity.Server.Task.t()
         ]
-  defp create_tasks_for_vertex(vertex, introspectors, graph) do
+  defp create_tasks_for_vertex(vertex, parent_lane, state) do
     vertex_type = vertex.__struct__
 
-    introspectors
+    state.introspectors
     |> Enum.filter(fn introspector ->
       vertex_type in introspector.source_vertex_types()
     end)
-    |> Enum.map(&Clarity.Server.Task.new_introspection(vertex, &1, graph))
+    |> Enum.map(
+      &Clarity.Server.Task.new_introspection(
+        vertex,
+        &1,
+        state.graph,
+        lane(vertex, &1, parent_lane, state)
+      )
+    )
+  end
+
+  # The lane a task runs in (see Clarity.Server.Queue). The project's
+  # applications and modules come first: what the modules define, then how
+  # they relate. The dependencies' come last, unless a task needs one of their
+  # modules sooner. Every other vertex is found introspecting one of those, so
+  # is introspected in the same lane.
+  @spec lane(Vertex.t(), module(), Queue.lane(), State.t()) :: Queue.lane()
+  defp lane(%Vertex.Application{app: app}, _introspector, _parent_lane, state),
+    do: if(project_app?(state, app) or prioritized?(state, app), do: :model, else: :dependencies)
+
+  defp lane(%Vertex.Module{module: module}, introspector, _parent_lane, state) do
+    app = Config.application_of(module)
+    project? = project_app?(state, app)
+
+    cond do
+      prioritized?(state, app) -> :model
+      introspector == Clarity.Introspector.Module and project? -> :modules
+      introspector == Clarity.Introspector.Module -> :dependencies
+      project? -> :model
+      true -> Map.get(state.wanted, module, :dependencies)
+    end
+  end
+
+  defp lane(_vertex, _introspector, parent_lane, _state), do: parent_lane
+
+  @spec prioritized?(State.t(), Application.app() | nil) :: boolean()
+  defp prioritized?(state, app), do: MapSet.member?(state.prioritized_apps, app)
+
+  @spec project_app?(State.t(), Application.app() | nil) :: boolean()
+  defp project_app?(%State{project_apps: :all}, _app), do: true
+  defp project_app?(%State{project_apps: apps}, app), do: MapSet.member?(apps, app)
+
+  # Pulls the modules a waiting task needs forward, into its lane: the tasks
+  # finding what each module defines, and listing its application's modules,
+  # if that's still to come.
+  @spec promote_needs(State.t(), [module()], Queue.lane()) :: State.t()
+  defp promote_needs(state, modules, lane) do
+    Enum.reduce(modules, state, fn module, state ->
+      if MapSet.member?(state.promoted, {module, lane}) do
+        state
+      else
+        promote_module(
+          %{state | promoted: MapSet.put(state.promoted, {module, lane})},
+          module,
+          lane
+        )
+      end
+    end)
+  end
+
+  # The project's modules are introspected first anyway, so only the
+  # dependencies' are brought forward.
+  @spec promote_module(State.t(), module(), Queue.lane()) :: State.t()
+  defp promote_module(state, module, lane) do
+    app = Config.application_of(module)
+
+    if app == nil or project_app?(state, app) do
+      state
+    else
+      queue =
+        Queue.promote(state.queue, lane, fn
+          %{vertex: %Vertex.Application{app: ^app}} ->
+            true
+
+          %{vertex: %Vertex.Module{module: ^module}, introspector: introspector} ->
+            introspector != Clarity.Introspector.Module
+
+          _task ->
+            false
+        end)
+
+      %{
+        state
+        | queue: queue,
+          wanted: Map.update(state.wanted, module, lane, &Queue.earlier(&1, lane))
+      }
+    end
+  end
+
+  # Waiting tasks run again once nothing they could need from the project is
+  # still to come, if the graph has changed since they last ran. While the
+  # dependencies are introspected, which they may need too, that's at most
+  # every @retry_interval ms.
+  @spec maybe_retry_waiting(State.t()) :: State.t()
+  defp maybe_retry_waiting(%State{waiting: []} = state), do: state
+
+  defp maybe_retry_waiting(state) do
+    update_count = Graph.get_update_count(state.graph)
+    now = System.monotonic_time(:millisecond)
+
+    project_busy? =
+      Queue.size(state.queue, [:model, :modules]) > 0 or
+        Enum.any?(state.in_progress, fn {_id, task} -> task.lane != :dependencies end)
+
+    idle? = Queue.size(state.queue) == 0 and state.in_progress == %{}
+    due? = idle? or state.retried_ms == nil or now - state.retried_ms >= @retry_interval
+
+    if not project_busy? and due? and update_count != state.retried_at do
+      queue = state.waiting |> Enum.reverse() |> Enum.reduce(state.queue, &Queue.push(&2, &1))
+      broadcast_event(state, :__restart_pulling__)
+
+      %{
+        state
+        | queue: queue,
+          waiting: [],
+          waiting_count: 0,
+          retried_at: update_count,
+          retried_ms: now
+      }
+    else
+      state
+    end
+  end
+
+  # Once nothing is left to run, and the graph hasn't changed since the
+  # waiting tasks last ran, what they wait for will never come.
+  @spec maybe_drop_waiting(State.t()) :: State.t()
+  defp maybe_drop_waiting(%State{waiting: []} = state), do: state
+
+  defp maybe_drop_waiting(state) do
+    if state.in_progress == %{} and Graph.get_update_count(state.graph) == state.retried_at do
+      for task <- state.waiting do
+        Logger.warning(
+          "Dropping task after #{task.requeue_count} attempts, as what it needs never came: " <>
+            Clarity.Server.Task.describe(task)
+        )
+      end
+
+      %{state | waiting: [], waiting_count: 0}
+    else
+      state
+    end
   end
 
   @spec process_task_results(Clarity.Server.Task.t(), [Clarity.Introspector.entry()], State.t()) ::
@@ -365,11 +539,7 @@ defmodule Clarity.Server do
           Graph.add_vertex(state.graph, vertex, task.vertex)
 
           # Create tasks for this new vertex
-          create_tasks_for_vertex(
-            vertex,
-            state.introspectors,
-            state.graph
-          )
+          create_tasks_for_vertex(vertex, task.lane, state)
 
         {:edge, nil, _to_vertex, _label} ->
           []
@@ -409,19 +579,13 @@ defmodule Clarity.Server do
           []
       end)
 
-    # Add new tasks to the queue
-    new_queue = Enum.reduce(new_tasks, state.future_queue, &:queue.in(&1, &2))
-
     # Tree is maintained incrementally, no rebuild needed
-    state = %{state | future_queue: new_queue}
-
-    state
+    %{state | queue: Enum.reduce(new_tasks, state.queue, &Queue.push(&2, &1))}
   end
 
   @spec queue_empty_and_no_progress?(State.t()) :: boolean()
   defp queue_empty_and_no_progress?(state) do
-    :queue.is_empty(state.future_queue) && :queue.is_empty(state.requeue_queue) &&
-      map_size(state.in_progress) == 0
+    Queue.size(state.queue) == 0 and state.waiting == [] and map_size(state.in_progress) == 0
   end
 
   @spec broadcast_event(State.t(), Clarity.event()) :: :ok
@@ -451,8 +615,8 @@ defmodule Clarity.Server do
   @spec queue_info(State.t()) :: Clarity.queue_info()
   defp queue_info(state) do
     %{
-      future_queue: :queue.len(state.future_queue),
-      requeue_queue: :queue.len(state.requeue_queue),
+      future_queue: Queue.size(state.queue),
+      requeue_queue: state.waiting_count,
       in_progress: map_size(state.in_progress),
       total_vertices: Graph.vertex_count(state.graph)
     }
@@ -473,18 +637,24 @@ defmodule Clarity.Server do
     end
   end
 
-  @spec reset_queue_and_introspectors(Graph.t(), [module()] | nil) ::
-          {:queue.queue(Clarity.Server.Task.t()), [module()]}
-  defp reset_queue_and_introspectors(graph, custom_introspectors) do
-    root_vertex = %Root{}
+  # Starts introspection over from the root.
+  @spec reset(State.t()) :: State.t()
+  defp reset(state) do
+    state = %{
+      state
+      | introspectors: state.custom_introspectors || Config.list_introspectors(),
+        project_apps: Config.project_applications(),
+        waiting: [],
+        waiting_count: 0,
+        retried_at: nil,
+        retried_ms: nil,
+        wanted: %{},
+        promoted: MapSet.new(),
+        prioritized_apps: MapSet.new()
+    }
 
-    introspectors = custom_introspectors || Clarity.Config.list_introspectors()
-
-    initial_tasks =
-      create_tasks_for_vertex(root_vertex, introspectors, graph)
-
-    queue = Enum.reduce(initial_tasks, :queue.new(), &:queue.in(&1, &2))
-    {queue, introspectors}
+    tasks = create_tasks_for_vertex(%Root{}, :model, state)
+    %{state | queue: Enum.reduce(tasks, Queue.new(), &Queue.push(&2, &1))}
   end
 
   @spec ensure_started(State.t()) :: State.t()
@@ -494,17 +664,7 @@ defmodule Clarity.Server do
     # Load cache if configured, fallback to existing graph
     graph = load_graph_or_fallback(state.cache, state.graph)
 
-    # Setup introspection queue and introspectors
-    {future_queue, introspectors} =
-      reset_queue_and_introspectors(graph, state.custom_introspectors)
-
-    new_state = %{
-      state
-      | graph: graph,
-        future_queue: future_queue,
-        introspectors: introspectors,
-        started?: true
-    }
+    new_state = reset(%{state | graph: graph, started?: true})
 
     broadcast_event(new_state, :work_started)
 

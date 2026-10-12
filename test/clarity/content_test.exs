@@ -222,9 +222,10 @@ defmodule Clarity.ContentTest do
                provider: TestContentProvider,
                live_view?: false,
                live_component?: false,
-               render_static: {_, render_fn}
+               render_static: nil
              } = content
 
+      assert %Content{render_static: {_, render_fn}} = Content.with_static(content, vertex, lens)
       assert is_function(render_fn, 1)
     end
 
@@ -255,6 +256,14 @@ defmodule Clarity.ContentTest do
                live_component?: false,
                render_static: nil
              } = content
+    end
+
+    test "with_static/3 leaves content without render_static unchanged", %{vertex: vertex, lens: lens} do
+      Application.put_env(:clarity, :clarity_content_providers, [TestLiveViewProvider])
+
+      [content] = Content.get_contents_for_vertex(vertex, lens)
+
+      assert Content.with_static(content, vertex, lens) == content
     end
 
     test "detects LiveComponent providers", %{vertex: vertex, lens: lens} do
@@ -329,7 +338,7 @@ defmodule Clarity.ContentTest do
 
       [content] = Content.get_contents_for_vertex(vertex, lens)
 
-      assert {:markdown, render_fn} = content.render_static
+      assert {:markdown, render_fn} = Content.with_static(content, vertex, lens).render_static
       assert is_function(render_fn, 1)
       assert render_fn.(%{}) == "Test content"
     end

@@ -26,6 +26,7 @@ defmodule Clarity.Graph do
     :update_count,
     :indexes,
     :owner,
+    :view,
     subgraph: false
   ]
 
@@ -46,6 +47,7 @@ defmodule Clarity.Graph do
             update_count: :ets.tid(),
             indexes: :ets.tid(),
             owner: pid(),
+            view: MapSet.t(String.t()) | nil,
             subgraph: boolean()
           }
 
@@ -81,6 +83,11 @@ defmodule Clarity.Graph do
   Deletes Graph
   """
   @spec delete(t()) :: result()
+  def delete(graph)
+
+  # A view shares the graph it was made from, so has nothing of its own.
+  def delete(%__MODULE__{view: view} = graph) when view != nil, do: check_owner(graph)
+
   def delete(%__MODULE__{} = graph) do
     with :ok <- check_owner(graph) do
       true = :digraph.delete(graph.main_graph)
@@ -109,20 +116,8 @@ defmodule Clarity.Graph do
   @spec handover(t(), pid()) :: result(t())
   def handover(graph, pid)
 
-  def handover(%__MODULE__{subgraph: true} = graph, pid) do
+  def handover(%__MODULE__{view: view} = graph, pid) when view != nil do
     with :ok <- check_owner(graph) do
-      # For subgraphs, only transfer the unique digraph tables (main_graph and tree_graph)
-      # The vertices, update_count, indexes, and provenance_graph are shared with the main graph
-      {vtab1, etab1, ntab1, _} = unpack_digraph(graph.main_graph)
-      :ets.give_away(vtab1, pid, :graph_handover)
-      :ets.give_away(etab1, pid, :graph_handover)
-      :ets.give_away(ntab1, pid, :graph_handover)
-
-      {vtab2, etab2, ntab2, _} = unpack_digraph(graph.tree_graph)
-      :ets.give_away(vtab2, pid, :graph_handover)
-      :ets.give_away(etab2, pid, :graph_handover)
-      :ets.give_away(ntab2, pid, :graph_handover)
-
       {:ok, %{graph | owner: pid}}
     end
   end
@@ -230,9 +225,8 @@ defmodule Clarity.Graph do
   Gets the total number of vertices.
   """
   @spec vertex_count(t()) :: non_neg_integer()
-  def vertex_count(%__MODULE__{} = graph) do
-    :digraph.no_vertices(graph.main_graph)
-  end
+  def vertex_count(%__MODULE__{view: nil} = graph), do: :digraph.no_vertices(graph.main_graph)
+  def vertex_count(%__MODULE__{view: view}), do: MapSet.size(view)
 
   @doc """
   Looks up a vertex struct by its ID.
@@ -309,12 +303,24 @@ defmodule Clarity.Graph do
       Graph.vertices(graph)
   """
   @spec vertices(t(), query()) :: [Vertex.t()]
-  def vertices(%__MODULE__{} = graph, query \\ true) do
-    all_vertices = graph.main_graph |> :digraph.vertices() |> MapSet.new()
+  def vertices(graph, query \\ true)
 
+  # The full graph has every vertex the table has.
+  def vertices(%__MODULE__{view: nil} = graph, query) do
+    :ets.select(graph.vertices, vertex_query_to_ets_match_spec(query, :"$3"))
+  end
+
+  # A view shares the full graph's table, so keeps only its own vertices.
+  def vertices(%__MODULE__{view: view} = graph, true) do
+    for id <- view, vertex = get_vertex(graph, id), do: vertex
+  end
+
+  def vertices(%__MODULE__{view: view} = graph, query) do
     graph.vertices
-    |> :ets.select(vertex_query_to_ets_match_spec(query, :"$3"))
-    |> Enum.filter(&MapSet.member?(all_vertices, Vertex.id(&1)))
+    |> :ets.select(vertex_query_to_ets_match_spec(query, {{:"$1", :"$3"}}))
+    |> Enum.flat_map(fn {id, vertex} ->
+      if MapSet.member?(view, id), do: [vertex], else: []
+    end)
   end
 
   @doc """
@@ -323,26 +329,36 @@ defmodule Clarity.Graph do
   Returns a list of modules representing the types of vertices in the graph.
   """
   @spec available_vertex_types(t()) :: [module()]
-  def available_vertex_types(%__MODULE__{} = graph) do
-    graph.main_graph
-    |> :digraph.vertices()
-    |> Enum.map(&:ets.lookup_element(graph.vertices, &1, 2))
+  def available_vertex_types(%__MODULE__{view: nil} = graph) do
+    graph.vertices
+    |> :ets.select([{{:_, :"$2", :_}, [], [:"$2"]}])
     |> Enum.uniq()
     |> Enum.sort()
   end
 
-  @spec vertex_ids(t(), query()) :: [Vertex.t()]
-  defp vertex_ids(%__MODULE__{} = graph, query) do
-    all_vertices = graph.main_graph |> :digraph.vertices() |> MapSet.new()
-
-    graph.vertices
-    |> :ets.select(vertex_query_to_ets_match_spec(query, :"$1"))
-    |> MapSet.new()
-    |> MapSet.intersection(all_vertices)
-    |> MapSet.to_list()
+  def available_vertex_types(%__MODULE__{view: view} = graph) do
+    view
+    |> Enum.map(&:ets.lookup_element(graph.vertices, &1, 2, nil))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
-  @spec vertex_query_to_ets_match_spec(query :: query(), select :: atom()) :: :ets.match_spec()
+  @spec vertex_ids(t(), query()) :: [String.t()]
+  defp vertex_ids(%__MODULE__{view: nil} = graph, query) do
+    :ets.select(graph.vertices, vertex_query_to_ets_match_spec(query, :"$1"))
+  end
+
+  defp vertex_ids(%__MODULE__{view: view}, true), do: MapSet.to_list(view)
+
+  defp vertex_ids(%__MODULE__{view: view} = graph, query) do
+    graph.vertices
+    |> :ets.select(vertex_query_to_ets_match_spec(query, :"$1"))
+    |> Enum.filter(&MapSet.member?(view, &1))
+  end
+
+  @spec vertex_query_to_ets_match_spec(query :: query(), select :: atom() | tuple()) ::
+          :ets.match_spec()
   defp vertex_query_to_ets_match_spec(query, select)
   defp vertex_query_to_ets_match_spec(true, select), do: [{{:"$1", :"$2", :"$3"}, [], [select]}]
 
@@ -394,27 +410,77 @@ defmodule Clarity.Graph do
   Gets outgoing edges for a vertex.
   """
   @spec out_edges(t(), Vertex.t()) :: [:digraph.edge()]
-  def out_edges(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.id(vertex)
-    :digraph.out_edges(graph.main_graph, vertex_id)
-  end
+  def out_edges(%__MODULE__{} = graph, vertex), do: vertex_edges(graph, Vertex.id(vertex), :out)
 
   @doc """
   Gets incoming edges for a vertex.
   """
   @spec in_edges(t(), Vertex.t()) :: [:digraph.edge()]
-  def in_edges(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.id(vertex)
-    :digraph.in_edges(graph.main_graph, vertex_id)
+  def in_edges(%__MODULE__{} = graph, vertex), do: vertex_edges(graph, Vertex.id(vertex), :in)
+
+  # The edges out of, or into, a vertex: in a view, those to or from the view's
+  # other vertices.
+  @spec vertex_edges(t(), String.t(), :out | :in) :: [:digraph.edge()]
+  defp vertex_edges(%__MODULE__{view: nil} = graph, vertex_id, :out),
+    do: :digraph.out_edges(graph.main_graph, vertex_id)
+
+  defp vertex_edges(%__MODULE__{view: nil} = graph, vertex_id, :in),
+    do: :digraph.in_edges(graph.main_graph, vertex_id)
+
+  defp vertex_edges(%__MODULE__{view: view} = graph, vertex_id, direction) do
+    if MapSet.member?(view, vertex_id) do
+      %{graph | view: nil}
+      |> vertex_edges(vertex_id, direction)
+      |> Enum.filter(&other_end_in_view?(graph, &1, direction))
+    else
+      []
+    end
   end
+
+  @spec other_end_in_view?(t(), :digraph.edge(), :out | :in) :: boolean()
+  defp other_end_in_view?(graph, edge_id, direction) do
+    case :digraph.edge(graph.main_graph, edge_id) do
+      {_edge_id, _from_id, to_id, _label} when direction == :out -> in_view?(graph, to_id)
+      {_edge_id, from_id, _to_id, _label} -> in_view?(graph, from_id)
+      false -> false
+    end
+  end
+
+  @doc false
+  # The ids of a vertex's neighbours, out or in: in a view, those in the view.
+  @spec neighbour_ids(t(), String.t(), :out | :in) :: [String.t()]
+  def neighbour_ids(%__MODULE__{view: nil} = graph, vertex_id, :out),
+    do: :digraph.out_neighbours(graph.main_graph, vertex_id)
+
+  def neighbour_ids(%__MODULE__{view: nil} = graph, vertex_id, :in),
+    do: :digraph.in_neighbours(graph.main_graph, vertex_id)
+
+  def neighbour_ids(%__MODULE__{view: view} = graph, vertex_id, direction) do
+    if MapSet.member?(view, vertex_id) do
+      %{graph | view: nil}
+      |> neighbour_ids(vertex_id, direction)
+      |> Enum.filter(&MapSet.member?(view, &1))
+    else
+      []
+    end
+  end
+
+  @doc false
+  # Whether the graph has the vertex with this id.
+  @spec vertex_id?(t(), String.t()) :: boolean()
+  def vertex_id?(%__MODULE__{view: nil} = graph, vertex_id),
+    do: :digraph.vertex(graph.main_graph, vertex_id) != false
+
+  def vertex_id?(%__MODULE__{view: view}, vertex_id), do: MapSet.member?(view, vertex_id)
 
   @doc """
   Gets all edges IDs.
   """
   @spec edges(t()) :: [:digraph.edge()]
-  def edges(%__MODULE__{} = graph) do
-    :digraph.edges(graph.main_graph)
-  end
+  def edges(%__MODULE__{view: nil} = graph), do: :digraph.edges(graph.main_graph)
+
+  def edges(%__MODULE__{view: view} = graph),
+    do: for(vertex_id <- view, edge_id <- vertex_edges(graph, vertex_id, :out), do: edge_id)
 
   @doc """
   Gets edge information for a given edge ID.
@@ -423,26 +489,23 @@ defmodule Clarity.Graph do
           {:digraph.edge(), Vertex.t() | nil, Vertex.t() | nil, :digraph.label()}
           | false
   def edge(%__MODULE__{} = graph, edge_id) do
-    case :digraph.edge(graph.main_graph, edge_id) do
-      {edge_id, from_id, to_id, label} ->
-        from_vertex = get_vertex(graph, from_id)
-        to_vertex = get_vertex(graph, to_id)
-        {edge_id, from_vertex, to_vertex, label}
-
-      false ->
-        false
+    with {edge_id, from_id, to_id, label} <- :digraph.edge(graph.main_graph, edge_id),
+         true <- in_view?(graph, from_id) and in_view?(graph, to_id) do
+      {edge_id, get_vertex(graph, from_id), get_vertex(graph, to_id), label}
     end
   end
+
+  @spec in_view?(t(), String.t()) :: boolean()
+  defp in_view?(%__MODULE__{view: nil}, _vertex_id), do: true
+  defp in_view?(%__MODULE__{view: view}, vertex_id), do: MapSet.member?(view, vertex_id)
 
   @doc """
   Gets all vertices that are direct targets of outgoing edges from a vertex.
   """
   @spec out_neighbors(t(), Vertex.t()) :: [Vertex.t()]
   def out_neighbors(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.id(vertex)
-
-    graph.main_graph
-    |> :digraph.out_neighbours(vertex_id)
+    graph
+    |> neighbour_ids(Vertex.id(vertex), :out)
     |> Enum.map(&get_vertex(graph, &1))
   end
 
@@ -451,10 +514,8 @@ defmodule Clarity.Graph do
   """
   @spec in_neighbors(t(), Vertex.t()) :: [Vertex.t()]
   def in_neighbors(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.id(vertex)
-
-    graph.main_graph
-    |> :digraph.in_neighbours(vertex_id)
+    graph
+    |> neighbour_ids(Vertex.id(vertex), :in)
     |> Enum.map(&get_vertex(graph, &1))
   end
 
@@ -485,24 +546,14 @@ defmodule Clarity.Graph do
   Gets the total in-degree for a vertex across all edge types.
   """
   @spec in_degree(t(), Vertex.t()) :: non_neg_integer()
-  def in_degree(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.id(vertex)
-
-    graph.main_graph
-    |> :digraph.in_edges(vertex_id)
-    |> length()
-  end
+  def in_degree(%__MODULE__{} = graph, vertex), do: length(in_edges(graph, vertex))
 
   @doc """
   Gets the in-degree for a vertex for a specific edge type.
   """
   @spec in_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
-  def in_degree(%__MODULE__{subgraph: true} = graph, vertex, label) do
-    count_labelled(
-      graph.main_graph,
-      :digraph.in_edges(graph.main_graph, Vertex.id(vertex)),
-      label
-    )
+  def in_degree(%__MODULE__{view: view} = graph, vertex, label) when view != nil do
+    count_labelled(graph.main_graph, in_edges(graph, vertex), label)
   end
 
   def in_degree(%__MODULE__{} = graph, vertex, label) do
@@ -515,24 +566,14 @@ defmodule Clarity.Graph do
   Gets the total out-degree for a vertex across all edge types.
   """
   @spec out_degree(t(), Vertex.t()) :: non_neg_integer()
-  def out_degree(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.id(vertex)
-
-    graph.main_graph
-    |> :digraph.out_edges(vertex_id)
-    |> length()
-  end
+  def out_degree(%__MODULE__{} = graph, vertex), do: length(out_edges(graph, vertex))
 
   @doc """
   Gets the out-degree for a vertex for a specific edge type.
   """
   @spec out_degree(t(), Vertex.t(), :digraph.label()) :: non_neg_integer()
-  def out_degree(%__MODULE__{subgraph: true} = graph, vertex, label) do
-    count_labelled(
-      graph.main_graph,
-      :digraph.out_edges(graph.main_graph, Vertex.id(vertex)),
-      label
-    )
+  def out_degree(%__MODULE__{view: view} = graph, vertex, label) when view != nil do
+    count_labelled(graph.main_graph, out_edges(graph, vertex), label)
   end
 
   def out_degree(%__MODULE__{} = graph, vertex, label) do
@@ -541,8 +582,8 @@ defmodule Clarity.Graph do
     :ets.lookup_element(graph.indexes, key, 2, 0)
   end
 
-  # Subgraphs share the full graph's degree indexes, so they count their own
-  # edges instead.
+  # Views share the full graph's degree indexes, so they count their own edges
+  # instead.
   @spec count_labelled(:digraph.graph(), [:digraph.edge()], :digraph.label()) ::
           non_neg_integer()
   defp count_labelled(digraph, edges, label) do
@@ -592,11 +633,27 @@ defmodule Clarity.Graph do
   """
   @spec breadcrumbs(t(), Vertex.t()) :: [Vertex.t()] | false
   def breadcrumbs(%__MODULE__{} = graph, vertex) do
-    to_id = Vertex.id(vertex)
+    with path_ids when is_list(path_ids) <- tree_path(graph.tree_graph, Vertex.id(vertex), []),
+         true <- Enum.all?(path_ids, &vertex_id?(graph, &1)) do
+      Enum.map(path_ids, &get_vertex(graph, &1))
+    else
+      _no_path -> false
+    end
+  end
 
-    case :digraph.get_short_path(graph.tree_graph, "root", to_id) do
-      false -> false
-      path_ids -> Enum.map(path_ids, &get_vertex(graph, &1))
+  # In the tree, every vertex but the root has one parent, so the path to it
+  # is its parents', back to the root.
+  @spec tree_path(:digraph.graph(), String.t(), [String.t()]) :: [String.t()] | nil
+  defp tree_path(_tree_graph, "root", path), do: ["root" | path]
+
+  defp tree_path(tree_graph, vertex_id, path) do
+    case :digraph.in_edges(tree_graph, vertex_id) do
+      [edge] ->
+        {_edge, parent_id, _vertex_id, _label} = :digraph.edge(tree_graph, edge)
+        tree_path(tree_graph, parent_id, [vertex_id | path])
+
+      _none ->
+        nil
     end
   end
 
@@ -610,11 +667,50 @@ defmodule Clarity.Graph do
     from_id = Vertex.id(from_vertex)
     to_id = Vertex.id(to_vertex)
 
-    case :digraph.get_short_path(graph.main_graph, from_id, to_id) do
+    case short_path(graph, from_id, to_id) do
       false -> false
       path_ids -> Enum.map(path_ids, &get_vertex(graph, &1))
     end
   end
+
+  @spec short_path(t(), String.t(), String.t()) :: [String.t()] | false
+  defp short_path(%__MODULE__{view: nil} = graph, from_id, to_id),
+    do: :digraph.get_short_path(graph.main_graph, from_id, to_id)
+
+  # Breadth first through the view's vertices, as :digraph.get_short_path/3
+  # does through all of them.
+  defp short_path(graph, from_id, to_id) do
+    if vertex_id?(graph, from_id) and vertex_id?(graph, to_id),
+      do: bfs_path(graph, :queue.from_list([from_id]), %{from_id => nil}, to_id),
+      else: false
+  end
+
+  @spec bfs_path(t(), :queue.queue(String.t()), %{String.t() => String.t() | nil}, String.t()) ::
+          [String.t()] | false
+  defp bfs_path(graph, queue, parents, to_id) do
+    case :queue.out(queue) do
+      {:empty, _queue} ->
+        false
+
+      {{:value, vertex_id}, queue} ->
+        neighbours = neighbour_ids(graph, vertex_id, :out)
+
+        if to_id in neighbours do
+          path_to(parents, vertex_id, [to_id])
+        else
+          new = Enum.reject(neighbours, &Map.has_key?(parents, &1))
+          parents = Enum.reduce(new, parents, &Map.put(&2, &1, vertex_id))
+          bfs_path(graph, Enum.reduce(new, queue, &:queue.in/2), parents, to_id)
+        end
+    end
+  end
+
+  @spec path_to(%{String.t() => String.t() | nil}, String.t() | nil, [String.t()]) ::
+          [String.t()]
+  defp path_to(_parents, nil, path), do: path
+
+  defp path_to(parents, vertex_id, path),
+    do: path_to(parents, parents[vertex_id], [vertex_id | path])
 
   @doc """
   Gets the direct children of a vertex in the tree graph, grouped by edge label.
@@ -629,35 +725,81 @@ defmodule Clarity.Graph do
   """
   @spec navigation_children(t(), Vertex.t()) :: %{:digraph.label() => [Vertex.t()]}
   def navigation_children(%__MODULE__{} = graph, vertex) do
-    vertex_id = Vertex.id(vertex)
+    graph
+    |> tree_groups(vertex)
+    |> Map.new(fn {label, children} -> {label, Enum.sort_by(children, &Vertex.name/1)} end)
+  end
 
-    graph.tree_graph
-    |> :digraph.out_edges(vertex_id)
-    |> Enum.map(fn edge_id ->
-      {_, _, to_vertex_id, label} = :digraph.edge(graph.tree_graph, edge_id)
-      {label, to_vertex_id}
+  @doc false
+  # The vertex's children in the tree by edge label, in no particular order
+  # (navigation_children/2 sorts them by name).
+  @spec tree_groups(t(), Vertex.t()) :: %{:digraph.label() => [Vertex.t()]}
+  def tree_groups(%__MODULE__{} = graph, vertex) do
+    graph
+    |> tree_child_edges(Vertex.id(vertex))
+    |> Enum.flat_map(fn {label, child_id} ->
+      case get_vertex(graph, child_id) do
+        nil -> []
+        child -> [{label, child}]
+      end
     end)
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
-    |> Map.new(fn {label, vertex_ids} ->
-      children =
-        vertex_ids
-        |> Enum.map(&get_vertex(graph, &1))
-        |> Enum.sort_by(&Vertex.name/1)
-
-      {label, children}
-    end)
   end
+
+  @doc false
+  # The labels the vertex's children in the tree hang off it by.
+  @spec tree_labels(t(), Vertex.t()) :: [:digraph.label()]
+  def tree_labels(%__MODULE__{} = graph, vertex) do
+    graph |> tree_child_edges(Vertex.id(vertex)) |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+  end
+
+  @spec tree_child_edges(t(), String.t()) :: [{:digraph.label(), String.t()}]
+  defp tree_child_edges(graph, vertex_id) do
+    if in_view?(graph, vertex_id) do
+      for edge_id <- :digraph.out_edges(graph.tree_graph, vertex_id),
+          {_edge_id, _vertex_id, child_id, label} <- [:digraph.edge(graph.tree_graph, edge_id)],
+          in_view?(graph, child_id),
+          do: {label, child_id}
+    else
+      []
+    end
+  end
+
+  @doc false
+  # The ids of the vertex's children in the tree, in no particular order.
+  @spec tree_child_ids(t(), String.t()) :: [String.t()]
+  def tree_child_ids(%__MODULE__{} = graph, vertex_id) do
+    if in_view?(graph, vertex_id) do
+      for child_id <- :digraph.out_neighbours(graph.tree_graph, vertex_id),
+          in_view?(graph, child_id),
+          do: child_id
+    else
+      []
+    end
+  end
+
+  @doc false
+  # Which graph this is (a view is of the graph it was made from).
+  @spec identity(t()) :: :ets.tid()
+  def identity(%__MODULE__{} = graph), do: graph.update_count
+
+  @doc false
+  # What a graph shows: changing when the graph does, or for a view, when it
+  # sees other vertices.
+  @spec version(t()) :: {pos_integer(), non_neg_integer() | nil}
+  def version(%__MODULE__{view: nil} = graph), do: {get_update_count(graph), nil}
+
+  def version(%__MODULE__{view: view} = graph),
+    do: {get_update_count(graph), :erlang.phash2(view)}
 
   @doc """
   Creates a filtered subgraph using a composable filter.
   Returns a new Clarity.Graph instance with the filtered vertices and edges.
 
-  > #### Graph Memory Management {: .warning}
-  >
-  > Creating a subgraph will create multiple `:digraph` instances and `:ets`
-  > tables. While the main graph is managed by `Clarity`, any subgraphs
-  > created via this function must be explicitly deleted using `delete/1`
-  > when no longer needed to free up memory.
+  The subgraph is a view: it shares the graph it was made from, and sees its
+  vertices that pass the filter and the edges between them, rather than copying
+  them. It is read-only. `delete/1` releases it, though it holds nothing of its
+  own.
 
   ## Examples
 
@@ -679,21 +821,7 @@ defmodule Clarity.Graph do
   def filter(%__MODULE__{} = graph, filter) do
     query = if is_function(filter), do: filter.(graph), else: filter
 
-    included_vertex_ids = vertex_ids(graph, query)
-
-    filtered_main_graph = :digraph_utils.subgraph(graph.main_graph, included_vertex_ids)
-    filtered_tree_graph = :digraph_utils.subgraph(graph.tree_graph, included_vertex_ids)
-
-    %__MODULE__{
-      main_graph: filtered_main_graph,
-      tree_graph: filtered_tree_graph,
-      provenance_graph: graph.provenance_graph,
-      vertices: graph.vertices,
-      update_count: graph.update_count,
-      indexes: graph.indexes,
-      owner: self(),
-      subgraph: true
-    }
+    %{graph | view: graph |> vertex_ids(query) |> MapSet.new(), subgraph: true, owner: self()}
   end
 
   @doc """
