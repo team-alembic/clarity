@@ -113,6 +113,30 @@ defmodule Clarity.ConfigTest do
     end
   end
 
+  describe inspect(&Config.list_lensmakers/0) do
+    setup do
+      on_exit(fn ->
+        Application.delete_env(:spark, :clarity_perspective_lensmakers)
+        Application.delete_env(:ash, :clarity_perspective_lensmakers)
+      end)
+    end
+
+    test "lists Clarity's lensmakers first, then other applications' by name" do
+      Application.put_env(:spark, :clarity_perspective_lensmakers, [SparkLensmaker])
+      Application.put_env(:ash, :clarity_perspective_lensmakers, [AshLensmaker])
+
+      assert Config.list_lensmakers() == [
+               Clarity.Perspective.Lensmaker.Architect,
+               Clarity.Perspective.Lensmaker.Security,
+               Clarity.Perspective.Lensmaker.Documentation,
+               Clarity.Perspective.Lensmaker.GraphNavigation,
+               Clarity.Perspective.Lensmaker.Debug,
+               AshLensmaker,
+               SparkLensmaker
+             ]
+    end
+  end
+
   describe inspect(&Config.list_reports/0) do
     setup do
       on_exit(fn -> Application.delete_env(:clarity, :clarity_reports) end)

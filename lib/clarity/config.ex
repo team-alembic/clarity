@@ -298,10 +298,18 @@ defmodule Clarity.Config do
   end
 
   @doc false
+  # Clarity's own lenses come first, in the order it lists them, then the
+  # other applications', by application name: the activity bar shows them in
+  # this order, and the loaded applications come in none in particular.
   @spec list_lensmakers() :: [module()]
   def list_lensmakers do
-    Application.loaded_applications()
-    |> Enum.map(&elem(&1, 0))
+    others =
+      Application.loaded_applications()
+      |> Enum.map(&elem(&1, 0))
+      |> List.delete(:clarity)
+      |> Enum.sort()
+
+    [:clarity | others]
     |> Enum.flat_map(&Application.get_env(&1, :clarity_perspective_lensmakers, []))
     |> Enum.uniq()
   end
