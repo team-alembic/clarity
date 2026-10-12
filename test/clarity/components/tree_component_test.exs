@@ -401,11 +401,24 @@ defmodule Clarity.TreeComponentTest do
     end
 
     test "shows the count of nested issues" do
-      html = render_badge(badge_entry(:error, 3))
+      html = render_badge(badge_entry(:error, 3, error: 3))
 
       assert html =~ "bg-red-100"
       assert html =~ "tabular-nums"
       assert html =~ "3"
+    end
+
+    test "counts each severity on its own, worst first" do
+      segments =
+        :error
+        |> badge_entry(5, info: 4, error: 1)
+        |> render_badge()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("a > span")
+
+      assert Enum.map(segments, &(&1 |> LazyHTML.text() |> String.trim())) == ["1", "4"]
+      assert segments |> LazyHTML.attribute("class") |> Enum.map(&(&1 =~ "bg-red-100")) == [true, false]
+      assert segments |> LazyHTML.attribute("class") |> Enum.map(&(&1 =~ "bg-blue-100")) == [false, true]
     end
 
     test "renders warning and info severities" do

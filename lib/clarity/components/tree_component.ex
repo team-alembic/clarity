@@ -268,7 +268,10 @@ defmodule Clarity.TreeComponent do
   attr :lens, Lens, required: true
 
   # A badge links to its worst issue: that issue's vertex, on the tab that
-  # explains its status class (see PageLive's vertex route).
+  # explains its status class (see PageLive's vertex route). It shows each
+  # severity in the subtree, worst first, with how many issues have it, so a
+  # project whose dependencies carry an error and four infos reads as that,
+  # not as five of the worst. A vertex flagged only itself shows no counts.
   @doc false
   @spec status_badge(map()) :: Rendered.t()
   def status_badge(assigns) do
@@ -276,27 +279,42 @@ defmodule Clarity.TreeComponent do
     <%= if @entry do %>
       <.link
         patch={badge_path(@prefix, @lens, hd(@entry.issues))}
-        class={[
-          "inline-flex shrink-0 items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-full align-middle",
-          "text-xs font-medium leading-none ring-1 ring-inset hover:ring-2",
-          badge_classes(@entry.severity)
-        ]}
+        class="group inline-flex shrink-0 items-center gap-1 ml-1.5 align-middle"
         aria-label={badge_label(@entry)}
         {badge_hint(@entry)}
       >
-        <%= case @entry.severity do %>
-          <% :error -> %>
-            <.icon_error class="w-3 h-3" />
-          <% :warning -> %>
-            <.icon_warning class="w-3 h-3" />
-          <% :info -> %>
-            <.icon_info class="w-3 h-3" />
-        <% end %>
-        <span :if={@entry.count > 0} class="tabular-nums">{@entry.count}</span>
+        <span
+          :for={{severity, count} <- badge_counts(@entry)}
+          class={[
+            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full",
+            "text-xs font-medium leading-none ring-1 ring-inset group-hover:ring-2",
+            badge_classes(severity)
+          ]}
+        >
+          <%= case severity do %>
+            <% :error -> %>
+              <.icon_error class="w-3 h-3" />
+            <% :warning -> %>
+              <.icon_warning class="w-3 h-3" />
+            <% :info -> %>
+              <.icon_info class="w-3 h-3" />
+          <% end %>
+          <span :if={@entry.count > 0} class="tabular-nums">{count}</span>
+        </span>
       </.link>
     <% end %>
     """
   end
+
+  # Each severity in the subtree, worst first, with how many issues have it.
+  @spec badge_counts(Index.entry()) :: [{Clarity.Status.severity(), pos_integer()}]
+  defp badge_counts(entry),
+    do:
+      for(
+        severity <- [:error, :warning, :info],
+        count = entry.severities[severity],
+        do: {severity, count}
+      )
 
   @spec badge_path(String.t(), Lens.t(), Index.issue()) :: String.t()
   defp badge_path(prefix, lens, issue),
