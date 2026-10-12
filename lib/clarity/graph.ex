@@ -647,13 +647,13 @@ defmodule Clarity.Graph do
   defp tree_path(_tree_graph, "root", path), do: ["root" | path]
 
   defp tree_path(tree_graph, vertex_id, path) do
-    case :digraph.in_edges(tree_graph, vertex_id) do
-      [edge] ->
-        {_edge, parent_id, _vertex_id, _label} = :digraph.edge(tree_graph, edge)
-        tree_path(tree_graph, parent_id, [vertex_id | path])
-
-      _none ->
-        nil
+    # The server may move a vertex to a shorter path between the two reads,
+    # deleting the edge just found.
+    with [edge] <- :digraph.in_edges(tree_graph, vertex_id),
+         {_edge, parent_id, _vertex_id, _label} <- :digraph.edge(tree_graph, edge) do
+      tree_path(tree_graph, parent_id, [vertex_id | path])
+    else
+      _none -> nil
     end
   end
 
