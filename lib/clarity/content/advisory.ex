@@ -3,8 +3,9 @@ defmodule Clarity.Content.Advisory do
   Security-lens content for dependency advisories.
 
   On an `Application` vertex it lists the advisories affecting the installed
-  version (with the version that fixes each); on an `Advisory` vertex it shows
-  the advisory detail. When a released fix is installable, it offers the shared
+  version (with the version that fixes each), then those affecting its
+  dependencies, direct and transitive, so a project's page sums up what's
+  beneath it; on an `Advisory` vertex it shows the advisory detail. When a released fix is installable, it offers the shared
   `Clarity.Content.DependencyUpdate` button to update the dependency.
   """
 
@@ -20,6 +21,7 @@ defmodule Clarity.Content.Advisory do
   alias Clarity.Dependency
   alias Clarity.Dependency.Constraints
   alias Clarity.Dependency.Registry
+  alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
   alias Clarity.Vertex.Util
@@ -42,14 +44,21 @@ defmodule Clarity.Content.Advisory do
   def applies?(_vertex, _lens), do: false
 
   @impl Phoenix.LiveComponent
-  def update(%{vertex: %Vertex.Application{app: app, version: version}} = assigns, socket) do
+  def update(
+        %{vertex: %Vertex.Application{app: app, version: version} = vertex} = assigns,
+        socket
+      ) do
     installed = to_string(version)
+    dependencies = dependencies(assigns[:graph], vertex)
 
     {:ok,
      assign(socket,
        prefix: assigns.prefix,
        lens: assigns.lens,
-       markdown: application_markdown(app, installed),
+       markdown: [
+         application_markdown(app, installed),
+         dependencies_markdown(dependencies)
+       ],
        freshness: freshness(Source.last_refreshed_at()),
        update: build_update(app, installed)
      )}
@@ -122,6 +131,91 @@ defmodule Clarity.Content.Advisory do
       end
     ]
   end
+
+  # Every application `vertex` depends on, directly or through another.
+  @spec dependencies(Graph.t() | nil, Vertex.Application.t()) :: [Vertex.Application.t()]
+  defp dependencies(nil, _vertex), do: []
+
+  defp dependencies(graph, vertex) do
+    graph
+    |> dependency_closure([vertex], MapSet.new([Vertex.id(vertex)]), [])
+    |> Enum.sort_by(& &1.app)
+  end
+
+  @spec dependency_closure(Graph.t(), [Vertex.Application.t()], MapSet.t(String.t()), [
+          Vertex.Application.t()
+        ]) :: [Vertex.Application.t()]
+  defp dependency_closure(_graph, [], _seen, found), do: found
+
+  defp dependency_closure(graph, [vertex | rest], seen, found) do
+    # The :dependency edges are the only ones from an application to another.
+    new =
+      graph
+      |> Graph.out_neighbors(vertex)
+      |> Enum.filter(&match?(%Vertex.Application{}, &1))
+      |> Enum.uniq_by(&Vertex.id/1)
+      |> Enum.reject(&MapSet.member?(seen, Vertex.id(&1)))
+
+    seen = Enum.reduce(new, seen, &MapSet.put(&2, Vertex.id(&1)))
+    dependency_closure(graph, new ++ rest, seen, new ++ found)
+  end
+
+  @spec dependencies_markdown([Vertex.Application.t()]) :: iodata()
+  defp dependencies_markdown([]), do: []
+
+  defp dependencies_markdown(dependencies) do
+    affected =
+      for dependency <- dependencies,
+          installed = to_string(dependency.version),
+          advisory <- Source.advisories_for(dependency.app, installed),
+          do: {dependency, installed, advisory}
+
+    [
+      "## In Its Dependencies\n\n",
+      case affected do
+        [] ->
+          "No known advisories in its #{count_noun(length(dependencies), "dependency", "dependencies")}.\n\n"
+
+        _present ->
+          affected_count =
+            affected |> Enum.uniq_by(fn {dependency, _, _} -> dependency.app end) |> length()
+
+          [
+            count_noun(length(affected), "advisory", "advisories"),
+            " in ",
+            "#{affected_count} of its #{count_noun(length(dependencies), "dependency", "dependencies")}.\n\n",
+            "| Dependency | Installed | Advisory | Severity | Fixed in |\n| --- | --- | --- | --- | --- |\n",
+            Enum.map(affected, &dependency_row/1),
+            "\n"
+          ]
+      end
+    ]
+  end
+
+  @spec dependency_row({Vertex.Application.t(), String.t(), Advisory.t()}) :: iodata()
+  defp dependency_row({dependency, installed, advisory}) do
+    [
+      "| [",
+      to_string(dependency.app),
+      "](vertex://",
+      Vertex.id(dependency),
+      ") | ",
+      installed,
+      " | [",
+      advisory.id,
+      "](vertex://",
+      Util.id(Vertex.Advisory, [advisory.id]),
+      ") | ",
+      advisory.severity || "—",
+      " | ",
+      Advisory.fixed_version(advisory, installed) || "—",
+      " |\n"
+    ]
+  end
+
+  @spec count_noun(non_neg_integer(), String.t(), String.t()) :: String.t()
+  defp count_noun(1, singular, _plural), do: "1 #{singular}"
+  defp count_noun(count, _singular, plural), do: "#{count} #{plural}"
 
   @spec advisory_row(Advisory.t(), String.t()) :: iodata()
   defp advisory_row(advisory, installed) do
