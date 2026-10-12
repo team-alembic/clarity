@@ -4,6 +4,10 @@ defmodule Clarity.Docs do
   # Code.fetch_docs/1, kept for each loaded module as compiled: fetching reads
   # the module's file every time, and hints ask for a module's docs whenever a
   # page renders a link to it.
+  #
+  # A module's md5 covers its code, not its docs, so a recompile that changes
+  # only documentation keeps it: Clarity.CodeReloader forgets the docs of the
+  # modules each compile changes.
 
   @table __MODULE__
 
@@ -32,19 +36,32 @@ defmodule Clarity.Docs do
     end)
   end
 
+  @doc """
+  Forgets what's kept for `modules`, recompiled or removed since.
+  """
+  @spec forget([module()]) :: :ok
+  def forget(modules) do
+    with table when table != :undefined <- :ets.whereis(@table) do
+      for module <- modules, kind <- [:docs, :moduledoc], do: :ets.delete(table, {module, kind})
+    end
+
+    :ok
+  end
+
   @spec cached(module(), atom(), (-> result)) :: result when result: term()
   defp cached(module, kind, fun) do
     with table when table != :undefined <- :ets.whereis(@table),
          true <- :erlang.module_loaded(module) do
-      key = {module, module.module_info(:md5), kind}
+      key = {module, kind}
+      md5 = module.module_info(:md5)
 
       case :ets.lookup(table, key) do
-        [{^key, result}] ->
+        [{^key, ^md5, result}] ->
           result
 
-        [] ->
+        _stale ->
           result = fun.()
-          :ets.insert(table, {key, result})
+          :ets.insert(table, {key, md5, result})
           result
       end
     else

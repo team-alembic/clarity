@@ -40,6 +40,11 @@ defmodule Clarity.CodeReloader do
       _pid ->
         {app, modules_diff} = extract_app_and_modules_diff(listener_update)
 
+        # A module's md5 doesn't cover its docs, so the caches keyed on it
+        # would keep showing docs edited since.
+        Clarity.Docs.forget(modules_diff.changed ++ modules_diff.removed)
+        Clarity.Tooltip.forget_hints()
+
         Clarity.Protocols.consolidate_again(
           modules_diff.changed ++ modules_diff.added ++ modules_diff.removed
         )

@@ -175,9 +175,22 @@ defmodule Clarity.Tooltip do
 
   @doc false
   # Every link to a vertex has its hint, so a page has many, and each takes a
-  # while: they're kept, one per vertex, until the vertex or its module changes.
+  # while: they're kept, one per vertex, until the vertex or its module's code
+  # changes, or forget_hints/0 forgets them all.
   @spec create_cache() :: :ets.table()
   def create_cache, do: :ets.new(@hints, [:named_table, :public, :set, read_concurrency: true])
+
+  @doc false
+  # A hint can draw on modules other than its vertex's (a resource's on its
+  # domain's), and on their docs, which a module's md5 doesn't cover: once
+  # anything is recompiled (see Clarity.CodeReloader), every hint is made again.
+  @spec forget_hints() :: :ok
+  def forget_hints do
+    with table when table != :undefined <- :ets.whereis(@hints),
+         do: :ets.delete_all_objects(table)
+
+    :ok
+  end
 
   @spec cached_hint(:ets.table(), Vertex.t()) :: hint()
   defp cached_hint(table, vertex) do
