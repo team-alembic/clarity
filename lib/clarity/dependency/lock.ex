@@ -80,17 +80,33 @@ defmodule Clarity.Dependency.Lock do
     _error -> nil
   end
 
-  # As Mix reads it: a map of literals.
+  # A lockfile is a map of literals: it's read as one, never evaluated. The
+  # path comes from Clarity's config or the Mix project, not user input.
   @spec parse(Path.t()) :: %{atom() => tuple()} | nil
+  # sobelow_skip ["Traversal.FileModule"]
   defp parse(path) do
-    opts = [file: path, emit_warnings: false]
-
     with {:ok, contents} <- File.read(path),
-         {:ok, quoted} <- Code.string_to_quoted(contents, opts),
-         {%{} = lock, _binding} <- Code.eval_quoted(quoted, [], opts) do
+         {:ok, quoted} <- Code.string_to_quoted(contents, file: path, emit_warnings: false),
+         %{} = lock <- literal(quoted) do
       lock
     else
       _unreadable -> nil
     end
+  catch
+    :not_a_literal -> nil
   end
+
+  # The term a literal's quoted form stands for; anything else (a call, a
+  # variable) throws :not_a_literal.
+  @spec literal(Macro.t()) :: term()
+  defp literal({:%{}, _meta, pairs}) when is_list(pairs),
+    do: Map.new(pairs, fn {key, value} -> {literal(key), literal(value)} end)
+
+  defp literal({:{}, _meta, elements}) when is_list(elements),
+    do: elements |> Enum.map(&literal/1) |> List.to_tuple()
+
+  defp literal({left, right}), do: {literal(left), literal(right)}
+  defp literal(list) when is_list(list), do: Enum.map(list, &literal/1)
+  defp literal(term) when is_atom(term) or is_binary(term) or is_number(term), do: term
+  defp literal(_other), do: throw(:not_a_literal)
 end

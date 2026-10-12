@@ -26,6 +26,29 @@ defmodule Clarity.Dependency.LockTest do
       assert Lock.hex_package(:kernel) == nil
     end
 
+    test "reads a lockfile Mix wrote, without evaluating it" do
+      original = Application.fetch_env!(:clarity, :lockfile)
+      Application.put_env(:clarity, :lockfile, Path.expand("../../../mix.lock", __DIR__))
+      on_exit(fn -> Application.put_env(:clarity, :lockfile, original) end)
+
+      assert Lock.hex_package(:ash) == "ash"
+      assert Lock.hex_package(:clarity) == nil
+    end
+
+    @tag :tmp_dir
+    test "takes a lockfile with anything but literals in it as unreadable", %{tmp_dir: dir} do
+      path = Path.join(dir, "mix.lock")
+      File.write!(path, ~s|%{"jason": {:hex, :jason, System.halt()}}|)
+
+      original = Application.fetch_env!(:clarity, :lockfile)
+      Application.put_env(:clarity, :lockfile, path)
+      on_exit(fn -> Application.put_env(:clarity, :lockfile, original) end)
+
+      # Unreadable, as without one: the package of its name.
+      assert Lock.hex_package(:jason) == "jason"
+      assert Lock.hex_package(:git_dep) == "git_dep"
+    end
+
     test "without a lockfile, takes every application but the project's to be the package of its name" do
       original = Application.fetch_env!(:clarity, :lockfile)
       Application.put_env(:clarity, :lockfile, "/no/such/mix.lock")
