@@ -220,6 +220,21 @@ defmodule Clarity.Server do
     end
   end
 
+  def handle_cast({:introspect, {:introspector, _introspector}}, %State{started?: false} = state),
+    do: {:noreply, state}
+
+  # Adds to what's there: an introspector run again finds what it found before
+  # and anything new, and adding a vertex or edge already in the graph changes
+  # nothing.
+  def handle_cast({:introspect, {:introspector, introspector}}, state) do
+    if introspector in state.introspectors do
+      broadcast_event(state, :__restart_pulling__)
+      {:noreply, run_again(state, introspector)}
+    else
+      {:noreply, state}
+    end
+  end
+
   def handle_cast({:prioritize, vertex}, state) do
     app =
       case vertex do
@@ -673,9 +688,42 @@ defmodule Clarity.Server do
 
     new_state = reset(%{state | graph: graph, started?: true})
 
+    # A cached graph keeps what unchanged code was found to hold, but not what
+    # an introspector reading runtime data would find now.
+    new_state =
+      if graph == state.graph,
+        do: new_state,
+        else:
+          new_state.introspectors
+          |> Enum.filter(&reads_runtime_data?/1)
+          |> Enum.reduce(new_state, &run_again(&2, &1))
+
     broadcast_event(new_state, :work_started)
 
     new_state
+  end
+
+  # Queues `introspector` on every vertex of its types already in the graph.
+  @spec run_again(State.t(), module()) :: State.t()
+  defp run_again(state, introspector) do
+    state.graph
+    |> Graph.vertices({:in, :vertex_type, introspector.source_vertex_types()})
+    |> Enum.map(
+      &Clarity.Server.Task.new_introspection(
+        &1,
+        introspector,
+        state.graph,
+        lane(&1, introspector, :dependencies, state)
+      )
+    )
+    |> Enum.reduce(state, &%{&2 | queue: Queue.push(&2.queue, &1)})
+  end
+
+  @spec reads_runtime_data?(module()) :: boolean()
+  defp reads_runtime_data?(introspector) do
+    Code.ensure_loaded?(introspector) and
+      function_exported?(introspector, :reads_runtime_data?, 0) and
+      introspector.reads_runtime_data?()
   end
 
   @spec contains_introspector_modules?(Clarity.modules_diff(), [Clarity.Introspector.t()]) ::

@@ -4,6 +4,7 @@ defmodule Clarity.ServerTest do
 
   import ExUnit.CaptureLog
 
+  alias Clarity.Introspector.Advisory
   alias Clarity.Server
   alias Clarity.Server.Worker
   alias Clarity.Test.DummyIntrospector
@@ -102,7 +103,7 @@ defmodule Clarity.ServerTest do
       assert Enum.all?(tasks, &(&1.vertex == app_vertex))
 
       expected_introspectors = [
-        Clarity.Introspector.Advisory,
+        Advisory,
         Clarity.Introspector.Module
       ]
 
@@ -720,6 +721,125 @@ defmodule Clarity.ServerTest do
       # The stdlib task may have missed what arrived while it ran.
       assert {:ok, %{id: id}} = Server.pull_task(server)
       assert id == stdlib.id
+    end
+  end
+
+  describe "Running an introspector again" do
+    setup %{test: test} do
+      server =
+        start_supervised!(
+          {Server,
+           name: Module.concat(__MODULE__, test),
+           introspectors: [Clarity.Introspector.Application, Clarity.Introspector.Module]}
+        )
+
+      {:ok, root_task} = Server.pull_task(server)
+
+      entries =
+        Enum.flat_map([:stdlib, :clarity], fn app ->
+          app_vertex = %Vertex.Application{app: app, description: "", version: "1.0.0"}
+          [{:vertex, app_vertex}, {:edge, root_task.vertex, app_vertex, :application}]
+        end)
+
+      Server.ack_task(server, root_task.id, entries)
+
+      for {:ok, task} <- [Server.pull_task(server), Server.pull_task(server)],
+          do: Server.ack_task(server, task.id, [])
+
+      assert :empty = Server.pull_task(server)
+
+      %{server: server}
+    end
+
+    test "runs it on every vertex it introspects, the project's first", %{server: server} do
+      Clarity.introspect(server, {:introspector, Clarity.Introspector.Module})
+
+      tasks = for {:ok, task} <- [Server.pull_task(server), Server.pull_task(server)], do: task
+
+      assert Enum.map(tasks, &{&1.vertex.app, &1.introspector}) == [
+               {:clarity, Clarity.Introspector.Module},
+               {:stdlib, Clarity.Introspector.Module}
+             ]
+
+      assert :empty = Server.pull_task(server)
+    end
+
+    test "ignores an introspector the server doesn't run", %{server: server} do
+      Clarity.introspect(server, {:introspector, Advisory})
+
+      assert :empty = Server.pull_task(server)
+    end
+  end
+
+  describe "Starting from a cached graph" do
+    defmodule RuntimeDataIntrospector do
+      @moduledoc false
+      @behaviour Clarity.Introspector
+
+      @impl Clarity.Introspector
+      def source_vertex_types, do: [Vertex.Application]
+
+      @impl Clarity.Introspector
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
+
+      @impl Clarity.Introspector
+      def reads_runtime_data?, do: true
+    end
+
+    defmodule CodeIntrospector do
+      @moduledoc false
+      @behaviour Clarity.Introspector
+
+      @impl Clarity.Introspector
+      def source_vertex_types, do: [Vertex.Application]
+
+      @impl Clarity.Introspector
+      def introspect_vertex(_vertex, _graph), do: {:ok, []}
+    end
+
+    defmodule FakeCache do
+      @moduledoc false
+      use GenServer
+
+      @spec start_link(Vertex.Application.t()) :: GenServer.on_start()
+      def start_link(app_vertex), do: GenServer.start_link(__MODULE__, app_vertex)
+
+      @impl GenServer
+      def init(app_vertex), do: {:ok, app_vertex}
+
+      # Hands over a graph that already holds the application, as a cache
+      # saved by an earlier run would.
+      @impl GenServer
+      def handle_call(:load, {caller, _tag}, app_vertex) do
+        graph = Clarity.Graph.new()
+        Clarity.Graph.add_vertex(graph, app_vertex, %Vertex.Root{})
+        Clarity.Graph.add_edge(graph, %Vertex.Root{}, app_vertex, :application)
+        {:reply, Clarity.Graph.handover(graph, caller), app_vertex}
+      end
+    end
+
+    test "runs introspectors that read runtime data again over the cached vertices", %{test: test} do
+      {app, description, version} = List.keyfind(Application.loaded_applications(), :clarity, 0)
+      app_vertex = Vertex.Application.from_app_tuple({app, description, version})
+      cache = start_supervised!({FakeCache, app_vertex})
+
+      server =
+        start_supervised!(
+          {Server,
+           name: Module.concat(__MODULE__, test),
+           cache: cache,
+           introspectors: [Clarity.Introspector.Application, RuntimeDataIntrospector, CodeIntrospector]}
+        )
+
+      tasks = for {:ok, task} <- Enum.map(1..3, fn _ -> Server.pull_task(server) end), do: task
+
+      # The application is cached at its current version, so it isn't found
+      # again: only the introspector reading runtime data runs on it.
+      assert Enum.sort(Enum.map(tasks, &{&1.vertex, &1.introspector})) ==
+               Enum.sort([
+                 {%Vertex.Root{}, Clarity.Introspector.Application},
+                 {app_vertex, RuntimeDataIntrospector}
+               ])
     end
   end
 

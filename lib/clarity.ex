@@ -106,11 +106,17 @@ defmodule Clarity do
 
   - `:full` - Full introspection, clears graph and re-introspects everything
   - `{:incremental, app, modules_diff}` - Incremental introspection based on module changes for specific app
+  - `{:introspector, introspector}` - Runs one introspector again on every vertex of the
+    types it introspects, for one whose findings change without the code changing (such as
+    `Clarity.Introspector.Advisory`, once the advisory database refreshes)
   - `[module()]` - Introspect specific modules (legacy support)
   """
   @spec introspect(
           GenServer.server(),
-          :full | {:incremental, Application.app(), modules_diff()} | [module()]
+          :full
+          | {:incremental, Application.app(), modules_diff()}
+          | {:introspector, module()}
+          | [module()]
         ) :: :ok
   def introspect(server \\ Clarity.Server, scope \\ :full) do
     GenServer.cast(server, {:introspect, scope})

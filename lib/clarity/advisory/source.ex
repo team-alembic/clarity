@@ -114,7 +114,10 @@ defmodule Clarity.Advisory.Source do
     end
 
     :ets.insert(@ets, {@attempted_key, true})
-    :ok
+
+    # Advisories found since, or found at all if introspection ran before the
+    # first refresh, reach the graph.
+    Clarity.introspect(Clarity.Server, {:introspector, Clarity.Introspector.Advisory})
   end
 
   @spec store(:dets.tab_name(), %{String.t() => [Advisory.t()]}) :: :ok

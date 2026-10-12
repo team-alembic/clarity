@@ -5,7 +5,9 @@ defmodule Clarity.Introspector.Advisory do
 
   Advisory data arrives asynchronously on a timer. Until the first refresh has
   populated the cache, this returns `{:error, :unmet_dependencies}` so the worker
-  retries; the source triggers a re-introspection once data is available.
+  retries; after each refresh the source has this introspector run again on
+  every application (`Clarity.introspect/2` with `{:introspector, module}`), so
+  advisories published since, or fetched after introspection, reach the graph.
   """
 
   @behaviour Clarity.Introspector
@@ -31,6 +33,9 @@ defmodule Clarity.Introspector.Advisory do
   end
 
   def introspect_vertex(_vertex, _graph), do: {:ok, []}
+
+  @impl Clarity.Introspector
+  def reads_runtime_data?, do: true
 
   @spec advisory_entries(Clarity.Advisory.t(), Vertex.Application.t()) ::
           [Clarity.Introspector.entry()]

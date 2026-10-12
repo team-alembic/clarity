@@ -114,4 +114,19 @@ defmodule Clarity.Introspector do
   log the error and acknowledge the task to prevent infinite retries.
   """
   @callback introspect_vertex(vertex :: Vertex.t(), graph :: Clarity.Graph.t()) :: result()
+
+  @doc """
+  Whether what the introspector finds can change while the code doesn't,
+  because it reads data fetched at runtime (`Clarity.Introspector.Advisory`
+  reads the advisory database).
+
+  A graph loaded from the cache is kept for vertices whose code is unchanged,
+  so their introspectors don't run again; one that returns `true` here does,
+  on every vertex of its types. It can also be run again whenever its data
+  changes, with `Clarity.introspect/2` and `{:introspector, module}`.
+  Optional; `false` when not implemented.
+  """
+  @callback reads_runtime_data?() :: boolean()
+
+  @optional_callbacks reads_runtime_data?: 0
 end

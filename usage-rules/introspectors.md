@@ -250,6 +250,27 @@ module vertex's id includes the module's version, so it looks the
 vertex up directly, where searching the graph for it would scan
 every vertex.
 
+## Data From Outside the Code
+
+Clarity keeps the graph it built, and on restart re-introspects only code that
+changed. An introspector that reads data fetched at runtime, whose findings can
+change while the code doesn't, implements the optional `reads_runtime_data?/0`:
+
+```elixir
+@impl Clarity.Introspector
+def reads_runtime_data?, do: true
+```
+
+It then runs again on every vertex of its types whenever Clarity starts from a
+cached graph. When the data changes while Clarity runs, run it again yourself:
+
+```elixir
+Clarity.introspect(Clarity.Server, {:introspector, MyApp.LicenceIntrospector})
+```
+
+Running again only adds what it finds. `Clarity.Introspector.Advisory` does
+both, for the advisory database.
+
 ## Edge Labels
 
 Edge labels describe the relationship between vertices. Use clear,
