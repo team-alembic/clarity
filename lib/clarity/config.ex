@@ -86,6 +86,17 @@ defmodule Clarity.Config do
 
   Defaults to `Application.app_dir(:clarity, "priv/cache")` if not configured.
 
+  ### Lockfile (`:lockfile`)
+
+  The `mix.lock` that says which applications are Hex packages, for version
+  status and advisories:
+
+  ```elixir
+  config :clarity, :lockfile, "../../mix.lock"
+  ```
+
+  Defaults to the Mix project's lockfile.
+
   ### Auto Start (`:auto_start?`)
 
   Controls whether Clarity automatically starts introspection on application startup:
@@ -357,6 +368,10 @@ defmodule Clarity.Config do
   def fetch_default_perspective_lens! do
     Application.fetch_env!(:clarity, :default_perspective_lens)
   end
+
+  @doc false
+  @spec lockfile() :: Path.t() | nil
+  def lockfile, do: Application.get_env(:clarity, :lockfile)
 
   @doc false
   @spec cache_path() :: Path.t()

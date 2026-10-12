@@ -1,0 +1,18 @@
+%{
+  "ash": {:hex, :ash, "3.34.6", "", [:mix], [], "hexpm", ""},
+  "both": {:hex, :both, "1.0.0", "", [:mix], [], "hexpm", ""},
+  "decimal": {:hex, :decimal, "3.1.1", "", [:mix], [], "hexpm", ""},
+  "fresh": {:hex, :fresh, "1.0.0", "", [:mix], [], "hexpm", ""},
+  "git_dep": {:git, "https://github.com/example/git_dep.git", "0123456789abcdef", []},
+  "jason": {:hex, :jason, "1.4.0", "", [:mix], [], "hexpm", ""},
+  "mdex": {:hex, :mdex, "0.1.0", "", [:mix], [], "hexpm", ""},
+  "old": {:hex, :old, "1.0.0", "", [:mix], [], "hexpm", ""},
+  "phoenix": {:hex, :phoenix, "1.7.0", "", [:mix], [], "hexpm", ""},
+  "phoenix_live_reload": {:hex, :phoenix_live_reload, "1.0.0", "", [:mix], [], "hexpm", ""},
+  "plug": {:hex, :plug, "1.14.0", "", [:mix], [], "hexpm", ""},
+  "pubsub": {:hex, :pubsub, "2.3.0", "", [:mix], [], "hexpm", ""},
+  "renamed": {:hex, :renamed_on_hex, "1.0.0", "", [:mix], [], "hexpm", ""},
+  "stale": {:hex, :stale, "1.0.0", "", [:mix], [], "hexpm", ""},
+  "vuln": {:hex, :vuln, "1.0.0", "", [:mix], [], "hexpm", ""},
+  "websock_adapter": {:hex, :websock_adapter, "0.5.0", "", [:mix], [], "hexpm", ""},
+}

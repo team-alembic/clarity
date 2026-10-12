@@ -359,12 +359,20 @@ defmodule Clarity.Pages.PageLiveTest do
   end
 
   describe "PageLive opening a status badge's link" do
-    test "opens the tab that explains the status class", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/security/application:clarity/dependency"}}} =
-               live(conn, "/security/application:clarity?status=hygiene")
+    # Ash, a dependency installed from Hex, beside the project's application.
+    @describetag test_graph: [internals: true]
 
+    test "opens the tab that explains the status class", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/security/application:ash/dependency"}}} =
+               live(conn, "/security/application:ash?status=hygiene")
+
+      assert {:error, {:live_redirect, %{to: "/security/application:ash/advisory"}}} =
+               live(conn, "/security/application:ash?status=security")
+    end
+
+    test "has no version status for the project's own application, which isn't on Hex", %{conn: conn} do
       assert {:error, {:live_redirect, %{to: "/security/application:clarity/advisory"}}} =
-               live(conn, "/security/application:clarity?status=security")
+               live(conn, "/security/application:clarity?status=hygiene")
     end
 
     test "falls back to the first tab when none explains the class", %{conn: conn} do

@@ -15,6 +15,7 @@ defmodule Clarity.Content.Dependency do
   alias Clarity.Content.DependencyUpdate
   alias Clarity.Dependency
   alias Clarity.Dependency.Constraints
+  alias Clarity.Dependency.Lock
   alias Clarity.Dependency.Registry
   alias Clarity.Perspective.Lens
   alias Clarity.Vertex
@@ -32,7 +33,11 @@ defmodule Clarity.Content.Dependency do
   def status_classes, do: [:hygiene]
 
   @impl Clarity.Content
-  def applies?(%Vertex.Application{}, %Lens{id: "security"}), do: true
+  # The project's own applications, and path and git dependencies, aren't
+  # installed from Hex, so have no version there.
+  def applies?(%Vertex.Application{app: app}, %Lens{id: "security"}),
+    do: Lock.hex_package(app) != nil
+
   def applies?(_vertex, _lens), do: false
 
   @impl Phoenix.LiveComponent

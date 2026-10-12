@@ -14,6 +14,7 @@ defmodule Clarity.Dependency.Registry do
 
   alias Clarity.Config
   alias Clarity.Dependency
+  alias Clarity.Dependency.Lock
 
   require Logger
 
@@ -30,13 +31,21 @@ defmodule Clarity.Dependency.Registry do
   end
 
   @doc """
-  Version status for `name`, or `nil` when unknown.
+  Version status for the application `app` (when it's a Hex package, see
+  `Clarity.Dependency.Lock`), or for the Hex package named; `nil` when unknown.
 
   Returns `nil` when the registry isn't running (e.g. in tests) or has no entry.
   """
   @spec summary(atom() | String.t()) :: Dependency.summary() | nil
-  def summary(name) do
-    case lookup({:package, to_string(name)}) do
+  def summary(app) when is_atom(app) do
+    case Lock.hex_package(app) do
+      nil -> nil
+      package -> summary(package)
+    end
+  end
+
+  def summary(package) do
+    case lookup({:package, package}) do
       [{_key, summary}] -> summary
       _missing -> nil
     end

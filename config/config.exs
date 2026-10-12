@@ -30,6 +30,9 @@ if config_env() == :test do
   # empty immediately rather than waiting on a fetch that never runs.
   config :clarity, :advisories, enabled?: false
 
+  # Which test applications are Hex packages (see Clarity.Dependency.Lock).
+  config :clarity, :lockfile, Path.expand("../test/support/hex.lock", __DIR__)
+
   config :clarity,
     ash_domains: [
       Demo.Accounts,

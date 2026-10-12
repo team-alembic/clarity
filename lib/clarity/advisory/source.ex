@@ -17,6 +17,7 @@ defmodule Clarity.Advisory.Source do
 
   alias Clarity.Advisory
   alias Clarity.Config
+  alias Clarity.Dependency.Lock
 
   require Logger
 
@@ -33,16 +34,24 @@ defmodule Clarity.Advisory.Source do
   end
 
   @doc """
-  Advisories affecting `name` at `version`, read from the ETS mirror.
+  Advisories affecting the application `app` at `version`, when it's a Hex
+  package (see `Clarity.Dependency.Lock`), or the Hex package named; read from
+  the ETS mirror.
 
   Returns `[]` when the source isn't running (e.g. in tests) or has no data.
   """
   @spec advisories_for(atom() | String.t(), charlist() | String.t()) :: [Advisory.t()]
-  def advisories_for(name, version) do
-    name = to_string(name)
+  def advisories_for(app, version) when is_atom(app) do
+    case Lock.hex_package(app) do
+      nil -> []
+      package -> advisories_for(package, version)
+    end
+  end
+
+  def advisories_for(package, version) do
     version = to_string(version)
 
-    case lookup({:package, name}) do
+    case lookup({:package, package}) do
       [{_key, advisories}] -> Enum.filter(advisories, &Advisory.affects_version?(&1, version))
       _missing -> []
     end
