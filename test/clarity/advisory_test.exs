@@ -3,6 +3,8 @@ defmodule Clarity.AdvisoryTest do
 
   alias Clarity.Advisory
 
+  doctest Advisory, only: [cve: 1, cve_url: 1]
+
   describe "from_osv/1" do
     test "splits one record into one advisory per affected Hex package" do
       osv = %{
@@ -81,6 +83,12 @@ defmodule Clarity.AdvisoryTest do
     test "unparseable versions fail closed" do
       adv = advisory(ranges: [%{"events" => [%{"introduced" => "0"}, %{"fixed" => "2.0.0"}]}])
       refute Advisory.affects_version?(adv, "not-a-version")
+    end
+  end
+
+  describe "cve_url/1" do
+    test "is nil for an advisory without a CVE" do
+      assert Advisory.cve_url(%Advisory{id: "GHSA-aaaa-bbbb-cccc", package: "x", aliases: []}) == nil
     end
   end
 end

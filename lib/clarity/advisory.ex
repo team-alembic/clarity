@@ -71,6 +71,53 @@ defmodule Clarity.Advisory do
   end
 
   @doc """
+  The CVE assigned to this advisory, or `nil`.
+
+      iex> Clarity.Advisory.cve(%Clarity.Advisory{id: "EEF-CVE-2026-97853", package: "decimal"})
+      "CVE-2026-97853"
+
+      iex> Clarity.Advisory.cve(%Clarity.Advisory{
+      ...>   id: "GHSA-564w-97r7-c6p9",
+      ...>   package: "phoenix",
+      ...>   aliases: ["CVE-2023-35174"]
+      ...> })
+      "CVE-2023-35174"
+  """
+  @spec cve(t()) :: String.t() | nil
+  def cve(%__MODULE__{id: "EEF-CVE-" <> number}), do: "CVE-" <> number
+
+  def cve(%__MODULE__{aliases: aliases}),
+    do: Enum.find(aliases || [], &String.starts_with?(&1, "CVE-"))
+
+  @doc """
+  The CVE's record at the CNA that assigned it, or `nil` without a CVE.
+
+  The Erlang Ecosystem Foundation's CNA assigns the CVEs of the advisories it
+  publishes (`EEF-CVE-…`); GitHub's assigns those of GitHub's advisories
+  (`GHSA-…`), and its advisory page is the record.
+
+      iex> Clarity.Advisory.cve_url(%Clarity.Advisory{id: "EEF-CVE-2026-97853", package: "decimal"})
+      "https://cna.erlef.org/cves/CVE-2026-97853.html"
+
+      iex> Clarity.Advisory.cve_url(%Clarity.Advisory{
+      ...>   id: "GHSA-564w-97r7-c6p9",
+      ...>   package: "phoenix",
+      ...>   aliases: ["CVE-2023-35174"]
+      ...> })
+      "https://github.com/advisories/GHSA-564w-97r7-c6p9"
+  """
+  @spec cve_url(t()) :: String.t() | nil
+  def cve_url(%__MODULE__{id: "EEF-" <> _id} = advisory) do
+    if cve = cve(advisory), do: "https://cna.erlef.org/cves/#{cve}.html"
+  end
+
+  def cve_url(%__MODULE__{id: "GHSA-" <> _id = id} = advisory) do
+    if cve(advisory), do: "https://github.com/advisories/#{id}"
+  end
+
+  def cve_url(%__MODULE__{}), do: nil
+
+  @doc """
   The version that fixes this advisory for an install at `version`, or `nil`.
 
   Returns the `fixed` boundary of the affected range containing `version` — the

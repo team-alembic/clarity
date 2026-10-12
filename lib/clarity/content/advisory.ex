@@ -124,7 +124,7 @@ defmodule Clarity.Content.Advisory do
 
         _present ->
           [
-            "| Advisory | Severity | Fixed in | Summary |\n| --- | --- | --- | --- |\n",
+            "| Advisory | CVE | Severity | Fixed in | Summary |\n| --- | --- | --- | --- | --- |\n",
             Enum.map(advisories, &advisory_row(&1, installed)),
             "\n"
           ]
@@ -184,7 +184,7 @@ defmodule Clarity.Content.Advisory do
             count_noun(length(affected), "advisory", "advisories"),
             " in ",
             "#{affected_count} of its #{count_noun(length(dependencies), "dependency", "dependencies")}.\n\n",
-            "| Dependency | Installed | Advisory | Severity | Fixed in |\n| --- | --- | --- | --- | --- |\n",
+            "| Dependency | Installed | Advisory | CVE | Severity | Fixed in |\n| --- | --- | --- | --- | --- | --- |\n",
             Enum.map(affected, &dependency_row/1),
             "\n"
           ]
@@ -206,11 +206,23 @@ defmodule Clarity.Content.Advisory do
       "](vertex://",
       Util.id(Vertex.Advisory, [advisory.id]),
       ") | ",
+      cve_link(advisory),
+      " | ",
       advisory.severity || "—",
       " | ",
       Advisory.fixed_version(advisory, installed) || "—",
       " |\n"
     ]
+  end
+
+  # A CVE always links to its record at the CNA that assigned it.
+  @spec cve_link(Advisory.t()) :: iodata()
+  defp cve_link(advisory) do
+    case {Advisory.cve(advisory), Advisory.cve_url(advisory)} do
+      {nil, _url} -> "—"
+      {cve, nil} -> cve
+      {cve, url} -> ["[", cve, "](", url, ")"]
+    end
   end
 
   @spec count_noun(non_neg_integer(), String.t(), String.t()) :: String.t()
@@ -225,6 +237,8 @@ defmodule Clarity.Content.Advisory do
       "](vertex://",
       Util.id(Vertex.Advisory, [advisory.id]),
       ") | ",
+      cve_link(advisory),
+      " | ",
       advisory.severity || "—",
       " | ",
       Advisory.fixed_version(advisory, installed) || "—",
@@ -244,6 +258,9 @@ defmodule Clarity.Content.Advisory do
       "| **Package** | `",
       advisory.package,
       "` |\n",
+      "| **CVE** | ",
+      cve_link(advisory),
+      " |\n",
       "| **Severity** | ",
       advisory.severity || "—",
       " |\n",
@@ -251,9 +268,9 @@ defmodule Clarity.Content.Advisory do
         do: ["| **Fixed in** | ", Advisory.fixed_version(advisory, installed) || "—", " |\n"],
         else: []
       ),
-      case advisory.aliases do
+      case advisory.aliases |> List.wrap() |> List.delete(Advisory.cve(advisory)) do
         [] -> []
-        aliases -> ["| **Aliases** | ", Enum.map_join(aliases, ", ", &"`#{&1}`"), " |\n"]
+        aliases -> ["| **Aliases** | ", Enum.map_join(aliases, ", ", &alias_link/1), " |\n"]
       end,
       "\n",
       case advisory.summary do
@@ -263,6 +280,11 @@ defmodule Clarity.Content.Advisory do
       references_section(advisory.references)
     ]
   end
+
+  # GitHub's advisories are published at their id.
+  @spec alias_link(String.t()) :: String.t()
+  defp alias_link("GHSA-" <> _rest = id), do: "[#{id}](https://github.com/advisories/#{id})"
+  defp alias_link(id), do: "`#{id}`"
 
   @spec references_section([String.t()]) :: iodata()
   defp references_section([]), do: []

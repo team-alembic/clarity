@@ -76,11 +76,12 @@ defmodule Clarity.Content.AdvisoryTest do
       assert text(html) =~ "1 advisory in 1 of its 3 dependencies."
 
       assert [row] = html |> LazyHTML.query("tbody tr") |> Enum.to_list()
-      assert text(row) == "plug 1.14.0 EEF-CVE-2026-0001 HIGH 1.15.0"
+      assert text(row) == "plug 1.14.0 EEF-CVE-2026-0001 CVE-2026-0001 HIGH 1.15.0"
 
       assert row |> LazyHTML.query("a") |> LazyHTML.attribute("href") == [
                "/c/security/#{Vertex.id(plug)}",
-               "/c/security/advisory:EEF-CVE-2026-0001"
+               "/c/security/advisory:EEF-CVE-2026-0001",
+               "https://cna.erlef.org/cves/CVE-2026-0001.html"
              ]
     end
 
@@ -90,6 +91,25 @@ defmodule Clarity.Content.AdvisoryTest do
 
     test "says nothing of dependencies for an application without any", %{graph: graph, plug: plug} do
       refute text(render_advisories(graph, plug)) =~ "In Its Dependencies"
+    end
+  end
+
+  describe "an advisory" do
+    test "links its CVE to the record at the CNA that assigned it, and GitHub's id to GitHub" do
+      advisory = %Clarity.Advisory{
+        id: "EEF-CVE-2026-0001",
+        package: "plug",
+        aliases: ["CVE-2026-0001", "GHSA-aaaa-bbbb-cccc"]
+      }
+
+      links =
+        Graph.new()
+        |> render_advisories(%Vertex.Advisory{advisory: advisory})
+        |> LazyHTML.query("a")
+        |> Enum.map(&{text(&1), &1 |> LazyHTML.attribute("href") |> hd()})
+
+      assert {"CVE-2026-0001", "https://cna.erlef.org/cves/CVE-2026-0001.html"} in links
+      assert {"GHSA-aaaa-bbbb-cccc", "https://github.com/advisories/GHSA-aaaa-bbbb-cccc"} in links
     end
   end
 end

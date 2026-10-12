@@ -265,7 +265,18 @@ defmodule Clarity.Report.Components do
             <div :for={item <- group.items} class="report-todo-line">
               <.item item={item} prefix={@prefix} lens={@lens} />
               <span :if={item[:note]} class="report-todo-note">{item.note}</span>
-              <span :for={detail <- item[:details] || []} class="report-todo-detail">{detail}</span>
+              <span :for={detail <- item[:details] || []} class="report-todo-detail">
+                <%= for segment <- List.wrap(detail) do %>
+                  <%= case segment do %>
+                    <% {text, url} -> %>
+                      <a href={url} target="_blank" rel="noopener noreferrer" class="report-link">
+                        {text}
+                      </a>
+                    <% text -> %>
+                      {text}
+                  <% end %>
+                <% end %>
+              </span>
             </div>
           <% else %>
             <.group :if={group[:label]}>

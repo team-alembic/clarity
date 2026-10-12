@@ -88,8 +88,20 @@ defmodule Clarity.Report.SupplyChainTest do
 
       assert action.title == "Known vulnerabilities"
       assert [%{text: "vuln", details: [detail]}] = items(action)
-      assert detail =~ "GHSA-xyz · A nasty hole"
+      assert detail == ["GHSA-xyz", " · ", "A nasty hole", " · ", "no fixed version yet"]
       assert action.command == "mix deps.update vuln"
+    end
+
+    test "links a vulnerability's CVE to the record at the CNA that assigned it", %{graph: graph} do
+      add_advisory(graph, %Clarity.Advisory{
+        id: "EEF-CVE-2026-0001",
+        package: "vuln",
+        summary: "A nasty hole",
+        versions: ["1.0.0"]
+      })
+
+      assert [%{details: [[{"EEF-CVE-2026-0001", url} | _rest]]}] = graph |> action(:high) |> items()
+      assert url == "https://cna.erlef.org/cves/CVE-2026-0001.html"
     end
 
     test "has nothing to do when all clear", %{graph: graph} do

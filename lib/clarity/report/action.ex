@@ -10,6 +10,9 @@ defmodule Clarity.Report.Action do
   `details`; with `:chips` (the default) items wrap beside their label.
 
   `fix` says how to fix it in a line; text between backticks is code.
+
+  A detail is text, or a list of text and `{text, url}` links to elsewhere
+  (an advisory's record, say).
   """
 
   @typedoc "How soon it wants doing."
@@ -22,8 +25,11 @@ defmodule Clarity.Report.Action do
           optional(:muted?) => boolean(),
           optional(:hint) => String.t() | nil,
           optional(:note) => String.t() | nil,
-          optional(:details) => [String.t()]
+          optional(:details) => [detail()]
         }
+
+  @typedoc "A line of detail: text, or text and links to elsewhere."
+  @type detail() :: String.t() | [String.t() | {String.t(), String.t()}]
 
   @type group() :: %{
           required(:items) => [item()],

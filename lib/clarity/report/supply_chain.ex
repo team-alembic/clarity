@@ -120,11 +120,23 @@ defmodule Clarity.Report.SupplyChain do
   defp via_note([]), do: []
   defp via_note(via), do: ["via " <> Enum.join(via, ", ")]
 
-  @spec advisory_line(Advisory.t(), String.t()) :: String.t()
+  # The advisory links to its CVE's record at the CNA that assigned it: an
+  # EEF advisory's id is the CVE's, while GitHub's gives the CVE beside it.
+  @spec advisory_line(Advisory.t(), String.t()) :: Action.detail()
   defp advisory_line(advisory, version) do
-    [advisory.id, advisory.summary, fixed_in(advisory, version)]
+    cve = Advisory.cve(advisory)
+    url = Advisory.cve_url(advisory)
+
+    identity =
+      cond do
+        url == nil -> [advisory.id]
+        String.ends_with?(advisory.id, cve) -> [{advisory.id, url}]
+        true -> [advisory.id, {cve, url}]
+      end
+
+    (identity ++ [advisory.summary, fixed_in(advisory, version)])
     |> Enum.reject(&(&1 in [nil, ""]))
-    |> Enum.join(" · ")
+    |> Enum.intersperse(" · ")
   end
 
   @spec fixed_in(Advisory.t(), String.t()) :: String.t()

@@ -107,7 +107,19 @@ defmodule Clarity.Report.ComponentsTest do
           command: "mix deps.update pubsub",
           layout: :lines,
           groups: [
-            %{items: [%{text: "pubsub", id: "a", note: "2.3.0 → 2.4.0 via phoenix", details: ["GHSA-1 · A hole"]}]}
+            %{
+              items: [
+                %{
+                  text: "pubsub",
+                  id: "a",
+                  note: "2.3.0 → 2.4.0 via phoenix",
+                  details: [
+                    "GHSA-1 · A hole",
+                    [{"EEF-CVE-2026-1", "https://cna.erlef.org/cves/CVE-2026-1.html"}, " · ", "Another"]
+                  ]
+                }
+              ]
+            }
           ]
         }
       ]
@@ -132,7 +144,16 @@ defmodule Clarity.Report.ComponentsTest do
 
       assert line =~ "pubsub 2.3.0 → 2.4.0 via phoenix"
       assert line =~ "GHSA-1 · A hole"
+      assert line =~ "EEF-CVE-2026-1 · Another"
       assert text(doc, ".report-command code") == "mix deps.update pubsub"
+    end
+
+    test "links a detail's links elsewhere, in a new tab", %{doc: doc} do
+      link = LazyHTML.query(doc, ".report-todo-detail a")
+
+      assert LazyHTML.attribute(link, "href") == ["https://cna.erlef.org/cves/CVE-2026-1.html"]
+      assert LazyHTML.attribute(link, "target") == ["_blank"]
+      assert text(doc, ".report-todo-detail a") == "EEF-CVE-2026-1"
     end
 
     test "shows the fix with code between backticks, and no gaps around it", %{doc: doc} do
