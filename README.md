@@ -21,7 +21,7 @@ It automatically discovers and visualizes applications, domains, resources,
 modules, and their relationships, giving you a navigable graph interface
 enriched with diagrams, tooltips, and documentation.
 
-![Clarity Screenshot](docs/assets/screenshot.png)
+![Clarity: exploring an application, a resource's state machine, its security, the graph and the to-dos](docs/assets/demo.gif)
 
 ## Features
 
