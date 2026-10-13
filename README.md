@@ -1,5 +1,5 @@
 <p align="left">
-  <img src="priv/static/images/logo.svg" alt="Clarity" width="240">
+  <img src="priv/static/images/logo.svg" alt="Clarity" width="120">
 </p>
 
 [![CI](https://github.com/team-alembic/clarity/workflows/CI/badge.svg)](https://github.com/team-alembic/clarity/actions)
@@ -22,7 +22,7 @@ Explore a resource, follow a relationship, inspect a policy, trace a Reactor wor
 > [!WARNING]
 > **Alpha software.** Clarity is under active development. APIs, integrations, and the UI may change between releases. Contributions and feedback are welcome.
 
-![Clarity's interactive application explorer](docs/assets/screenshot.png)
+![Clarity's interactive application explorer](docs/assets/demo.gif)
 
 ## Why Clarity?
 
@@ -214,7 +214,7 @@ cd clarity
 bin/dev
 ```
 
-Open **http://localhost:4000** and navigate to **`/clarity`**. The demo uses live reloading for both the host application and Clarity. You can set another port with `PORT=4001 bin/dev`.
+Open **[http://localhost:4000](http://localhost:4000)**: the demo mounts Clarity at its root. It uses live reloading for both the host application and Clarity. You can set another port with `PORT=4001 bin/dev`.
 
 ## Development and contributions
 
