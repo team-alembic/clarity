@@ -1655,4 +1655,37 @@ defmodule Clarity.GraphTest do
       assert Graph.neighbour_ids(view, Vertex.id(b), :in) == []
     end
   end
+
+  describe "out_neighbors/3 and in_neighbors/3" do
+    test "follow only the edges with the label" do
+      graph = Graph.new()
+      root = %Root{}
+      a = %Module{module: LabelledA}
+      b = %Module{module: LabelledB}
+      c = %Module{module: LabelledC}
+      Graph.add_vertex(graph, a, root)
+      Graph.add_vertex(graph, b, a)
+      Graph.add_vertex(graph, c, a)
+      Graph.add_edge(graph, a, b, :emits)
+      Graph.add_edge(graph, a, c, :module)
+
+      assert Graph.out_neighbors(graph, a, :emits) == [b]
+      assert Graph.in_neighbors(graph, b, :emits) == [a]
+      assert Graph.in_neighbors(graph, c, :emits) == []
+    end
+
+    test "give each neighbour once, when an edge was added twice" do
+      graph = Graph.new()
+      root = %Root{}
+      a = %Module{module: TwiceA}
+      b = %Module{module: TwiceB}
+      Graph.add_vertex(graph, a, root)
+      Graph.add_vertex(graph, b, a)
+      Graph.add_edge(graph, a, b, :emits)
+      Graph.add_edge(graph, a, b, :emits)
+
+      assert Graph.out_neighbors(graph, a, :emits) == [b]
+      assert Graph.in_neighbors(graph, b, :emits) == [a]
+    end
+  end
 end

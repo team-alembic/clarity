@@ -58,6 +58,7 @@ defmodule Clarity.MixProject do
           Clarity.Introspector.Ash.DataLayer,
           Clarity.Introspector.Ash.Spark,
           Clarity.Introspector.Ash.Type,
+          Clarity.Introspector.Ash.Signal,
           Clarity.Introspector.Reactor,
           Clarity.Introspector.Phoenix.Endpoint,
           Clarity.Introspector.Phoenix.Router,

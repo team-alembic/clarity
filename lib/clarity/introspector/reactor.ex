@@ -5,6 +5,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
     @behaviour Clarity.Introspector
 
     alias Clarity.Config
+    alias Clarity.Introspector.Parent
     alias Clarity.Vertex
     alias Clarity.Vertex.Ash.Action
     alias Clarity.Vertex.Ash.Domain
@@ -19,7 +20,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
       if Vertex.Reactor.reactor?(module) do
         reactor_vertex = %Vertex.Reactor{reactor: module}
 
-        with {:ok, parent} <- parent(module, graph) do
+        with {:ok, parent} <- Parent.vertex(module, Vertex.Reactor.domain(module), graph) do
           {:ok,
            [
              {:vertex, reactor_vertex},
@@ -57,24 +58,6 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
             do: {:edge, domain_vertex, reactor_vertex, :reactor}
 
       {:ok, edges}
-    end
-
-    # A reactor hangs off its domain, once that's in the graph, or else off
-    # its application.
-    @spec parent(module(), Clarity.Graph.t()) ::
-            {:ok, Vertex.t() | nil} | {:error, {:unmet_dependencies, [module()]}}
-    defp parent(reactor, graph) do
-      case Vertex.Reactor.domain(reactor) do
-        nil ->
-          app = Config.application_of(reactor)
-          {:ok, Clarity.Graph.get_vertex(graph, Util.id(Vertex.Application, [app]))}
-
-        domain ->
-          case Clarity.Graph.get_vertex(graph, Util.id(Domain, [domain])) do
-            nil -> {:error, {:unmet_dependencies, [domain]}}
-            domain_vertex -> {:ok, domain_vertex}
-          end
-      end
     end
   end
 end

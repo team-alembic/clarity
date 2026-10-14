@@ -524,6 +524,32 @@ defmodule Clarity.Graph do
   end
 
   @doc """
+  Gets the targets of a vertex's outgoing edges with `label`, each once.
+  """
+  @spec out_neighbors(t(), Vertex.t(), :digraph.label()) :: [Vertex.t()]
+  def out_neighbors(%__MODULE__{} = graph, vertex, label) do
+    targets =
+      for edge_id <- out_edges(graph, vertex),
+          {_edge_id, _from, %{} = to, ^label} <- [edge(graph, edge_id)],
+          do: to
+
+    Enum.uniq_by(targets, &Vertex.id/1)
+  end
+
+  @doc """
+  Gets the sources of a vertex's incoming edges with `label`, each once.
+  """
+  @spec in_neighbors(t(), Vertex.t(), :digraph.label()) :: [Vertex.t()]
+  def in_neighbors(%__MODULE__{} = graph, vertex, label) do
+    sources =
+      for edge_id <- in_edges(graph, vertex),
+          {_edge_id, %{} = from, _to, ^label} <- [edge(graph, edge_id)],
+          do: from
+
+    Enum.uniq_by(sources, &Vertex.id/1)
+  end
+
+  @doc """
   Gets the current update count for the graph.
 
   The count remains stable when no mutations occur and increases monotonically
