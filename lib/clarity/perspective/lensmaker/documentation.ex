@@ -3,9 +3,10 @@ defmodule Clarity.Perspective.Lensmaker.Documentation do
   Documentation lensmaker: the project's documentation, and nothing else.
 
   The Documentation lens keeps the tree to what carries documentation
-  (applications, Ash domains and resources, Phoenix endpoints and routers, and
-  modules), over the Architect lens's view of which applications matter, and
-  shows only one tab: each module's documentation.
+  (applications, Ash domains, resources and signal modules, Phoenix endpoints
+  and routers, and modules), over the Architect lens's view of which
+  applications matter, and shows only one tab: each module's documentation.
+  It shows no status flags.
   """
 
   @behaviour Clarity.Perspective.Lensmaker
@@ -14,6 +15,7 @@ defmodule Clarity.Perspective.Lensmaker.Documentation do
   import Phoenix.Component
 
   alias Clarity.Content
+  alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker
   alias Clarity.Perspective.Lensmaker.Architect
   alias Clarity.Vertex
@@ -22,6 +24,7 @@ defmodule Clarity.Perspective.Lensmaker.Documentation do
     Vertex.Application,
     Vertex.Ash.Domain,
     Vertex.Ash.Resource,
+    Vertex.Ash.SignalModule,
     Vertex.Phoenix.Endpoint,
     Vertex.Phoenix.Router,
     Vertex.Module
@@ -42,6 +45,7 @@ defmodule Clarity.Perspective.Lensmaker.Documentation do
           """
         end,
         show_vertex_types: &show_vertex_types/1,
+        status_filter: &Lens.reject_all_statuses/1,
         contents: [Content.Moduledoc]
     }
   end

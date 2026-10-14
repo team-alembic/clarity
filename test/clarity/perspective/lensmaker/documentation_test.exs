@@ -7,6 +7,7 @@ defmodule Clarity.Perspective.Lensmaker.DocumentationTest do
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Ash.Resource
+  alias Clarity.Vertex.Ash.SignalModule
   alias Clarity.Vertex.Phoenix.Router
   alias Phoenix.LiveView.Rendered
 
@@ -26,6 +27,7 @@ defmodule Clarity.Perspective.Lensmaker.DocumentationTest do
         Domain,
         Resource,
         Vertex.Ash.Attribute,
+        SignalModule,
         Vertex.Module,
         Router
       ]
@@ -34,9 +36,16 @@ defmodule Clarity.Perspective.Lensmaker.DocumentationTest do
                Vertex.Application,
                Domain,
                Resource,
+               SignalModule,
                Vertex.Module,
                Router
              ]
+    end
+
+    test "surfaces no status indicators" do
+      status = %Clarity.Status{severity: :error, class: :integrity, message: "x", source: __MODULE__}
+
+      refute Documentation.make_lens().status_filter.(status)
     end
 
     test "has an icon" do

@@ -6,7 +6,8 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
   of the codebase, filtering out implementation details to show the high-level
   organization and relationships between major components. It leaves out the
   graph, module documentation (the Documentation lens's), and `ash_diagram`'s
-  policy diagram and simulation, which belong to the Security lens.
+  policy diagram and simulation, which belong to the Security lens. It flags
+  problems in the `:integrity` status class, such as a broken Ash signal.
   """
 
   @behaviour Clarity.Perspective.Lensmaker
@@ -36,6 +37,7 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       end,
       filter: &filter/1,
       show_vertex_types: &show_vertex_types/1,
+      status_filter: &surface_status?/1,
       contents:
         {:except,
          [
@@ -47,6 +49,9 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
     }
   end
 
+  @spec surface_status?(Clarity.Status.t()) :: boolean()
+  defp surface_status?(%Clarity.Status{class: class}), do: class == :integrity
+
   @spec filter(Graph.t()) :: Graph.query()
   defp filter(graph) do
     # Find applications with architectural edges (beyond :module and :dependency)
@@ -55,7 +60,7 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       |> Graph.vertices({:==, :vertex_type, Vertex.Application})
       |> Enum.filter(fn vertex ->
         Enum.any?(
-          [:domain, :router, :endpoint, :reactor],
+          [:domain, :router, :endpoint, :reactor, :signal_module],
           &(Graph.out_degree(graph, vertex, &1) > 0)
         )
       end)
@@ -77,6 +82,8 @@ defmodule Clarity.Perspective.Lensmaker.Architect do
       Vertex.Ash.Policy,
       Vertex.Ash.Relationship,
       Vertex.Ash.Resource,
+      Vertex.Ash.Signal,
+      Vertex.Ash.SignalModule,
       Vertex.Phoenix.Endpoint,
       Vertex.Phoenix.Router,
       Vertex.Reactor
