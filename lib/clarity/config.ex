@@ -334,6 +334,7 @@ defmodule Clarity.Config do
     |> Keyword.get_values(:clarity_introspectors)
     |> List.flatten()
     |> Enum.uniq()
+    |> Enum.filter(&Code.ensure_loaded?/1)
   end
 
   @doc false
@@ -352,6 +353,7 @@ defmodule Clarity.Config do
     |> Enum.map(&elem(&1, 0))
     |> Enum.flat_map(&Application.get_env(&1, :clarity_status_providers, []))
     |> Enum.uniq()
+    |> Enum.filter(&Code.ensure_loaded?/1)
   end
 
   @doc false

@@ -2,6 +2,7 @@ defmodule Clarity.ConfigTest do
   use ExUnit.Case, async: false
 
   alias Clarity.Config
+  alias Clarity.ConfigTest.NotCompiled
 
   setup do
     original_config = Application.fetch_env(:clarity, :introspector_applications)
@@ -106,10 +107,37 @@ defmodule Clarity.ConfigTest do
       assert DummyStatusProvider in Config.list_status_providers()
     end
 
+    test "leaves out providers that aren't compiled" do
+      Application.put_env(:clarity, :clarity_status_providers, [
+        DummyStatusProvider,
+        NotCompiled
+      ])
+
+      assert DummyStatusProvider in Config.list_status_providers()
+      refute NotCompiled in Config.list_status_providers()
+    end
+
     test "defaults to empty when unset" do
       Application.delete_env(:clarity, :clarity_status_providers)
 
       assert Config.list_status_providers() == []
+    end
+  end
+
+  describe inspect(&Config.list_introspectors/0) do
+    setup do
+      original = Application.get_env(:clarity, :clarity_introspectors)
+      on_exit(fn -> Application.put_env(:clarity, :clarity_introspectors, original) end)
+    end
+
+    test "leaves out introspectors that aren't compiled" do
+      Application.put_env(:clarity, :clarity_introspectors, [
+        Clarity.Introspector.Module,
+        NotCompiled
+      ])
+
+      assert Clarity.Introspector.Module in Config.list_introspectors()
+      refute NotCompiled in Config.list_introspectors()
     end
   end
 
