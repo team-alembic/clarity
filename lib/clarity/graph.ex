@@ -208,16 +208,20 @@ defmodule Clarity.Graph do
       from_id = Vertex.id(from_vertex)
       to_id = Vertex.id(to_vertex)
 
-      :digraph.add_edge(graph.main_graph, from_id, to_id, label)
+      case :digraph.add_edge(graph.main_graph, from_id, to_id, label) do
+        {:error, _reason} ->
+          :ok
 
-      Tree.add_edge(graph.tree_graph, from_id, to_id, label)
+        _edge ->
+          Tree.add_edge(graph.tree_graph, from_id, to_id, label)
 
-      update_degree_index(graph, from_id, label, :out_degree, 1)
-      update_degree_index(graph, to_id, label, :in_degree, 1)
+          update_degree_index(graph, from_id, label, :out_degree, 1)
+          update_degree_index(graph, to_id, label, :in_degree, 1)
 
-      increment_update_count(graph)
+          increment_update_count(graph)
 
-      :ok
+          :ok
+      end
     end
   end
 

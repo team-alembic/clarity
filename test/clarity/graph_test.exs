@@ -445,6 +445,14 @@ defmodule Clarity.GraphTest do
       assert label == :application
     end
 
+    test "add_edge/4 counts nothing when a vertex isn't in the graph", %{graph: graph, app: app} do
+      missing = %Module{module: NotInTheGraph}
+
+      assert :ok = Graph.add_edge(graph, app, missing, :module)
+      assert Graph.out_degree(graph, app, :module) == 0
+      assert Graph.edges(graph) == []
+    end
+
     test "add_edge/4 respects ownership", %{graph: graph, app: app} do
       Graph.add_vertex(graph, app, %Root{})
 
