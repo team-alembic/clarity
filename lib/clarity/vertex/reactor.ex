@@ -7,6 +7,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
 
     alias Clarity.SourceLocation
     alias Clarity.Vertex.HintProvider
+    alias Clarity.Vertex.Name
 
     @type t() :: %__MODULE__{
             reactor: module()
@@ -45,7 +46,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
 
     def domain(reactor, domains) do
       Enum.find(domains, &runs?(&1, reactor)) ||
-        Enum.find(domains, &String.starts_with?(inspect(reactor), inspect(&1) <> "."))
+        Name.nested_under(reactor, domains)
     end
 
     if Code.ensure_loaded?(Ash) do

@@ -15,6 +15,13 @@ defmodule Clarity.Vertex.NameTest do
 
   doctest Name
 
+  describe inspect(&Name.nested_under/2) do
+    test "matches whole name segments only" do
+      assert Name.nested_under(Demo.BillingSignals, [Demo.Billing]) == nil
+      assert Name.nested_under(Demo.Billing, [Demo.Billing]) == nil
+    end
+  end
+
   describe inspect(&Name.display/2) do
     test "returns Vertex.name/1 for :qualified" do
       vertex = %Resource{resource: User}

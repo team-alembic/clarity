@@ -80,12 +80,32 @@ defmodule Clarity.Vertex.Name do
   """
   @spec within(module(), module()) :: String.t()
   def within(module, container) do
-    container_parts = Module.split(container)
+    parts = Module.split(module)
 
-    case Enum.split(Module.split(module), length(container_parts)) do
-      {^container_parts, [_ | _] = rest} -> Enum.join(rest, ".")
-      _not_nested -> in_app(module)
-    end
+    if nested?(parts, container),
+      do: parts |> Enum.drop(length(Module.split(container))) |> Enum.join("."),
+      else: in_app(module)
+  end
+
+  @doc """
+  Returns the module among `containers` that `module` is nested under, or
+  `nil`. The deepest match wins.
+
+  ## Examples
+
+      iex> Clarity.Vertex.Name.nested_under(Demo.Billing.Signals, [Demo, Demo.Billing])
+      Demo.Billing
+
+      iex> Clarity.Vertex.Name.nested_under(Demo.Signals, [Demo.Billing])
+      nil
+  """
+  @spec nested_under(module(), [module()]) :: module() | nil
+  def nested_under(module, containers) do
+    parts = Module.split(module)
+
+    containers
+    |> Enum.filter(&nested?(parts, &1))
+    |> Enum.max_by(&length(Module.split(&1)), fn -> nil end)
   end
 
   @doc """

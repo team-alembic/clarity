@@ -49,6 +49,8 @@ defmodule Clarity.Tooltip do
     resource: "structure",
     router: "web",
     section: "dsl",
+    signal: "behaviour",
+    signal_module: "structure",
     type: "data"
   }
 
