@@ -33,6 +33,7 @@ As an application inevitably grows, answering simple questions gets harder:
 - **What breaks or needs attention?** Review dependency advisories, retired versions, outdated packages, and actionable findings.
 - **What does the codebase actually mean?** Browse the vocabulary of your Ash domains and identify undocumented entities and fields.
 - **How does this workflow execute?** Inspect Reactor flows and, where installed, Ash state-machine diagrams.
+- **What happens after an action runs?** Follow Ash signals from the actions that emit them to the actions that their listeners run, across domains.
 
 Clarity reads the application you have — not a separately maintained architecture document. The result is most useful during development, debugging, onboarding, and design reviews.
 
@@ -149,6 +150,7 @@ With the corresponding packages installed, Clarity can surface:
 
 - **Reactor** workflow and step information
 - **Ash state machines** and their transitions
+- **Ash signals**, their emitters and listeners, and the chains they make
 - **AshDiagram** entity-relationship, class, architecture, and policy diagrams, plus policy simulation views
 
 The diagram formats and content available are supplied by each integration. You do not need `ash_diagram` to use Clarity's core navigation, perspectives, or reports.
