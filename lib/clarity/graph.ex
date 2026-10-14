@@ -46,7 +46,7 @@ defmodule Clarity.Graph do
             vertices: :ets.tid(),
             update_count: :ets.tid(),
             indexes: :ets.tid(),
-            owner: pid(),
+            owner: pid() | nil,
             view: MapSet.t(String.t()) | nil,
             subgraph: boolean()
           }
@@ -853,6 +853,13 @@ defmodule Clarity.Graph do
 
     %{graph | view: graph |> vertex_ids(query) |> MapSet.new(), subgraph: true, owner: self()}
   end
+
+  @doc """
+  Returns the whole graph that a view filters, or the graph itself when it is
+  not a view. The result can read the graph, but not delete or change it.
+  """
+  @spec unfiltered(t()) :: t()
+  def unfiltered(%__MODULE__{} = graph), do: %{graph | view: nil, owner: nil}
 
   @doc """
   Persists a graph to disk.

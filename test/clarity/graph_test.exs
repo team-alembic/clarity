@@ -1656,6 +1656,30 @@ defmodule Clarity.GraphTest do
     end
   end
 
+  describe inspect(&Graph.unfiltered/1) do
+    test "gives the whole graph that a view filters" do
+      graph = Graph.new()
+      a = %Module{module: WholeA}
+      Graph.add_vertex(graph, a, %Root{})
+      view = Graph.filter(graph, {:!=, :vertex_type, Module})
+
+      refute Graph.vertex_id?(view, Vertex.id(a))
+      assert Graph.vertex_id?(Graph.unfiltered(view), Vertex.id(a))
+    end
+
+    test "gives a graph that can't delete or change the graph it reads" do
+      graph = Graph.new()
+      view = Graph.filter(graph, {:==, :vertex_type, Root})
+
+      assert {:error, _reason} = Graph.delete(Graph.unfiltered(view))
+      assert {:error, _reason} = Graph.delete(Graph.unfiltered(graph))
+      assert {:error, _reason} = Graph.add_vertex(Graph.unfiltered(graph), %Module{module: WholeB}, %Root{})
+
+      assert :ok = Graph.add_vertex(graph, %Module{module: WholeC}, %Root{})
+      assert Graph.vertex_count(graph) == 2
+    end
+  end
+
   describe "out_neighbors/3 and in_neighbors/3" do
     test "follow only the edges with the label" do
       graph = Graph.new()

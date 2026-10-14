@@ -3,7 +3,8 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
     @moduledoc """
     The "Signals" tab: the flow and a table of the signals that an action,
     resource, signal module, domain or application emits, listens to or
-    declares.
+    declares. On a resource, it also lists the problems that Ash's signal
+    verifiers find.
     """
 
     @behaviour Clarity.Content
@@ -15,6 +16,8 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
     alias Ash.Signals.Info
     alias Clarity.Content.Ash.SignalFlow
     alias Clarity.Graph
+    alias Clarity.Status
+    alias Clarity.Status.SignalIntegrity
     alias Clarity.Vertex
     alias Clarity.Vertex.Ash.Action
     alias Clarity.Vertex.Ash.Domain
@@ -36,7 +39,7 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
     def status_classes, do: [:integrity]
 
     @impl Clarity.Content
-    def applies?(vertex, _lens), do: signals(vertex) != []
+    def applies?(vertex, _lens), do: references(vertex) != []
 
     @impl Phoenix.LiveComponent
     def update(assigns, socket) do
@@ -48,6 +51,7 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
        |> assign(assigns)
        |> assign(
          links: links(assigns),
+         problems: problems(assigns.vertex),
          diagram: seeds != [] && IO.iodata_to_binary(SignalFlow.diagram(graph, seeds)),
          rows: Enum.map(seeds, &row(graph, &1))
        )}
@@ -58,11 +62,29 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
       ~H"""
       <div class="content w-full" id={@id}>
         <div class="ov-page">
+          <.section
+            :if={@problems != []}
+            id="problems"
+            title="Problems"
+            icon="advisory"
+            tone="warning"
+            count={length(@problems)}
+          >
+            <.callout :for={problem <- @problems} kind={:danger}>{problem}</.callout>
+          </.section>
+
           <.section :if={@diagram} id="flow" title="Flow" icon="signal" tone="behaviour">
             <.mermaid id="signals-flow" graph={@diagram} class="h-80" />
           </.section>
 
-          <.section id="signals" title="Signals" icon="signal" tone="behaviour" count={length(@rows)}>
+          <.section
+            :if={@rows != []}
+            id="signals"
+            title="Signals"
+            icon="signal"
+            tone="behaviour"
+            count={length(@rows)}
+          >
             <.overview_table id="signals-table" rows={@rows}>
               <:col :let={row} label="Signal" class="w-0 whitespace-nowrap">
                 <.vertex_link links={@links} vertex={row.signal} code />
@@ -96,6 +118,14 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
           %Signal{} = signal <- [Graph.get_vertex(graph, Util.id(Signal, [module, name]))],
           do: signal
     end
+
+    @spec problems(Vertex.t()) :: [String.t()]
+    defp problems(%Resource{} = vertex) do
+      for %Status{severity: :error, message: message} <- SignalIntegrity.statuses(vertex, nil),
+          do: message
+    end
+
+    defp problems(_vertex), do: []
 
     @spec row(Graph.t(), Signal.t()) :: map()
     defp row(graph, signal) do
@@ -154,8 +184,15 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
     end
 
     @spec resource_references([Ash.Resource.t()]) :: [{module(), atom()}]
-    defp resource_references(resources),
-      do: Enum.flat_map(resources, &action_references(&1, Ash.Resource.Info.actions(&1)))
+    defp resource_references(resources) do
+      Enum.flat_map(resources, fn resource ->
+        listened =
+          for listener <- Ash.Resource.Info.signal_listeners(resource),
+              do: {listener.signal_module, listener.signal}
+
+        listened ++ action_references(resource, Ash.Resource.Info.actions(resource))
+      end)
+    end
 
     @spec action_references(Ash.Resource.t(), [struct()]) :: [{module(), atom()}]
     defp action_references(resource, actions) do

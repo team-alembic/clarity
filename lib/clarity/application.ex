@@ -7,6 +7,7 @@ defmodule Clarity.Application do
   alias Clarity.Docs
   alias Clarity.Graph.Cache
   alias Clarity.Graph.Memo
+  alias Clarity.ModuleCache
   alias Clarity.Tooltip
   alias Clarity.Vertex.Util
 
@@ -37,6 +38,7 @@ defmodule Clarity.Application do
     Config.create_module_application_cache()
     Docs.create_cache()
     Memo.create_table()
+    ModuleCache.create_table()
     Tooltip.create_cache()
 
     Supervisor.start_link(@children, strategy: :one_for_one, name: Clarity.Supervisor)

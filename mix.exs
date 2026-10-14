@@ -95,7 +95,8 @@ defmodule Clarity.MixProject do
           Clarity.Content.Dependency
         ],
         clarity_status_providers: [
-          Clarity.Status.SupplyChain
+          Clarity.Status.SupplyChain,
+          Clarity.Status.SignalIntegrity
         ],
         clarity_reports: [
           Clarity.Report.Ontology,

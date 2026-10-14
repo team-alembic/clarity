@@ -5,6 +5,7 @@ defmodule Clarity.Content.Ash.SignalsOverviewTest do
 
   alias Clarity.Content.Ash.SignalFlow
   alias Clarity.Content.Ash.SignalsOverview
+  alias Clarity.Graph
   alias Clarity.Test.SignalGraph
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Domain
@@ -15,6 +16,16 @@ defmodule Clarity.Content.Ash.SignalsOverviewTest do
   alias Demo.Billing.Subscription
 
   @app %Vertex.Application{app: :clarity, description: "Clarity", version: Version.parse!("0.4.0")}
+
+  setup_all do
+    {:ok,
+     broken: SignalGraph.compile_broken(__MODULE__.Domain, __MODULE__.Broken),
+     without_action:
+       SignalGraph.compile_listener_without_action(
+         __MODULE__.ListenerDomain,
+         __MODULE__.WithoutAction
+       )}
+  end
 
   describe inspect(&SignalsOverview.applies?/2) do
     test "applies where signals are emitted, listened to or declared" do
@@ -83,6 +94,29 @@ defmodule Clarity.Content.Ash.SignalsOverviewTest do
                "Ash.Signals.Delivery.Inline",
                "Ash.Signals.Delivery.Inline"
              ]
+    end
+
+    test "lists the problems in a resource's emits and listeners", %{broken: broken} do
+      vertex = %Resource{resource: broken}
+
+      assert SignalsOverview.applies?(vertex, nil)
+
+      html = render_overview(SignalsOverview, vertex, graph: Graph.new())
+
+      assert [emit, listener] = texts(html, "#problems .ov-callout")
+      assert emit =~ "emit -> no_such_signal: "
+      assert listener =~ "on -> react: "
+      assert texts(html, "#signals-table") == []
+    end
+
+    test "explains a listener whose action does not exist", %{without_action: resource} do
+      vertex = %Resource{resource: resource}
+
+      assert SignalsOverview.applies?(vertex, nil)
+
+      html = render_overview(SignalsOverview, vertex, graph: Graph.new())
+
+      assert text(html, "#problems") =~ "No action named `:thank_you`"
     end
 
     test "draws the flow of its signals, outlined", %{graph: graph} do

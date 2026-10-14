@@ -44,6 +44,74 @@ defmodule Clarity.Test.SignalGraph do
     graph
   end
 
+  @doc "Compiles a resource whose emit and listener name a signal that does not exist."
+  @spec compile_broken(module(), module()) :: module()
+  def compile_broken(domain, resource) do
+    compile_resource(domain, resource, """
+    signals_in do
+      from Demo.Billing.Signals do
+        on :no_such_signal, :react
+      end
+    end
+
+    actions do
+      defaults [:read]
+
+      update :touch do
+        accept []
+        emit Demo.Billing.Signals, :no_such_signal
+      end
+
+      action :react do
+        argument :signal, :struct, allow_nil?: false
+        run fn _input, _context -> :ok end
+      end
+    end
+    """)
+  end
+
+  @doc "Compiles a resource with a listener whose action does not exist."
+  @spec compile_listener_without_action(module(), module()) :: module()
+  def compile_listener_without_action(domain, resource) do
+    compile_resource(domain, resource, """
+    signals_in do
+      from Demo.Billing.Signals do
+        on :invoice_paid, :thank_you
+      end
+    end
+
+    actions do
+      defaults [:read]
+    end
+    """)
+  end
+
+  @spec compile_resource(module(), module(), String.t()) :: module()
+  defp compile_resource(domain, resource, body) do
+    source = """
+    defmodule #{inspect(domain)} do
+      use Ash.Domain, validate_config_inclusion?: false
+
+      resources do
+        allow_unregistered? true
+      end
+    end
+
+    defmodule #{inspect(resource)} do
+      use Ash.Resource, domain: #{inspect(domain)}, data_layer: Ash.DataLayer.Ets
+
+      #{body}
+
+      attributes do
+        uuid_primary_key :id
+      end
+    end
+    """
+
+    ExUnit.CaptureIO.capture_io(:stderr, fn -> Code.compile_string(source) end)
+    resource
+  end
+
   @doc "Returns the vertex of a signal."
   @spec signal(module(), atom()) :: Signal.t()
   def signal(module, name), do: %Signal{signal_module: module, signal: Info.signal(module, name)}
