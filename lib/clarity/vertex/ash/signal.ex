@@ -5,8 +5,11 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
     """
 
     alias Ash.Resource.Info
+    alias Ash.Resource.SignalListener
     alias Ash.Signals.Signal
+    alias Clarity.Graph
     alias Clarity.SourceLocation
+    alias Clarity.Vertex.Ash.Action
     alias Clarity.Vertex.HintProvider
 
     @type t() :: %__MODULE__{signal_module: module(), signal: Signal.t()}
@@ -35,7 +38,7 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
     end
 
     @doc "Returns the listeners on the resource that run the named action for the signal."
-    @spec listeners(t(), Ash.Resource.t(), atom()) :: [Ash.Resource.SignalListener.t()]
+    @spec listeners(t(), Ash.Resource.t(), atom()) :: [SignalListener.t()]
     def listeners(
           %__MODULE__{signal_module: module, signal: %{name: name}},
           resource,
@@ -46,6 +49,15 @@ with {:module, Ash.Signals} <- Code.ensure_loaded(Ash.Signals) do
           listener.signal == name,
           listener.action == action_name,
           do: listener
+    end
+
+    @doc "Returns each action in the graph that a listener runs for the signal, with the listener."
+    @spec listener_actions(Graph.t(), t()) :: [{Action.t(), SignalListener.t()}]
+    def listener_actions(graph, signal) do
+      for %Action{} = action <-
+            graph |> Graph.out_neighbors(signal, :triggers) |> Enum.sort_by(&Clarity.Vertex.id/1),
+          listener <- listeners(signal, action.resource, action.action.name),
+          do: {action, listener}
     end
 
     @doc "Returns the action's `emit` entries for the signal."
