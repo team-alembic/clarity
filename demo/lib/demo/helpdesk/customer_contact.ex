@@ -17,6 +17,12 @@ defmodule Demo.Helpdesk.CustomerContact do
     """
   end
 
+  signals_in do
+    from Demo.Billing.Signals do
+      on :invoice_paid, :thank_for_payment, delivery: {AshOban.Signals, queue: :default}
+    end
+  end
+
   actions do
     default_accept :*
     defaults [:read, :destroy, create: :*, update: :*]
@@ -24,6 +30,12 @@ defmodule Demo.Helpdesk.CustomerContact do
     read :by_email do
       argument :email, :string, allow_nil?: false
       filter expr(email == ^arg(:email))
+    end
+
+    action :thank_for_payment do
+      description "Thanks the organization's contacts for a payment. The demo runs nothing."
+      argument :signal, Demo.Billing.Signals.InvoicePaid, allow_nil?: false
+      run fn _input, _context -> :ok end
     end
   end
 
