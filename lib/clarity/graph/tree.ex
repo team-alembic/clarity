@@ -50,10 +50,7 @@ defmodule Clarity.Graph.Tree do
       new_distance = from_distance + 1
 
       if new_distance < current_distance do
-        # Remove old path to to_vertex_id
-        remove_path_to_vertex(tree_graph, to_vertex_id)
-
-        # Add new shorter path
+        remove_parent_edge(tree_graph, to_vertex_id)
         :digraph.add_vertex(tree_graph, to_vertex_id)
         :digraph.add_edge(tree_graph, from_vertex_id, to_vertex_id, label)
       end
@@ -99,33 +96,10 @@ defmodule Clarity.Graph.Tree do
     end
   end
 
-  @spec remove_path_to_vertex(
-          tree_graph :: :digraph.graph(),
-          vertex_id :: String.t()
-        ) :: :ok
-  defp remove_path_to_vertex(tree_graph, vertex_id) do
-    # Remove all descendants first (DFS)
-    descendants = get_all_descendants(tree_graph, vertex_id)
-
-    Enum.each(descendants ++ [vertex_id], fn
-      "root" -> :ok
-      vertex_id -> :digraph.del_vertex(tree_graph, vertex_id)
-    end)
-  end
-
-  @spec get_all_descendants(
-          tree_graph :: :digraph.graph(),
-          vertex_id :: String.t()
-        ) :: [String.t()]
-  defp get_all_descendants(tree_graph, vertex_id) do
-    children =
-      tree_graph
-      |> :digraph.out_edges(vertex_id)
-      |> Enum.map(fn edge_id ->
-        {_, _, to_v, _} = :digraph.edge(tree_graph, edge_id)
-        to_v
-      end)
-
-    children ++ Enum.flat_map(children, &get_all_descendants(tree_graph, &1))
+  @spec remove_parent_edge(tree_graph :: :digraph.graph(), vertex_id :: String.t()) :: :ok
+  defp remove_parent_edge(tree_graph, vertex_id) do
+    tree_graph
+    |> :digraph.in_edges(vertex_id)
+    |> Enum.each(&:digraph.del_edge(tree_graph, &1))
   end
 end

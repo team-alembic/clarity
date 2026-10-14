@@ -1593,6 +1593,49 @@ defmodule Clarity.GraphTest do
     end
   end
 
+  describe "the tree, when a vertex gets a shorter path" do
+    test "keeps the vertex's subtree" do
+      graph = Graph.new()
+      root = %Root{}
+      first = %Module{module: MoveFirst}
+      moved = %Module{module: MoveMoved}
+      child = %Module{module: MoveChild}
+      Graph.add_vertex(graph, first, root)
+      Graph.add_edge(graph, root, first, :module)
+      Graph.add_vertex(graph, moved, root)
+      Graph.add_edge(graph, first, moved, :module)
+      Graph.add_vertex(graph, child, moved)
+      Graph.add_edge(graph, moved, child, :module)
+
+      Graph.add_edge(graph, root, moved, :module)
+
+      assert Graph.tree_child_ids(graph, Vertex.id(moved)) == [Vertex.id(child)]
+      assert graph |> Graph.breadcrumbs(child) |> Enum.map(&Vertex.id/1) == ["root", Vertex.id(moved), Vertex.id(child)]
+    end
+
+    test "keeps the subtree of a vertex whose parent was purged and comes back" do
+      graph = Graph.new()
+      root = %Root{}
+      parent = %Module{module: OrphanParent}
+      orphan = %Module{module: Orphan}
+      child = %Module{module: OrphanChild}
+      Graph.add_vertex(graph, parent, root)
+      Graph.add_edge(graph, root, parent, :module)
+      Graph.add_vertex(graph, orphan, root)
+      Graph.add_edge(graph, parent, orphan, :module)
+      Graph.add_vertex(graph, child, orphan)
+      Graph.add_edge(graph, orphan, child, :module)
+
+      {:ok, _purged} = Graph.purge(graph, parent)
+      Graph.add_vertex(graph, parent, root)
+      Graph.add_edge(graph, root, parent, :module)
+      Graph.add_edge(graph, parent, orphan, :module)
+
+      assert graph |> Graph.breadcrumbs(child) |> Enum.map(&Vertex.id/1) ==
+               ["root", Vertex.id(parent), Vertex.id(orphan), Vertex.id(child)]
+    end
+  end
+
   describe inspect(&Graph.neighbour_ids/3) do
     test "lists neighbour ids, within the view for a view" do
       graph = Graph.new()
