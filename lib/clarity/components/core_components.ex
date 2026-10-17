@@ -304,6 +304,7 @@ defmodule Clarity.CoreComponents do
   attr :vertex, :any, required: true, doc: "Current vertex being viewed"
   attr :lens, Lens, required: true, doc: "Current lens for rendering"
   attr :socket, Socket, required: true, doc: "The LiveView socket"
+  attr :clarity_pid, :any, required: true, doc: "The Clarity server whose graph holds the vertex"
   attr :theme, :atom, required: true, doc: "Current theme (:dark or :light)"
   attr :zoom_graph, :any, required: true, doc: "The zoomed subgraph for visualization"
   attr :graph, :any, default: nil, doc: "Clarity's graph, whose vertices' names text links"

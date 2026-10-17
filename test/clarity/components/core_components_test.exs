@@ -122,6 +122,7 @@ defmodule Clarity.CoreComponentsTest do
           vertex: %Root{},
           lens: %Lens{id: "debug", name: "Debug", icon: fn -> nil end, filter: true},
           socket: %Phoenix.LiveView.Socket{},
+          clarity_pid: self(),
           theme: :light,
           zoom_graph: graph,
           zoom_level: {1, 1},
