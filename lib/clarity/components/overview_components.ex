@@ -190,26 +190,32 @@ defmodule Clarity.Components.OverviewComponents do
   attr :label, :string, default: nil, doc: "The label, if not the vertex's short name"
   attr :code, :boolean, default: false, doc: "Whether the label is code, such as a field's name"
   attr :icon, :boolean, default: true
-  attr :truncate, :boolean, default: false, doc: "Whether a long label ends in an ellipsis"
+  attr :wrap, :boolean, default: false, doc: "Whether a long label may wrap, after a dot first"
   attr :class, :any, default: nil
 
   @spec vertex_link(map()) :: Rendered.t()
   def vertex_link(assigns) do
+    assigns = assign(assigns, :label, assigns.label || label(assigns.vertex))
+
     ~H"""
     <.link
       patch={path(@links, @vertex)}
-      class={["ov-link", @code && "ov-code", @class]}
+      class={["ov-link", @code && "ov-code", @wrap && "ov-link-wrap", @class]}
       {Tooltip.attrs(@vertex)}
     >
-      <.type_icon :if={@icon} vertex={@vertex} />
-      <%= if @truncate do %>
-        <span class="min-w-0 truncate">{@label || label(@vertex)}</span>
-      <% else %>
-        {@label || label(@vertex)}
-      <% end %>
+      <.type_icon :if={@icon} vertex={@vertex} /><.link_label text={@label} wrap={@wrap} />
     </.link>
     """
   end
+
+  attr :text, :string, required: true
+  attr :wrap, :boolean, required: true
+
+  @spec link_label(map()) :: Rendered.t()
+  defp link_label(%{wrap: true} = assigns),
+    do: ~H"<Clarity.Report.Components.dotted name={@text} />"
+
+  defp link_label(assigns), do: ~H"{@text}"
 
   @doc """
   Renders a module's full name, as code, with a button to copy it: the name a
@@ -394,6 +400,34 @@ defmodule Clarity.Components.OverviewComponents do
     ~H"""
     <.link patch={@to} class="ov-pill ov-pill-link" data-tone={@tone} {@hint_attrs}>
       <.type_icon icon={@icon} tone={@tone} />{@label}
+    </.link>
+    """
+  end
+
+  @doc """
+  Renders a badge as its icon alone, at the size of the text beside it, for
+  a card with no room for pills. Its label is for screen readers, and its
+  hint shows on hover.
+  """
+  attr :label, :string, required: true
+  attr :icon, :string, required: true
+  attr :tone, :string, required: true
+  attr :hint_attrs, :list, required: true, doc: "Its hover hint, as `Clarity.Tooltip.attrs/1`"
+  attr :to, :string, default: nil, doc: "Where it links, if anywhere"
+
+  @spec marker(map()) :: Rendered.t()
+  def marker(%{to: nil} = assigns) do
+    ~H"""
+    <span class="ov-marker" {@hint_attrs}>
+      <.type_icon icon={@icon} tone={@tone} /><span class="sr-only">{@label}</span>
+    </span>
+    """
+  end
+
+  def marker(assigns) do
+    ~H"""
+    <.link patch={@to} class="ov-marker" {@hint_attrs}>
+      <.type_icon icon={@icon} tone={@tone} /><span class="sr-only">{@label}</span>
     </.link>
     """
   end
