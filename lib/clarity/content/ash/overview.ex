@@ -341,9 +341,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       ~H"""
       <article class="ov-card ov-resource-card">
-        <div class="flex items-start gap-1.5">
-          <.vertex_link links={@links} vertex={@vertex} label={@label} class="min-w-0" />
-          <div class="ov-flags ml-auto justify-end">
+        <div class="flex flex-wrap items-start gap-1.5">
+          <.vertex_link links={@links} vertex={@vertex} label={@label} wrap class="min-w-0" />
+          <div class="ov-flags grow basis-0 justify-end">
             <.resource_badges
               links={@links}
               resource={@resource}

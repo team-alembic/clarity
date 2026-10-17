@@ -188,20 +188,32 @@ defmodule Clarity.Components.OverviewComponents do
   attr :label, :string, default: nil, doc: "The label, if not the vertex's short name"
   attr :code, :boolean, default: false, doc: "Whether the label is code, such as a field's name"
   attr :icon, :boolean, default: true
+  attr :wrap, :boolean, default: false, doc: "Whether a long label may wrap, after a dot first"
   attr :class, :any, default: nil
 
   @spec vertex_link(map()) :: Rendered.t()
   def vertex_link(assigns) do
+    assigns = assign(assigns, :label, assigns.label || label(assigns.vertex))
+
     ~H"""
     <.link
       patch={path(@links, @vertex)}
-      class={["ov-link", @code && "ov-code", @class]}
+      class={["ov-link", @code && "ov-code", @wrap && "ov-link-wrap", @class]}
       {Tooltip.attrs(@vertex)}
     >
-      <.type_icon :if={@icon} vertex={@vertex} />{@label || label(@vertex)}
+      <.type_icon :if={@icon} vertex={@vertex} /><.link_label text={@label} wrap={@wrap} />
     </.link>
     """
   end
+
+  attr :text, :string, required: true
+  attr :wrap, :boolean, required: true
+
+  @spec link_label(map()) :: Rendered.t()
+  defp link_label(%{wrap: true} = assigns),
+    do: ~H"<Clarity.Report.Components.dotted name={@text} />"
+
+  defp link_label(assigns), do: ~H"{@text}"
 
   @doc """
   Renders label and value facts as a compact grid of cells.

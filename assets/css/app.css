@@ -1138,6 +1138,15 @@ a.report-chip {
   @apply dark:text-base-dark-50 dark:decoration-base-dark-500;
 }
 
+/* A long name wraps, after a dot first, with its icon on the first line. */
+.ov-link-wrap {
+  @apply items-start wrap-anywhere;
+}
+
+.ov-link-wrap > .ov-icon {
+  height: 1lh;
+}
+
 .ov-code,
 .ov-code-list code {
   @apply font-mono text-[13px];
