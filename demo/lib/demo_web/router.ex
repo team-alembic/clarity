@@ -67,9 +67,15 @@ defmodule DemoWeb.Router do
   end
 
   scope "/" do
+    pipe_through :browser
+
+    get "/", DemoWeb.PageController, :home
+  end
+
+  scope "/clarity" do
     import Clarity.Router
 
     pipe_through :browser
-    clarity("/")
+    clarity "/"
   end
 end

@@ -19,7 +19,7 @@ bin/dev
 ```
 
 or from inside `demo/` with `mix phx.server`. This runs the demo at
-http://localhost:4000 with:
+http://localhost:4000/clarity (`/` redirects there) with:
 - Live reload for both the demo's and Clarity's code
 - Watchers that rebuild Clarity's assets (esbuild, tailwind)
 - Sample Ash domains, resources and Phoenix routes to introspect

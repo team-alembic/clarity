@@ -6,22 +6,22 @@ defmodule Clarity.Pages.PageLiveTest do
   describe "PageLive Navigation and Basic Functionality" do
     test "redirects to root graph when no params", %{conn: conn} do
       default_lens_id = Clarity.Config.fetch_default_perspective_lens!()
-      expected_path = "/#{default_lens_id}"
-      assert {:error, {:live_redirect, %{to: ^expected_path}}} = live(conn, "/")
+      expected_path = "/clarity/#{default_lens_id}"
+      assert {:error, {:live_redirect, %{to: ^expected_path}}} = live(conn, "/clarity")
     end
 
     test "a live navigation to a bare lens URL redirects to the lens's start page", %{
       conn: conn
     } do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
-      assert {:error, {:live_redirect, %{to: "/architect/application:clarity"}}} =
-               live_redirect(view, to: "/architect")
+      assert {:error, {:live_redirect, %{to: "/clarity/architect/application:clarity"}}} =
+               live_redirect(view, to: "/clarity/architect")
     end
 
     test "the activity bar's current lens toggles the sidebar; other lenses switch to theirs",
          %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
       assert has_element?(
                view,
@@ -37,13 +37,13 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "the activity bar's Reports item goes to the reports", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
-      assert has_element?(view, "a#activity-reports[href='/reports'][data-phx-link=redirect]")
+      assert has_element?(view, "a#activity-reports[href='/clarity/reports'][data-phx-link=redirect]")
     end
 
     test "the sidebar is headed with the lens's name", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
 
       assert has_element?(view, ".nav-heading", "Debug")
@@ -52,7 +52,7 @@ defmodule Clarity.Pages.PageLiveTest do
     test "switching lens keeps the page on screen while the lens's start page loads", %{
       conn: conn
     } do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
 
       html = view |> element("#activity-lens-architect") |> render_click()
@@ -61,13 +61,13 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "shows no splash while loading once introspection is done", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/debug/root/graph")
+      {:ok, _view, html} = live(conn, "/clarity/debug/root/graph")
 
       refute html =~ ~s(id="splash")
     end
 
     test "shows a quiet loading indicator instead, gone once the page loads", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/debug/root/graph")
+      {:ok, view, html} = live(conn, "/clarity/debug/root/graph")
 
       assert html |> LazyHTML.from_fragment() |> LazyHTML.query("#page-loading[role='status']") |> Enum.count() == 1
 
@@ -77,7 +77,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "loads root vertex with graph content", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       html = render_async(view)
 
       # Should show the page with navigation
@@ -90,7 +90,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "can toggle navigation visibility", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
       # Initially navigation should be hidden
       assert has_element?(view, ".navigation.hidden")
@@ -104,7 +104,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "shows navigation tree with correct structure", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
       # Should have navigation section
       assert has_element?(view, ".navigation")
@@ -117,7 +117,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Breadcrumbs" do
     test "displays breadcrumbs for root vertex", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       html = render_async(view)
 
       # Root vertex is not shown in breadcrumbs since it's always the same
@@ -126,22 +126,22 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "leave out the root", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
-      assert has_element?(view, ".breadcrumbs a[href='/debug/application:clarity']")
-      refute has_element?(view, ".breadcrumbs a[href='/debug/root']")
+      assert has_element?(view, ".breadcrumbs a[href='/clarity/debug/application:clarity']")
+      refute has_element?(view, ".breadcrumbs a[href='/clarity/debug/root']")
     end
 
     test "a vertex just under the root has none", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       refute has_element?(view, ".breadcrumbs li")
     end
 
     test "displays breadcrumbs for nested vertices", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       html = render_async(view)
 
       # Should show breadcrumb for the application (root is not shown)
@@ -149,7 +149,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "displays breadcrumbs for domain vertices", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       html = render_async(view)
 
       # Should show breadcrumb path (root not shown): clarity > Demo.Accounts
@@ -160,29 +160,29 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Graph Interactions" do
     test "navigates to application vertex via graph click", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       render_async(view)
 
       # Test viz:click event with a known vertex ID from our test helper
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "application:clarity"})
 
       # Should navigate to the clicked vertex
-      assert_patched(view, "/graph/application:clarity/graph")
+      assert_patched(view, "/clarity/graph/application:clarity/graph")
     end
 
     test "navigates to domain vertex via graph click", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       render_async(view)
 
       # Test viz:click event with domain vertex
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "ash-domain:demo-accounts"})
 
       # Should navigate to the domain vertex
-      assert_patched(view, "/graph/ash-domain:demo-accounts/graph")
+      assert_patched(view, "/clarity/graph/ash-domain:demo-accounts/graph")
     end
 
     test "graph visualization renders correctly", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       render_async(view)
 
       # Should render the graph visualization element
@@ -196,14 +196,14 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Tooltips" do
     test "renders a single shared tooltip element for the hook", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
 
       assert has_element?(view, "#clarity-tooltip[role='tooltip'][phx-hook='Tooltip']")
     end
 
     test "renders the icon sprite the hints' type pills refer to", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "symbol#clarity-icon-application")
@@ -215,7 +215,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "tree links carry the vertex hint inline", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(
@@ -225,7 +225,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "breadcrumb links carry the vertex hint inline", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(
@@ -235,7 +235,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "graph visualisations ship each vertex's full hint", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       render_async(view)
 
       hints =
@@ -260,7 +260,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive lens tabs" do
     test "the Graph lens shows only the graph tab", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       render_async(view)
 
       tabs = view |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(".content-tab")
@@ -271,7 +271,7 @@ defmodule Clarity.Pages.PageLiveTest do
     test "only the Graph and Debug lenses show the graph tab", %{conn: conn} do
       for lens <- ["architect", "security", "documentation"] do
         {:ok, view, _html} =
-          conn |> live("/#{lens}/ash-domain:demo-accounts") |> follow_redirect(conn)
+          conn |> live("/clarity/#{lens}/ash-domain:demo-accounts") |> follow_redirect(conn)
 
         render_async(view)
 
@@ -280,7 +280,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "the Debug lens shows every tab, the graph included", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(view, ".content-tab", "Graph Navigation")
@@ -289,7 +289,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "the Documentation lens shows only a domain's module documentation", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
+      {:ok, view, _html} = live(conn, "/clarity/documentation/ash-domain:demo-accounts/moduledoc")
       render_async(view)
 
       tabs = view |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(".content-tab")
@@ -299,8 +299,8 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "a vertex with none of the lens's tabs opens in the first lens down the activity bar with one",
          %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/architect/application:clarity/" <> _tab}}} =
-               live(conn, "/documentation/application:clarity")
+      assert {:error, {:live_redirect, %{to: "/clarity/architect/application:clarity/" <> _tab}}} =
+               live(conn, "/clarity/documentation/application:clarity")
     end
 
     @tag test_graph: [resources: true]
@@ -309,22 +309,22 @@ defmodule Clarity.Pages.PageLiveTest do
     } do
       docs = "/ash-resource:demo-accounts-user/moduledoc"
 
-      assert {:error, {:live_redirect, %{to: "/documentation" <> ^docs}}} =
-               live(conn, "/security" <> docs)
+      assert {:error, {:live_redirect, %{to: "/clarity/documentation" <> ^docs}}} =
+               live(conn, "/clarity/security" <> docs)
 
-      assert {:error, {:live_redirect, %{to: "/graph/ash-domain:demo-accounts/graph"}}} =
-               live(conn, "/security/ash-domain:demo-accounts/graph")
+      assert {:error, {:live_redirect, %{to: "/clarity/graph/ash-domain:demo-accounts/graph"}}} =
+               live(conn, "/clarity/security/ash-domain:demo-accounts/graph")
     end
 
     @tag test_graph: [resources: true]
     test "a patch to a tab the lens hasn't moves to the first lens with it", %{conn: conn} do
       docs = "/ash-resource:demo-accounts-user/moduledoc"
-      {:ok, view, _html} = live(conn, "/security/ash-resource:demo-accounts-user/ash-security-overview")
+      {:ok, view, _html} = live(conn, "/clarity/security/ash-resource:demo-accounts-user/ash-security-overview")
       render_async(view)
 
-      render_patch(view, "/security" <> docs)
+      render_patch(view, "/clarity/security" <> docs)
 
-      assert_patch(view, "/documentation" <> docs)
+      assert_patch(view, "/clarity/documentation" <> docs)
     end
   end
 
@@ -336,25 +336,25 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "keeps the open tab when the vertex has it", %{conn: conn, module_id: module_id} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/moduledoc")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/moduledoc")
       render_async(view)
 
       view |> element("#navigation-tree a[data-tooltip-type='Module']") |> render_click()
 
-      assert_patch(view, "/debug/#{module_id}/moduledoc")
+      assert_patch(view, "/clarity/debug/#{module_id}/moduledoc")
     end
 
     test "opens the vertex's first tab when it hasn't the open one", %{
       conn: conn,
       module_id: module_id
     } do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/ash-domain-overview")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/ash-domain-overview")
       render_async(view)
 
       view |> element("#navigation-tree a[data-tooltip-type='Module']") |> render_click()
 
       # Debug puts the graph first.
-      assert_patch(view, "/debug/#{module_id}/graph")
+      assert_patch(view, "/clarity/debug/#{module_id}/graph")
     end
   end
 
@@ -363,59 +363,59 @@ defmodule Clarity.Pages.PageLiveTest do
     @describetag test_graph: [internals: true]
 
     test "opens the tab that explains the status class", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/security/application:ash/dependency"}}} =
-               live(conn, "/security/application:ash?status=hygiene")
+      assert {:error, {:live_redirect, %{to: "/clarity/security/application:ash/dependency"}}} =
+               live(conn, "/clarity/security/application:ash?status=hygiene")
 
-      assert {:error, {:live_redirect, %{to: "/security/application:ash/advisory"}}} =
-               live(conn, "/security/application:ash?status=security")
+      assert {:error, {:live_redirect, %{to: "/clarity/security/application:ash/advisory"}}} =
+               live(conn, "/clarity/security/application:ash?status=security")
     end
 
     test "has no version status for the project's own application, which isn't on Hex", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/security/application:clarity/advisory"}}} =
-               live(conn, "/security/application:clarity?status=hygiene")
+      assert {:error, {:live_redirect, %{to: "/clarity/security/application:clarity/advisory"}}} =
+               live(conn, "/clarity/security/application:clarity?status=hygiene")
     end
 
     test "falls back to the first tab when none explains the class", %{conn: conn} do
-      assert {:error, {:live_redirect, %{to: "/security/application:clarity/advisory"}}} =
-               live(conn, "/security/application:clarity?status=nope")
+      assert {:error, {:live_redirect, %{to: "/clarity/security/application:clarity/advisory"}}} =
+               live(conn, "/clarity/security/application:clarity?status=nope")
     end
   end
 
   describe "PageLive switching lens" do
     test "keeps the selected vertex", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       view |> element("#activity-lens-documentation") |> render_click()
 
       # The Documentation lens has no graph tab, so the vertex opens on its first.
-      assert_patch(view, "/documentation/ash-domain:demo-accounts/moduledoc")
+      assert_patch(view, "/clarity/documentation/ash-domain:demo-accounts/moduledoc")
     end
 
     test "keeps the tab when the new lens has it", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       view |> element("#activity-lens-graph") |> render_click()
 
-      assert_patch(view, "/graph/ash-domain:demo-accounts/graph")
+      assert_patch(view, "/clarity/graph/ash-domain:demo-accounts/graph")
     end
 
     @tag test_graph: [internals: true]
     test "moves up to the nearest vertex the new lens shows", %{conn: conn} do
       # The shadow domain is a framework internal: Debug shows it, Graph doesn't.
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:ash-embeddable-type-shadow-domain/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:ash-embeddable-type-shadow-domain/graph")
       render_async(view)
 
       view |> element("#activity-lens-graph") |> render_click()
 
-      assert_patch(view, "/graph/application:ash/graph")
+      assert_patch(view, "/clarity/graph/application:ash/graph")
     end
   end
 
   describe "PageLive Content Rendering" do
     test "renders graph navigation content by default", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       html = render_async(view)
 
       # Should render viz content by default (Graph Navigation)
@@ -424,7 +424,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "switches between different content tabs", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       render_async(view)
 
       # Should have at least the Graph Navigation tab
@@ -437,24 +437,24 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "renders content for different vertex types", %{conn: conn} do
       # Test application vertex content
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       assert has_element?(view, ".content")
       assert has_element?(view, "nav.tabs")
 
       # Test domain vertex content
-      {:ok, view2, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view2, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       assert has_element?(view2, ".content")
       assert has_element?(view2, "nav.tabs")
     end
 
     test "handles vertex navigation with different content types", %{conn: conn} do
       # Navigate to different vertices and ensure content updates
-      {:ok, view, _html} = live(conn, "/graph/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")
       render_async(view)
 
       # Navigate to application vertex
       view |> element("#content-view-viz") |> render_hook("viz:click", %{"id" => "application:clarity"})
-      assert_patched(view, "/graph/application:clarity/graph")
+      assert_patched(view, "/clarity/graph/application:clarity/graph")
 
       # Content should update for the new vertex
       assert has_element?(view, ".content")
@@ -464,7 +464,7 @@ defmodule Clarity.Pages.PageLiveTest do
   describe "PageLive Error Handling" do
     test "shows 404 page for invalid lens", %{conn: conn} do
       # Test with invalid lens ID should show lens 404 error
-      {:ok, view, html} = live(conn, "/invalid_lens/root/graph")
+      {:ok, view, html} = live(conn, "/clarity/invalid_lens/root/graph")
 
       # Should show lens not found error
       assert html =~ "Lens not found"
@@ -475,12 +475,12 @@ defmodule Clarity.Pages.PageLiveTest do
       refute has_element?(view, ".navigation")
 
       # Should have link to default page
-      assert has_element?(view, "a[href='/']")
+      assert has_element?(view, "a[href='/clarity']")
     end
 
     test "shows 404 page for invalid vertex", %{conn: conn} do
       # Test with invalid vertex ID should show vertex 404 error
-      {:ok, view, html} = live(conn, "/debug/invalid_vertex/graph")
+      {:ok, view, html} = live(conn, "/clarity/debug/invalid_vertex/graph")
 
       # Should show vertex not found error
       assert html =~ "Vertex not found"
@@ -492,20 +492,20 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view, ".layout-container > .page-state")
 
       # Should link home, to the lens's start page
-      assert has_element?(view, ".empty-state-actions a[href='/debug']")
+      assert has_element?(view, ".empty-state-actions a[href='/clarity/debug']")
     end
 
     test "the home link leads to the app's page, not the empty root", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/invalid_vertex/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/invalid_vertex/graph")
 
       view |> element(".empty-state-actions a") |> render_click()
 
-      assert_patch(view, "/debug/application:clarity/graph")
+      assert_patch(view, "/clarity/debug/application:clarity/graph")
     end
 
     test "shows content 404 for invalid content", %{conn: conn} do
       # Test with valid vertex but invalid content should show content 404
-      {:ok, view, _html} = live(conn, "/graph/root/invalid_content")
+      {:ok, view, _html} = live(conn, "/clarity/graph/root/invalid_content")
       html = render_async(view)
 
       # Should show content not found error inside the content area
@@ -520,7 +520,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
   describe "PageLive Theme and UI State" do
     test "maintains theme state across navigation", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
       # Should have theme-related classes
       page_html = render(view)
@@ -528,7 +528,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "applies correct CSS classes for light and dark themes", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
       # Should have both light and dark mode classes for proper theming
       page_html = render(view)
@@ -537,7 +537,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "navigation panel has correct theme classes", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       # The panel renders once the graph has loaded.
       render_async(view)
 
@@ -548,7 +548,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "marks the tab being shown as the current one", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/graph/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/graph/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "nav.tabs a[aria-current='page']", "Graph Navigation")
@@ -564,7 +564,7 @@ defmodule Clarity.Pages.PageLiveTest do
     @describetag test_graph: [resources: true]
 
     test "the header's gear opens the settings: the theme, and how text links names", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
 
       assert has_element?(view, "#header-settings button[popovertarget=header-settings-menu]")
 
@@ -576,7 +576,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "text links lowercase names until the viewer turns it off", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
+      {:ok, view, _html} = live(conn, "/clarity/documentation/ash-domain:demo-accounts/moduledoc")
       render_async(view)
 
       assert has_element?(view, ".prose a", ~r/^User$/)
@@ -588,7 +588,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "text links every mention once the viewer turns it on", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
+      {:ok, view, _html} = live(conn, "/clarity/documentation/ash-domain:demo-accounts/moduledoc")
       render_async(view)
 
       # The domain's description names User in prose and again in code.
@@ -608,7 +608,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "tables name what they hold briefly until the viewer asks for names in full", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/architect/ash-domain:demo-accounts/ash-domain-overview")
+      {:ok, view, _html} = live(conn, "/clarity/architect/ash-domain:demo-accounts/ash-domain-overview")
       render_async(view)
 
       assert has_element?(view, ".ov-resource-card a.ov-link", ~r/^\s*User\s*$/)
@@ -620,7 +620,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "a viewer who turned lowercase linking off joins with it off", %{conn: conn} do
       conn = put_connect_params(conn, %{"linking" => %{"lowercase" => false}})
-      {:ok, view, _html} = live(conn, "/documentation/ash-domain:demo-accounts/moduledoc")
+      {:ok, view, _html} = live(conn, "/clarity/documentation/ash-domain:demo-accounts/moduledoc")
       render_async(view)
 
       refute has_element?(view, ".prose a", ~r/^User$/)
@@ -631,7 +631,7 @@ defmodule Clarity.Pages.PageLiveTest do
     @describetag test_graph: [internals: true]
 
     test "are shown in the Debug lens, with no toggle", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, ".navigation a[data-tooltip-title='ash']")
@@ -650,7 +650,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     test "stay reachable: navigating to one shows it, even where they are hidden", %{conn: conn} do
       {:ok, view, _html} =
-        live(conn, "/architect/ash-domain:ash-embeddable-type-shadow-domain/ash-domain-overview")
+        live(conn, "/clarity/architect/ash-domain:ash-embeddable-type-shadow-domain/ash-domain-overview")
 
       render_async(view)
 
@@ -665,7 +665,7 @@ defmodule Clarity.Pages.PageLiveTest do
     @spec live_lens(Plug.Conn.t(), String.t()) :: {:ok, %View{}, String.t()}
     defp live_lens(conn, lens) do
       {:ok, view, html} =
-        case live(conn, "/#{lens}/application:clarity") do
+        case live(conn, "/clarity/#{lens}/application:clarity") do
           {:error, {:live_redirect, %{to: path}}} -> live(conn, path)
           result -> result
         end
@@ -679,19 +679,19 @@ defmodule Clarity.Pages.PageLiveTest do
     @clarity_node "details[id='tree-node-application:clarity']"
 
     test "navigating to a vertex opens the tree down to it", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
 
       refute has_element?(view, "#{@clarity_node}[open]")
 
-      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
+      render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_node}[open]")
     end
 
     test "a node on the path to the current vertex can be collapsed", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       toggle_clarity(view, false)
@@ -700,48 +700,48 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "a collapsed node stays collapsed until the user navigates elsewhere", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
       toggle_clarity(view, false)
 
-      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
+      render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       refute has_element?(view, "#{@clarity_node}[open]")
 
-      render_patch(view, "/debug/root/graph")
+      render_patch(view, "/clarity/debug/root/graph")
       render_async(view)
-      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
+      render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_node}[open]")
     end
 
     test "a node opened by navigation stays open when navigating elsewhere", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
-      render_patch(view, "/debug/root/graph")
+      render_patch(view, "/clarity/debug/root/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_node}[open]")
     end
 
     test "a node the user expanded stays open when navigating elsewhere", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
       toggle_clarity(view, true)
 
-      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
+      render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
-      render_patch(view, "/debug/root/graph")
+      render_patch(view, "/clarity/debug/root/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_node}[open]")
     end
 
     test "toggling sets the state the user asked for", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
 
       toggle_clarity(view, true)
@@ -756,7 +756,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "marks the current vertex's label so it can toggle in place", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, ".navigation a[aria-current='page'][data-tooltip-title='clarity']")
@@ -765,7 +765,7 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "shows short module names, with the full name in the hint", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/ash-domain:demo-accounts/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       label =
@@ -780,14 +780,14 @@ defmodule Clarity.Pages.PageLiveTest do
     end
 
     test "has a resizable, collapsible panel", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "#nav-resize[role='separator'][phx-hook='NavPanel']")
     end
 
     test "is shown and hidden from the activity bar, not buttons of its own", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "#activity-bar button#activity-lens-debug")
@@ -799,7 +799,7 @@ defmodule Clarity.Pages.PageLiveTest do
     @clarity_group "details[id='tree-group-application:clarity/child']"
 
     test "a vertex row shows its type's icon in its colour", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(
@@ -810,7 +810,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     @tag test_graph: [modules: true]
     test "a group row is a plain label, like a folder", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_group} > summary", "child")
@@ -819,7 +819,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
     @tag test_graph: [modules: true]
     test "a group can be collapsed and expanded", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_group}[open]")
@@ -835,11 +835,11 @@ defmodule Clarity.Pages.PageLiveTest do
 
     @tag test_graph: [modules: true]
     test "navigating into a collapsed group reveals it", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/application:clarity/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
       render_async(view)
       toggle_clarity_group(view, false)
 
-      render_patch(view, "/debug/ash-domain:demo-accounts/graph")
+      render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_group}[open]")
@@ -847,12 +847,12 @@ defmodule Clarity.Pages.PageLiveTest do
 
     @tag test_graph: [modules: true]
     test "a collapsed group stays collapsed when navigating past it", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/debug/root/graph")
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
       toggle_clarity(view, true)
       toggle_clarity_group(view, false)
 
-      render_patch(view, "/debug/application:clarity/graph")
+      render_patch(view, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
       assert has_element?(view, "#{@clarity_node}[open]")

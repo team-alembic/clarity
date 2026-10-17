@@ -26,9 +26,9 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
         html = render_overview(EndpointPipeline, %Router{router: DemoWeb.Router})
 
         assert text(html, ".ov-headline") ==
-                 "Routes 29 paths through 3 pipelines behind DemoWeb.Endpoint"
+                 "Routes 30 paths through 3 pipelines behind DemoWeb.Endpoint"
 
-        assert texts(html, ".ov-stat") == ["3 Pipelines", "29 Routes"]
+        assert texts(html, ".ov-stat") == ["3 Pipelines", "30 Routes"]
         assert html |> LazyHTML.query("#request-pipeline") |> Enum.empty?()
       end
 
@@ -57,7 +57,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
 
         assert text(html, ".ov-headline") == "Runs 6 plugs then hands each request to DemoWeb.Router"
         assert text(html, ".ov-facts") =~ "Sockets /live"
-        assert texts(html, ".ov-stat") == ["6 Plugs", "3 Pipelines", "29 Routes"]
+        assert texts(html, ".ov-stat") == ["6 Plugs", "3 Pipelines", "30 Routes"]
       end
 
       test "lists each step in order, saying what the well-known plugs do, without their secrets" do
@@ -68,7 +68,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
         assert hd(steps) =~ "Sockets /live → Phoenix.LiveView.Socket"
         assert Enum.at(steps, 3) =~ "Plug.Parsers urlencoded multipart json Parses request bodies"
         assert Enum.at(steps, 6) =~ "Plug.Session cookie store key _live_view_key"
-        assert List.last(steps) =~ "DemoWeb.Router 29 routes Matches the request to a route"
+        assert List.last(steps) =~ "DemoWeb.Router 30 routes Matches the request to a route"
         refute text(html, "#request-pipeline") =~ "VEDsdfsffMnp5"
       end
 
@@ -89,7 +89,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
       test "groups routes by the pipelines they pass through, with the plugs their controllers run" do
         html = render_overview(EndpointPipeline, @endpoint_vertex)
 
-        assert texts(html, "#routes .ov-route-group-head") == ["browser 12", "api 15", "admin 2"]
+        assert texts(html, "#routes .ov-route-group-head") == ["browser 13", "api 15", "admin 2"]
 
         rows = texts(html, "#routes-1 tbody tr")
         assert "GET /api/v1/tickets/:id DemoWeb.API.V1.TicketController :show" in rows
@@ -140,7 +140,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
       end
 
       test "shows the hooks a LiveView's live session mounts" do
-        html = @endpoint_vertex |> mount() |> request("GET", "/reports") |> render_html()
+        html = @endpoint_vertex |> mount() |> request("GET", "/clarity/reports") |> render_html()
 
         assert text(html, "#try-journey") =~ "On mount Clarity.Pages.Setup"
         assert text(html, "#try-journey .ov-journey-end") =~ "Clarity.ReportLive :index live"

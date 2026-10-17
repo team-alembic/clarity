@@ -6,8 +6,9 @@ defmodule DemoWeb.PageController do
 
   use Phoenix.Controller, formats: [:html]
 
+  # The demo's home is Clarity, mounted at /clarity as a host app would.
   @spec home(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def home(conn, _params), do: send_resp(conn, 200, "OrbitDesk demo home")
+  def home(conn, _params), do: redirect(conn, to: "/clarity")
 
   @spec pricing(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def pricing(conn, _params), do: send_resp(conn, 200, "Pricing")

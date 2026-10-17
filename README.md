@@ -1,5 +1,5 @@
 <p align="left">
-  <img src="priv/static/images/logo.svg" alt="Clarity" width="120">
+  <img src="priv/static/images/logo.svg" alt="Clarity" width="64">
 </p>
 
 [![CI](https://github.com/team-alembic/clarity/workflows/CI/badge.svg)](https://github.com/team-alembic/clarity/actions)
@@ -214,7 +214,7 @@ cd clarity
 bin/dev
 ```
 
-Open **[http://localhost:4000](http://localhost:4000)**: the demo mounts Clarity at its root. It uses live reloading for both the host application and Clarity. You can set another port with `PORT=4001 bin/dev`.
+Open **[http://localhost:4000/clarity](http://localhost:4000/clarity)** (`/` redirects there). The demo uses live reloading for both the host application and Clarity. You can set another port with `PORT=4001 bin/dev`.
 
 ## Development and contributions
 
