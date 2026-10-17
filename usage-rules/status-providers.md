@@ -141,8 +141,9 @@ config :my_app, :clarity_status_providers, [
 
 Pick a coarse, shared domain rather than a per-provider name — multiple providers
 can contribute to one class, and a lens surfaces a class regardless of which
-provider produced it. Clarity ships `:security` (vulnerabilities) and `:hygiene`
-(outdated/retired dependencies).
+provider produced it. Clarity ships `:security` (vulnerabilities), `:hygiene`
+(outdated/retired dependencies) and `:integrity` (declarations that do not agree,
+such as an Ash signal emit or listener that Ash rejects).
 
 ## Surfacing Statuses in a Lens
 

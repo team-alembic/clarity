@@ -9,6 +9,8 @@ defmodule Demo.Billing.Invoice do
     extensions: [AshStateMachine],
     data_layer: Ash.DataLayer.Ets
 
+  alias Demo.Billing.Signals
+
   resource do
     description """
     A periodic charge owed by an Organization for its Subscription.
@@ -38,12 +40,18 @@ defmodule Demo.Billing.Invoice do
     update :finalize do
       accept []
       change transition_state(:sent)
+      emit Signals, :invoice_finalized, fields: [invoice_id: :id]
     end
 
     update :payment_received do
+      require_atomic? false
       accept []
       change transition_state(:paid)
       change set_attribute(:paid_on, expr(today()))
+
+      emit Signals, :invoice_paid,
+        phase: :after_transaction,
+        fields: [invoice_id: :id]
     end
 
     update :due_date_passed do
@@ -55,6 +63,7 @@ defmodule Demo.Billing.Invoice do
       description "Writes off an overdue invoice as uncollectable."
       accept []
       change transition_state(:written_off)
+      emit Signals, :invoice_written_off, fields: [invoice_id: :id]
     end
 
     read :outstanding do

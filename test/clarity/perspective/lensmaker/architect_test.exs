@@ -6,6 +6,10 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Architect
+  alias Clarity.Status
+  alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Signal
+  alias Clarity.Vertex.Ash.SignalModule
   alias Phoenix.LiveView.Rendered
 
   setup do
@@ -39,6 +43,33 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
                   ClarityContent.PolicyDiagram,
                   ClarityContent.PolicySimulation
                 ]}
+    end
+
+    test "shows Ash signal modules and signals" do
+      available = [Signal, SignalModule, Vertex.Module]
+
+      assert Architect.make_lens().show_vertex_types.(available) == [
+               Signal,
+               SignalModule
+             ]
+    end
+
+    test "surfaces :integrity status indicators, and no others" do
+      filter = Architect.make_lens().status_filter
+
+      assert filter.(%Status{severity: :error, class: :integrity, message: "x", source: __MODULE__})
+      refute filter.(%Status{severity: :error, class: :security, message: "y", source: __MODULE__})
+    end
+
+    test "keeps an application whose only architecture is a signal module", %{graph: graph} do
+      app = %Vertex.Application{app: :signals_only, description: "Signals only", version: "1.0.0"}
+      signal_module = %SignalModule{signal_module: Demo.Billing.Signals}
+      Graph.add_vertex(graph, app, %Vertex.Root{})
+      Graph.add_vertex(graph, signal_module, app)
+      Graph.add_edge(graph, app, signal_module, :signal_module)
+
+      assert {:or, {:in, :vertex_id, ids}, _others} = Architect.make_lens().filter.(graph)
+      assert Vertex.id(app) in ids
     end
 
     test "architect lens focuses on structural elements" do

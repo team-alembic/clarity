@@ -46,7 +46,7 @@ defmodule Clarity.Graph do
             vertices: :ets.tid(),
             update_count: :ets.tid(),
             indexes: :ets.tid(),
-            owner: pid(),
+            owner: pid() | nil,
             view: MapSet.t(String.t()) | nil,
             subgraph: boolean()
           }
@@ -208,16 +208,20 @@ defmodule Clarity.Graph do
       from_id = Vertex.id(from_vertex)
       to_id = Vertex.id(to_vertex)
 
-      :digraph.add_edge(graph.main_graph, from_id, to_id, label)
+      case :digraph.add_edge(graph.main_graph, from_id, to_id, label) do
+        {:error, _reason} ->
+          :ok
 
-      Tree.add_edge(graph.tree_graph, from_id, to_id, label)
+        _edge ->
+          Tree.add_edge(graph.tree_graph, from_id, to_id, label)
 
-      update_degree_index(graph, from_id, label, :out_degree, 1)
-      update_degree_index(graph, to_id, label, :in_degree, 1)
+          update_degree_index(graph, from_id, label, :out_degree, 1)
+          update_degree_index(graph, to_id, label, :in_degree, 1)
 
-      increment_update_count(graph)
+          increment_update_count(graph)
 
-      :ok
+          :ok
+      end
     end
   end
 
@@ -517,6 +521,32 @@ defmodule Clarity.Graph do
     graph
     |> neighbour_ids(Vertex.id(vertex), :in)
     |> Enum.map(&get_vertex(graph, &1))
+  end
+
+  @doc """
+  Gets the targets of a vertex's outgoing edges with `label`, each once.
+  """
+  @spec out_neighbors(t(), Vertex.t(), :digraph.label()) :: [Vertex.t()]
+  def out_neighbors(%__MODULE__{} = graph, vertex, label) do
+    targets =
+      for edge_id <- out_edges(graph, vertex),
+          {_edge_id, _from, %{} = to, ^label} <- [edge(graph, edge_id)],
+          do: to
+
+    Enum.uniq_by(targets, &Vertex.id/1)
+  end
+
+  @doc """
+  Gets the sources of a vertex's incoming edges with `label`, each once.
+  """
+  @spec in_neighbors(t(), Vertex.t(), :digraph.label()) :: [Vertex.t()]
+  def in_neighbors(%__MODULE__{} = graph, vertex, label) do
+    sources =
+      for edge_id <- in_edges(graph, vertex),
+          {_edge_id, %{} = from, _to, ^label} <- [edge(graph, edge_id)],
+          do: from
+
+    Enum.uniq_by(sources, &Vertex.id/1)
   end
 
   @doc """
@@ -823,6 +853,13 @@ defmodule Clarity.Graph do
 
     %{graph | view: graph |> vertex_ids(query) |> MapSet.new(), subgraph: true, owner: self()}
   end
+
+  @doc """
+  Returns the whole graph that a view filters, or the graph itself when it is
+  not a view. The result can read the graph, but not delete or change it.
+  """
+  @spec unfiltered(t()) :: t()
+  def unfiltered(%__MODULE__{} = graph), do: %{graph | view: nil, owner: nil}
 
   @doc """
   Persists a graph to disk.

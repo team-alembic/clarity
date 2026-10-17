@@ -445,6 +445,14 @@ defmodule Clarity.GraphTest do
       assert label == :application
     end
 
+    test "add_edge/4 counts nothing when a vertex isn't in the graph", %{graph: graph, app: app} do
+      missing = %Module{module: NotInTheGraph}
+
+      assert :ok = Graph.add_edge(graph, app, missing, :module)
+      assert Graph.out_degree(graph, app, :module) == 0
+      assert Graph.edges(graph) == []
+    end
+
     test "add_edge/4 respects ownership", %{graph: graph, app: app} do
       Graph.add_vertex(graph, app, %Root{})
 
@@ -1585,6 +1593,49 @@ defmodule Clarity.GraphTest do
     end
   end
 
+  describe "the tree, when a vertex gets a shorter path" do
+    test "keeps the vertex's subtree" do
+      graph = Graph.new()
+      root = %Root{}
+      first = %Module{module: MoveFirst}
+      moved = %Module{module: MoveMoved}
+      child = %Module{module: MoveChild}
+      Graph.add_vertex(graph, first, root)
+      Graph.add_edge(graph, root, first, :module)
+      Graph.add_vertex(graph, moved, root)
+      Graph.add_edge(graph, first, moved, :module)
+      Graph.add_vertex(graph, child, moved)
+      Graph.add_edge(graph, moved, child, :module)
+
+      Graph.add_edge(graph, root, moved, :module)
+
+      assert Graph.tree_child_ids(graph, Vertex.id(moved)) == [Vertex.id(child)]
+      assert graph |> Graph.breadcrumbs(child) |> Enum.map(&Vertex.id/1) == ["root", Vertex.id(moved), Vertex.id(child)]
+    end
+
+    test "keeps the subtree of a vertex whose parent was purged and comes back" do
+      graph = Graph.new()
+      root = %Root{}
+      parent = %Module{module: OrphanParent}
+      orphan = %Module{module: Orphan}
+      child = %Module{module: OrphanChild}
+      Graph.add_vertex(graph, parent, root)
+      Graph.add_edge(graph, root, parent, :module)
+      Graph.add_vertex(graph, orphan, root)
+      Graph.add_edge(graph, parent, orphan, :module)
+      Graph.add_vertex(graph, child, orphan)
+      Graph.add_edge(graph, orphan, child, :module)
+
+      {:ok, _purged} = Graph.purge(graph, parent)
+      Graph.add_vertex(graph, parent, root)
+      Graph.add_edge(graph, root, parent, :module)
+      Graph.add_edge(graph, parent, orphan, :module)
+
+      assert graph |> Graph.breadcrumbs(child) |> Enum.map(&Vertex.id/1) ==
+               ["root", Vertex.id(parent), Vertex.id(orphan), Vertex.id(child)]
+    end
+  end
+
   describe inspect(&Graph.neighbour_ids/3) do
     test "lists neighbour ids, within the view for a view" do
       graph = Graph.new()
@@ -1602,6 +1653,63 @@ defmodule Clarity.GraphTest do
       assert Graph.neighbour_ids(view, Vertex.id(a), :out) == []
       assert Graph.neighbour_ids(view, Vertex.id(a), :in) == [Vertex.id(root)]
       assert Graph.neighbour_ids(view, Vertex.id(b), :in) == []
+    end
+  end
+
+  describe inspect(&Graph.unfiltered/1) do
+    test "gives the whole graph that a view filters" do
+      graph = Graph.new()
+      a = %Module{module: WholeA}
+      Graph.add_vertex(graph, a, %Root{})
+      view = Graph.filter(graph, {:!=, :vertex_type, Module})
+
+      refute Graph.vertex_id?(view, Vertex.id(a))
+      assert Graph.vertex_id?(Graph.unfiltered(view), Vertex.id(a))
+    end
+
+    test "gives a graph that can't delete or change the graph it reads" do
+      graph = Graph.new()
+      view = Graph.filter(graph, {:==, :vertex_type, Root})
+
+      assert {:error, _reason} = Graph.delete(Graph.unfiltered(view))
+      assert {:error, _reason} = Graph.delete(Graph.unfiltered(graph))
+      assert {:error, _reason} = Graph.add_vertex(Graph.unfiltered(graph), %Module{module: WholeB}, %Root{})
+
+      assert :ok = Graph.add_vertex(graph, %Module{module: WholeC}, %Root{})
+      assert Graph.vertex_count(graph) == 2
+    end
+  end
+
+  describe "out_neighbors/3 and in_neighbors/3" do
+    test "follow only the edges with the label" do
+      graph = Graph.new()
+      root = %Root{}
+      a = %Module{module: LabelledA}
+      b = %Module{module: LabelledB}
+      c = %Module{module: LabelledC}
+      Graph.add_vertex(graph, a, root)
+      Graph.add_vertex(graph, b, a)
+      Graph.add_vertex(graph, c, a)
+      Graph.add_edge(graph, a, b, :emits)
+      Graph.add_edge(graph, a, c, :module)
+
+      assert Graph.out_neighbors(graph, a, :emits) == [b]
+      assert Graph.in_neighbors(graph, b, :emits) == [a]
+      assert Graph.in_neighbors(graph, c, :emits) == []
+    end
+
+    test "give each neighbour once, when an edge was added twice" do
+      graph = Graph.new()
+      root = %Root{}
+      a = %Module{module: TwiceA}
+      b = %Module{module: TwiceB}
+      Graph.add_vertex(graph, a, root)
+      Graph.add_vertex(graph, b, a)
+      Graph.add_edge(graph, a, b, :emits)
+      Graph.add_edge(graph, a, b, :emits)
+
+      assert Graph.out_neighbors(graph, a, :emits) == [b]
+      assert Graph.in_neighbors(graph, b, :emits) == [a]
     end
   end
 end

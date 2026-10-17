@@ -9,6 +9,8 @@ defmodule Demo.Billing.Subscription do
     extensions: [AshStateMachine],
     data_layer: Ash.DataLayer.Ets
 
+  alias Demo.Billing.Signals
+
   resource do
     description """
     An Organization's active commitment to a Plan. Generates an
@@ -29,6 +31,15 @@ defmodule Demo.Billing.Subscription do
       transition(:retry_succeeds, from: :past_due, to: :active)
       transition(:final_dunning, from: :past_due, to: :canceled)
       transition(:user_cancels, from: :active, to: :canceled)
+    end
+  end
+
+  signals_in do
+    from Signals do
+      on :invoice_written_off, :cancel_after_write_off,
+        action: :final_dunning,
+        get_by: [id: :subscription_id],
+        description: "Cancels the subscription whose invoice was written off."
     end
   end
 
@@ -70,12 +81,14 @@ defmodule Demo.Billing.Subscription do
       accept []
       change transition_state(:canceled)
       change set_attribute(:canceled_on, expr(today()))
+      emit Signals, :subscription_canceled, fields: [subscription_id: :id]
     end
 
     update :user_cancels do
       accept []
       change transition_state(:canceled)
       change set_attribute(:canceled_on, expr(today()))
+      emit Signals, :subscription_canceled, fields: [subscription_id: :id]
     end
 
     action :issue_invoice, :map do

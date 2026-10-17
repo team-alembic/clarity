@@ -58,6 +58,7 @@ defmodule Clarity.MixProject do
           Clarity.Introspector.Ash.DataLayer,
           Clarity.Introspector.Ash.Spark,
           Clarity.Introspector.Ash.Type,
+          Clarity.Introspector.Ash.Signal,
           Clarity.Introspector.Reactor,
           Clarity.Introspector.Phoenix.Endpoint,
           Clarity.Introspector.Phoenix.Router,
@@ -85,6 +86,8 @@ defmodule Clarity.MixProject do
           Clarity.Content.Ash.RelationshipOverview,
           Clarity.Content.Ash.StateMachineDiagram,
           Clarity.Content.Ash.StateMachinesOverview,
+          Clarity.Content.Ash.SignalOverview,
+          Clarity.Content.Ash.SignalsOverview,
           Clarity.Content.Reactor.FlowDiagram,
           Clarity.Content.Reactor.Overview,
           Clarity.Content.Phoenix.EndpointPipeline,
@@ -92,7 +95,8 @@ defmodule Clarity.MixProject do
           Clarity.Content.Dependency
         ],
         clarity_status_providers: [
-          Clarity.Status.SupplyChain
+          Clarity.Status.SupplyChain,
+          Clarity.Status.SignalIntegrity
         ],
         clarity_reports: [
           Clarity.Report.Ontology,
@@ -111,6 +115,7 @@ defmodule Clarity.MixProject do
       {:spark, "~> 2.3", optional: true},
       {:reactor, "~> 1.0", optional: true},
       {:ash_state_machine, "~> 0.2.13", optional: true},
+      {:ash_oban, "~> 0.10", only: :test},
       {:phoenix, "~> 1.8"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.0"},

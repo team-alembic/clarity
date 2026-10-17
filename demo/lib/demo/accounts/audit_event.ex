@@ -17,6 +17,12 @@ defmodule Demo.Accounts.AuditEvent do
     """
   end
 
+  signals_in do
+    from Demo.Billing.Signals do
+      on :subscription_canceled, :record_subscription_canceled
+    end
+  end
+
   actions do
     default_accept :*
     defaults [:read, create: :*]
@@ -29,6 +35,12 @@ defmodule Demo.Accounts.AuditEvent do
     read :since do
       argument :since, :utc_datetime_usec, allow_nil?: false
       filter expr(occurred_at >= ^arg(:since))
+    end
+
+    action :record_subscription_canceled do
+      description "Records that a subscription was canceled. The demo runs nothing."
+      argument :signal, Demo.Billing.Signals.SubscriptionCanceled, allow_nil?: false
+      run fn _input, _context -> :ok end
     end
   end
 

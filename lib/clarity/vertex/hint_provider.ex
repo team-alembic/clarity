@@ -38,6 +38,8 @@ defprotocol Clarity.Vertex.HintProvider do
           | :resource
           | :router
           | :section
+          | :signal
+          | :signal_module
           | :type
 
   @typedoc "A label and its value, or a list of values shown as chips."

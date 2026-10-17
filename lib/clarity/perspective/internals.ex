@@ -4,7 +4,9 @@ defmodule Clarity.Perspective.Internals do
   application being explored.
 
   So far these are the two `ShadowDomain` modules Ash defines for itself, for
-  embedded types and filters, which hold no resources.
+  embedded types and filters, which hold no resources, and the modules Ash
+  generates for signals (`Ash.Signals.Index.*`, `Ash.Signals.Listeners.*` and
+  `Ash.Signals.Dispatch.*`).
 
   Unless a lens sets `show_internals?` (only the Debug lens does), they are
   removed before it filters the graph, so it treats them as absent: an
@@ -24,6 +26,8 @@ defmodule Clarity.Perspective.Internals do
   def internal?(%{__struct__: Domain, domain: domain}),
     do: Clarity.Config.application_of(domain) == :ash
 
+  def internal?(%Vertex.Module{module: module}), do: generated_for_signals?(module)
+
   def internal?(_vertex), do: false
 
   @doc """
@@ -31,8 +35,18 @@ defmodule Clarity.Perspective.Internals do
   """
   @spec ids(Graph.t()) :: [String.t()]
   def ids(graph) do
-    for vertex <- Graph.vertices(graph, {:==, :vertex_type, Domain}),
+    for type <- [Domain, Vertex.Module],
+        vertex <- Graph.vertices(graph, {:==, :vertex_type, type}),
         internal?(vertex),
         do: Vertex.id(vertex)
+  end
+
+  @spec generated_for_signals?(module()) :: boolean()
+  defp generated_for_signals?(module) do
+    String.starts_with?(Atom.to_string(module), [
+      "Elixir.Ash.Signals.Index.",
+      "Elixir.Ash.Signals.Listeners.",
+      "Elixir.Ash.Signals.Dispatch."
+    ])
   end
 end

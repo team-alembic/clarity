@@ -128,6 +128,8 @@ defmodule Clarity.Perspective.Lensmaker.SecurityTest do
                   Content.Moduledoc,
                   Content.Ash.StateMachineDiagram,
                   Content.Ash.StateMachinesOverview,
+                  Content.Ash.SignalOverview,
+                  Content.Ash.SignalsOverview,
                   Content.Reactor.FlowDiagram,
                   Content.Reactor.Overview,
                   ClarityContent.ArchitectureDiagram,
