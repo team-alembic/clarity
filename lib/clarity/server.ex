@@ -32,7 +32,8 @@ defmodule Clarity.Server do
       project_apps: :all,
       wanted: %{},
       promoted: MapSet.new(),
-      prioritized_apps: MapSet.new()
+      prioritized_apps: MapSet.new(),
+      started_apps: MapSet.new()
     ]
 
     # - `queue`: the tasks to run, in lanes (see Clarity.Server.Queue)
@@ -59,13 +60,18 @@ defmodule Clarity.Server do
             project_apps: MapSet.t(Application.app()) | :all,
             wanted: %{module() => Queue.lane()},
             promoted: MapSet.t({module(), Queue.lane()}),
-            prioritized_apps: MapSet.t(Application.app())
+            prioritized_apps: MapSet.t(Application.app()),
+            started_apps: MapSet.t(Application.app())
           }
   end
 
   # How often, at most, tasks waiting on something run again while the
   # dependencies are being introspected.
   @retry_interval 500
+
+  # How often to look for applications that started after the last
+  # introspection.
+  @check_applications_ms 2_000
 
   @doc false
   @spec start_link(opts :: GenServer.options()) :: GenServer.on_start()
@@ -152,12 +158,7 @@ defmodule Clarity.Server do
 
   @impl GenServer
   def handle_cast({:introspect, :full}, state) do
-    :ok = Config.forget_module_applications()
-    state = ensure_started(state)
-
-    :ok = Graph.clear(state.graph)
-
-    {:noreply, reset(state)}
+    {:noreply, introspect_fully(state)}
   end
 
   def handle_cast(
@@ -227,12 +228,7 @@ defmodule Clarity.Server do
   # and anything new, and adding a vertex or edge already in the graph changes
   # nothing.
   def handle_cast({:introspect, {:introspector, introspector}}, state) do
-    if introspector in state.introspectors do
-      broadcast_event(state, :__restart_pulling__)
-      {:noreply, run_again(state, introspector)}
-    else
-      {:noreply, state}
-    end
+    {:noreply, rerun_introspector(state, introspector)}
   end
 
   def handle_cast({:prioritize, vertex}, state) do
@@ -361,6 +357,51 @@ defmodule Clarity.Server do
     {:reply, reply, new_state} = super(msg, from, state)
     handle_state_change(state, new_state)
     {:reply, reply, new_state}
+  end
+
+  # Applications can start after the graph was built, for example the host
+  # of Clarity while it is still starting. Running the application introspector
+  # again adds them to the graph, and leaves the rest of it as it is.
+  @impl GenServer
+  def handle_info(:check_applications, %State{started?: false} = state), do: {:noreply, state}
+
+  def handle_info(:check_applications, state) do
+    Process.send_after(self(), :check_applications, @check_applications_ms)
+
+    server = self()
+
+    {:ok, _pid} =
+      Task.start(fn ->
+        with {:ok, names} <- fetch_started_application_names() do
+          send(server, {:started_applications, names})
+        end
+      end)
+
+    {:noreply, state}
+  end
+
+  def handle_info({:started_applications, _names}, %State{started?: false} = state),
+    do: {:noreply, state}
+
+  def handle_info({:started_applications, names}, state) do
+    new_state =
+      if MapSet.subset?(names, state.started_apps) do
+        state
+      else
+        :ok = Config.forget_module_applications()
+
+        state = rerun_introspector(state, Clarity.Introspector.Application)
+        %{state | started_apps: MapSet.union(state.started_apps, names)}
+      end
+
+    handle_state_change(state, new_state)
+
+    {:noreply, new_state}
+  end
+
+  def handle_info(msg, state) do
+    Logger.warning("#{inspect(__MODULE__)} received an unexpected message: #{inspect(msg)}")
+    {:noreply, state}
   end
 
   @spec handle_state_change(old :: State.t(), new :: State.t()) :: :ok
@@ -672,12 +713,33 @@ defmodule Clarity.Server do
         retried_ms: nil,
         wanted: %{},
         promoted: MapSet.new(),
-        prioritized_apps: MapSet.new()
+        prioritized_apps: MapSet.new(),
+        started_apps: started_application_names()
     }
 
     tasks = create_tasks_for_vertex(%Root{}, :model, state)
     %{state | queue: Enum.reduce(tasks, Queue.new(), &Queue.push(&2, &1))}
   end
+
+  @spec introspect_fully(State.t()) :: State.t()
+  defp introspect_fully(state) do
+    :ok = Config.forget_module_applications()
+    state = ensure_started(state)
+
+    :ok = Graph.clear(state.graph)
+
+    reset(state)
+  end
+
+  @spec fetch_started_application_names() :: {:ok, MapSet.t(Application.app())} | :error
+  defp fetch_started_application_names do
+    {:ok, started_application_names()}
+  catch
+    :exit, _reason -> :error
+  end
+
+  @spec started_application_names() :: MapSet.t(Application.app())
+  defp started_application_names, do: MapSet.new(Config.filtered_applications(), &elem(&1, 0))
 
   @spec ensure_started(State.t()) :: State.t()
   defp ensure_started(%State{started?: true} = state), do: state
@@ -699,8 +761,19 @@ defmodule Clarity.Server do
           |> Enum.reduce(new_state, &run_again(&2, &1))
 
     broadcast_event(new_state, :work_started)
+    Process.send_after(self(), :check_applications, @check_applications_ms)
 
     new_state
+  end
+
+  @spec rerun_introspector(State.t(), module()) :: State.t()
+  defp rerun_introspector(state, introspector) do
+    if introspector in state.introspectors do
+      broadcast_event(state, :__restart_pulling__)
+      run_again(state, introspector)
+    else
+      state
+    end
   end
 
   # Queues `introspector` on every vertex of its types already in the graph.

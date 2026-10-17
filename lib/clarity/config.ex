@@ -105,9 +105,9 @@ defmodule Clarity.Config do
   config :clarity, :auto_start?, false
   ```
 
-  When `true` (default), Clarity loads the cache and starts introspection immediately on startup.
+  When `true`, Clarity loads the cache and starts introspection immediately on startup.
 
-  When `false`, Clarity defers initialization until the first call to `Clarity.get/1` or
+  When `false` (default), Clarity defers initialization until the first call to `Clarity.get/1` or
   `Clarity.introspect(:full)`. This is useful for:
   - Faster application startup in development
   - Avoiding unnecessary introspection in test environment
