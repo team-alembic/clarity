@@ -167,14 +167,20 @@ defmodule Clarity.MixProject do
     end
   end
 
+  defp clean_built_js(_args) do
+    File.rm_rf!("priv/static/assets/chunks")
+    Enum.each(Path.wildcard("priv/static/assets/*.{js,gz}"), &File.rm!/1)
+  end
+
   defp aliases do
     [
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["tailwind default", "esbuild default --sourcemap=linked"],
-      # No `phx.digest`: `Clarity.Resources` inlines the built assets into the
-      # page at compile time rather than serving them over HTTP, so digesting
-      # would only add unused duplicate files to the package.
-      "assets.deploy": ["tailwind default --minify", "esbuild default --minify"],
+      "assets.deploy": [
+        &clean_built_js/1,
+        "tailwind default --minify",
+        "esbuild default --minify"
+      ],
       "hex.build": [&build_assets_for_publish/1, "hex.build"],
       "hex.publish": [&build_assets_for_publish/1, "hex.publish"],
       "usage_rules.update": [

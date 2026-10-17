@@ -56,6 +56,15 @@ mix assets.build
 mix assets.deploy
 ```
 
+esbuild splits the JS: `app.js` is the entry every page loads, and anything
+a hook imports with `import()` becomes a chunk in `chunks/`, loaded the first
+time it's needed. Mermaid (and each kind of Mermaid diagram) and Graphviz load
+this way, so a page without a diagram never fetches them. Import any large
+library the same way rather than at the top of a hook. `Clarity.Assets` serves
+the entry, the chunks and the host's Phoenix and LiveView JS at
+`prefix/assets/`, cached until Clarity changes; `mix assets.deploy` also
+gzips them.
+
 ## Running Tests
 
 ```bash

@@ -11,7 +11,7 @@ Clarity is an interactive introspection and visualisation tool for Elixir projec
 ```bash
 # Start the demo app at :4000 (runs `mix phx.server` in demo/, with esbuild/tailwind watchers;
 # PORT=4001 bin/dev for another port). The watchers build Clarity's assets into the gitignored
-# tmp/dev_assets, which Clarity embeds from in dev, so the shipped assets in priv/static stay
+# tmp/dev_assets, which Clarity serves in dev, so the shipped assets in priv/static stay
 # untouched.
 bin/dev
 

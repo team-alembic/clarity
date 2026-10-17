@@ -1,7 +1,7 @@
 defmodule Clarity.Resources.AssetPath do
   @moduledoc false
 
-  # Where Clarity.Resources embeds a built asset from, at compile time.
+  # Where Clarity.Assets serves a built asset from.
   #
   # Clarity ships its assets built, in priv/static/assets. While developing
   # Clarity itself, the demo app's watchers rebuild them into a separate,

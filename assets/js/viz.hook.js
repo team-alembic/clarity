@@ -1,9 +1,14 @@
-import * as Viz from "@viz-js/viz";
 import { panZoom } from "./pan-zoom";
 import { applyHints } from "./tooltip.hook";
 import { cacheKey, getSvg, putSvg } from "./svg-cache";
 
 const XLINK = "http://www.w3.org/1999/xlink";
+
+// Graphviz is a megabyte of WebAssembly, so it loads, in a chunk of its own,
+// when the first graph renders; every graph shares the one instance.
+let instance;
+const viz = () =>
+  (instance ||= import("@viz-js/viz").then((Viz) => Viz.instance()));
 
 export default {
   async mounted() {
@@ -79,8 +84,7 @@ export default {
       return document.importNode(parsed.documentElement, true);
     }
 
-    this.viz ||= await Viz.instance();
-    const svg = this.viz.renderSVGElement(graph);
+    const svg = (await viz()).renderSVGElement(graph);
     putSvg(key, new XMLSerializer().serializeToString(svg));
     return svg;
   },

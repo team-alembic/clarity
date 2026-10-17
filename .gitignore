@@ -43,3 +43,4 @@ clarity-*.tar
 
 # macOS Finder metadata
 .DS_Store
+/priv/static/assets/chunks/*.map

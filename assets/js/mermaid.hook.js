@@ -1,13 +1,18 @@
-import mermaid from "mermaid";
 import { panZoom } from "./pan-zoom";
-import { onThemeChange, getInitialTheme, getCurrentTheme } from "./theme";
+import { onThemeChange, getCurrentTheme } from "./theme";
 import { cacheKey, getSvg, putSvg } from "./svg-cache";
 
 const getMermaidTheme = (theme) => {
   return theme === 'dark' ? 'dark' : 'default';
 };
 
-const initialize = (theme) =>
+// Mermaid is most of Clarity's JS, so it loads, in chunks of its own, when
+// the first diagram renders, and each kind of diagram loads as it's drawn.
+let loaded;
+const loadMermaid = () =>
+  (loaded ||= import("mermaid").then(({ default: mermaid }) => mermaid));
+
+const initialize = (mermaid, theme) =>
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: "loose",
@@ -17,9 +22,6 @@ const initialize = (theme) =>
     },
     maxTextSize: 1000000,
   });
-
-// Initialize with current theme
-initialize(getMermaidTheme(getInitialTheme()));
 
 export default {
   async mounted() {
@@ -51,7 +53,8 @@ export default {
 
     let svgRaw = getSvg(key);
     if (!svgRaw) {
-      initialize(mermaidTheme);
+      const mermaid = await loadMermaid();
+      initialize(mermaid, mermaidTheme);
       ({ svg: svgRaw } = await mermaid.render(`${this.el.id}_content`, graph));
       putSvg(key, svgRaw);
     }

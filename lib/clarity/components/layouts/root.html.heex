@@ -12,15 +12,16 @@
     <.live_title default="Dashboard" suffix=" · Clarity">
       {assigns[:page_title]}
     </.live_title>
-    <Clarity.Resources.css />
+    <link rel="stylesheet" href={asset_path(@conn, "app.css")} />
+    <script defer src={asset_path(@conn, "phoenix.js")}>
+    </script>
+    <script type="module" src={asset_path(@conn, "app.js")}>
+    </script>
     <meta name="theme-color" content="#b91c1c" />
     <meta name="background-color" content="#111827" />
     <link rel="shortcut icon" href={Clarity.Resources.logo_uri()} />
   </head>
   <body>
     {@inner_content}
-    <%!-- Inside <body>: the bundled JS contains "</body>" in strings, and a
-         host's Phoenix.LiveReloader injects its iframe before the last one. --%>
-    <Clarity.Resources.js />
   </body>
 </html>

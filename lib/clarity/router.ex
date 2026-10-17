@@ -93,7 +93,11 @@ defmodule Clarity.Router do
            List.wrap(opts[:session])
          ]}
 
-      private = %{live_socket_path: live_socket_path}
+      private = %{live_socket_path: live_socket_path, clarity_prefix: full_path}
+
+      # Its CSS and JS, and the chunks of JS its pages load as they need them.
+      # Before the `:lens` routes, which would otherwise match "assets".
+      get "#{path}/assets/*path", Clarity.Assets, :serve, alias: false
 
       live_session live_session_name,
         on_mount: on_mount,
