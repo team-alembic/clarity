@@ -154,19 +154,9 @@ defmodule Clarity.Assets do
 
   # The dev build changes as Clarity is developed, so it is never kept.
   @spec cache_control(Plug.Conn.t(), String.t()) :: String.t()
-  if @dev_dir do
-    defp cache_control(conn, path) do
-      if File.exists?(Path.join(@dev_dir, "app.js")),
-        do: "no-cache",
-        else: shipped_cache_control(conn, path)
-    end
-  else
-    defp cache_control(conn, path), do: shipped_cache_control(conn, path)
-  end
-
-  @spec shipped_cache_control(Plug.Conn.t(), String.t()) :: String.t()
-  defp shipped_cache_control(conn, path) do
+  defp cache_control(conn, path) do
     cond do
+      dev_build?() -> "no-cache"
       String.contains?(path, "/chunks/") -> @forever
       conn.query_params["vsn"] == @digests[Path.basename(path)] -> @forever
       true -> "no-cache"
@@ -175,10 +165,17 @@ defmodule Clarity.Assets do
 
   # Not the dev build, which changes as Clarity is developed.
   @spec gzip?(Plug.Conn.t()) :: boolean()
-  if @dev_dir do
-    defp gzip?(_conn), do: false
-  else
-    defp gzip?(conn), do: accepts_gzip?(conn)
+  defp gzip?(conn), do: not dev_build?() and accepts_gzip?(conn)
+
+  # Whether the demo app's watchers have built Clarity's assets, to serve
+  # in place of the shipped ones. Read when serving, not compiled in, as the
+  # build appears once the watchers have run.
+  @spec dev_build?() :: boolean()
+  defp dev_build? do
+    case Application.get_env(:clarity, :assets_path) do
+      nil -> false
+      dir -> File.exists?(Path.join(dir, "app.js"))
+    end
   end
 
   @spec accepts_gzip?(Plug.Conn.t()) :: boolean()
