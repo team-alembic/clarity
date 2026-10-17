@@ -8,6 +8,7 @@ defmodule Clarity.TreeComponentTest do
   alias Clarity.Perspective.Lensmaker
   alias Clarity.TreeComponent
   alias Clarity.Vertex
+  alias Clarity.Vertex.Phoenix.Router
   alias Demo.Accounts.ApiKey
   alias Demo.Accounts.User
 
@@ -221,7 +222,7 @@ defmodule Clarity.TreeComponentTest do
       tree =
         render_app_tree([
           {%Vertex.Module{module: Demo.Accounts}, :module},
-          {%Vertex.Phoenix.Router{router: DemoWeb.Router}, :router},
+          {%Router{router: DemoWeb.Router}, :router},
           {%Vertex.Ash.Domain{domain: Demo.Accounts}, :domain}
         ])
 
@@ -294,6 +295,64 @@ defmodule Clarity.TreeComponentTest do
       opened = MapSet.new(["application:clarity/advisory"])
 
       assert 30 |> render_long_tree([], opened) |> advisory_rows() == 30
+    end
+  end
+
+  describe "the domain and resource groups" do
+    # Thirty domains: more than make a long group.
+    @domains for n <- 1..30,
+                 do: Module.concat([Clarity.TreeComponentTest, "Domain#{n}"])
+
+    for domain <- @domains do
+      Module.create(
+        domain,
+        quote do
+          use Ash.Domain, validate_config_inclusion?: false
+
+          resources do
+          end
+        end,
+        Macro.Env.location(__ENV__)
+      )
+    end
+
+    test "come first and stay open, however many there are" do
+      app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
+      graph = Graph.new()
+      Graph.add_vertex(graph, app, %Vertex.Root{})
+      Graph.add_edge(graph, %Vertex.Root{}, app, :child)
+
+      edges =
+        Enum.map(@domains, &{%Vertex.Ash.Domain{domain: &1}, :domain}) ++
+          [
+            {%Router{router: DemoWeb.Router}, :router},
+            {%Vertex.Module{module: Demo.Accounts}, :module}
+          ]
+
+      for {vertex, label} <- edges do
+        Graph.add_vertex(graph, vertex, app)
+        Graph.add_edge(graph, app, vertex, label)
+      end
+
+      {:ok, lens} = Lensmaker.get_lens_by_id("debug")
+
+      tree =
+        TreeComponent
+        |> render_component(
+          id: "tree",
+          graph: graph,
+          lens: lens,
+          prefix: "/",
+          active_vertex: app,
+          breadcrumbs: [%Vertex.Root{}, app],
+          opened: MapSet.new(),
+          collapsed: MapSet.new(),
+          name_style: :short
+        )
+        |> LazyHTML.from_fragment()
+
+      assert group_labels(tree) == ["domain", "router", "module"]
+      assert tree |> LazyHTML.query("a[data-tooltip-type='Domain']") |> Enum.count() == 30
     end
   end
 

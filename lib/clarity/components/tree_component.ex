@@ -1,6 +1,5 @@
 defmodule Clarity.TreeComponent do
   @long_group 25
-
   @moduledoc """
   A lazy-loading navigation tree component that only renders visible nodes.
 
@@ -14,7 +13,10 @@ defmodule Clarity.TreeComponent do
   A node is open when it is on the breadcrumb path or the user expanded it,
   unless the user has collapsed it; a group is open unless the user has
   collapsed it. A group of more than #{@long_group} items sorts last and starts
-  closed, showing its count, until the user or a navigation opens it. The parent owns both sets so they survive graph updates, and
+  closed, showing its count, until the user or a navigation opens it; but
+  domains and resources, what an application is made of, come first and stay
+  open however many there are. The parent owns both sets so they survive graph
+  updates, and
   when the path changes it drops the collapses along it (see `path_ids/2`),
   revealing the newly current vertex.
 
@@ -33,6 +35,8 @@ defmodule Clarity.TreeComponent do
   alias Clarity.Vertex.Name
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
+
+  @primary_groups [:domain, :resource]
 
   embed_templates "tree_component/*"
 
@@ -417,7 +421,7 @@ defmodule Clarity.TreeComponent do
 
     for {label, children} <- groups do
       id = group_id(vertex, label)
-      long? = long_group?(children)
+      long? = long_group?(label, children)
       open? = group_open?(id, long?, collapsed, visible_ids)
       # A closed group's items aren't rendered (a lone short group's always
       # are; see render_vertex.html.heex), so aren't named or sorted.
@@ -449,17 +453,21 @@ defmodule Clarity.TreeComponent do
         {String.downcase(label), label, Vertex.name(child)}
       end)
 
-  # Groups go in alphabetical order, but long groups last, and modules last of
-  # all: there are many, and they repeat the domains, resources and the like in
-  # the groups above.
-  @spec group_order({term(), [Vertex.t()]}) :: {boolean(), boolean(), String.t()}
+  # Groups go in alphabetical order, but domains and resources first, long
+  # groups last, and modules last of all: there are many, and they repeat the
+  # domains, resources and the like in the groups above.
+  @spec group_order({term(), [Vertex.t()]}) :: {boolean(), boolean(), boolean(), String.t()}
   defp group_order({label, children}),
-    do: {long_group?(children), label == :module, to_string(label)}
+    do:
+      {label not in @primary_groups, long_group?(label, children), label == :module,
+       to_string(label)}
 
   # A long group starts closed, showing its count, so it doesn't bury the
-  # rest of the tree.
-  @spec long_group?([Vertex.t()]) :: boolean()
-  defp long_group?(children), do: length(children) > @long_group
+  # rest of the tree. Domains and resources are never long: they are what the
+  # tree is for.
+  @spec long_group?(term(), [Vertex.t()]) :: boolean()
+  defp long_group?(label, _children) when label in @primary_groups, do: false
+  defp long_group?(_label, children), do: length(children) > @long_group
 
   # A group is open unless the user collapsed it, and a long group only once
   # the user, or navigating into it, opened it (see path_ids/2).

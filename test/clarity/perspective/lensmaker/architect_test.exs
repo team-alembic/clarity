@@ -72,6 +72,19 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
       assert Vertex.id(app) in ids
     end
 
+    # A library can ship a domain of its own, but the
+    # Architect lens is for the project's architecture.
+    test "leaves out a Hex dependency, even one with a domain", %{graph: graph} do
+      dependency = %Vertex.Application{app: :ash, description: "Ash", version: "3.0.0"}
+      domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
+      Graph.add_vertex(graph, dependency, %Vertex.Root{})
+      Graph.add_vertex(graph, domain, dependency)
+      Graph.add_edge(graph, dependency, domain, :domain)
+
+      assert {:or, {:in, :vertex_id, ids}, _others} = Architect.make_lens().filter.(graph)
+      refute Vertex.id(dependency) in ids
+    end
+
     test "architect lens focuses on structural elements" do
       lens = Architect.make_lens()
 
