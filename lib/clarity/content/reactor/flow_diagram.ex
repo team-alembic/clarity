@@ -67,7 +67,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
 
     # Maps each step's name to the nodes its result comes from: the step
     # itself, or for a switch, the steps its branches return.
-    @spec producers([Step.t()], map()) :: %{atom() => [String.t()]}
+    @spec producers([Step.t()], map()) :: %{term() => [String.t()]}
     defp producers(steps, acc) do
       Enum.reduce(steps, acc, fn step, acc ->
         case branches(step) do
@@ -77,7 +77,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
       end)
     end
 
-    @spec switch_producers(Step.t(), [branch()], map()) :: %{atom() => [String.t()]}
+    @spec switch_producers(Step.t(), [branch()], map()) :: %{term() => [String.t()]}
     defp switch_producers(switch, branches, acc) do
       acc =
         Enum.reduce(branches, acc, fn {_id, _title, steps, _return}, acc ->
@@ -93,7 +93,7 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
     # A switch's branches as `{subgraph id, title, steps, returned step name}`,
     # or `[]` for any other step. Each branch ends in a step named after the
     # switch that returns the branch's result; it's drawn as the edge out.
-    @typep branch() :: {String.t(), String.t(), [Step.t()], atom() | nil}
+    @typep branch() :: {String.t(), String.t(), [Step.t()], term()}
 
     @spec branches(Step.t()) :: [branch()]
     defp branches(%{impl: {Step.Switch, options}} = switch) do
@@ -209,24 +209,40 @@ with {:module, Reactor} <- Code.ensure_loaded(Reactor) do
 
     defp argument_edges(_argument, _to, _producers), do: []
 
-    @spec edge(String.t(), String.t(), atom() | nil) :: iodata()
+    @spec edge(String.t(), String.t(), term()) :: iodata()
     defp edge(from, to, nil), do: ["  ", from, " --> ", to, "\n"]
-    defp edge(from, to, name), do: ["  ", from, " -->|", Atom.to_string(name), "| ", to, "\n"]
+    defp edge(from, to, name), do: ["  ", from, " -->|", escape(display(name)), "| ", to, "\n"]
 
-    @spec input_id(atom()) :: String.t()
+    @spec input_id(term()) :: String.t()
     defp input_id(name), do: "input_" <> safe(name)
 
-    @spec step_id(atom()) :: String.t()
+    @spec step_id(term()) :: String.t()
     defp step_id(name), do: "step_" <> safe(name)
 
-    @spec safe(atom()) :: String.t()
-    defp safe(name), do: String.replace(Atom.to_string(name), ~r/\W/u, "_")
+    # A name as a Mermaid id. Names are usually atoms, but can be any term:
+    # Ash.Reactor names the step that gathers an action's `inputs` with a
+    # tuple. Those get a hash too, as two can read the same once cleaned.
+    @spec safe(term()) :: String.t()
+    defp safe(name) when is_atom(name), do: clean(Atom.to_string(name))
+
+    defp safe(name),
+      do: clean(display(name)) <> "_" <> Integer.to_string(:erlang.phash2(name), 36)
+
+    @spec clean(String.t()) :: String.t()
+    defp clean(text), do: String.replace(text, ~r/\W/u, "_")
+
+    # A name as it reads in a label.
+    @spec display(term()) :: String.t()
+    defp display(name) when is_atom(name), do: Atom.to_string(name)
+    defp display({:__input__, action, :__merge__, _names}), do: "#{action}'s inputs, merged"
+    defp display({:__input__, action, _keys}), do: "#{action}'s inputs"
+    defp display(name), do: inspect(name)
 
     # A line of a node's label: markup, text to escape, or nothing.
     @typep line() :: {:html, iodata()} | String.t() | nil
 
-    @spec bold(atom()) :: line()
-    defp bold(name), do: {:html, ["<b>", escape(Atom.to_string(name)), "</b>"]}
+    @spec bold(term()) :: line()
+    defp bold(name), do: {:html, ["<b>", escape(display(name)), "</b>"]}
 
     @spec italic(String.t()) :: line()
     defp italic(text), do: {:html, ["<i>", escape(text), "</i>"]}

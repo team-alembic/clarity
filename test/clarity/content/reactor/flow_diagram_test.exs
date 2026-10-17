@@ -1,3 +1,20 @@
+defmodule Clarity.Content.Reactor.FlowDiagramTest.CreateOrganization do
+  @moduledoc false
+
+  # An Ash.Reactor whose action step takes `inputs`, for which Ash adds a step
+  # named by a tuple, {:__input__, :create_organization, [:name]}, not an atom.
+
+  use Ash.Reactor
+
+  input(:name)
+
+  create :create_organization, Demo.Accounts.Organization, :create do
+    inputs %{name: input(:name)}
+  end
+
+  return :create_organization
+end
+
 defmodule Clarity.Content.Reactor.FlowDiagramTest do
   use ExUnit.Case, async: true
 
@@ -17,6 +34,20 @@ defmodule Clarity.Content.Reactor.FlowDiagramTest do
     test "doesn't apply to other actions or vertices" do
       refute FlowDiagram.applies?(action_vertex(:convert), nil)
       refute FlowDiagram.applies?(%Vertex.Module{module: IssueInvoice}, nil)
+    end
+  end
+
+  describe "a step named by a term other than an atom" do
+    test "is drawn, fed by its inputs and feeding its step" do
+      lines =
+        Clarity.Content.Reactor.FlowDiagramTest.CreateOrganization
+        |> diagram()
+        |> String.split("\n", trim: true)
+
+      [inputs] = Enum.filter(lines, &(&1 =~ "create_organization's inputs"))
+      assert [_, id] = Regex.run(~r/^\s+(step_\w+)\[/, inputs)
+      assert "  input_name -->|name| #{id}" in lines
+      assert Enum.any?(lines, &String.starts_with?(&1, "  #{id} -->|input| step_create_organization"))
     end
   end
 
