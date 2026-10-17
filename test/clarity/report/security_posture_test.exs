@@ -8,6 +8,7 @@ defmodule Clarity.Report.SecurityPostureTest do
   alias Clarity.Perspective.Lensmaker.Architect
   alias Clarity.Report.Action
   alias Clarity.Report.SecurityPosture
+  alias Clarity.Test.DependencyResource
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
   alias Demo.Accounts.Membership
@@ -92,6 +93,13 @@ defmodule Clarity.Report.SecurityPostureTest do
 
     test "has nothing to do with no resources" do
       assert SecurityPosture.actions(Graph.new(), []) == []
+    end
+
+    # A dependency's resources are its maintainers' to secure, not yours.
+    test "has nothing to do about a Hex dependency's resources" do
+      DependencyResource.claim()
+
+      assert [DependencyResource] |> graph_of() |> SecurityPosture.actions([]) == []
     end
   end
 

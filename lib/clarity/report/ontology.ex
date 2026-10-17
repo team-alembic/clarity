@@ -20,6 +20,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Resource.Info
     alias Ash.Resource.Relationships
     alias Clarity.Autolink
+    alias Clarity.Config
     alias Clarity.Graph
     alias Clarity.Report.Action
     alias Clarity.Report.Charts
@@ -80,7 +81,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @impl Clarity.Report
     def actions(graph, opts) do
       name_style = Keyword.get(opts, :name_style, :qualified)
-      entities = entities(graph)
+      # A dependency's resources are its maintainers' to document.
+      project_apps = Config.project_applications()
+      entities = graph |> entities() |> Enum.filter(&Config.own_module?(&1.module, project_apps))
       undescribed = Enum.filter(entities, &(&1.moduledoc == nil))
 
       gaps =

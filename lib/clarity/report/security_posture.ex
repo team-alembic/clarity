@@ -18,6 +18,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Policy.Info, as: PolicyInfo
     alias Ash.Resource.Info
     alias Clarity.Ash.PolicyAnalysis
+    alias Clarity.Config
     alias Clarity.Graph
     alias Clarity.Report.Action
     alias Clarity.Report.Charts
@@ -52,7 +53,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @typedoc "What the report shows, from `analyse/1`."
     @type analysis() :: %{
             resources: [finding()],
-            lax_domains: [%{name: String.t(), id: String.t()}],
+            lax_domains: [%{name: String.t(), id: String.t(), module: module()}],
             actors: [String.t()]
           }
 
@@ -68,12 +69,16 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @impl Clarity.Report
     def actions(graph, _opts) do
-      resources = analyse(graph).resources
+      # A dependency's resources and domains are its maintainers' to secure.
+      project_apps = Config.project_applications()
+      %{resources: resources, lax_domains: lax_domains} = analyse(graph)
+      resources = Enum.filter(resources, &Config.own_module?(&1.module, project_apps))
+      lax_domains = Enum.filter(lax_domains, &Config.own_module?(&1.module, project_apps))
 
       Enum.reject(
         [
           anyone_reads(Enum.filter(resources, &(&1.exposed != [] and &1.anon_read?))),
-          lax(lax_domains(graph)),
+          lax(lax_domains),
           ungoverned(Enum.reject(resources, & &1.governed?)),
           anon_reachable(
             Enum.filter(
@@ -478,12 +483,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     # Domains that run policies only when a call passes `authorize?: true`.
-    @spec lax_domains(Graph.t()) :: [%{name: String.t(), id: String.t()}]
+    @spec lax_domains(Graph.t()) :: [%{name: String.t(), id: String.t(), module: module()}]
     defp lax_domains(graph) do
       graph
       |> Graph.vertices({:==, :vertex_type, Domain})
       |> Enum.filter(&(Ash.Domain.Info.authorize(&1.domain) == :when_requested))
-      |> Enum.map(&%{name: Vertex.Name.in_app(&1.domain), id: Vertex.id(&1)})
+      |> Enum.map(&%{name: Vertex.Name.in_app(&1.domain), id: Vertex.id(&1), module: &1.domain})
       |> Enum.sort_by(& &1.name)
     end
 

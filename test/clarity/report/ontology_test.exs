@@ -8,6 +8,7 @@ defmodule Clarity.Report.OntologyTest do
   alias Clarity.Perspective.Lens
   alias Clarity.Perspective.Lensmaker.Architect
   alias Clarity.Report.Ontology
+  alias Clarity.Test.DependencyResource
   alias Clarity.Test.OntologyFixture
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Attribute
@@ -182,6 +183,22 @@ defmodule Clarity.Report.OntologyTest do
       [action] = User |> graph_for() |> Ontology.actions(name_style: :short)
 
       assert [%{label: "Accounts.User"}] = action.groups
+    end
+
+    # A dependency's resources are its maintainers' to document, not yours.
+    test "has nothing to do about a Hex dependency's resources" do
+      DependencyResource.claim()
+      graph = graph_for(OntologyFixture)
+      Graph.add_vertex(graph, %Resource{resource: DependencyResource}, %Root{})
+
+      todos =
+        graph
+        |> Ontology.actions([])
+        |> Enum.flat_map(& &1.groups)
+        |> Enum.flat_map(&[&1[:label] | Enum.map(&1.items, fn item -> item.text end)])
+
+      assert "Clarity.Test.OntologyFixture" in todos
+      refute Enum.any?(todos, &(&1 && &1 =~ "DependencyResource"))
     end
 
     test "has nothing to do with no resources" do

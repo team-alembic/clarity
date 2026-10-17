@@ -234,6 +234,32 @@ defmodule Clarity.Config do
     end
   end
 
+  @doc """
+  Returns whether `app` is one of the project's own, in
+  `project_applications/0`, rather than a dependency fetched into `deps`, from
+  Hex or git: its to-dos are yours, and its architecture is the project's.
+  In a release, without Mix to tell, every application is.
+
+  Pass `project_applications/0` when asking about many, to work it out once.
+  """
+  @spec own_application?(Application.app(), MapSet.t(Application.app()) | :all) :: boolean()
+  def own_application?(app, project_apps \\ project_applications())
+  def own_application?(_app, :all), do: true
+  def own_application?(app, project_apps), do: MapSet.member?(project_apps, app)
+
+  @doc """
+  Returns whether `module` is the project's own, as `own_application?/2`
+  says of its application. A module in no application, such as one compiled
+  at runtime, is taken to be.
+  """
+  @spec own_module?(module(), MapSet.t(Application.app()) | :all) :: boolean()
+  def own_module?(module, project_apps \\ project_applications()) do
+    case application_of(module) do
+      nil -> true
+      app -> own_application?(app, project_apps)
+    end
+  end
+
   @module_applications Module.concat(__MODULE__, ModuleApplications)
 
   @doc """

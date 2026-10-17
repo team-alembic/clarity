@@ -62,7 +62,7 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
     end
 
     test "keeps an application whose only architecture is a signal module", %{graph: graph} do
-      app = %Vertex.Application{app: :signals_only, description: "Signals only", version: "1.0.0"}
+      app = %Vertex.Application{app: :clarity, description: "Signals only", version: "1.0.0"}
       signal_module = %SignalModule{signal_module: Demo.Billing.Signals}
       Graph.add_vertex(graph, app, %Vertex.Root{})
       Graph.add_vertex(graph, signal_module, app)
@@ -74,7 +74,7 @@ defmodule Clarity.Perspective.Lensmaker.ArchitectTest do
 
     # A library can ship a domain of its own, but the
     # Architect lens is for the project's architecture.
-    test "leaves out a Hex dependency, even one with a domain", %{graph: graph} do
+    test "leaves out a dependency, even one with a domain", %{graph: graph} do
       dependency = %Vertex.Application{app: :ash, description: "Ash", version: "3.0.0"}
       domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
       Graph.add_vertex(graph, dependency, %Vertex.Root{})

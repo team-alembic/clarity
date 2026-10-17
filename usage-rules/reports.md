@@ -55,7 +55,9 @@ vertices. If you're adding a view for a *single* vertex, use a
   them. Clarity caches them per change to the graph
   (`Clarity.Report.Actions`), so the badges on every page don't rerun them.
   An optional `pending/1` says what the actions still wait for, e.g. a
-  database download.
+  database download. To-dos are for the project's own code: leave out what
+  dependencies fetched into `deps` define (`Clarity.Config.own_module?/2`),
+  which are their maintainers' to fix.
 - The report queries the graph itself, typically with
   `Clarity.Graph.vertices(graph, {:==, :vertex_type, SomeVertex})`, and reuses
   the per-vertex analysis (status providers, `Clarity.Ash.PolicyAnalysis`, etc.)
