@@ -50,7 +50,10 @@ defmodule Clarity.Autolink do
   Names that link, each to the vertex it names: every one of them
   (`names_in/2`), or each looked up as text mentions it (`lookup/2`).
   """
-  @type names() :: %{String.t() => Vertex.t()} | Lookup.t()
+  @type names() :: %{String.t() => Vertex.t()} | lookup()
+
+  @typedoc "Names settled as text mentions them, from `lookup/2`."
+  @opaque lookup() :: Lookup.t()
 
   @typedoc "Every name the vertices of a graph go by, from `index/2`."
   @type index() :: %{
@@ -172,7 +175,7 @@ defmodule Clarity.Autolink do
   settles each only when the text mentions it: far less work for linking a
   text than settling every name a graph has.
   """
-  @spec lookup(index(), Vertex.t() | nil) :: Lookup.t()
+  @spec lookup(index(), Vertex.t() | nil) :: lookup()
   def lookup(%{neighbours: neighbours} = index, vertex) do
     %Lookup{
       index: index,

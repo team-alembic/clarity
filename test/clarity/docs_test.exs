@@ -64,9 +64,12 @@ defmodule Clarity.DocsTest do
     :code.purge(module)
     :code.delete(module)
 
-    # mix test compiles without docs.
+    # mix test compiles without docs; and the module is compiled again on
+    # purpose, so redefining it isn't worth a warning.
     docs? = Code.get_compiler_option(:docs)
+    conflict? = Code.get_compiler_option(:ignore_module_conflict)
     Code.put_compiler_option(:docs, true)
+    Code.put_compiler_option(:ignore_module_conflict, true)
 
     [{^module, binary}] =
       try do
@@ -78,6 +81,7 @@ defmodule Clarity.DocsTest do
         """)
       after
         Code.put_compiler_option(:docs, docs?)
+        Code.put_compiler_option(:ignore_module_conflict, conflict?)
       end
 
     path = Path.join(dir, "#{module}.beam")

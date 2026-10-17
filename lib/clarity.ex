@@ -1,9 +1,15 @@
 readme_path = Path.join(__DIR__, "../README.md")
 
+github = "https://github.com/team-alembic/clarity"
+
+# On HexDocs the README's own files aren't beside it, so it shows its images
+# and links its files from GitHub; the guides it links are the docs' extras.
 readme_content =
   readme_path
   |> File.read!()
   |> String.replace(~r/<!-- ex_doc_ignore_start -->.*?<!-- ex_doc_ignore_end -->/s, "")
+  |> String.replace(~r/(!\[[^\]]*\]\(|src=")(?!https?:)/, "\\1#{github}/raw/main/")
+  |> String.replace(~r/\]\((?!https?:|#|documentation\/)/, "](#{github}/blob/main/")
 
 defmodule Clarity do
   @moduledoc """

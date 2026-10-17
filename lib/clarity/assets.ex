@@ -113,6 +113,8 @@ defmodule Clarity.Assets do
     |> halt()
   end
 
+  # Only Clarity's own built assets, as JS or CSS, from paths file/1 allows.
+  # sobelow_skip ["XSS.SendResp", "Traversal.SendFile"]
   defp serve(conn, {:disk, path}) do
     conn = headers(conn, path)
 
@@ -141,7 +143,9 @@ defmodule Clarity.Assets do
     end
   end
 
+  # The content type comes from @content_types, never the request.
   @spec headers(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
+  # sobelow_skip ["XSS.ContentType"]
   defp headers(conn, path) do
     conn
     |> put_resp_content_type(Map.fetch!(@content_types, Path.extname(path)))
