@@ -4,9 +4,29 @@ defmodule Clarity.Vertex.Ash.TypeTest do
   alias Clarity.Vertex
   alias Clarity.Vertex.Ash.Type
 
+  doctest Type, only: [short_name: 1]
+
   setup do
     vertex = %Type{type: Ash.Type.String}
     {:ok, vertex: vertex}
+  end
+
+  describe inspect(&Type.short_name/1) do
+    test "writes a module as Ash's DSL does" do
+      assert Type.short_name(Ash.Type.String) == "string"
+      assert Type.short_name(Ash.Type.Integer) == "integer"
+    end
+
+    test "writes a short name as the module it stands for" do
+      assert Type.short_name(:string) == "string"
+      assert Type.short_name(:uuid) == "uuid"
+      assert Type.short_name({:array, :string}) == "list of string"
+    end
+
+    test "writes any other atom as it is" do
+      assert Type.short_name(:not_a_type) == ":not_a_type"
+      assert Type.short_name(Demo.Accounts.User) == "Demo.Accounts.User"
+    end
   end
 
   describe inspect(&Vertex.id/1) do
