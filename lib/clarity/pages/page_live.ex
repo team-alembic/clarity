@@ -107,7 +107,52 @@ defmodule Clarity.PageLive do
     socket
     |> assign(:data, AsyncResult.loading(socket.assigns.data))
     |> navigate_fn.(
-      to: Path.join([socket.assigns.prefix, lens_id, socket.assigns.initial_vertex])
+      to: Path.join([socket.assigns.prefix, lens_id, start_vertex_id(socket, lens_id)])
+    )
+  end
+
+  # A lens starts at the project's application when it has a tab for it; or
+  # else, as when it hasn't or the application isn't introspected yet, at the
+  # vertex nearest the root that it shows and has a tab for. So choosing a
+  # lens never leaves it (see handle_tabless_vertex/5).
+  @spec start_vertex_id(Socket.t(), String.t()) :: String.t()
+  defp start_vertex_id(socket, lens_id) do
+    initial_id = socket.assigns.initial_vertex
+
+    with {:ok, lens} <- Lensmaker.get_lens_by_id(lens_id) do
+      graph = Clarity.get(socket.assigns.clarity_pid, :partial).graph
+      shown = Graph.filter(graph, lens.filter)
+
+      # A lens may leave out what holds the vertices it shows (the
+      # Documentation lens, applications), so the walk is of the whole tree.
+      [Graph.get_vertex(graph, initial_id)]
+      |> Stream.concat(breadth_first(graph))
+      |> Stream.reject(&is_nil/1)
+      |> Enum.find_value(fn vertex ->
+        id = Vertex.id(vertex)
+
+        Graph.get_vertex(shown, id) != nil and
+          Content.get_contents_for_vertex(vertex, lens) != [] and id
+      end)
+    end || initial_id
+  end
+
+  # The vertices of `graph`'s tree, nearest the root first.
+  @spec breadth_first(Graph.t()) :: Enumerable.t(Vertex.t())
+  defp breadth_first(graph) do
+    Stream.resource(
+      fn -> :queue.from_list([%Root{}]) end,
+      fn queue ->
+        case :queue.out(queue) do
+          {{:value, vertex}, rest} ->
+            children = graph |> Graph.tree_groups(vertex) |> Map.delete(:content) |> Map.values()
+            {[vertex], Enum.reduce(List.flatten(children), rest, &:queue.in/2)}
+
+          {:empty, _queue} ->
+            {:halt, queue}
+        end
+      end,
+      fn _queue -> :ok end
     )
   end
 

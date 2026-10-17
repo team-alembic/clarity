@@ -19,6 +19,14 @@ defmodule Clarity.Pages.PageLiveTest do
                live_redirect(view, to: "/clarity/architect")
     end
 
+    # Clicking a lens's icon must never land in another lens, even where the
+    # lens has no tab for the project's application.
+    for lens <- ~w(architect security documentation graph debug) do
+      test "the #{lens} lens's start page is in the #{lens} lens", %{conn: conn} do
+        assert "/clarity/#{unquote(lens)}/" <> _ = follow(conn, "/clarity/#{unquote(lens)}")
+      end
+    end
+
     test "the activity bar's current lens toggles the sidebar; other lenses switch to theirs",
          %{conn: conn} do
       {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
@@ -903,6 +911,18 @@ defmodule Clarity.Pages.PageLiveTest do
       view
       |> element(@clarity_toggle)
       |> render_click(%{"open" => open})
+    end
+  end
+
+  # Where `path` ends up once every redirect is followed.
+  @spec follow(Plug.Conn.t(), String.t(), non_neg_integer()) :: String.t()
+  defp follow(conn, path, hops \\ 5)
+  defp follow(_conn, path, 0), do: path
+
+  defp follow(conn, path, hops) do
+    case live(conn, path) do
+      {:ok, _view, _html} -> path
+      {:error, {_redirect, %{to: to}}} -> follow(conn, to, hops - 1)
     end
   end
 end
