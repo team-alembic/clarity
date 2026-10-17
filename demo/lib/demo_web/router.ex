@@ -8,6 +8,7 @@ defmodule DemoWeb.Router do
   pipeline :browser do
     plug :fetch_session
     plug :fetch_query_params
+    plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :accepts, ["html"]
   end

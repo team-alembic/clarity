@@ -144,10 +144,13 @@ defmodule Clarity.Assets do
   end
 
   # The content type comes from @content_types, never the request.
+  # The host's `protect_from_forgery` would otherwise reject JS served to a
+  # `<script>` tag as a cross-origin request.
   @spec headers(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
   # sobelow_skip ["XSS.ContentType"]
   defp headers(conn, path) do
     conn
+    |> put_private(:plug_skip_csrf_protection, true)
     |> put_resp_content_type(Map.fetch!(@content_types, Path.extname(path)))
     |> put_resp_header("cache-control", cache_control(conn, path))
   end

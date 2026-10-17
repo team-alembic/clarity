@@ -36,6 +36,18 @@ defmodule Clarity.AssetsTest do
       assert get_resp_header(conn, "cache-control") == ["public, max-age=31536000, immutable"]
     end
 
+    # A host's :browser pipeline protects from forgery, which refuses JS to a
+    # plain GET (a <script> tag's) as cross-origin unless told otherwise.
+    # Phoenix.ConnTest tells it otherwise for every test, so this one doesn't.
+    test "serves JS through a pipeline that protects from forgery", %{conn: conn} do
+      conn =
+        conn
+        |> put_private(:plug_skip_csrf_protection, false)
+        |> get(Assets.path("/clarity", "app.js"))
+
+      assert response(conn, 200) == File.read!(Path.join(@assets, "app.js"))
+    end
+
     test "serves the CSS", %{conn: conn} do
       conn = get(conn, Assets.path("/clarity", "app.css"))
 

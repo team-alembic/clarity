@@ -81,6 +81,7 @@ with {:module, Phoenix.Endpoint} <- Code.ensure_loaded(Phoenix.Endpoint) do
         assert texts(html, "#pipeline-browser .ov-chain > li") == [
                  "fetch_session",
                  "fetch_query_params",
+                 "protect_from_forgery",
                  "put_secure_browser_headers",
                  "accepts html"
                ]
