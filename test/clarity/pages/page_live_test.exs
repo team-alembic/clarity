@@ -676,18 +676,19 @@ defmodule Clarity.Pages.PageLiveTest do
   end
 
   describe "PageLive navigation tree" do
-    @clarity_node "details[id='tree-node-application:clarity']"
+    @clarity_node "[id='tree-node-application:clarity']"
+    @clarity_toggle "#{@clarity_node} > .tree-row > button.tree-toggle"
 
     test "navigating to a vertex opens the tree down to it", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
       render_async(view)
 
-      refute has_element?(view, "#{@clarity_node}[open]")
+      refute has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
 
       render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
-      assert has_element?(view, "#{@clarity_node}[open]")
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
     end
 
     test "a node on the path to the current vertex can be collapsed", %{conn: conn} do
@@ -696,7 +697,7 @@ defmodule Clarity.Pages.PageLiveTest do
 
       toggle_clarity(view, false)
 
-      refute has_element?(view, "#{@clarity_node}[open]")
+      refute has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
     end
 
     test "a collapsed node stays collapsed until the user navigates elsewhere", %{conn: conn} do
@@ -707,14 +708,14 @@ defmodule Clarity.Pages.PageLiveTest do
       render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
-      refute has_element?(view, "#{@clarity_node}[open]")
+      refute has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
 
       render_patch(view, "/clarity/debug/root/graph")
       render_async(view)
       render_patch(view, "/clarity/debug/ash-domain:demo-accounts/graph")
       render_async(view)
 
-      assert has_element?(view, "#{@clarity_node}[open]")
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
     end
 
     test "a node opened by navigation stays open when navigating elsewhere", %{conn: conn} do
@@ -724,7 +725,7 @@ defmodule Clarity.Pages.PageLiveTest do
       render_patch(view, "/clarity/debug/root/graph")
       render_async(view)
 
-      assert has_element?(view, "#{@clarity_node}[open]")
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
     end
 
     test "a node the user expanded stays open when navigating elsewhere", %{conn: conn} do
@@ -737,7 +738,7 @@ defmodule Clarity.Pages.PageLiveTest do
       render_patch(view, "/clarity/debug/root/graph")
       render_async(view)
 
-      assert has_element?(view, "#{@clarity_node}[open]")
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
     end
 
     test "toggling sets the state the user asked for", %{conn: conn} do
@@ -747,12 +748,43 @@ defmodule Clarity.Pages.PageLiveTest do
       toggle_clarity(view, true)
       toggle_clarity(view, true)
 
-      assert has_element?(view, "#{@clarity_node}[open]")
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
 
       toggle_clarity(view, false)
       toggle_clarity(view, false)
 
-      refute has_element?(view, "#{@clarity_node}[open]")
+      refute has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
+    end
+
+    # A row's link and badge sit beside its toggle, not in a <summary>, where
+    # a link isn't allowed and the row would read as one button.
+    test "puts no link inside a summary", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_node} > .tree-row > a[aria-current='page']")
+      refute has_element?(view, ".navigation summary a")
+      refute has_element?(view, ".navigation summary button")
+    end
+
+    test "opens and closes a node from its toggle", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/clarity/debug/root/graph")
+      render_async(view)
+
+      refute has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
+      view |> element(@clarity_toggle) |> render_click()
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
+      view |> element(@clarity_toggle) |> render_click()
+      refute has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
+    end
+
+    test "the current vertex's label toggles it in place", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/clarity/debug/application:clarity/graph")
+      render_async(view)
+
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
+      view |> element("#{@clarity_node} > .tree-row > a[aria-current='page']") |> render_click()
+      refute has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
     end
 
     test "marks the current vertex's label so it can toggle in place", %{conn: conn} do
@@ -855,7 +887,7 @@ defmodule Clarity.Pages.PageLiveTest do
       render_patch(view, "/clarity/debug/application:clarity/graph")
       render_async(view)
 
-      assert has_element?(view, "#{@clarity_node}[open]")
+      assert has_element?(view, "#{@clarity_toggle}[aria-expanded=true]")
       refute has_element?(view, "#{@clarity_group}[open]")
     end
 
@@ -869,8 +901,8 @@ defmodule Clarity.Pages.PageLiveTest do
     @spec toggle_clarity(%View{}, boolean()) :: String.t()
     defp toggle_clarity(view, open) do
       view
-      |> element(@clarity_node)
-      |> render_hook("toggle", %{"vertex_id" => "application:clarity", "open" => open})
+      |> element(@clarity_toggle)
+      |> render_click(%{"open" => open})
     end
   end
 end

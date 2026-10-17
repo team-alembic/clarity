@@ -228,11 +228,14 @@ defmodule Clarity.TreeComponent do
   attr :lens, Lens, required: true
   attr :name, :string, required: true
   attr :providers, :list, required: true
+  attr :toggle, JS, default: nil, doc: "Toggles the vertex's node, when it has one"
+  attr :myself, :any, default: nil
 
   # A vertex's label: its type icon, in its colour, then its name and any
   # detail (Clarity.Vertex.DetailProvider), muted. Cut short with an ellipsis
   # rather than wrapped, the detail first; the hover hint has it all. A vertex
-  # the lens has no tabs for is greyed out.
+  # the lens has no tabs for is greyed out. The current vertex's label has
+  # nowhere to go, so with a node of its own it toggles it, as its chevron does.
   @spec node_link(map()) :: Rendered.t()
   defp node_link(assigns) do
     assigns =
@@ -246,6 +249,8 @@ defmodule Clarity.TreeComponent do
     <.link
       patch={Path.join([@prefix, @lens.id, Vertex.id(@vertex)])}
       aria-current={@vertex == @active_vertex && "page"}
+      phx-click={@vertex == @active_vertex && @toggle}
+      phx-target={@vertex == @active_vertex && @toggle && @myself}
       {Tooltip.attrs(@vertex)}
       class={[
         "flex min-w-0 items-center gap-1 px-1 py-px rounded-xs hover:bg-base-light-200 dark:hover:bg-base-dark-700 hover:text-primary-light dark:hover:text-primary-dark transition-colors font-medium",
@@ -491,6 +496,16 @@ defmodule Clarity.TreeComponent do
   defp has_children?(graph, vertex) do
     graph |> Graph.tree_labels(vertex) |> Enum.any?(&(&1 != :content))
   end
+
+  # Opens a closed node, or closes an open one, telling the server which: it
+  # owns the state, so a toggle that crosses an update still does what was
+  # asked.
+  @spec toggle(Vertex.t(), MapSet.t()) :: struct()
+  defp toggle(vertex, visible_ids),
+    do:
+      JS.push("toggle",
+        value: %{vertex_id: Vertex.id(vertex), open: not open?(vertex, visible_ids)}
+      )
 
   @spec open?(Vertex.t(), MapSet.t()) :: boolean()
   defp open?(vertex, visible_ids) do

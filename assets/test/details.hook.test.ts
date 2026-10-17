@@ -2,19 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Details from "../js/details.hook.js";
 
-// Mirrors the navigation tree: a node whose summary holds a chevron and a
-// label link, with a nested node rendered inside its content.
+// Mirrors the navigation tree: a group whose summary holds a chevron and a
+// label, with a nested group, and a vertex's link, rendered inside it.
 const TREE = `
-  <details id="outer" phx-hook="Details" phx-toggle="toggle" phx-value-vertex_id="outer">
+  <details id="outer" phx-hook="Details" phx-toggle="toggle_group" phx-value-group_id="outer">
     <summary>
       <svg class="tree-chevron"></svg>
-      <a href="/lens/outer" data-phx-link="patch">outer</a>
+      <span>outer</span>
     </summary>
     <div>
-      <details id="inner" phx-hook="Details" phx-toggle="toggle" phx-value-vertex_id="inner">
+      <a href="/lens/vertex" data-phx-link="patch">vertex</a>
+      <details id="inner" phx-hook="Details" phx-toggle="toggle_group" phx-value-group_id="inner">
         <summary>
           <svg class="tree-chevron"></svg>
-          <a href="/lens/inner" data-phx-link="patch">inner</a>
+          <span>inner</span>
         </summary>
       </details>
     </div>
@@ -63,14 +64,14 @@ describe("details.hook", () => {
   });
 
   const chevron = (node: HTMLElement) => node.querySelector(":scope > summary > .tree-chevron")!;
-  const label = (node: HTMLElement) => node.querySelector(":scope > summary > a")!;
+  const link = () => document.querySelector("a")!;
 
   it("opens the node from its chevron and reports the new state", () => {
     click(chevron(outer));
 
     expect(outer.open).toBe(true);
-    expect(outerHook.pushEventTo).toHaveBeenCalledExactlyOnceWith(outer, "toggle", {
-      vertex_id: "outer",
+    expect(outerHook.pushEventTo).toHaveBeenCalledExactlyOnceWith(outer, "toggle_group", {
+      group_id: "outer",
       open: true,
     });
   });
@@ -81,8 +82,8 @@ describe("details.hook", () => {
     click(chevron(outer));
 
     expect(outer.open).toBe(false);
-    expect(outerHook.pushEventTo).toHaveBeenCalledExactlyOnceWith(outer, "toggle", {
-      vertex_id: "outer",
+    expect(outerHook.pushEventTo).toHaveBeenCalledExactlyOnceWith(outer, "toggle_group", {
+      group_id: "outer",
       open: false,
     });
   });
@@ -92,43 +93,29 @@ describe("details.hook", () => {
 
     click(chevron(inner));
 
-    expect(innerHook.pushEventTo).toHaveBeenCalledExactlyOnceWith(inner, "toggle", {
-      vertex_id: "inner",
+    expect(innerHook.pushEventTo).toHaveBeenCalledExactlyOnceWith(inner, "toggle_group", {
+      group_id: "inner",
       open: true,
     });
     expect(outerHook.pushEventTo).not.toHaveBeenCalled();
     expect(outer.open).toBe(true);
   });
 
-  it("leaves a label that navigates elsewhere to LiveView", () => {
-    click(label(outer));
+  it("leaves a link inside an open group to LiveView", () => {
+    outer.open = true;
+
+    click(link());
 
     expect(liveView).toHaveBeenCalledOnce();
     expect(outerHook.pushEventTo).not.toHaveBeenCalled();
-  });
-
-  it("toggles the current node from its label, like the chevron", () => {
-    label(outer).setAttribute("aria-current", "page");
-
-    click(label(outer));
-
-    expect(liveView).not.toHaveBeenCalled();
     expect(outer.open).toBe(true);
-
-    click(label(outer));
-
-    expect(outer.open).toBe(false);
-    expect(outerHook.pushEventTo.mock.calls).toEqual([
-      [outer, "toggle", { vertex_id: "outer", open: true }],
-      [outer, "toggle", { vertex_id: "outer", open: false }],
-    ]);
   });
 
   it("does not report opens and closes made by a LiveView patch", async () => {
     // A navigation click inside the subtree used to arm the ancestor, so the
     // patch that followed was sent back as a toggle of the wrong node.
     outer.open = true;
-    click(label(inner));
+    click(link());
 
     outer.open = false;
     outer.dispatchEvent(new Event("toggle"));

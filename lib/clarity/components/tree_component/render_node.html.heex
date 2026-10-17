@@ -1,15 +1,17 @@
 <%= if has_children?(@graph, @vertex) do %>
-  <details
-    id={"tree-node-#{Vertex.id(@vertex)}"}
-    open={open?(@vertex, @visible_ids)}
-    phx-hook="Details"
-    phx-toggle="toggle"
-    phx-value-vertex_id={Vertex.id(@vertex)}
-    phx-target={@myself}
-    class="tree-node select-none"
-  >
-    <summary class="flex items-center cursor-pointer">
-      <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
+  <%!-- A row, not a <details>: its link and badge can't sit in a <summary>. --%>
+  <div id={"tree-node-#{Vertex.id(@vertex)}"} class="tree-node select-none">
+    <div class="tree-row flex items-center">
+      <button
+        type="button"
+        class="tree-toggle"
+        aria-expanded={to_string(open?(@vertex, @visible_ids))}
+        aria-label={if(open?(@vertex, @visible_ids), do: "Collapse", else: "Expand")}
+        phx-click={toggle(@vertex, @visible_ids)}
+        phx-target={@myself}
+      >
+        <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
+      </button>
       <.node_link
         vertex={@vertex}
         active_vertex={@active_vertex}
@@ -17,9 +19,11 @@
         lens={@lens}
         name={@name}
         providers={@providers}
+        toggle={toggle(@vertex, @visible_ids)}
+        myself={@myself}
       />
       <.status_badge entry={@status_index[Vertex.id(@vertex)]} prefix={@prefix} lens={@lens} />
-    </summary>
+    </div>
     <div :if={open?(@vertex, @visible_ids)}>
       <.render_vertex
         graph={@graph}
@@ -35,7 +39,7 @@
         providers={@providers}
       />
     </div>
-  </details>
+  </div>
 <% else %>
   <div class="flex items-center select-none">
     <span :if={@any_sibling_has_children} class="w-4 shrink-0" aria-hidden="true"></span>

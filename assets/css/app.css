@@ -831,8 +831,10 @@ a.report-chip {
   @apply inline-block mr-1 mb-0.5 rounded px-1 bg-base-light-100 dark:bg-base-dark-700;
 }
 
-/* Navigation tree: a chevron stands in for the native disclosure marker and
-   turns down while its own node (not an ancestor) is open. */
+/* Navigation tree: a chevron turns down while its own node (not an ancestor)
+   is open. A vertex's node toggles from a button beside its link; a group's,
+   with no link, is a <details> whose chevron stands in for the native
+   disclosure marker. */
 .tree-node > summary {
   list-style: none;
 }
@@ -841,15 +843,21 @@ a.report-chip {
   display: none;
 }
 
+.tree-toggle {
+  @apply flex shrink-0 cursor-pointer rounded-xs focus-visible:outline-2 focus-visible:outline-primary-light dark:focus-visible:outline-primary-dark;
+}
+
 .tree-chevron {
   @apply size-4 shrink-0 p-0.5 text-base-light-400 transition-transform duration-150 motion-reduce:transition-none dark:text-base-dark-500;
 }
 
-.tree-node > summary:hover > .tree-chevron {
+.tree-node > summary:hover > .tree-chevron,
+.tree-toggle:hover > .tree-chevron {
   @apply text-base-light-700 dark:text-base-dark-200;
 }
 
-.tree-node[open] > summary > .tree-chevron {
+.tree-node[open] > summary > .tree-chevron,
+.tree-toggle[aria-expanded="true"] > .tree-chevron {
   transform: rotate(90deg);
 }
 
