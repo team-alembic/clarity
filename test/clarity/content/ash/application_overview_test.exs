@@ -59,5 +59,12 @@ defmodule Clarity.Content.Ash.ApplicationOverviewTest do
       assert "Accounts" in texts(html, ".ov-domain-name")
       assert "User" in texts(html, "#domain-Demo-Accounts .ov-resource-card a.ov-link")
     end
+
+    test "groups a domain's resources as its own overview does" do
+      html = render_overview(ApplicationOverview, @app, name_style: :short)
+
+      assert texts(html, "#domain-Demo-Projects .ov-resource-group-head") ==
+               ["Integration 2", "Sprint 3", "Snapshot 3"]
+    end
   end
 end

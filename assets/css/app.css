@@ -1227,6 +1227,34 @@ a.report-chip {
   @apply flex flex-col;
 }
 
+/* A card's name, and its pills beside it, or below when there's no room: a
+   long name ends in an ellipsis rather than running under them. */
+.ov-card-head {
+  @apply flex flex-wrap items-start gap-x-1.5 gap-y-1;
+}
+
+.ov-card-name {
+  @apply min-w-0 max-w-full;
+}
+
+.ov-card-head > .ov-flags {
+  @apply ml-auto justify-end;
+}
+
+/* Resources nested under the same module, or ending alike, under its name. */
+.ov-resource-group {
+  @apply mt-5;
+}
+
+.ov-resource-group-head {
+  @apply mb-2 flex items-center gap-2 text-sm font-semibold;
+}
+
+/* A group named by a module that isn't a resource, or by an ending. */
+.ov-resource-group-name {
+  @apply text-base-light-600 dark:text-base-dark-300;
+}
+
 .ov-card-counts {
   @apply mt-auto flex items-center gap-3 pt-2 text-xs tabular-nums text-base-light-600 dark:text-base-dark-400;
 }

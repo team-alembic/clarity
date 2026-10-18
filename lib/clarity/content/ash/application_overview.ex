@@ -136,15 +136,15 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
         </div>
         <.description links={@links} text={@description} class="mb-3" />
         <p :if={@resources == []} class="ov-muted">No resources defined.</p>
-        <div :if={@resources != []} class="ov-cards">
-          <.resource_card
-            :for={resource <- @resources}
-            links={links_about(@links, %Vertex.Ash.Resource{resource: resource})}
-            resource={resource}
-            common_data_layer={@common_data_layer}
-            label={if @short?, do: Vertex.Name.within(resource, @domain), else: inspect(resource)}
-          />
-        </div>
+        <.resource_cards
+          :if={@resources != []}
+          links={@links}
+          resources={@resources}
+          domain={@domain}
+          short?={@short?}
+          common_data_layer={@common_data_layer}
+          id_prefix={section_id(@domain) <> "-group"}
+        />
       </section>
       """
     end

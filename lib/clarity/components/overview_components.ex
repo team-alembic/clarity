@@ -188,6 +188,7 @@ defmodule Clarity.Components.OverviewComponents do
   attr :label, :string, default: nil, doc: "The label, if not the vertex's short name"
   attr :code, :boolean, default: false, doc: "Whether the label is code, such as a field's name"
   attr :icon, :boolean, default: true
+  attr :truncate, :boolean, default: false, doc: "Whether a long label ends in an ellipsis"
   attr :class, :any, default: nil
 
   @spec vertex_link(map()) :: Rendered.t()
@@ -198,7 +199,12 @@ defmodule Clarity.Components.OverviewComponents do
       class={["ov-link", @code && "ov-code", @class]}
       {Tooltip.attrs(@vertex)}
     >
-      <.type_icon :if={@icon} vertex={@vertex} />{@label || label(@vertex)}
+      <.type_icon :if={@icon} vertex={@vertex} />
+      <%= if @truncate do %>
+        <span class="min-w-0 truncate">{@label || label(@vertex)}</span>
+      <% else %>
+        {@label || label(@vertex)}
+      <% end %>
     </.link>
     """
   end

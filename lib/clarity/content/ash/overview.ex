@@ -13,6 +13,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Resource.Info
     alias Ash.Resource.Relationships
     alias Clarity.Ash.Expression
+    alias Clarity.Ash.ResourceGroups
     alias Clarity.Content.Ash.StateMachineDiagram
     alias Clarity.Graph
     alias Clarity.Tooltip
@@ -341,9 +342,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       ~H"""
       <article class="ov-card ov-resource-card">
-        <div class="flex items-start gap-1.5">
-          <.vertex_link links={@links} vertex={@vertex} label={@label} class="min-w-0" />
-          <div class="ov-flags ml-auto justify-end">
+        <div class="ov-card-head">
+          <.vertex_link links={@links} vertex={@vertex} label={@label} class="ov-card-name" truncate />
+          <div class="ov-flags">
             <.resource_badges
               links={@links}
               resource={@resource}
@@ -365,6 +366,81 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       </article>
       """
     end
+
+    @doc """
+    Renders a domain's resources as cards, grouped by the modules they're
+    nested under (`Clarity.Ash.ResourceGroups`): those that stand alone first,
+    then each group under its name, led by its module's link when that's a
+    resource. With short names, a card in a group is named within it.
+    """
+    attr :links, :map, required: true
+    attr :resources, :list, required: true
+    attr :domain, :atom, required: true
+    attr :short?, :boolean, required: true
+    attr :common_data_layer, :atom, default: nil
+    attr :id_prefix, :string, default: "resource-group", doc: "Prefixes each group's id"
+
+    @spec resource_cards(map()) :: Rendered.t()
+    def resource_cards(assigns) do
+      entries = ResourceGroups.group(assigns.resources, assigns.domain)
+
+      assigns =
+        assign(assigns,
+          alone: for({:resource, resource, label} <- entries, do: {resource, label}),
+          groups: for({:group, group} <- entries, do: group)
+        )
+
+      ~H"""
+      <div :if={@alone != []} class="ov-cards">
+        <.resource_card
+          :for={{resource, label} <- @alone}
+          links={links_about(@links, %Resource{resource: resource})}
+          resource={resource}
+          common_data_layer={@common_data_layer}
+          label={if @short?, do: label, else: inspect(resource)}
+        />
+      </div>
+      <section
+        :for={group <- @groups}
+        id={"#{@id_prefix}-#{group.name}"}
+        class="ov-resource-group"
+      >
+        <h3 class="ov-resource-group-head">
+          <.vertex_link
+            :if={group.lead}
+            links={@links}
+            vertex={%Resource{resource: group.lead}}
+            label={group.name}
+          />
+          <span
+            :if={!group.lead}
+            class="ov-resource-group-name"
+            {Tooltip.attrs(group_hint(group, @domain))}
+          >
+            {group.name}
+          </span>
+          <span class="ov-count">{length(group.members)}</span>
+        </h3>
+        <div class="ov-cards">
+          <.resource_card
+            :for={{resource, label} <- group.members}
+            links={links_about(@links, %Resource{resource: resource})}
+            resource={resource}
+            common_data_layer={@common_data_layer}
+            label={if @short?, do: label, else: inspect(resource)}
+          />
+        </div>
+      </section>
+      """
+    end
+
+    @spec group_hint(ResourceGroups.group(), module()) :: String.t()
+    defp group_hint(%{kind: :end, name: name}, _domain),
+      do: "Resources ending in .#{name}, each named by the module it ends"
+
+    defp group_hint(%{name: name}, domain),
+      do:
+        "Resources nested under #{inspect(Module.concat(domain, name))}, a module but not a resource"
 
     @doc """
     Renders what's notable about a resource: pills for its state machine,

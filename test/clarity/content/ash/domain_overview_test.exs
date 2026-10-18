@@ -52,5 +52,33 @@ defmodule Clarity.Content.Ash.DomainOverviewTest do
       assert "Demo.Accounts.User" in texts(qualified, ".ov-resource-card a.ov-link")
       assert text(short, ".ov-resource-card") =~ "policies"
     end
+
+    test "groups resources nested under the same module, and those that end alike" do
+      html = render_overview(DomainOverview, %Domain{domain: Demo.Projects}, name_style: :short)
+
+      assert texts(html, "#resources > .ov-cards .ov-card-name") ==
+               ["Attachment", "Comment", "Label", "Project", "Ticket", "TicketLabel", "TimeEntry"]
+
+      assert texts(html, ".ov-resource-group-head") == ["Integration 2", "Sprint 3", "Snapshot 3"]
+
+      assert texts(html, "#resource-group-Sprint .ov-card-name") ==
+               ["Sprint", "Goal", "Retrospective"]
+
+      assert texts(html, "#resource-group-Snapshot .ov-card-name") ==
+               ["Project", "Sprint", "Ticket"]
+    end
+
+    test "leads a group with its module's link when it's a resource" do
+      html = render_overview(DomainOverview, %Domain{domain: Demo.Projects}, name_style: :short)
+
+      assert [_link] =
+               html
+               |> LazyHTML.query(
+                 "#resource-group-Sprint .ov-resource-group-head a[data-tooltip-title='Demo.Projects.Sprint']"
+               )
+               |> Enum.to_list()
+
+      assert html |> LazyHTML.query("#resource-group-Integration .ov-resource-group-head a") |> Enum.empty?()
+    end
   end
 end

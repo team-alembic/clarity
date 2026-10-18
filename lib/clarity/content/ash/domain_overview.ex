@@ -97,15 +97,14 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             count={length(@resources)}
           >
             <p :if={@resources == []} class="ov-muted">This domain has no resources.</p>
-            <div :if={@resources != []} class="ov-cards">
-              <.resource_card
-                :for={resource <- @resources}
-                links={links_about(@links, %Vertex.Ash.Resource{resource: resource})}
-                resource={resource}
-                common_data_layer={@common_data_layer}
-                label={if @short?, do: Vertex.Name.within(resource, @domain), else: inspect(resource)}
-              />
-            </div>
+            <.resource_cards
+              :if={@resources != []}
+              links={@links}
+              resources={@resources}
+              domain={@domain}
+              short?={@short?}
+              common_data_layer={@common_data_layer}
+            />
           </.section>
         </div>
       </div>
