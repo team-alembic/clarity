@@ -88,6 +88,22 @@ defmodule Clarity.Pages.LiveViewContentTest do
     end
   end
 
+  # A child LiveView with the same id keeps its process and ignores its new
+  # session, so its id holds the vertex.
+  @tag test_graph: [resources: true]
+  test "follows the vertex when the page patches to another one", %{conn: conn} do
+    content_id = Content.content_id(SessionProbe)
+    domain = "ash-domain:demo-accounts"
+    resource = "ash-resource:demo-accounts-user"
+
+    {:ok, view, _html} = live(conn, "/clarity/debug/#{domain}/#{content_id}")
+    assert has_element?(view, "#session-probe[data-vertex='#{domain}']")
+
+    render_patch(view, "/clarity/debug/#{resource}/#{content_id}")
+    assert has_element?(view, "#session-probe[data-vertex='#{resource}']")
+    refute has_element?(view, "#session-probe[data-vertex='#{domain}']")
+  end
+
   @spec holds_function?(term()) :: boolean()
   defp holds_function?(term) do
     term |> :erlang.term_to_binary() |> Plug.Crypto.non_executable_binary_to_term()

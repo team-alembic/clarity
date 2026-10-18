@@ -455,6 +455,35 @@ defmodule Clarity.Pages.PageLiveTest do
       assert has_element?(view2, "nav.tabs")
     end
 
+    @tag test_graph: [resources: true]
+    test "switching between live component contents replaces the old content", %{conn: conn} do
+      domain = "/clarity/architect/ash-domain:demo-accounts"
+      resource = "/clarity/architect/ash-resource:demo-accounts-user"
+
+      {:ok, view, _html} = live(conn, domain <> "/ash-domain-overview")
+      render_async(view)
+
+      assert has_element?(view, "#resources")
+      refute has_element?(view, "#attributes")
+      assert has_element?(view, "#content-view-ash-domain-overview")
+
+      render_patch(view, resource <> "/ash-resource-overview")
+      render_async(view)
+
+      assert has_element?(view, "#attributes")
+      refute has_element?(view, "#resources")
+      refute has_element?(view, "#content-view-ash-domain-overview")
+      assert has_element?(view, "#content-view-ash-resource-overview")
+
+      render_patch(view, domain <> "/ash-domain-overview")
+      render_async(view)
+
+      assert has_element?(view, "#resources")
+      refute has_element?(view, "#attributes")
+      refute has_element?(view, "#content-view-ash-resource-overview")
+      assert has_element?(view, "#content-view-ash-domain-overview")
+    end
+
     test "handles vertex navigation with different content types", %{conn: conn} do
       # Navigate to different vertices and ensure content updates
       {:ok, view, _html} = live(conn, "/clarity/graph/root/graph")

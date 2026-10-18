@@ -13,6 +13,18 @@ defmodule Clarity.CoreComponentsTest do
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
+  alias Phoenix.LiveView.Socket
+
+  defmodule NestedLiveView do
+    @moduledoc false
+    use Phoenix.LiveView
+
+    @impl Phoenix.LiveView
+    def mount(_params, _session, socket), do: {:ok, socket}
+
+    @impl Phoenix.LiveView
+    def render(assigns), do: ~H"<div>Nested</div>"
+  end
 
   @spec content(String.t(), String.t(), [atom()]) :: Content.t()
   defp content(id, name, status_classes) do
@@ -121,7 +133,7 @@ defmodule Clarity.CoreComponentsTest do
           },
           vertex: %Root{},
           lens: %Lens{id: "debug", name: "Debug", icon: fn -> nil end, filter: true},
-          socket: %Phoenix.LiveView.Socket{},
+          socket: %Socket{},
           clarity_pid: self(),
           theme: :light,
           zoom_graph: graph,
@@ -149,6 +161,51 @@ defmodule Clarity.CoreComponentsTest do
                  "facts" => [["Version", "1.0.0"]]
                }
              }
+    end
+  end
+
+  describe "render_content/1 nested LiveView content" do
+    test "gives the nested LiveView a new id for each vertex" do
+      ids =
+        for vertex <- [%Domain{domain: Demo.Accounts}, %Resource{resource: User}] do
+          html =
+            render_component(&CoreComponents.render_content/1,
+              content: %Content{
+                id: "nested",
+                name: "Nested",
+                provider: NestedLiveView,
+                live_view?: true,
+                live_component?: false
+              },
+              vertex: vertex,
+              lens: %Lens{id: "debug", name: "Debug", icon: fn -> nil end, filter: true},
+              socket: %Socket{
+                endpoint: DemoWeb.Endpoint,
+                assigns: %{__assigns__: %{}, __changed__: %{}},
+                private: %{root_view: __MODULE__, conn_session: %{}},
+                host_uri: URI.parse("http://localhost/")
+              },
+              clarity_pid: self(),
+              theme: :light,
+              zoom_graph: Graph.new(),
+              zoom_level: {1, 1},
+              shown_vertex_types: [],
+              available_vertex_types: [],
+              prefix: "/c"
+            )
+
+          [id] =
+            html
+            |> LazyHTML.from_fragment()
+            |> LazyHTML.query("div.content")
+            |> LazyHTML.attribute("id")
+
+          assert id =~ Vertex.id(vertex)
+          id
+        end
+
+      assert [first, second] = ids
+      refute first == second
     end
   end
 
