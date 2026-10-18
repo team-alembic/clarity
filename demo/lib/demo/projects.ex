@@ -25,5 +25,12 @@ defmodule Demo.Projects do
     resource Demo.Projects.Comment
     resource Demo.Projects.Attachment
     resource Demo.Projects.TimeEntry
+    resource Demo.Projects.Sprint.Goal
+    resource Demo.Projects.Sprint.Retrospective
+    resource Demo.Projects.Integration.Repository
+    resource Demo.Projects.Integration.ChatChannel
+    resource Demo.Projects.Project.Snapshot
+    resource Demo.Projects.Sprint.Snapshot
+    resource Demo.Projects.Ticket.Snapshot
   end
 end

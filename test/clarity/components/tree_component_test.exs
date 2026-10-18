@@ -147,7 +147,7 @@ defmodule Clarity.TreeComponentTest do
     test "a current item that is open marks only its own guide, not its siblings'" do
       app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
       domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
-      other_domain = %Vertex.Ash.Domain{domain: Demo.Billing}
+      other_domain = %Vertex.Ash.Domain{domain: Demo.Projects}
       resource = %Vertex.Ash.Resource{resource: User}
 
       graph = Graph.new()

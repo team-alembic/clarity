@@ -25,7 +25,7 @@ defmodule Clarity.Content.Ash.SecurityOverviewTest do
     test "leads with how many of its resources enforce policies, and its authorisation mode" do
       html = render(%Domain{domain: Demo.Projects})
 
-      assert text(html, ".ov-headline") == "2 of 8 resources enforce policies"
+      assert text(html, ".ov-headline") == "2 of 15 resources enforce policies"
       assert text(html, ".ov-hero .ov-flag") =~ "authorizes by default"
     end
 
