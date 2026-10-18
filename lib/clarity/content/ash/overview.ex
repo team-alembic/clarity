@@ -439,8 +439,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       do: "Resources ending in .#{name}, each named by the module it ends"
 
     defp group_hint(%{name: name}, domain),
-      do:
-        "Resources nested under #{inspect(Module.concat(domain, name))}, a module but not a resource"
+      do: "Resources nested under #{inspect(domain)}.#{name}, a module but not a resource"
 
     @doc """
     Renders what's notable about a resource: pills for its state machine,

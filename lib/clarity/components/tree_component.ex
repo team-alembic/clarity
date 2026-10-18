@@ -26,12 +26,14 @@ defmodule Clarity.TreeComponent do
 
   use Clarity.Web, :live_component
 
+  alias Clarity.Ash.ResourceGroups
   alias Clarity.Content
   alias Clarity.Graph
   alias Clarity.Perspective.Lens
   alias Clarity.Status.Index
   alias Clarity.Tooltip
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Domain
   alias Clarity.Vertex.Name
   alias Phoenix.LiveView.Rendered
   alias Phoenix.LiveView.Socket
@@ -122,13 +124,35 @@ defmodule Clarity.TreeComponent do
 
         for {label, children} <- Graph.tree_groups(graph, parent),
             Enum.any?(children, &(Vertex.id(&1) == child_id)),
-            do: group_id(parent, label)
+            id <- [group_id(parent, label) | subgroup_ids(parent, label, children, child)],
+            do: id
       end)
 
     breadcrumbs
     |> MapSet.new(&Vertex.id/1)
     |> MapSet.union(MapSet.new(group_ids))
   end
+
+  # The resource folder a domain's `child` is in, if any (see entries/4).
+  @spec subgroup_ids(Vertex.t(), term(), [Vertex.t()], Vertex.t()) :: [String.t()]
+  defp subgroup_ids(%{__struct__: Domain, domain: domain} = parent, :resource, children, %{
+         resource: resource
+       }) do
+    children
+    |> Enum.map(& &1.resource)
+    |> ResourceGroups.group(domain)
+    |> Enum.flat_map(fn
+      {:group, group} ->
+        if List.keymember?(group.members, resource, 0),
+          do: ["#{group_id(parent, :resource)}/#{group.name}"],
+          else: []
+
+      {:resource, _resource, _label} ->
+        []
+    end)
+  end
+
+  defp subgroup_ids(_parent, _label, _children, _child), do: []
 
   @spec set_tree_state(Socket.t(), MapSet.t(), MapSet.t()) :: {:noreply, Socket.t()}
   defp set_tree_state(socket, opened, collapsed) do
@@ -193,13 +217,49 @@ defmodule Clarity.TreeComponent do
   defp group_items(assigns) do
     ~H"""
     <ul class={@class}>
-      <li :for={{child, name} <- @group.children}>
-        <.render_node
-          vertex={child}
-          name={name}
-          any_sibling_has_children={@group.any_has_children?}
-          {tree_assigns(assigns)}
-        />
+      <li :for={entry <- @group.entries}>
+        <%= case entry do %>
+          <% {:node, child, name} -> %>
+            <.render_node
+              vertex={child}
+              name={name}
+              any_sibling_has_children={@group.any_has_children?}
+              {tree_assigns(assigns)}
+            />
+          <% {:subgroup, subgroup} -> %>
+            <details
+              id={"tree-group-#{subgroup.id}"}
+              open={subgroup.open?}
+              phx-hook="Details"
+              phx-toggle="toggle_group"
+              phx-value-group_id={subgroup.id}
+              phx-target={@myself}
+              class="tree-node select-none"
+            >
+              <summary class="flex items-center cursor-pointer text-base-light-600 dark:text-base-dark-400">
+                <.icon_chevron_right class="tree-chevron" aria-hidden="true" />
+                <span class="min-w-0 truncate px-1 py-px">
+                  {subgroup.name}
+                  <span
+                    :if={not subgroup.open?}
+                    class="tabular-nums text-base-light-500 dark:text-base-dark-500"
+                  >
+                    ({subgroup.count})
+                  </span>
+                </span>
+              </summary>
+              <ul :if={subgroup.open?} class={guide_class(subgroup.active?)}>
+                <li :for={{child, name} <- subgroup.items}>
+                  <.render_node
+                    vertex={child}
+                    name={name}
+                    any_sibling_has_children={@group.any_has_children?}
+                    {tree_assigns(assigns)}
+                  />
+                </li>
+              </ul>
+            </details>
+        <% end %>
       </li>
     </ul>
     """
@@ -432,22 +492,95 @@ defmodule Clarity.TreeComponent do
       # are; see render_vertex.html.heex), so aren't named or sorted.
       shown? = open? or (lone? and not long?)
 
+      context = %{
+        id: id,
+        name_style: name_style,
+        collapsed: collapsed,
+        visible_ids: visible_ids,
+        active_id: active_id,
+        active_is_open?: active_is_open?
+      }
+
       %{
         id: id,
         label: label,
         count: length(children),
         long?: long?,
-        children:
-          if(shown?,
-            do: sort_by_label(Enum.zip(children, Name.display_all(children, name_style))),
-            else: []
-          ),
+        entries: if(shown?, do: entries(vertex, label, children, context), else: []),
         open?: open?,
         active?: not active_is_open? and Enum.any?(children, &(Vertex.id(&1) == active_id)),
         any_has_children?: shown? and Enum.any?(children, &has_children?(graph, &1))
       }
     end
   end
+
+  # A group's rows: its vertices, by name; or a domain's resources grouped by
+  # the modules they're nested under (Clarity.Ash.ResourceGroups), each group
+  # a folder of its own.
+  @spec entries(Vertex.t(), term(), [Vertex.t()], map()) :: [
+          {:node, Vertex.t(), String.t()} | {:subgroup, map()}
+        ]
+  defp entries(%{__struct__: Domain, domain: domain}, :resource, children, context) do
+    by_module = Map.new(children, &{&1.resource, &1})
+
+    by_module
+    |> Map.keys()
+    |> ResourceGroups.group(domain)
+    |> Enum.map(fn
+      {:resource, resource, label} ->
+        vertex = by_module[resource]
+        {:node, vertex, resource_name(vertex, label, context.name_style)}
+
+      {:group, group} ->
+        {:subgroup, subgroup(group, by_module, context)}
+    end)
+  end
+
+  defp entries(_vertex, _label, children, context) do
+    children
+    |> Enum.zip(Name.display_all(children, context.name_style))
+    |> sort_by_label()
+    |> Enum.map(fn {child, name} -> {:node, child, name} end)
+  end
+
+  # A folder of resources nested under one module, or ending alike. A
+  # module's folder is open unless the user collapsed it; a shared ending's,
+  # mostly records kept beside others, such as snapshots, starts closed, until the
+  # user or a navigation opens it (see path_ids/2).
+  @spec subgroup(ResourceGroups.group(), %{module() => Vertex.t()}, map()) :: map()
+  defp subgroup(group, by_module, context) do
+    id = "#{context.id}/#{group.name}"
+
+    members =
+      Enum.map(group.members, fn {resource, label} ->
+        vertex = by_module[resource]
+        {vertex, resource_name(vertex, label, context.name_style)}
+      end)
+
+    open? =
+      cond do
+        MapSet.member?(context.collapsed, id) -> false
+        group.kind == :end -> MapSet.member?(context.visible_ids, id)
+        true -> true
+      end
+
+    %{
+      id: id,
+      name: group.name,
+      kind: group.kind,
+      count: length(members),
+      open?: open?,
+      items: if(open?, do: members, else: []),
+      active?:
+        not context.active_is_open? and
+          Enum.any?(members, fn {vertex, _name} -> Vertex.id(vertex) == context.active_id end)
+    }
+  end
+
+  # Within its group with short names; in full otherwise.
+  @spec resource_name(Vertex.t(), String.t(), Name.style()) :: String.t()
+  defp resource_name(_vertex, label, :short), do: label
+  defp resource_name(vertex, _label, style), do: Name.display(vertex, style)
 
   # Rows go in the order of the labels they show, ignoring case, rather than
   # of their vertices' full names.

@@ -8,6 +8,7 @@ defmodule Clarity.TreeComponentTest do
   alias Clarity.Perspective.Lensmaker
   alias Clarity.TreeComponent
   alias Clarity.Vertex
+  alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Phoenix.Router
   alias Demo.Accounts.ApiKey
   alias Demo.Accounts.User
@@ -148,7 +149,7 @@ defmodule Clarity.TreeComponentTest do
       app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
       domain = %Vertex.Ash.Domain{domain: Demo.Accounts}
       other_domain = %Vertex.Ash.Domain{domain: Demo.Projects}
-      resource = %Vertex.Ash.Resource{resource: User}
+      resource = %Resource{resource: User}
 
       graph = Graph.new()
       Graph.add_vertex(graph, app, %Vertex.Root{})
@@ -355,6 +356,90 @@ defmodule Clarity.TreeComponentTest do
       assert tree |> LazyHTML.query("a[data-tooltip-type='Domain']") |> Enum.count() == 30
     end
   end
+
+  describe "a domain's resources" do
+    # Demo.Projects's resources under its domain, rendered with `active` current.
+    @spec render_projects_tree((Vertex.t() -> Vertex.t() | nil)) :: LazyHTML.t()
+    defp render_projects_tree(pick_active \\ fn domain -> domain end) do
+      app = %Vertex.Application{app: :clarity, description: "Clarity App", version: Version.parse!("0.4.0")}
+      domain = %Vertex.Ash.Domain{domain: Demo.Projects}
+
+      graph = Graph.new()
+      Graph.add_vertex(graph, app, %Vertex.Root{})
+      Graph.add_edge(graph, %Vertex.Root{}, app, :child)
+      Graph.add_vertex(graph, domain, app)
+      Graph.add_edge(graph, app, domain, :domain)
+
+      resources =
+        for resource <- Ash.Domain.Info.resources(Demo.Projects) do
+          vertex = %Resource{resource: resource}
+          Graph.add_vertex(graph, vertex, domain)
+          Graph.add_edge(graph, domain, vertex, :resource)
+          vertex
+        end
+
+      active = pick_active.(domain) || Enum.find(resources, &(&1.resource == Demo.Projects.Ticket.Snapshot))
+      breadcrumbs = Enum.uniq([%Vertex.Root{}, app, domain, active])
+      {:ok, lens} = Lensmaker.get_lens_by_id("architect")
+
+      TreeComponent
+      |> render_component(
+        id: "tree",
+        graph: graph,
+        lens: lens,
+        prefix: "/",
+        active_vertex: active,
+        breadcrumbs: breadcrumbs,
+        opened: TreeComponent.path_ids(graph, breadcrumbs),
+        collapsed: MapSet.new(),
+        name_style: :short
+      )
+      |> LazyHTML.from_fragment()
+    end
+
+    @subgroup "[id='tree-group-ash-domain:demo-projects/resource/"
+
+    @spec resource_rows(LazyHTML.t(), String.t()) :: [String.t()]
+    defp resource_rows(tree, scope) do
+      tree
+      |> LazyHTML.query("#{scope} a[data-tooltip-type='Resource'] .tree-name")
+      |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+    end
+
+    test "are grouped by the module they're nested under, the module's resource first" do
+      tree = render_projects_tree()
+
+      assert tree |> LazyHTML.query("#{@subgroup}Sprint'][open]") |> Enum.count() == 1
+      assert resource_rows(tree, "#{@subgroup}Sprint']") == ["Sprint", "Goal", "Retrospective"]
+    end
+
+    test "gather shared endings in a closed group, showing its count" do
+      tree = render_projects_tree()
+
+      assert text_of(tree, "#{@subgroup}Snapshot'] > summary") == "Snapshot (3)"
+      assert tree |> LazyHTML.query("#{@subgroup}Snapshot'][open]") |> Enum.empty?()
+      assert resource_rows(tree, "#{@subgroup}Snapshot']") == []
+    end
+
+    test "leave the rest ungrouped, before the groups" do
+      tree = render_projects_tree()
+      all = resource_rows(tree, "[id='tree-node-ash-domain:demo-projects']")
+
+      assert Enum.take(all, 7) ==
+               ["Attachment", "Comment", "Label", "Project", "Ticket", "TicketLabel", "TimeEntry"]
+    end
+
+    test "open the group of the current resource" do
+      tree = render_projects_tree(fn _domain -> nil end)
+
+      assert tree |> LazyHTML.query("#{@subgroup}Snapshot'][open]") |> Enum.count() == 1
+      assert resource_rows(tree, "#{@subgroup}Snapshot']") == ["Project", "Sprint", "Ticket"]
+    end
+  end
+
+  @spec text_of(LazyHTML.t(), String.t()) :: String.t()
+  defp text_of(tree, selector),
+    do: tree |> LazyHTML.query(selector) |> LazyHTML.text() |> String.split() |> Enum.join(" ")
 
   describe "row details" do
     test "a row shows its vertex's detail, muted, after its name" do
