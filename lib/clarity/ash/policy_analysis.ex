@@ -39,6 +39,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     alias Ash.Resource.Actions
     alias Ash.Resource.Info
 
+    require Logger
+
     @authorizer Authorizer
 
     @type coverage() :: :applies | :excluded | :unknown
@@ -84,7 +86,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     `:never` when no scenario authorises `actor`, and `:conditional` when it
     depends on runtime checks (e.g. row filters). Returns `:unknown` when the
     action can't be analysed: building its query, changeset or input from empty
-    params runs its own preparations and changes, which may raise.
+    params runs its own preparations and changes, which may raise, or a policy
+    check raises.
     """
     @spec action_verdict(Ash.Resource.t(), Actions.action(), actor()) :: verdict()
     def action_verdict(resource, action, actor) do
@@ -132,23 +135,51 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
           ) :: verdict()
     defp solve(resource, action, actor, subject) do
-      authorizer =
-        Checker.strict_check_all_facts(%Authorizer{
-          resource: resource,
-          action: action,
-          policies: Ash.Policy.Info.policies(resource),
-          actor: actor,
-          query: if(action.type == :read, do: subject),
-          changeset: if(action.type in [:create, :update, :destroy], do: subject),
-          action_input: if(action.type == :action, do: subject),
-          subject: subject,
-          domain: Info.domain(resource),
-          facts: %{true => true, false => false},
-          context: %{}
-        })
+      authorizer = %Authorizer{
+        resource: resource,
+        action: action,
+        policies: Ash.Policy.Info.policies(resource),
+        actor: actor,
+        query: if(action.type == :read, do: subject),
+        changeset: if(action.type in [:create, :update, :destroy], do: subject),
+        action_input: if(action.type == :action, do: subject),
+        subject: subject,
+        domain: Info.domain(resource),
+        facts: %{true => true, false => false},
+        # Ash's authorizer type allows no nil here, and the solver does not read them.
+        scenarios: [],
+        real_scenarios: [],
+        check_scenarios: [],
+        context: %{}
+      }
 
-      scenarios_verdict(Checker.strict_check_scenarios(authorizer))
+      authorizer |> Checker.strict_check_scenarios() |> scenarios_verdict()
+    rescue
+      exception ->
+        log_raising_check(resource, action, exception, __STACKTRACE__)
+        :unknown
     end
+
+    @spec log_raising_check(
+            Ash.Resource.t(),
+            Actions.action(),
+            Exception.t(),
+            Exception.stacktrace()
+          ) ::
+            :ok
+    defp log_raising_check(resource, action, exception, stacktrace) do
+      Logger.debug(fn ->
+        "Policy check #{inspect(raising_module(exception, stacktrace))} raised " <>
+          "for #{inspect(resource)} action #{inspect(action.name)}"
+      end)
+    end
+
+    @spec raising_module(Exception.t(), Exception.stacktrace()) :: module() | nil
+    defp raising_module(%FunctionClauseError{module: module}, _stacktrace) when is_atom(module),
+      do: module
+
+    defp raising_module(_exception, [{module, _function, _arity, _location} | _]), do: module
+    defp raising_module(_exception, _stacktrace), do: nil
 
     # `strict_check_scenarios/1` has no spec, so dialyzer infers its boolean
     # result as only ever `false` and rejects the `{:ok, true, _}` clause as an
