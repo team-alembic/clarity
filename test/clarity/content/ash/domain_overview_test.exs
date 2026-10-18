@@ -44,6 +44,13 @@ defmodule Clarity.Content.Ash.DomainOverviewTest do
       assert text(html, ".ov-fact") =~ "Resources 6"
     end
 
+    test "gives the domain's full module name, to copy" do
+      html = render_overview(DomainOverview, %Domain{domain: TestDomain}, name_style: :short)
+
+      assert html |> texts(".ov-fact dt") |> hd() == "Module"
+      assert text(html, ".ov-module code") == "Demo.Accounts"
+    end
+
     test "shows a card for each resource, named within the domain when short" do
       short = render_overview(DomainOverview, %Domain{domain: TestDomain}, name_style: :short)
       qualified = render_overview(DomainOverview, %Domain{domain: TestDomain})

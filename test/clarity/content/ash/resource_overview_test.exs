@@ -43,9 +43,19 @@ defmodule Clarity.Content.Ash.ResourceOverviewTest do
 
       assert text(html, ".ov-hero .ov-prose") =~ "Identity record"
       assert text(html, ".ov-hero .ov-flag") =~ "multitenant"
-      assert html |> texts(".ov-fact dt") |> Enum.take(2) == ["Domain", "Primary key"]
+      assert html |> texts(".ov-fact dt") |> Enum.take(3) == ["Module", "Domain", "Primary key"]
       assert text(html, ".ov-fact dd") =~ "Accounts"
       assert "Ets" in texts(html, ".ov-hero a.ov-pill-link")
+    end
+
+    test "gives the resource's full module name, to copy, whatever names are shown" do
+      html =
+        render_overview(ResourceOverview, %Resource{resource: Demo.Projects.Sprint.Goal}, name_style: :short)
+
+      assert text(html, ".ov-module code") == "Demo.Projects.Sprint.Goal"
+
+      assert [copy] = html |> LazyHTML.query(".ov-module button.copy-button") |> Enum.to_list()
+      assert copy |> LazyHTML.attribute("phx-click") |> hd() =~ "Demo.Projects.Sprint.Goal"
     end
 
     test "lists actions first, by type, flagging the primary ones" do

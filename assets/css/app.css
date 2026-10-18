@@ -1227,6 +1227,19 @@ a.report-chip {
   @apply flex flex-col;
 }
 
+/* A module's full name, with its copy button. */
+.ov-module {
+  @apply inline-flex min-w-0 items-center gap-1;
+}
+
+.ov-module > code {
+  @apply min-w-0 font-mono text-[0.8125rem];
+}
+
+.ov-module > .copy-button {
+  @apply size-6 shrink-0;
+}
+
 /* A card's name, and its pills beside it, or below when there's no room: a
    long name ends in an ellipsis rather than running under them. */
 .ov-card-head {

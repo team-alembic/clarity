@@ -13,11 +13,13 @@ defmodule Clarity.Components.OverviewComponents do
   use Phoenix.Component
 
   import Clarity.Components.MarkdownComponent
+  import Clarity.IconComponents
 
   alias Clarity.Autolink
   alias Clarity.Perspective.Lens
   alias Clarity.Tooltip
   alias Clarity.Vertex
+  alias Phoenix.LiveView.JS
   alias Phoenix.LiveView.Rendered
 
   @typedoc """
@@ -206,6 +208,35 @@ defmodule Clarity.Components.OverviewComponents do
         {@label || label(@vertex)}
       <% end %>
     </.link>
+    """
+  end
+
+  @doc """
+  Renders a module's full name, as code, with a button to copy it: the name a
+  developer searches for or types, whatever names the page shows.
+  """
+  attr :module, :atom, required: true
+
+  @spec module_name(map()) :: Rendered.t()
+  def module_name(assigns) do
+    name = inspect(assigns.module)
+    assigns = assign(assigns, name: name, segments: String.split(name, "."))
+
+    ~H"""
+    <span class="ov-module">
+      <%!-- A long name breaks after a dot, never inside a segment. --%>
+      <code phx-no-format><%= for {segment, index} <- Enum.with_index(@segments) do %><%= if index > 0 do %>.<wbr /><% end %>{segment}<% end %></code>
+      <button
+        type="button"
+        phx-click={JS.dispatch("clarity:copy-to-clipboard", detail: %{content: @name})}
+        class="icon-button copy-button"
+        aria-label={"Copy #{@name}"}
+        {Tooltip.attrs("Copy the module's name")}
+      >
+        <.icon_clipboard class="copy-idle" />
+        <.icon_check class="copy-done" />
+      </button>
+    </span>
     """
   end
 

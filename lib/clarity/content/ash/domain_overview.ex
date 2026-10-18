@@ -67,13 +67,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </.hero>
 
             <.facts>
-              <:fact label="Domain">
-                <.vertex_link
-                  links={@links}
-                  vertex={@vertex}
-                  label={if @short?, do: Vertex.Name.in_app(@domain), else: inspect(@domain)}
-                />
-              </:fact>
+              <:fact label="Module"><.module_name module={@domain} /></:fact>
               <:fact :if={@app} label="Application">
                 <.vertex_link links={@links} vertex={@app} />
               </:fact>

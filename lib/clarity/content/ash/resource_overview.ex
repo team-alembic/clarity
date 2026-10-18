@@ -95,6 +95,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             </.hero>
 
             <.facts>
+              <:fact label="Module"><.module_name module={@resource} /></:fact>
               <:fact :if={@domain} label="Domain">
                 <.vertex_link links={@links} vertex={%Domain{domain: @domain}} />
               </:fact>
