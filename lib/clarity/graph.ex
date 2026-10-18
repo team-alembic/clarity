@@ -982,14 +982,14 @@ defmodule Clarity.Graph do
     for edge_id <- :digraph.out_edges(graph.main_graph, vertex_id) do
       {^edge_id, ^vertex_id, to_id, label} = :digraph.edge(graph.main_graph, edge_id)
       update_degree_index(graph, to_id, label, :in_degree, -1)
+      :ets.delete(graph.indexes, {vertex_id, label, :out_degree})
     end
 
     for edge_id <- :digraph.in_edges(graph.main_graph, vertex_id) do
       {^edge_id, from_id, ^vertex_id, label} = :digraph.edge(graph.main_graph, edge_id)
       update_degree_index(graph, from_id, label, :out_degree, -1)
+      :ets.delete(graph.indexes, {vertex_id, label, :in_degree})
     end
-
-    :ets.match_delete(graph.indexes, {{vertex_id, :_, :_}, :_})
 
     :ok
   end
