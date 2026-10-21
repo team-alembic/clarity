@@ -12,7 +12,7 @@
   <% @content.live_component? -> %>
     <.live_component
       module={@content.provider}
-      id="content-view"
+      id={"content-view-#{@content.id}"}
       vertex={@vertex}
       lens={@lens}
       prefix={@prefix}
@@ -22,7 +22,7 @@
     />
   <% @content.live_view? -> %>
     {live_render(@socket, @content.provider,
-      id: "content-view",
+      id: "content-view-#{@content.id}-#{Clarity.Vertex.id(@vertex)}",
       session: Clarity.Content.session(@clarity_pid, @vertex, @lens),
       container: {:div, class: "content"}
     )}
