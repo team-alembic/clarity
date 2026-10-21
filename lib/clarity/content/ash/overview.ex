@@ -43,11 +43,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     end
 
     def ash_type(assigns) do
-      vertex = %Type{type: assigns.type}
+      type = Ash.Type.get_type(assigns.type)
+      vertex = %Type{type: type}
 
       assigns =
         assign(assigns,
-          name: type_name(assigns.type),
+          name: type_name(type),
           vertex: if(linked?(assigns.links, vertex), do: vertex)
         )
 
@@ -223,7 +224,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
         argument ->
           "The #{name} argument: #{type_name(argument.type)}" <>
-            if(argument.allow_nil?, do: ", optional", else: ", required")
+            if(Map.get(argument, :allow_nil?) == false, do: ", required", else: ", optional")
       end
     end
 
@@ -295,11 +296,15 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
       """
     end
 
-    @doc "Returns an attribute's default value, when it's a plain value worth showing."
-    @spec default(Ash.Resource.Attribute.t()) :: String.t() | nil
+    @doc """
+    Returns a field's default value, when it's a plain value worth showing.
+    A field without a `:default` has none.
+    """
+    @spec default(map()) :: String.t() | nil
     def default(%{default: default}) when is_function(default) or is_nil(default), do: nil
     def default(%{default: {_module, _function, _args}}), do: nil
     def default(%{default: default}), do: inspect(default)
+    def default(_field), do: nil
 
     @doc "Returns the values an attribute may take, when its constraints list them."
     @spec one_of(Ash.Resource.Attribute.t()) :: [String.t()] | nil

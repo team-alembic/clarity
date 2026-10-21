@@ -5,6 +5,8 @@ defmodule Clarity.Introspector.ApplicationTest do
   alias Clarity.Introspector.Application, as: ApplicationIntrospector
   alias Clarity.Vertex
 
+  @loaded_app :clarity_loaded_test_app
+
   setup do
     original_config = Application.fetch_env(:clarity, :introspector_applications)
     Application.delete_env(:clarity, :introspector_applications)
@@ -193,6 +195,34 @@ defmodule Clarity.Introspector.ApplicationTest do
       assert clarity_adds == []
     end
 
+    test "keeps applications that are loaded but not started" do
+      load_test_app()
+      graph = graph_with_cached_app(~c"1.0.0")
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(%Vertex.Root{}, graph)
+
+      assert purged_apps(result) == []
+    end
+
+    test "purges applications that are loaded at a different version" do
+      load_test_app()
+      graph = graph_with_cached_app(~c"0.0.1")
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(%Vertex.Root{}, graph)
+
+      assert purged_apps(result) == [@loaded_app]
+    end
+
+    test "purges applications that are loaded but now filtered out" do
+      load_test_app()
+      graph = graph_with_cached_app(~c"1.0.0")
+      Application.put_env(:clarity, :introspector_applications, [:clarity])
+
+      {:ok, result} = ApplicationIntrospector.introspect_vertex(%Vertex.Root{}, graph)
+
+      assert purged_apps(result) == [@loaded_app]
+    end
+
     test "emits only edges that touch the root or an application it emits" do
       graph = Clarity.Graph.new()
       root_vertex = %Vertex.Root{}
@@ -241,5 +271,39 @@ defmodule Clarity.Introspector.ApplicationTest do
       purge_entries = Enum.filter(result, &match?({:purge, %Vertex.Application{}}, &1))
       assert purge_entries == []
     end
+  end
+
+  @spec load_test_app() :: :ok
+  defp load_test_app do
+    spec =
+      {:application, @loaded_app,
+       [
+         description: ~c"Loaded test application",
+         vsn: ~c"1.0.0",
+         modules: [],
+         registered: [],
+         applications: [:kernel, :stdlib]
+       ]}
+
+    :ok = :application.load(spec)
+    on_exit(fn -> :application.unload(@loaded_app) end)
+  end
+
+  @spec graph_with_cached_app(charlist()) :: Clarity.Graph.t()
+  defp graph_with_cached_app(version) do
+    graph = Clarity.Graph.new()
+    root_vertex = %Vertex.Root{}
+
+    Clarity.Graph.add_vertex(graph, root_vertex, root_vertex)
+
+    cached_app = Vertex.Application.from_app_tuple({@loaded_app, ~c"Loaded test application", version})
+    Clarity.Graph.add_vertex(graph, cached_app, root_vertex)
+
+    graph
+  end
+
+  @spec purged_apps([Clarity.Introspector.entry()]) :: [Application.app()]
+  defp purged_apps(result) do
+    for {:purge, %Vertex.Application{app: app}} <- result, app == @loaded_app, do: app
   end
 end

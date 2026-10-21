@@ -153,6 +153,7 @@ defmodule Clarity.Assets do
     |> put_private(:plug_skip_csrf_protection, true)
     |> put_resp_content_type(Map.fetch!(@content_types, Path.extname(path)))
     |> put_resp_header("cache-control", cache_control(conn, path))
+    |> put_resp_header("cross-origin-resource-policy", "same-origin")
   end
 
   # The dev build changes as Clarity is developed, so it is never kept.

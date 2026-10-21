@@ -17,12 +17,16 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @doc """
     Returns a type's name as Ash's DSL writes it: `string` for
-    `Ash.Type.String`, `list of uuid` for an array of `Ash.Type.UUID`.
+    `Ash.Type.String` or for the short name `:string`, `list of uuid` for an
+    array of `Ash.Type.UUID`.
 
     ## Examples
 
         iex> Clarity.Vertex.Ash.Type.short_name({:array, Ash.Type.UUID})
         "list of uuid"
+
+        iex> Clarity.Vertex.Ash.Type.short_name(:string)
+        "string"
 
     """
     @spec short_name(term()) :: String.t()
@@ -31,8 +35,12 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def short_name(type) when is_map_key(@short_names, type),
       do: Atom.to_string(Map.fetch!(@short_names, type))
 
-    def short_name(type) when is_atom(type),
-      do: type |> inspect() |> String.replace_prefix("Ash.Type.", "")
+    def short_name(type) when is_atom(type) do
+      case Ash.Type.get_type(type) do
+        ^type -> type |> inspect() |> String.replace_prefix("Ash.Type.", "")
+        resolved -> short_name(resolved)
+      end
+    end
 
     def short_name(type), do: inspect(type)
 

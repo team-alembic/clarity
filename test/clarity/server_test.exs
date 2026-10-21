@@ -771,6 +771,100 @@ defmodule Clarity.ServerTest do
     end
   end
 
+  describe "Applications that start after the graph is built" do
+    defmodule LateApplicationModule do
+      @moduledoc false
+    end
+
+    setup do
+      Application.put_env(:clarity, :introspector_applications, [:clarity_late_test_app])
+
+      on_exit(fn ->
+        Application.stop(:clarity_late_test_app)
+        Application.unload(:clarity_late_test_app)
+      end)
+
+      :ok
+    end
+
+    test "adds them to the graph without starting over", %{test: test} do
+      server = start_server(test)
+
+      before_start = Clarity.get(server, :complete)
+      assert before_start.status == :done
+      refute LateApplicationModule in module_names(before_start)
+
+      marker = %Vertex.Module{module: Clarity.ServerTest.Marker}
+
+      :sys.replace_state(server, fn state ->
+        :ok = Clarity.Graph.add_vertex(state.graph, marker, %Vertex.Root{})
+        state
+      end)
+
+      start_late_application()
+
+      unsubscribe = Clarity.subscribe(server, :work_completed)
+      send(server, :check_applications)
+      assert_receive {:clarity, :work_completed}
+      unsubscribe.()
+
+      after_start = Clarity.get(server)
+      assert after_start.status == :done
+      assert LateApplicationModule in module_names(after_start)
+      assert Clarity.Graph.get_vertex(after_start.graph, Vertex.id(marker)) == marker
+    end
+
+    test "adds them when the started applications are reported", %{test: test} do
+      server = start_server(test)
+      assert Clarity.get(server, :complete).status == :done
+
+      start_late_application()
+
+      unsubscribe = Clarity.subscribe(server, :work_completed)
+      send(server, {:started_applications, MapSet.new([:clarity_late_test_app])})
+      assert_receive {:clarity, :work_completed}
+      unsubscribe.()
+
+      assert LateApplicationModule in module_names(Clarity.get(server))
+    end
+
+    @spec start_server(atom()) :: GenServer.server()
+    defp start_server(test) do
+      server =
+        start_supervised!(
+          {Server,
+           name: Module.concat(__MODULE__, test),
+           introspectors: [Clarity.Introspector.Application, Clarity.Introspector.Module]}
+        )
+
+      _worker = start_supervised!({Worker, clarity_server: server})
+
+      server
+    end
+
+    @spec start_late_application() :: :ok
+    defp start_late_application do
+      :ok =
+        :application.load(
+          {:application, :clarity_late_test_app,
+           [
+             description: ~c"Late test application",
+             vsn: ~c"1.0.0",
+             modules: [LateApplicationModule],
+             registered: [],
+             applications: [:kernel, :stdlib]
+           ]}
+        )
+
+      :ok = Application.start(:clarity_late_test_app)
+    end
+
+    @spec module_names(Clarity.t()) :: [module()]
+    defp module_names(clarity) do
+      for %Vertex.Module{module: module} <- Clarity.Graph.vertices(clarity.graph), do: module
+    end
+  end
+
   describe "Starting from a cached graph" do
     defmodule RuntimeDataIntrospector do
       @moduledoc false

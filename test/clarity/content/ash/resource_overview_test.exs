@@ -4,6 +4,7 @@ defmodule Clarity.Content.Ash.ResourceOverviewTest do
   import Clarity.Test.OverviewHelper
 
   alias Clarity.Content.Ash.ResourceOverview
+  alias Clarity.Test.BareArgumentFixture
   alias Clarity.Vertex.Ash.Resource
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
@@ -89,6 +90,16 @@ defmodule Clarity.Content.Ash.ResourceOverviewTest do
 
       assert text(html, "#resource-aggregates") =~ "sum of line_items.total_cents"
       assert text(html, "#resource-calculations") =~ "if not is_nil(due_on)"
+    end
+
+    test "explains a calculation argument that a Spark transformer left as a plain map" do
+      html = render_overview(ResourceOverview, %Resource{resource: BareArgumentFixture})
+
+      assert texts(html, "#resource-calculations tbody tr td:first-child") == ["bare_argument_position"]
+
+      assert html
+             |> LazyHTML.query("#resource-calculations .ov-expr-value")
+             |> LazyHTML.attribute("data-tooltip-text") == ["The search_term argument: string, optional"]
     end
   end
 end

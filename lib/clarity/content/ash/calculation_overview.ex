@@ -128,7 +128,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
               </:col>
               <:col :let={argument} label="About">
                 <div class="ov-flags">
-                  <.flag :if={not argument.allow_nil?} text="required" />
+                  <.flag :if={Map.get(argument, :allow_nil?) == false} text="required" />
                   <.flag :if={default(argument)} hint="The value it takes when none is given">
                     default <code>{default(argument)}</code>
                   </.flag>

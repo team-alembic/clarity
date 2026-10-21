@@ -16,9 +16,15 @@ defmodule Clarity.Introspector.Application do
     cached_apps = get_cached_applications(graph)
 
     current_apps_map = Map.new(current_apps, fn {app, _, _} = tuple -> {app, tuple} end)
+
+    loaded_apps_map =
+      Map.new(Application.loaded_applications(), fn {app, _, _} = tuple -> {app, tuple} end)
+
     cached_apps_map = Map.new(cached_apps, fn vertex -> {vertex.app, vertex} end)
 
-    purge_entries = Enum.flat_map(cached_apps, &purge_app_if_changed(&1, current_apps_map))
+    purge_entries =
+      Enum.flat_map(cached_apps, &purge_app_if_changed(&1, current_apps_map, loaded_apps_map))
+
     vertex_entries = Enum.flat_map(current_apps, &vertex_entry(&1, cached_apps_map))
     emitted = MapSet.new(vertex_entries, fn {:vertex, vertex} -> vertex end)
 
@@ -44,23 +50,44 @@ defmodule Clarity.Introspector.Application do
     Graph.vertices(graph, {:==, :vertex_type, Vertex.Application})
   end
 
+  # An application is listed as started only once its start/2 returns, so one
+  # that is still starting is kept if it is loaded at the cached version.
   @spec purge_app_if_changed(
+          Vertex.Application.t(),
+          %{Application.app() => {Application.app(), charlist(), charlist()}},
+          %{Application.app() => {Application.app(), charlist(), charlist()}}
+        ) :: [Clarity.Introspector.entry()]
+  defp purge_app_if_changed(cached_vertex, current_apps_map, loaded_apps_map) do
+    case Map.fetch(current_apps_map, cached_vertex.app) do
+      {:ok, app_tuple} -> purge_if_version_differs(cached_vertex, app_tuple)
+      :error -> purge_unless_loaded(cached_vertex, loaded_apps_map)
+    end
+  end
+
+  @spec purge_unless_loaded(
           Vertex.Application.t(),
           %{Application.app() => {Application.app(), charlist(), charlist()}}
         ) :: [Clarity.Introspector.entry()]
-  defp purge_app_if_changed(cached_vertex, current_apps_map) do
-    case Map.fetch(current_apps_map, cached_vertex.app) do
-      {:ok, app_tuple} ->
-        current_vertex = Vertex.Application.from_app_tuple(app_tuple)
+  defp purge_unless_loaded(cached_vertex, loaded_apps_map) do
+    with {:ok, app_tuple} <- Map.fetch(loaded_apps_map, cached_vertex.app),
+         true <- Config.should_process_app?(cached_vertex.app) do
+      purge_if_version_differs(cached_vertex, app_tuple)
+    else
+      _not_kept -> [{:purge, cached_vertex}]
+    end
+  end
 
-        if cached_vertex.version == current_vertex.version do
-          []
-        else
-          [{:purge, cached_vertex}]
-        end
+  @spec purge_if_version_differs(
+          Vertex.Application.t(),
+          {Application.app(), charlist(), charlist()}
+        ) :: [Clarity.Introspector.entry()]
+  defp purge_if_version_differs(cached_vertex, app_tuple) do
+    current_vertex = Vertex.Application.from_app_tuple(app_tuple)
 
-      :error ->
-        [{:purge, cached_vertex}]
+    if cached_vertex.version == current_vertex.version do
+      []
+    else
+      [{:purge, cached_vertex}]
     end
   end
 

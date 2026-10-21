@@ -85,6 +85,12 @@ defmodule Clarity.AssetsTest do
       assert :zlib.gunzip(response(conn, 200)) == File.read!(Path.join(@assets, "app.js"))
     end
 
+    test "marks its assets same-origin, so other sites cannot load them", %{conn: conn} do
+      conn = get(conn, Assets.path("/clarity", "app.js"))
+
+      assert get_resp_header(conn, "cross-origin-resource-policy") == ["same-origin"]
+    end
+
     for path <- [
           "/clarity/assets/nope.js",
           "/clarity/assets/chunks/nope.js",

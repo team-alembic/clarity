@@ -4,7 +4,9 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
   import Clarity.Test.OverviewHelper
 
   alias Ash.Resource.Info
+  alias Ash.Type.Boolean
   alias Clarity.Content.Ash.CalculationOverview
+  alias Clarity.Test.BareArgumentFixture
   alias Clarity.Vertex.Ash.Calculation
   alias Clarity.Vertex.Root
   alias Demo.Accounts.User
@@ -46,6 +48,10 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
   @spec calculation(module(), atom()) :: Calculation.t()
   defp calculation(resource, name), do: %Calculation{calculation: Info.calculation(resource, name), resource: resource}
 
+  @spec with_arguments(Calculation.t(), [map()]) :: Calculation.t()
+  defp with_arguments(%Calculation{calculation: calculation} = vertex, arguments),
+    do: %{vertex | calculation: %{calculation | arguments: arguments}}
+
   describe "render" do
     test "leads with its type and resource, and its expression in full" do
       invoice = Demo.Billing.Invoice
@@ -77,6 +83,61 @@ defmodule Clarity.Content.Ash.CalculationOverviewTest do
              |> LazyHTML.query("pre .ov-expr-value")
              |> LazyHTML.attribute("data-tooltip-text")
              |> Enum.take(2) == ["The arg1 argument: string, required", "The arg2 argument: boolean, optional"]
+    end
+
+    test "treats an argument with no allow_nil? or default as optional" do
+      arguments = [
+        %{name: :arg1, type: Ash.Type.String, constraints: []},
+        %{name: :arg2, type: Boolean, constraints: []}
+      ]
+
+      html = render_overview(CalculationOverview, with_arguments(calculation(User, :multi_arguments), arguments))
+
+      assert texts(html, "#calculation-arguments tbody tr td:first-child") == ["arg1", "arg2"]
+      assert texts(html, "#calculation-arguments .ov-flag") == []
+
+      assert html
+             |> LazyHTML.query("pre .ov-expr-value")
+             |> LazyHTML.attribute("data-tooltip-text")
+             |> Enum.take(2) == ["The arg1 argument: string, optional", "The arg2 argument: boolean, optional"]
+    end
+
+    test "treats an argument whose allow_nil? is nil as optional" do
+      arguments = [
+        %{name: :arg1, type: Ash.Type.String, allow_nil?: nil, default: nil, constraints: []},
+        %{name: :arg2, type: Boolean, allow_nil?: nil, default: nil, constraints: []}
+      ]
+
+      html = render_overview(CalculationOverview, with_arguments(calculation(User, :multi_arguments), arguments))
+
+      assert texts(html, "#calculation-arguments tbody tr td:first-child") == ["arg1", "arg2"]
+      assert texts(html, "#calculation-arguments .ov-flag") == []
+
+      assert html
+             |> LazyHTML.query("pre .ov-expr-value")
+             |> LazyHTML.attribute("data-tooltip-text")
+             |> Enum.take(2) == ["The arg1 argument: string, optional", "The arg2 argument: boolean, optional"]
+    end
+
+    test "reads an argument that a Spark transformer left as a plain map" do
+      vertex = calculation(BareArgumentFixture, :bare_argument_position)
+      assert [argument] = vertex.calculation.arguments
+      refute is_struct(argument)
+      refute Map.has_key?(argument, :allow_nil?)
+
+      html = render_overview(CalculationOverview, vertex)
+
+      assert texts(html, "#calculation-arguments tbody tr td:first-child") == ["search_term"]
+      assert texts(html, "#calculation-arguments tbody tr td:nth-child(2)") == ["string"]
+
+      assert html |> LazyHTML.query("#calculation-arguments a.ov-type") |> LazyHTML.attribute("href") ==
+               ["/c/architect/ash-type:ash-type-string"]
+
+      assert texts(html, "#calculation-arguments .ov-flag") == [~s|default ""|]
+
+      assert html
+             |> LazyHTML.query("pre .ov-expr-value")
+             |> LazyHTML.attribute("data-tooltip-text") == ["The search_term argument: string, optional"]
     end
 
     test "shows where its value comes from, down to the stored fields, as a diagram and a tree" do
