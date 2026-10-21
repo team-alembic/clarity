@@ -84,10 +84,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     Returns `:unrestricted` when the resource has no policy authorizer,
     `:always` when authorisation is a tautology (open to any actor),
     `:never` when no scenario authorises `actor`, and `:conditional` when it
-    depends on runtime checks (e.g. row filters). Returns `:unknown` when the
-    action can't be analysed: building its query, changeset or input from empty
-    params runs its own preparations and changes, which may raise, or a policy
-    check raises.
+    depends on runtime checks (e.g. row filters). Returns `:unknown` when a
+    policy check raises.
+
+    The checks see an empty query, changeset or input, with the action, domain
+    and actor set, and with the static defaults of the action's arguments and
+    attributes. The action's own preparations, changes and validations do not
+    run, and neither do function defaults.
     """
     @spec action_verdict(Ash.Resource.t(), Actions.action(), actor()) :: verdict()
     def action_verdict(resource, action, actor) do
@@ -122,19 +125,8 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec solve(Ash.Resource.t(), Actions.action(), actor()) :: verdict()
     defp solve(resource, action, actor) do
-      case build_subject(resource, action, actor) do
-        {:ok, subject} -> solve(resource, action, actor, subject)
-        :error -> :unknown
-      end
-    end
+      subject = subject(resource, action, actor)
 
-    @spec solve(
-            Ash.Resource.t(),
-            Actions.action(),
-            actor(),
-            Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
-          ) :: verdict()
-    defp solve(resource, action, actor, subject) do
       authorizer = %Authorizer{
         resource: resource,
         action: action,
@@ -237,38 +229,79 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     @spec ash_resource?(module()) :: boolean()
     defp ash_resource?(module), do: Code.ensure_loaded?(module) and Info.resource?(module)
 
-    @spec build_subject(Ash.Resource.t(), Actions.action(), actor()) ::
-            {:ok, Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()} | :error
-    defp build_subject(resource, action, actor) do
-      {:ok, subject(resource, action, actor)}
-    rescue
-      _exception -> :error
-    end
-
+    # Not `for_read/4` and its kin: they run the action's preparations, changes
+    # and validations, which is host code. Static defaults are set as they do.
     @spec subject(Ash.Resource.t(), Actions.action(), actor()) ::
             Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
-    defp subject(resource, %{type: :read} = action, actor),
-      do: Ash.Query.for_read(resource, action.name, %{}, actor: actor, authorize?: false)
+    defp subject(resource, action, actor) do
+      resource
+      |> blank_subject(action)
+      |> then(&%{&1 | action: action, domain: Info.domain(resource)})
+      |> set_argument_defaults(action)
+      |> set_attribute_defaults(resource, action)
+      |> Ash.Subject.set_context(%{private: %{actor: actor}})
+    end
 
-    defp subject(resource, %{type: :create} = action, actor),
-      do: Ash.Changeset.for_create(resource, action.name, %{}, actor: actor, authorize?: false)
+    @spec set_argument_defaults(
+            Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
+            Actions.action()
+          ) :: Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
+    defp set_argument_defaults(subject, action) do
+      action.arguments
+      |> Enum.filter(&static_default?(&1.default))
+      |> Enum.reduce(subject, fn argument, subject ->
+        case Ash.Subject.fetch_argument(subject, argument.name) do
+          {:ok, _value} -> subject
+          :error -> Ash.Subject.set_argument(subject, argument.name, argument.default)
+        end
+      end)
+    end
 
-    defp subject(resource, %{type: :update} = action, actor),
-      do:
-        Ash.Changeset.for_update(struct(resource), action.name, %{},
-          actor: actor,
-          authorize?: false
-        )
+    @spec set_attribute_defaults(
+            Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t(),
+            Ash.Resource.t(),
+            Actions.action()
+          ) :: Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
+    defp set_attribute_defaults(%Ash.Changeset{} = changeset, resource, %{type: type})
+         when type in [:create, :update] do
+      resource
+      |> Info.static_default_attributes(type)
+      |> Enum.reduce(changeset, fn attribute, changeset ->
+        if Ash.Changeset.changing_attribute?(changeset, attribute.name) do
+          changeset
+        else
+          Ash.Changeset.force_change_attribute(
+            changeset,
+            attribute.name,
+            attribute_default(attribute, type)
+          )
+        end
+      end)
+    end
 
-    defp subject(resource, %{type: :destroy} = action, actor),
-      do:
-        Ash.Changeset.for_destroy(struct(resource), action.name, %{},
-          actor: actor,
-          authorize?: false
-        )
+    defp set_attribute_defaults(subject, _resource, _action), do: subject
+
+    @spec attribute_default(Ash.Resource.Attribute.t(), :create | :update) :: term()
+    defp attribute_default(attribute, :create), do: attribute.default
+    defp attribute_default(attribute, :update), do: attribute.update_default
+
+    # Functions and `{module, function, args}` defaults are host code.
+    @spec static_default?(term()) :: boolean()
+    defp static_default?(nil), do: false
+    defp static_default?(default) when is_function(default), do: false
+    defp static_default?({_module, _function, _args}), do: false
+    defp static_default?(_default), do: true
+
+    @spec blank_subject(Ash.Resource.t(), Actions.action()) ::
+            Ash.Query.t() | Ash.Changeset.t() | Ash.ActionInput.t()
+    defp blank_subject(resource, %{type: :read}), do: Ash.Query.new(resource)
+    defp blank_subject(resource, %{type: :create}), do: Ash.Changeset.new(resource)
+    defp blank_subject(resource, %{type: :update}), do: Ash.Changeset.new(struct(resource))
+
+    defp blank_subject(resource, %{type: :destroy}),
+      do: %{Ash.Changeset.new(struct(resource)) | action_type: :destroy}
 
     # Generic actions (`action :name do ... end`), e.g. one run by a Reactor.
-    defp subject(resource, %{type: :action} = action, actor),
-      do: Ash.ActionInput.for_action(resource, action.name, %{}, actor: actor, authorize?: false)
+    defp blank_subject(resource, %{type: :action}), do: Ash.ActionInput.new(resource)
   end
 end
