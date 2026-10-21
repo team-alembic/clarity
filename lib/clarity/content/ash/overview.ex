@@ -318,9 +318,9 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
     def one_of(_attribute), do: nil
 
     @doc """
-    Renders a resource as a card: its name, data layer and what's notable,
-    its description in brief, and how many actions, attributes and
-    relationships it has.
+    Renders a resource as a card: its name, its description in brief, and
+    how many actions, attributes and relationships it has, beside its data
+    layer and what's notable.
     """
     attr :links, :map, required: true
     attr :resource, :atom, required: true
@@ -347,16 +347,7 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
       ~H"""
       <article class="ov-card ov-resource-card">
-        <div class="ov-card-head">
-          <.vertex_link links={@links} vertex={@vertex} label={@label} class="ov-card-name" truncate />
-          <div class="ov-flags">
-            <.resource_badges
-              links={@links}
-              resource={@resource}
-              data_layer?={Info.data_layer(@resource) != @common_data_layer}
-            />
-          </div>
-        </div>
+        <.vertex_link links={@links} vertex={@vertex} label={@label} wrap class="ov-card-name" />
         <.description links={@links} text={@description} small sentence class="mt-1" />
         <div class="ov-card-counts">
           <span
@@ -366,6 +357,13 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
             {Tooltip.attrs("#{count} #{label}")}
           >
             <.type_icon icon={icon} tone={tone} />{count}
+          </span>
+          <span class="ov-card-markers">
+            <.resource_markers
+              links={@links}
+              resource={@resource}
+              data_layer?={Info.data_layer(@resource) != @common_data_layer}
+            />
           </span>
         </div>
       </article>
@@ -457,54 +455,114 @@ with {:module, Ash} <- Code.ensure_loaded(Ash) do
 
     @spec resource_badges(map()) :: Rendered.t()
     def resource_badges(assigns) do
-      resource = assigns.resource
-      vertex = %Resource{resource: resource}
-      policies = policy_count(resource)
-
-      assigns =
-        assign(assigns,
-          vertex: vertex,
-          data_layer: Info.data_layer(resource),
-          policies: policies,
-          policies_hint:
-            "Authorised by #{policies} #{if policies == 1, do: "policy", else: "policies"}: " <>
-              "see the Security lens",
-          security_path: Path.join([assigns.links.prefix, "security", Clarity.Vertex.id(vertex)]),
-          state_machine_path: state_machine_path(assigns.links, vertex),
-          multitenancy: multitenancy_hint(resource),
-          embedded?: Info.embedded?(resource)
-        )
+      assigns = assign(assigns, :badges, badges(assigns))
 
       ~H"""
-      <.vertex_pill
-        :if={@state_machine_path}
-        links={@links}
-        vertex={@vertex}
-        label="state machine"
-        icon="reactor"
-        tone="behaviour"
-        to={@state_machine_path}
-        hint="Moves between states: see its State Machine tab"
-      />
-      <.vertex_pill
-        :if={@policies > 0}
-        links={@links}
-        vertex={@vertex}
-        label="policies"
-        icon="policy"
-        tone="rule"
-        to={@security_path}
-        hint={@policies_hint}
-      />
-      <.vertex_pill
-        :if={@data_layer && @data_layer?}
-        links={@links}
-        vertex={%Clarity.Vertex.Ash.DataLayer{data_layer: @data_layer}}
-        label={@data_layer |> Module.split() |> List.last()}
-      />
-      <.flag :if={@multitenancy} text="multitenant" hint={@multitenancy} />
-      <.flag :if={@embedded?} text="embedded" />
+      <%= for badge <- @badges do %>
+        <.vertex_pill
+          :if={badge.vertex}
+          links={@links}
+          vertex={badge.vertex}
+          label={badge.label}
+          icon={badge.icon}
+          tone={badge.tone}
+          to={badge.to}
+          hint={badge.hint}
+        />
+        <.flag :if={!badge.vertex} text={badge.label} hint={badge.hint} />
+      <% end %>
       """
+    end
+
+    @doc "Renders a resource's badges as markers, each its icon alone, for a card."
+    attr :links, :map, required: true
+    attr :resource, :atom, required: true
+    attr :data_layer?, :boolean, default: true, doc: "Whether to show its data layer"
+
+    @spec resource_markers(map()) :: Rendered.t()
+    def resource_markers(assigns) do
+      assigns = assign(assigns, :badges, badges(assigns))
+
+      ~H"""
+      <.marker
+        :for={badge <- @badges}
+        label={badge.label}
+        icon={badge.icon}
+        tone={badge.tone}
+        to={badge.to}
+        hint_attrs={Tooltip.attrs(badge.hint || badge.vertex)}
+      />
+      """
+    end
+
+    # A resource's badges, in the order they show. A pill names a vertex,
+    # whose hint shows when it has none of its own; a flag names none.
+    @spec badges(map()) :: [map()]
+    defp badges(%{links: links, resource: resource, data_layer?: data_layer?}) do
+      vertex = %Resource{resource: resource}
+      policies = policy_count(resource)
+      data_layer = Info.data_layer(resource)
+      state_machine_path = state_machine_path(links, vertex)
+      multitenancy = multitenancy_hint(resource)
+
+      Enum.filter(
+        [
+          state_machine_path &&
+            %{
+              label: "state machine",
+              icon: "reactor",
+              tone: "behaviour",
+              vertex: vertex,
+              to: state_machine_path,
+              hint: "Moves between states: see its State Machine tab"
+            },
+          policies > 0 &&
+            %{
+              label: "policies",
+              icon: "policy",
+              tone: "rule",
+              vertex: vertex,
+              to: Path.join([links.prefix, "security", Clarity.Vertex.id(vertex)]),
+              hint:
+                "Authorised by #{policies} #{if policies == 1, do: "policy", else: "policies"}: " <>
+                  "see the Security lens"
+            },
+          data_layer && data_layer? && data_layer_badge(links, data_layer),
+          multitenancy &&
+            %{
+              label: "multitenant",
+              icon: "multitenant",
+              tone: "warning",
+              vertex: nil,
+              to: nil,
+              hint: multitenancy
+            },
+          Info.embedded?(resource) &&
+            %{
+              label: "embedded",
+              icon: "embedded",
+              tone: "neutral",
+              vertex: nil,
+              to: nil,
+              hint: Tooltip.badge("embedded").hint
+            }
+        ],
+        & &1
+      )
+    end
+
+    @spec data_layer_badge(map(), module()) :: map()
+    defp data_layer_badge(links, data_layer) do
+      vertex = %Clarity.Vertex.Ash.DataLayer{data_layer: data_layer}
+
+      vertex
+      |> Tooltip.type_icon()
+      |> Map.merge(%{
+        label: data_layer |> Module.split() |> List.last(),
+        vertex: vertex,
+        to: path(links, vertex),
+        hint: nil
+      })
     end
 
     @doc "Returns the data layer most of `resources` use."

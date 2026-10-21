@@ -1146,6 +1146,15 @@ a.report-chip {
   @apply dark:text-base-dark-50 dark:decoration-base-dark-500;
 }
 
+/* A long name wraps, after a dot first, with its icon on the first line. */
+.ov-link-wrap {
+  @apply items-start wrap-anywhere;
+}
+
+.ov-link-wrap > .ov-icon {
+  height: 1lh;
+}
+
 .ov-code,
 .ov-code-list code {
   @apply font-mono text-[13px];
@@ -1240,20 +1249,6 @@ a.report-chip {
   @apply size-6 shrink-0;
 }
 
-/* A card's name, and its pills beside it, or below when there's no room: a
-   long name ends in an ellipsis rather than running under them. */
-.ov-card-head {
-  @apply flex flex-wrap items-start gap-x-1.5 gap-y-1;
-}
-
-.ov-card-name {
-  @apply min-w-0 max-w-full;
-}
-
-.ov-card-head > .ov-flags {
-  @apply ml-auto justify-end;
-}
-
 /* Resources nested under the same module, or ending alike, under its name. */
 .ov-resource-group {
   @apply mt-5;
@@ -1269,7 +1264,26 @@ a.report-chip {
 }
 
 .ov-card-counts {
-  @apply mt-auto flex items-center gap-3 pt-2 text-xs tabular-nums text-base-light-600 dark:text-base-dark-400;
+  @apply mt-auto flex items-center gap-3 pt-2 text-xs tabular-nums whitespace-nowrap text-base-light-600 dark:text-base-dark-400;
+}
+
+/* A card's name takes the full width, and wraps instead of running under
+   anything beside it. */
+.ov-card-name {
+  @apply self-start;
+}
+
+/* A card's badges, as markers at the end of its counts. */
+.ov-card-markers {
+  @apply ml-auto flex items-center gap-1.5;
+}
+
+.ov-marker {
+  @apply inline-flex items-center rounded;
+}
+
+a.ov-marker {
+  @apply transition-[filter] hover:brightness-75 dark:hover:brightness-150;
 }
 
 .ov-card-title {
