@@ -114,7 +114,7 @@ defmodule Clarity.MixProject do
       {:ash, "~> 3.6", optional: true},
       {:spark, "~> 2.3", optional: true},
       {:reactor, "~> 1.0", optional: true},
-      {:ash_state_machine, "~> 0.2.13", optional: true},
+      {:ash_state_machine, "~> 0.3.0", optional: true},
       {:ash_oban, "~> 0.10", only: :test},
       {:phoenix, "~> 1.8"},
       {:phoenix_html, "~> 4.2"},
